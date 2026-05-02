@@ -11,6 +11,7 @@ import CrowdSec from './pages/CrowdSec'
 import ACME from './pages/ACME'
 import System from './pages/System'
 import LiveLogs from './pages/LiveLogs'
+import Metrics from './pages/Metrics'
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="metrics" element={<Metrics />} />
           <Route path="interfaces" element={<Interfaces />} />
           <Route path="firewall" element={<Firewall />} />
           <Route path="vpn" element={<VPN />} />
