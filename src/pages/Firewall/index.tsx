@@ -1,18 +1,11 @@
 import { useEffect, useState } from 'react'
-import { getFirewallRules, createFirewallRule } from '../../api/client'
+import { getFirewallRules, createFirewallRule, deleteFirewallRule } from '../../api/firewall'
 import type { FirewallRule } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
-
-// TODO: Implement edit rule functionality (PUT /firewall/rules/:id)
-// TODO: Implement delete rule functionality (DELETE /firewall/rules/:id)
-// TODO: Implement drag-and-drop rule reordering
-// TODO: Add rule groups / categories
-// TODO: Add rule hit counters (packet/byte counts)
-// TODO: Add bulk enable/disable rules
 
 type RuleRow = FirewallRule & Record<string, unknown>
 
@@ -28,26 +21,6 @@ const actionBadge = (action: FirewallRule['action']) => {
     </span>
   )
 }
-
-const columns: Column<RuleRow>[] = [
-  { key: 'order', header: '#', className: 'w-10' },
-  {
-    key: 'enabled',
-    header: 'Enabled',
-    render: (row) => (
-      <span className={row.enabled ? 'text-green-600' : 'text-gray-400'}>
-        {row.enabled ? '✓' : '✗'}
-      </span>
-    ),
-  },
-  { key: 'description', header: 'Description' },
-  { key: 'action', header: 'Action', render: (row) => actionBadge(row.action as FirewallRule['action']) },
-  { key: 'direction', header: 'Direction' },
-  { key: 'protocol', header: 'Protocol' },
-  { key: 'source', header: 'Source' },
-  { key: 'destination', header: 'Destination' },
-  { key: 'interface', header: 'Interface', render: (row) => row.interface ?? 'any' },
-]
 
 const defaultForm: Partial<FirewallRule> = {
   enabled: true,
@@ -70,6 +43,8 @@ export default function Firewall() {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<Partial<FirewallRule>>(defaultForm)
   const [saving, setSaving] = useState(false)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -92,6 +67,52 @@ export default function Firewall() {
       .catch((err: Error) => setError(err.message))
       .finally(() => setSaving(false))
   }
+
+  const handleDelete = () => {
+    if (deleteId === null) return
+    setDeleting(true)
+    deleteFirewallRule(deleteId)
+      .then(() => {
+        setDeleteId(null)
+        load()
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setDeleting(false))
+  }
+
+  const columns: Column<RuleRow>[] = [
+    { key: 'order', header: '#', className: 'w-10' },
+    {
+      key: 'enabled',
+      header: 'Enabled',
+      render: (row) => (
+        <span className={row.enabled ? 'text-green-600' : 'text-gray-400'}>
+          {row.enabled ? '✓' : '✗'}
+        </span>
+      ),
+    },
+    { key: 'description', header: 'Description' },
+    { key: 'action', header: 'Action', render: (row) => actionBadge(row.action as FirewallRule['action']) },
+    { key: 'direction', header: 'Direction' },
+    { key: 'protocol', header: 'Protocol' },
+    { key: 'source', header: 'Source' },
+    { key: 'destination', header: 'Destination' },
+    { key: 'interface', header: 'Interface', render: (row) => (row.interface as string) ?? 'any' },
+    {
+      key: 'actions',
+      header: '',
+      className: 'w-16 text-right',
+      render: (row) => (
+        <Button
+          variant="danger"
+          size="sm"
+          onClick={() => setDeleteId(row.id as number)}
+        >
+          Delete
+        </Button>
+      ),
+    },
+  ]
 
   return (
     <div className="space-y-4">
@@ -203,6 +224,22 @@ export default function Firewall() {
             onChange={(e) => setForm({ ...form, destinationPort: e.target.value })}
           />
         </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        open={deleteId !== null}
+        title="Delete Firewall Rule"
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        loading={deleting}
+        size="sm"
+      >
+        <p className="text-sm text-gray-600">
+          Are you sure you want to delete this firewall rule? This action cannot be undone.
+        </p>
       </Modal>
     </div>
   )

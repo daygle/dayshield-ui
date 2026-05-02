@@ -1,17 +1,14 @@
 import axios from 'axios'
-import type { ApiResponse, NetworkInterface, FirewallRule, SystemStatus } from '../types'
-
-const BASE_URL = 'http://localhost:8080'
 
 const apiClient = axios.create({
-  baseURL: BASE_URL,
+  baseURL: 'http://localhost:8080/api',
   headers: {
     'Content-Type': 'application/json',
   },
   timeout: 10000,
 })
 
-// Request interceptor for auth headers (extend later)
+// Request interceptor (extend for auth headers as needed)
 apiClient.interceptors.request.use(
   (config) => config,
   (error) => Promise.reject(error),
@@ -27,35 +24,4 @@ apiClient.interceptors.response.use(
   },
 )
 
-// ── System ──────────────────────────────────────────────────────────────────
-
-export const getSystemStatus = (): Promise<ApiResponse<SystemStatus>> =>
-  apiClient.get<ApiResponse<SystemStatus>>('/system/status').then((r) => r.data)
-
-// ── Interfaces ───────────────────────────────────────────────────────────────
-
-export const getInterfaces = (): Promise<ApiResponse<NetworkInterface[]>> =>
-  apiClient
-    .get<ApiResponse<NetworkInterface[]>>('/interfaces')
-    .then((r) => r.data)
-
-export const createInterface = (
-  iface: Omit<NetworkInterface, 'name'> & { name: string },
-): Promise<ApiResponse<NetworkInterface>> =>
-  apiClient
-    .post<ApiResponse<NetworkInterface>>('/interfaces', iface)
-    .then((r) => r.data)
-
-// ── Firewall rules ───────────────────────────────────────────────────────────
-
-export const getFirewallRules = (): Promise<ApiResponse<FirewallRule[]>> =>
-  apiClient
-    .get<ApiResponse<FirewallRule[]>>('/firewall/rules')
-    .then((r) => r.data)
-
-export const createFirewallRule = (
-  rule: Omit<FirewallRule, 'id'>,
-): Promise<ApiResponse<FirewallRule>> =>
-  apiClient
-    .post<ApiResponse<FirewallRule>>('/firewall/rules', rule)
-    .then((r) => r.data)
+export default apiClient

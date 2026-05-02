@@ -6,7 +6,8 @@ export interface ApiResponse<T> {
   error?: string
 }
 
-// Network interface
+// ── Network interfaces ────────────────────────────────────────────────────────
+
 export interface NetworkInterface {
   name: string
   description: string
@@ -22,7 +23,8 @@ export interface NetworkInterface {
   duplex?: 'full' | 'half' | 'auto'
 }
 
-// Firewall rule
+// ── Firewall rules ────────────────────────────────────────────────────────────
+
 export type FirewallAction = 'allow' | 'deny' | 'reject'
 export type FirewallDirection = 'in' | 'out' | 'both'
 export type FirewallProtocol = 'tcp' | 'udp' | 'icmp' | 'any'
@@ -43,18 +45,225 @@ export interface FirewallRule {
   order: number
 }
 
-// System status
+// ── Aliases ───────────────────────────────────────────────────────────────────
+
+export type AliasType = 'host' | 'network' | 'port' | 'url'
+
+export interface Alias {
+  id: number
+  name: string
+  type: AliasType
+  description: string
+  content: string[]  // IPs / CIDRs / ports / URLs
+}
+
+// ── DNS ───────────────────────────────────────────────────────────────────────
+
+export type DnsMode = 'resolver' | 'forwarder'
+
+export interface DnsConfig {
+  enabled: boolean
+  mode: DnsMode
+  dnssec: boolean
+  listenPort: number
+  allowedNetworks: string[]
+  blockPrivateReverse: boolean
+}
+
+export interface DnsForwarder {
+  id: number
+  address: string
+  port: number
+  domain: string   // empty string = all domains
+  description: string
+}
+
+export interface DnsHostOverride {
+  id: number
+  hostname: string
+  domain: string
+  ipv4?: string
+  ipv6?: string
+  description: string
+}
+
+// ── DHCP ─────────────────────────────────────────────────────────────────────
+
+export interface DhcpConfig {
+  enabled: boolean
+  interface: string
+  rangeStart: string
+  rangeEnd: string
+  subnetMask: string
+  gateway: string
+  dnsServers: string[]
+  leaseTime: number   // seconds
+  domainName: string
+}
+
+export interface DhcpPool {
+  id: number
+  interface: string
+  rangeStart: string
+  rangeEnd: string
+  description: string
+}
+
+export interface DhcpStaticLease {
+  id: number
+  mac: string
+  ipAddress: string
+  hostname: string
+  description: string
+}
+
+export interface DhcpLease {
+  mac: string
+  ipAddress: string
+  hostname: string
+  starts: string    // ISO timestamp
+  ends: string      // ISO timestamp
+  state: 'active' | 'expired' | 'reserved'
+}
+
+// ── WireGuard ─────────────────────────────────────────────────────────────────
+
+export interface WgServer {
+  interface: string
+  publicKey: string
+  listenPort: number
+  addresses: string[]
+  dns: string[]
+  mtu: number
+  enabled: boolean
+}
+
+export interface WgPeer {
+  id: number
+  name: string
+  publicKey: string
+  presharedKey?: string
+  allowedIPs: string[]
+  endpoint?: string
+  persistentKeepalive: number
+  enabled: boolean
+  lastHandshake?: string   // ISO timestamp
+  transferRx?: number      // bytes
+  transferTx?: number      // bytes
+}
+
+// ── Suricata ──────────────────────────────────────────────────────────────────
+
+export type SuricataMode = 'ids' | 'ips'
+
+export interface SuricataConfig {
+  enabled: boolean
+  interface: string
+  mode: SuricataMode
+  homeNet: string[]
+  externalNet: string[]
+}
+
+export interface SuricataRuleset {
+  id: number
+  name: string
+  source: string
+  enabled: boolean
+  lastUpdated?: string
+}
+
+export type SuricataSeverity = 'high' | 'medium' | 'low' | 'informational'
+
+export interface SuricataAlert {
+  id: number
+  timestamp: string
+  srcIp: string
+  srcPort: number
+  dstIp: string
+  dstPort: number
+  protocol: string
+  signature: string
+  category: string
+  severity: SuricataSeverity
+  action: 'alert' | 'drop'
+}
+
+// ── CrowdSec ──────────────────────────────────────────────────────────────────
+
+export interface CrowdSecStatus {
+  running: boolean
+  version: string
+  decisions: number
+  alerts: number
+  bouncers: number
+}
+
+export type CrowdSecDecisionType = 'ban' | 'captcha' | 'throttle'
+
+export interface CrowdSecDecision {
+  id: number
+  value: string        // IP or range
+  type: CrowdSecDecisionType
+  origin: string
+  duration: string
+  createdAt: string
+}
+
+export interface CrowdSecAlert {
+  id: number
+  createdAt: string
+  scenario: string
+  sourceIp: string
+  sourceCN: string
+  decisions: number
+}
+
+// ── ACME / Certificates ───────────────────────────────────────────────────────
+
+export type AcmeCertificateStatus = 'valid' | 'pending' | 'expired' | 'error'
+
+export interface AcmeAccount {
+  email: string
+  server: string      // ACME directory URL, e.g. Let's Encrypt production
+  registered: boolean
+  keyId?: string
+}
+
+export interface AcmeCertificate {
+  id: number
+  domain: string
+  sans: string[]                   // Subject Alternative Names
+  status: AcmeCertificateStatus
+  issuer: string
+  notBefore: string                // ISO timestamp
+  notAfter: string                 // ISO timestamp
+  autoRenew: boolean
+  lastRenewed?: string             // ISO timestamp
+}
+
+// ── System ────────────────────────────────────────────────────────────────────
+
 export interface SystemStatus {
   hostname: string
   version: string
-  uptime: number   // seconds
-  cpuUsage: number // percentage 0-100
-  memoryUsed: number  // bytes
-  memoryTotal: number // bytes
-  diskUsed: number    // bytes
-  diskTotal: number   // bytes
-  interfaces: number  // count of active interfaces
-  firewallRules: number // count of firewall rules
+  uptime: number          // seconds
+  cpuUsage: number        // percentage 0-100
+  memoryUsed: number      // bytes
+  memoryTotal: number     // bytes
+  diskUsed: number        // bytes
+  diskTotal: number       // bytes
+  interfaces: number      // count of active interfaces
+  firewallRules: number   // count of firewall rules
   activeConnections: number
-  lastUpdated: string // ISO timestamp
+  lastUpdated: string     // ISO timestamp
+}
+
+export interface SystemConfig {
+  hostname: string
+  timezone: string
+  ntpServers: string[]
+  dnsServers: string[]
+  sshEnabled: boolean
+  sshPort: number
+  webPort: number
 }
