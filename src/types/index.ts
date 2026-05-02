@@ -310,6 +310,37 @@ export interface SystemConfig {
   webPort: number
 }
 
+// ── Backup / Restore ─────────────────────────────────────────────────────────
+
+export interface BackupEntry {
+  filename: string
+  size: number          // bytes
+  createdAt: string     // ISO timestamp
+  sha256: string
+  encrypted: boolean
+}
+
+export interface CreateBackupRequest {
+  type: 'full' | 'selective'
+  components?: string[] // used when type === 'selective'
+  password?: string     // set to encrypt the backup
+}
+
+export interface RestoreBackupRequest {
+  filename: string
+  password?: string     // required for encrypted backups
+}
+
+export type BackupScheduleFrequency = 'daily' | 'weekly' | 'monthly'
+
+export interface BackupSchedule {
+  enabled: boolean
+  frequency: BackupScheduleFrequency
+  time: string          // HH:MM 24-hour format
+  retainCount: number
+  encrypt: boolean
+}
+
 // ── Metrics ───────────────────────────────────────────────────────────────────
 
 export interface LanIfaceMetrics {
