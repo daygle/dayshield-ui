@@ -241,6 +241,48 @@ export interface AcmeCertificate {
   lastRenewed?: string             // ISO timestamp
 }
 
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
+export interface DashboardSystemStatus {
+  hostname: string
+  uptime: number           // seconds
+  loadavg: [number, number, number]
+  cpu_percent: number      // 0-100
+  ram_percent: number      // 0-100
+  disk_percent: number     // 0-100
+  temperature?: number     // Celsius, optional
+}
+
+export interface LanIface {
+  name: string
+  ip?: string
+  enabled: boolean
+}
+
+export interface NetworkStatus {
+  wan_iface: string
+  wan_ip?: string
+  gateway_status: 'up' | 'down' | 'unknown'
+  wan_rx_bps: number       // bytes per second
+  wan_tx_bps: number       // bytes per second
+  lan_ifaces: LanIface[]
+}
+
+export interface SecurityStatus {
+  suricata_alerts: SuricataAlert[]
+  crowdsec_decisions: CrowdSecDecision[]
+  firewall_rule_count: number
+  firewall_state_count: number
+}
+
+export interface AcmeStatus {
+  domains: string[]
+  expires_in_days: number
+  last_renewal?: string    // ISO timestamp
+  next_renewal?: string    // ISO timestamp
+  last_renewal_result?: 'success' | 'failed' | null
+}
+
 // ── System ────────────────────────────────────────────────────────────────────
 
 export interface SystemStatus {

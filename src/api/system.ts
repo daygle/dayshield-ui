@@ -1,5 +1,13 @@
 import apiClient from './client'
-import type { ApiResponse, SystemStatus, SystemConfig } from '../types'
+import type {
+  ApiResponse,
+  SystemStatus,
+  SystemConfig,
+  DashboardSystemStatus,
+  NetworkStatus,
+  SecurityStatus,
+  AcmeStatus,
+} from '../types'
 
 export const getSystemStatus = (): Promise<ApiResponse<SystemStatus>> =>
   apiClient
@@ -27,3 +35,26 @@ export const shutdownSystem = (): Promise<ApiResponse<void>> =>
   apiClient
     .post<ApiResponse<void>>('/system/shutdown')
     .then((r) => r.data)
+
+// ── Dashboard-specific endpoints ──────────────────────────────────────────────
+
+export const getDashboardSystemStatus = (): Promise<ApiResponse<DashboardSystemStatus>> =>
+  apiClient
+    .get<ApiResponse<DashboardSystemStatus>>('/dashboard/system')
+    .then((r) => r.data)
+
+export const getDashboardNetworkStatus = (): Promise<ApiResponse<NetworkStatus>> =>
+  apiClient
+    .get<ApiResponse<NetworkStatus>>('/dashboard/network')
+    .then((r) => r.data)
+
+export const getDashboardSecurityStatus = (): Promise<ApiResponse<SecurityStatus>> =>
+  apiClient
+    .get<ApiResponse<SecurityStatus>>('/dashboard/security')
+    .then((r) => r.data)
+
+export const getDashboardAcmeStatus = (): Promise<ApiResponse<AcmeStatus>> =>
+  apiClient
+    .get<ApiResponse<AcmeStatus>>('/dashboard/acme')
+    .then((r) => r.data)
+
