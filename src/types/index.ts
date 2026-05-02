@@ -309,3 +309,55 @@ export interface SystemConfig {
   sshPort: number
   webPort: number
 }
+
+// ── Metrics ───────────────────────────────────────────────────────────────────
+
+export interface LanIfaceMetrics {
+  name: string
+  rx_bps: number
+  tx_bps: number
+  ip?: string
+  enabled: boolean
+}
+
+export interface FirewallRuleHit {
+  rule_id: number
+  description: string
+  hits: number
+}
+
+export interface MetricsSnapshot {
+  timestamp: string
+  cpu_percent: number
+  ram_percent: number
+  ram_used_bytes: number
+  ram_total_bytes: number
+  loadavg: [number, number, number]
+  temperature?: number
+  uptime: number
+  disk_percent: number
+  disk_used_bytes: number
+  disk_total_bytes: number
+  wan_rx_bps: number
+  wan_tx_bps: number
+  lan_ifaces: LanIfaceMetrics[]
+  firewall_state_count: number
+  firewall_rule_hits: FirewallRuleHit[]
+  suricata_alert_rate: number   // alerts per minute
+  crowdsec_decision_rate: number // decisions per minute
+}
+
+export interface MetricsHistoryPoint {
+  timestamp: string
+  cpu_percent: number
+  ram_percent: number
+  wan_rx_bps: number
+  wan_tx_bps: number
+  suricata_alert_rate: number
+  crowdsec_decision_rate: number
+}
+
+export interface MetricsHistory {
+  points: MetricsHistoryPoint[]
+  seconds: number
+}

@@ -1,3 +1,4 @@
+export * from './metrics'
 export * from './interfaces'
 export * from './firewall'
 export * from './aliases'
