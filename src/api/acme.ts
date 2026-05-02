@@ -7,23 +7,23 @@ import type { ApiResponse, AcmeAccount, AcmeCertificate } from '../types'
 export const getAcmeConfig = (): Promise<ApiResponse<AcmeAccount>> =>
   apiClient
     .get<ApiResponse<AcmeAccount>>('/acme/config')
-    .then((r) => r.data)
+    .then((r: { data: ApiResponse<AcmeAccount> }) => r.data)
 
 export const updateAcmeConfig = (
   config: Partial<AcmeAccount>,
 ): Promise<ApiResponse<AcmeAccount>> =>
   apiClient
     .post<ApiResponse<AcmeAccount>>('/acme/config', config)
-    .then((r) => r.data)
+    .then((r: { data: ApiResponse<AcmeAccount> }) => r.data)
 
 // ── Certificate operations ────────────────────────────────────────────────────
 
 export const issueAcmeCertificates = (): Promise<ApiResponse<void>> =>
   apiClient
     .post<ApiResponse<void>>('/acme/issue')
-    .then((r) => r.data)
+    .then((r: { data: ApiResponse<void> }) => r.data)
 
 export const getAcmeCertStatus = (): Promise<ApiResponse<AcmeCertificate>> =>
   apiClient
     .get<ApiResponse<AcmeCertificate>>('/acme/status')
-    .then((r) => r.data)
+    .then((r: { data: ApiResponse<AcmeCertificate> }) => r.data)

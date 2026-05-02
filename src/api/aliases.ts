@@ -7,14 +7,14 @@ import type { ApiResponse, Alias } from '../types'
 export const getAliases = (): Promise<ApiResponse<Alias[]>> =>
   apiClient
     .get<ApiResponse<Alias[]>>('/firewall/aliases')
-    .then((r) => r.data)
+    .then((r: { data: ApiResponse<Alias[]> }) => r.data)
 
 export const createAlias = (alias: Omit<Alias, 'id'>): Promise<ApiResponse<Alias>> =>
   apiClient
     .post<ApiResponse<Alias>>('/firewall/aliases', alias)
-    .then((r) => r.data)
+    .then((r: { data: ApiResponse<Alias> }) => r.data)
 
 export const deleteAlias = (name: string): Promise<ApiResponse<void>> =>
   apiClient
     .delete<ApiResponse<void>>(`/firewall/aliases/${encodeURIComponent(name)}`)
-    .then((r) => r.data)
+    .then((r: { data: ApiResponse<void> }) => r.data)
