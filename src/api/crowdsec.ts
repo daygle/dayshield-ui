@@ -1,11 +1,18 @@
 import apiClient from './client'
-import type { ApiResponse, CrowdSecStatus, CrowdSecDecision, CrowdSecAlert } from '../types'
+import type { ApiResponse, CrowdSecStatus, CrowdSecDecision } from '../types'
 
-// ── Status ────────────────────────────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────────────────────────────
 
-export const getCrowdSecStatus = (): Promise<ApiResponse<CrowdSecStatus>> =>
+export const getCrowdSecConfig = (): Promise<ApiResponse<CrowdSecStatus>> =>
   apiClient
-    .get<ApiResponse<CrowdSecStatus>>('/crowdsec/status')
+    .get<ApiResponse<CrowdSecStatus>>('/crowdsec/config')
+    .then((r) => r.data)
+
+export const updateCrowdSecConfig = (
+  config: Partial<CrowdSecStatus>,
+): Promise<ApiResponse<CrowdSecStatus>> =>
+  apiClient
+    .post<ApiResponse<CrowdSecStatus>>('/crowdsec/config', config)
     .then((r) => r.data)
 
 // ── Decisions ─────────────────────────────────────────────────────────────────
@@ -13,16 +20,4 @@ export const getCrowdSecStatus = (): Promise<ApiResponse<CrowdSecStatus>> =>
 export const getCrowdSecDecisions = (): Promise<ApiResponse<CrowdSecDecision[]>> =>
   apiClient
     .get<ApiResponse<CrowdSecDecision[]>>('/crowdsec/decisions')
-    .then((r) => r.data)
-
-export const deleteCrowdSecDecision = (id: number): Promise<ApiResponse<void>> =>
-  apiClient
-    .delete<ApiResponse<void>>(`/crowdsec/decisions/${id}`)
-    .then((r) => r.data)
-
-// ── Alerts ────────────────────────────────────────────────────────────────────
-
-export const getCrowdSecAlerts = (limit = 100): Promise<ApiResponse<CrowdSecAlert[]>> =>
-  apiClient
-    .get<ApiResponse<CrowdSecAlert[]>>('/crowdsec/alerts', { params: { limit } })
     .then((r) => r.data)

@@ -270,15 +270,15 @@ export interface NetworkStatus {
 }
 
 export interface SecurityStatus {
-  suricata_alerts: SuricataAlert[]
-  crowdsec_decisions: CrowdSecDecision[]
+  suricata_alert_rate: number    // alerts per second
+  crowdsec_active_decisions: number
   firewall_rule_count: number
   firewall_state_count: number
 }
 
 export interface AcmeStatus {
   domains: string[]
-  expires_in_days: number
+  expires_in_days: number        // 0 when no cert exists
   last_renewal?: string    // ISO timestamp
   next_renewal?: string    // ISO timestamp
   last_renewal_result?: 'success' | 'failed' | null

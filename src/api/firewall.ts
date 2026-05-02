@@ -1,14 +1,12 @@
 import apiClient from './client'
 import type { ApiResponse, FirewallRule } from '../types'
 
+// Core firewall API: GET /firewall/rules (list), POST /firewall/rules (append).
+// Individual rule GET/PUT/DELETE by id are not implemented in the core.
+
 export const getFirewallRules = (): Promise<ApiResponse<FirewallRule[]>> =>
   apiClient
     .get<ApiResponse<FirewallRule[]>>('/firewall/rules')
-    .then((r) => r.data)
-
-export const getFirewallRule = (id: number): Promise<ApiResponse<FirewallRule>> =>
-  apiClient
-    .get<ApiResponse<FirewallRule>>(`/firewall/rules/${id}`)
     .then((r) => r.data)
 
 export const createFirewallRule = (
@@ -16,17 +14,4 @@ export const createFirewallRule = (
 ): Promise<ApiResponse<FirewallRule>> =>
   apiClient
     .post<ApiResponse<FirewallRule>>('/firewall/rules', rule)
-    .then((r) => r.data)
-
-export const updateFirewallRule = (
-  id: number,
-  rule: Partial<Omit<FirewallRule, 'id'>>,
-): Promise<ApiResponse<FirewallRule>> =>
-  apiClient
-    .put<ApiResponse<FirewallRule>>(`/firewall/rules/${id}`, rule)
-    .then((r) => r.data)
-
-export const deleteFirewallRule = (id: number): Promise<ApiResponse<void>> =>
-  apiClient
-    .delete<ApiResponse<void>>(`/firewall/rules/${id}`)
     .then((r) => r.data)

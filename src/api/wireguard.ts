@@ -1,41 +1,33 @@
 import apiClient from './client'
-import type { ApiResponse, WgServer, WgPeer } from '../types'
+import type { ApiResponse, WgServer } from '../types'
 
-// ── Server ────────────────────────────────────────────────────────────────────
+// ── Interfaces ────────────────────────────────────────────────────────────────
+// Core manages WireGuard as a list of WireGuardInterface objects (each
+// containing its peers inline).  Routes: GET/POST /wireguard/interfaces,
+// DELETE /wireguard/interfaces/{name}, POST /wireguard/interfaces/{name}/generate-keys
 
-export const getWgServer = (): Promise<ApiResponse<WgServer>> =>
+export const getWgInterfaces = (): Promise<ApiResponse<WgServer[]>> =>
   apiClient
-    .get<ApiResponse<WgServer>>('/vpn/wireguard/server')
+    .get<ApiResponse<WgServer[]>>('/wireguard/interfaces')
     .then((r) => r.data)
 
-export const updateWgServer = (server: Partial<WgServer>): Promise<ApiResponse<WgServer>> =>
+export const createWgInterface = (
+  iface: WgServer,
+): Promise<ApiResponse<WgServer>> =>
   apiClient
-    .post<ApiResponse<WgServer>>('/vpn/wireguard/server', server)
+    .post<ApiResponse<WgServer>>('/wireguard/interfaces', iface)
     .then((r) => r.data)
 
-// ── Peers ─────────────────────────────────────────────────────────────────────
-
-export const getWgPeers = (): Promise<ApiResponse<WgPeer[]>> =>
+export const deleteWgInterface = (name: string): Promise<ApiResponse<void>> =>
   apiClient
-    .get<ApiResponse<WgPeer[]>>('/vpn/wireguard/peers')
+    .delete<ApiResponse<void>>(`/wireguard/interfaces/${name}`)
     .then((r) => r.data)
 
-export const createWgPeer = (
-  peer: Omit<WgPeer, 'id' | 'lastHandshake' | 'transferRx' | 'transferTx'>,
-): Promise<ApiResponse<WgPeer>> =>
+export const generateWgKeys = (
+  name: string,
+): Promise<ApiResponse<{ private_key: string; public_key: string }>> =>
   apiClient
-    .post<ApiResponse<WgPeer>>('/vpn/wireguard/peers', peer)
-    .then((r) => r.data)
-
-export const updateWgPeer = (
-  id: number,
-  peer: Partial<Omit<WgPeer, 'id' | 'lastHandshake' | 'transferRx' | 'transferTx'>>,
-): Promise<ApiResponse<WgPeer>> =>
-  apiClient
-    .put<ApiResponse<WgPeer>>(`/vpn/wireguard/peers/${id}`, peer)
-    .then((r) => r.data)
-
-export const deleteWgPeer = (id: number): Promise<ApiResponse<void>> =>
-  apiClient
-    .delete<ApiResponse<void>>(`/vpn/wireguard/peers/${id}`)
+    .post<ApiResponse<{ private_key: string; public_key: string }>>(
+      `/wireguard/interfaces/${name}/generate-keys`,
+    )
     .then((r) => r.data)

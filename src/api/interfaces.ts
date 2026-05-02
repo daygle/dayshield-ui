@@ -6,11 +6,7 @@ export const getInterfaces = (): Promise<ApiResponse<NetworkInterface[]>> =>
     .get<ApiResponse<NetworkInterface[]>>('/interfaces')
     .then((r) => r.data)
 
-export const getInterface = (name: string): Promise<ApiResponse<NetworkInterface>> =>
-  apiClient
-    .get<ApiResponse<NetworkInterface>>(`/interfaces/${name}`)
-    .then((r) => r.data)
-
+// Core upserts by name via POST — use this for both create and update.
 export const createInterface = (
   iface: Omit<NetworkInterface, 'name'> & { name: string },
 ): Promise<ApiResponse<NetworkInterface>> =>
@@ -19,11 +15,10 @@ export const createInterface = (
     .then((r) => r.data)
 
 export const updateInterface = (
-  name: string,
-  iface: Partial<NetworkInterface>,
+  iface: NetworkInterface,
 ): Promise<ApiResponse<NetworkInterface>> =>
   apiClient
-    .put<ApiResponse<NetworkInterface>>(`/interfaces/${name}`, iface)
+    .post<ApiResponse<NetworkInterface>>('/interfaces', iface)
     .then((r) => r.data)
 
 export const deleteInterface = (name: string): Promise<ApiResponse<void>> =>

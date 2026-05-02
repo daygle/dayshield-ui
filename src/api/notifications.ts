@@ -24,3 +24,8 @@ export const sendTestEmail = (
   apiClient
     .post<ApiResponse<NotifyTestResult>>('/notify/test', req)
     .then((r) => r.data)
+
+export const getNotifyCategories = (): Promise<ApiResponse<string[]>> =>
+  apiClient
+    .get<ApiResponse<string[]>>('/notify/categories')
+    .then((r) => r.data)

@@ -48,12 +48,12 @@ export const downloadBackup = async (filename: string): Promise<void> => {
 
 export const getBackupSchedule = (): Promise<ApiResponse<BackupSchedule>> =>
   apiClient
-    .get<ApiResponse<BackupSchedule>>('/backup/schedule')
+    .get<ApiResponse<BackupSchedule>>('/backup/scheduler')
     .then((r) => r.data)
 
 export const updateBackupSchedule = (
   schedule: BackupSchedule,
 ): Promise<ApiResponse<BackupSchedule>> =>
   apiClient
-    .put<ApiResponse<BackupSchedule>>('/backup/schedule', schedule)
+    .post<ApiResponse<BackupSchedule>>('/backup/scheduler', schedule)
     .then((r) => r.data)

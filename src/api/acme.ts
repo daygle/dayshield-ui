@@ -1,40 +1,29 @@
 import apiClient from './client'
 import type { ApiResponse, AcmeAccount, AcmeCertificate } from '../types'
 
-// ── Account ───────────────────────────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────────────────────────────
+// Core ACME API: GET/POST /acme/config, POST /acme/issue, GET /acme/status
 
-export const getAcmeAccount = (): Promise<ApiResponse<AcmeAccount>> =>
+export const getAcmeConfig = (): Promise<ApiResponse<AcmeAccount>> =>
   apiClient
-    .get<ApiResponse<AcmeAccount>>('/acme/account')
+    .get<ApiResponse<AcmeAccount>>('/acme/config')
     .then((r) => r.data)
 
-export const updateAcmeAccount = (
-  account: Partial<AcmeAccount>,
+export const updateAcmeConfig = (
+  config: Partial<AcmeAccount>,
 ): Promise<ApiResponse<AcmeAccount>> =>
   apiClient
-    .put<ApiResponse<AcmeAccount>>('/acme/account', account)
+    .post<ApiResponse<AcmeAccount>>('/acme/config', config)
     .then((r) => r.data)
 
-// ── Certificates ──────────────────────────────────────────────────────────────
+// ── Certificate operations ────────────────────────────────────────────────────
 
-export const getAcmeCertificates = (): Promise<ApiResponse<AcmeCertificate[]>> =>
+export const issueAcmeCertificates = (): Promise<ApiResponse<void>> =>
   apiClient
-    .get<ApiResponse<AcmeCertificate[]>>('/acme/certificates')
+    .post<ApiResponse<void>>('/acme/issue')
     .then((r) => r.data)
 
-export const issueAcmeCertificate = (
-  cert: Pick<AcmeCertificate, 'domain' | 'sans' | 'autoRenew'>,
-): Promise<ApiResponse<AcmeCertificate>> =>
+export const getAcmeCertStatus = (): Promise<ApiResponse<AcmeCertificate>> =>
   apiClient
-    .post<ApiResponse<AcmeCertificate>>('/acme/certificates', cert)
-    .then((r) => r.data)
-
-export const renewAcmeCertificate = (id: number): Promise<ApiResponse<AcmeCertificate>> =>
-  apiClient
-    .post<ApiResponse<AcmeCertificate>>(`/acme/certificates/${id}/renew`)
-    .then((r) => r.data)
-
-export const deleteAcmeCertificate = (id: number): Promise<ApiResponse<void>> =>
-  apiClient
-    .delete<ApiResponse<void>>(`/acme/certificates/${id}`)
+    .get<ApiResponse<AcmeCertificate>>('/acme/status')
     .then((r) => r.data)
