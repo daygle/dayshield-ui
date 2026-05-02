@@ -268,6 +268,10 @@ export default function ACME() {
             value={accountForm.server ?? ''}
             onChange={(e) => setAccountForm({ ...accountForm, server: e.target.value })}
           />
+          <p className="text-xs text-gray-500">
+            Use <code className="font-mono">https://acme-staging-v02.api.letsencrypt.org/directory</code> for
+            testing to avoid Let&apos;s Encrypt rate limits.
+          </p>
         </div>
       </Modal>
 
