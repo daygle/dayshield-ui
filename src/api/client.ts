@@ -9,6 +9,30 @@ const apiClient = axios.create({
   withCredentials: true,
 })
 
+// ---------------------------------------------------------------------------
+// Token storage
+// ---------------------------------------------------------------------------
+
+const TOKEN_KEY = 'dayshield_token'
+
+/** Persist (or remove) the JWT token in localStorage. */
+export function setAuthToken(token: string | null): void {
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token)
+  } else {
+    localStorage.removeItem(TOKEN_KEY)
+  }
+}
+
+/** Read the stored JWT token, or null if none. */
+export function getAuthToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+// ---------------------------------------------------------------------------
+// Unauthorised-logout callback
+// ---------------------------------------------------------------------------
+
 // Callback invoked on HTTP 401 – registered by AuthContext to trigger logout
 let unauthorizedHandler: (() => void) | null = null
 
@@ -16,9 +40,19 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
   unauthorizedHandler = handler
 }
 
-// Request interceptor (extend for auth headers as needed)
+// ---------------------------------------------------------------------------
+// Interceptors
+// ---------------------------------------------------------------------------
+
+// Attach Bearer token on every request when one is available
 apiClient.interceptors.request.use(
-  (config) => config,
+  (config) => {
+    const token = getAuthToken()
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
   (error) => Promise.reject(error),
 )
 

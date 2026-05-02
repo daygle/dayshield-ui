@@ -7,7 +7,7 @@ import {
   useState,
 } from 'react'
 import { getAuthStatus, login, logout } from '../api/auth'
-import { setUnauthorizedHandler } from '../api/client'
+import { setAuthToken, setUnauthorizedHandler } from '../api/client'
 import type { AuthUser, LoginRequest } from '../types'
 
 interface AuthState {
@@ -35,6 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore – clear state regardless
     }
+    setAuthToken(null)
     setState({ user: null, loading: false })
   }, [])
 
@@ -66,7 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (credentials: LoginRequest) => {
     const res = await login(credentials)
-    if (res.data.authenticated && res.data.username) {
+    if (res.data?.authenticated && res.data?.username) {
+      setAuthToken(res.data.token ?? null)
       setState({ user: { username: res.data.username }, loading: false })
     } else {
       throw new Error(res.message ?? 'Login failed')

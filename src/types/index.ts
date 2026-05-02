@@ -415,6 +415,7 @@ export interface AuthUser {
 export interface AuthStatus {
   authenticated: boolean
   username?: string
+  token?: string
 }
 
 export interface LoginRequest {
