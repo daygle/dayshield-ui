@@ -389,6 +389,23 @@ export interface NotifyTestResult {
   message: string
 }
 
+// ── NTP ───────────────────────────────────────────────────────────────────────
+
+export interface NtpConfig {
+  enabled: boolean
+  servers: string[]          // upstream NTP servers (IPv4)
+  serveLan: boolean          // serve NTP to LAN clients
+  listenInterfaces: string[] // interface names to listen on
+}
+
+export interface NtpStatus {
+  synced: boolean
+  offset: number             // milliseconds
+  jitter: number             // milliseconds
+  upstream: string           // upstream server address
+  stratum: number
+}
+
 // ── Metrics ───────────────────────────────────────────────────────────────────
 
 export interface LanIfaceMetrics {
