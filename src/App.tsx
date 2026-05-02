@@ -10,6 +10,7 @@ import Suricata from './pages/Suricata'
 import CrowdSec from './pages/CrowdSec'
 import ACME from './pages/ACME'
 import System from './pages/System'
+import LiveLogs from './pages/LiveLogs'
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="crowdsec" element={<CrowdSec />} />
           <Route path="acme" element={<ACME />} />
           <Route path="system" element={<System />} />
+          <Route path="live-logs" element={<LiveLogs />} />
         </Route>
       </Routes>
     </BrowserRouter>
