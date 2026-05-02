@@ -320,7 +320,7 @@ export default function NtpPage() {
       {/* Listen Interfaces */}
       <Card
         title="Listen Interfaces"
-        subtitle="Select which network interfaces NTP should listen on. Leave all unchecked to listen on all interfaces."
+        subtitle="Select which network interfaces NTP should listen on. When none are selected, the backend default applies (typically all interfaces)."
       >
         {loading ? (
           <p className="text-sm text-gray-400">Loading interfaces…</p>
