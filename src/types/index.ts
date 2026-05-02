@@ -341,6 +341,53 @@ export interface BackupSchedule {
   encrypt: boolean
 }
 
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+export type NotifyCategory =
+  | 'firewall'
+  | 'ids'
+  | 'vpn'
+  | 'system'
+  | 'crowdsec'
+  | 'acme'
+  | 'dhcp'
+  | 'backup'
+
+export interface SmtpConfig {
+  host: string
+  port: number
+  username: string
+  password: string
+  tls: boolean
+  fromAddress: string
+  fromName: string
+}
+
+export interface NotifyConfig {
+  enabled: boolean
+  smtp: SmtpConfig
+  recipients: string[]
+  categories: NotifyCategory[]
+  rateLimitMinutes: number
+  digestMode: boolean
+  lastStatus?: NotifyLastStatus
+}
+
+export interface NotifyLastStatus {
+  sentAt: string         // ISO timestamp
+  success: boolean
+  message?: string
+}
+
+export interface NotifyTestRequest {
+  recipient: string
+}
+
+export interface NotifyTestResult {
+  success: boolean
+  message: string
+}
+
 // ── Metrics ───────────────────────────────────────────────────────────────────
 
 export interface LanIfaceMetrics {
