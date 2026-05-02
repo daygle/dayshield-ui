@@ -6,6 +6,7 @@ import Firewall from './pages/Firewall'
 import VPN from './pages/VPN'
 import DNS from './pages/DNS'
 import DHCP from './pages/DHCP'
+import Suricata from './pages/Suricata'
 import CrowdSec from './pages/CrowdSec'
 import ACME from './pages/ACME'
 import System from './pages/System'
@@ -22,6 +23,7 @@ function App() {
           <Route path="vpn" element={<VPN />} />
           <Route path="dns" element={<DNS />} />
           <Route path="dhcp" element={<DHCP />} />
+          <Route path="suricata" element={<Suricata />} />
           <Route path="crowdsec" element={<CrowdSec />} />
           <Route path="acme" element={<ACME />} />
           <Route path="system" element={<System />} />

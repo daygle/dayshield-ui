@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getFirewallRules, createFirewallRule, deleteFirewallRule } from '../../api/firewall'
-import type { FirewallRule } from '../../types'
+import { getAliases, createAlias, deleteAlias } from '../../api/aliases'
+import type { FirewallRule, Alias, AliasType } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
@@ -8,6 +9,7 @@ import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
 
 type RuleRow = FirewallRule & Record<string, unknown>
+type AliasRow = Alias & Record<string, unknown>
 
 const actionBadge = (action: FirewallRule['action']) => {
   const map: Record<FirewallRule['action'], string> = {
@@ -22,7 +24,7 @@ const actionBadge = (action: FirewallRule['action']) => {
   )
 }
 
-const defaultForm: Partial<FirewallRule> = {
+const defaultRuleForm: Partial<FirewallRule> = {
   enabled: true,
   description: '',
   action: 'allow',
@@ -36,51 +38,104 @@ const defaultForm: Partial<FirewallRule> = {
   order: 100,
 }
 
-export default function Firewall() {
-  const [rules, setRules] = useState<RuleRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState<Partial<FirewallRule>>(defaultForm)
-  const [saving, setSaving] = useState(false)
-  const [deleteId, setDeleteId] = useState<number | null>(null)
-  const [deleting, setDeleting] = useState(false)
+const defaultAliasForm: Omit<Alias, 'id'> = {
+  name: '',
+  type: 'host',
+  description: '',
+  content: [],
+}
 
-  const load = () => {
-    setLoading(true)
+export default function Firewall() {
+  // ── Rules ──────────────────────────────────────────────────────────────────
+  const [rules, setRules] = useState<RuleRow[]>([])
+  const [rulesLoading, setRulesLoading] = useState(true)
+  const [rulesError, setRulesError] = useState<string | null>(null)
+  const [ruleModalOpen, setRuleModalOpen] = useState(false)
+  const [ruleForm, setRuleForm] = useState<Partial<FirewallRule>>(defaultRuleForm)
+  const [ruleSaving, setRuleSaving] = useState(false)
+  const [deleteRuleId, setDeleteRuleId] = useState<number | null>(null)
+  const [deletingRule, setDeletingRule] = useState(false)
+
+  // ── Aliases ────────────────────────────────────────────────────────────────
+  const [aliases, setAliases] = useState<AliasRow[]>([])
+  const [aliasesLoading, setAliasesLoading] = useState(true)
+  const [aliasesError, setAliasesError] = useState<string | null>(null)
+  const [aliasModalOpen, setAliasModalOpen] = useState(false)
+  const [aliasForm, setAliasForm] = useState<Omit<Alias, 'id'>>(defaultAliasForm)
+  const [aliasSaving, setAliasSaving] = useState(false)
+  const [deleteAliasId, setDeleteAliasId] = useState<number | null>(null)
+  const [deletingAlias, setDeletingAlias] = useState(false)
+
+  const loadRules = () => {
+    setRulesLoading(true)
     getFirewallRules()
       .then((res) => setRules(res.data as RuleRow[]))
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false))
+      .catch((err: Error) => setRulesError(err.message))
+      .finally(() => setRulesLoading(false))
   }
 
-  useEffect(load, [])
+  const loadAliases = () => {
+    setAliasesLoading(true)
+    getAliases()
+      .then((res) => setAliases(res.data as AliasRow[]))
+      .catch((err: Error) => setAliasesError(err.message))
+      .finally(() => setAliasesLoading(false))
+  }
 
-  const handleSave = () => {
-    setSaving(true)
-    createFirewallRule(form as Omit<FirewallRule, 'id'>)
+  useEffect(() => {
+    loadRules()
+    loadAliases()
+  }, [])
+
+  const handleSaveRule = () => {
+    setRuleSaving(true)
+    createFirewallRule(ruleForm as Omit<FirewallRule, 'id'>)
       .then(() => {
-        setModalOpen(false)
-        setForm(defaultForm)
-        load()
+        setRuleModalOpen(false)
+        setRuleForm(defaultRuleForm)
+        loadRules()
       })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setSaving(false))
+      .catch((err: Error) => setRulesError(err.message))
+      .finally(() => setRuleSaving(false))
   }
 
-  const handleDelete = () => {
-    if (deleteId === null) return
-    setDeleting(true)
-    deleteFirewallRule(deleteId)
+  const handleDeleteRule = () => {
+    if (deleteRuleId === null) return
+    setDeletingRule(true)
+    deleteFirewallRule(deleteRuleId)
       .then(() => {
-        setDeleteId(null)
-        load()
+        setDeleteRuleId(null)
+        loadRules()
       })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setDeleting(false))
+      .catch((err: Error) => setRulesError(err.message))
+      .finally(() => setDeletingRule(false))
   }
 
-  const columns: Column<RuleRow>[] = [
+  const handleSaveAlias = () => {
+    setAliasSaving(true)
+    createAlias(aliasForm)
+      .then(() => {
+        setAliasModalOpen(false)
+        setAliasForm(defaultAliasForm)
+        loadAliases()
+      })
+      .catch((err: Error) => setAliasesError(err.message))
+      .finally(() => setAliasSaving(false))
+  }
+
+  const handleDeleteAlias = () => {
+    if (deleteAliasId === null) return
+    setDeletingAlias(true)
+    deleteAlias(deleteAliasId)
+      .then(() => {
+        setDeleteAliasId(null)
+        loadAliases()
+      })
+      .catch((err: Error) => setAliasesError(err.message))
+      .finally(() => setDeletingAlias(false))
+  }
+
+  const ruleColumns: Column<RuleRow>[] = [
     { key: 'order', header: '#', className: 'w-10' },
     {
       key: 'enabled',
@@ -106,7 +161,48 @@ export default function Firewall() {
         <Button
           variant="danger"
           size="sm"
-          onClick={() => setDeleteId(row.id as number)}
+          onClick={() => setDeleteRuleId(row.id as number)}
+        >
+          Delete
+        </Button>
+      ),
+    },
+  ]
+
+  const aliasColumns: Column<AliasRow>[] = [
+    { key: 'name', header: 'Name' },
+    {
+      key: 'type',
+      header: 'Type',
+      render: (row) => (
+        <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700 capitalize">
+          {row.type as string}
+        </span>
+      ),
+    },
+    { key: 'description', header: 'Description' },
+    {
+      key: 'content',
+      header: 'Entries',
+      render: (row) => {
+        const entries = row.content as string[]
+        return (
+          <span className="text-xs text-gray-600">
+            {entries.slice(0, 3).join(', ')}
+            {entries.length > 3 && ` +${entries.length - 3} more`}
+          </span>
+        )
+      },
+    },
+    {
+      key: 'actions',
+      header: '',
+      className: 'w-16 text-right',
+      render: (row) => (
+        <Button
+          variant="danger"
+          size="sm"
+          onClick={() => setDeleteAliasId(row.id as number)}
         >
           Delete
         </Button>
@@ -115,34 +211,55 @@ export default function Firewall() {
   ]
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Firewall Rules */}
       <Card
         title="Firewall Rules"
         subtitle="Define allow / deny rules evaluated top-to-bottom"
         actions={
-          <Button size="sm" onClick={() => setModalOpen(true)}>
+          <Button size="sm" onClick={() => setRuleModalOpen(true)}>
             + Add Rule
           </Button>
         }
       >
-        {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+        {rulesError && <p className="text-sm text-red-600 mb-3">{rulesError}</p>}
         <Table
-          columns={columns}
+          columns={ruleColumns}
           data={rules}
           keyField="id"
-          loading={loading}
+          loading={rulesLoading}
           emptyMessage="No firewall rules defined."
+        />
+      </Card>
+
+      {/* Aliases */}
+      <Card
+        title="Aliases"
+        subtitle="Named sets of hosts, networks, or ports reusable in firewall rules"
+        actions={
+          <Button size="sm" onClick={() => setAliasModalOpen(true)}>
+            + Add Alias
+          </Button>
+        }
+      >
+        {aliasesError && <p className="text-sm text-red-600 mb-3">{aliasesError}</p>}
+        <Table
+          columns={aliasColumns}
+          data={aliases}
+          keyField="id"
+          loading={aliasesLoading}
+          emptyMessage="No aliases defined."
         />
       </Card>
 
       {/* Add Rule Modal */}
       <Modal
-        open={modalOpen}
+        open={ruleModalOpen}
         title="Add Firewall Rule"
-        onClose={() => setModalOpen(false)}
-        onConfirm={handleSave}
+        onClose={() => setRuleModalOpen(false)}
+        onConfirm={handleSaveRule}
         confirmLabel="Create Rule"
-        loading={saving}
+        loading={ruleSaving}
         size="xl"
       >
         <div className="grid grid-cols-2 gap-4">
@@ -151,15 +268,15 @@ export default function Firewall() {
             label="Description"
             className="col-span-2"
             placeholder="Brief rule description"
-            value={form.description ?? ''}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            value={ruleForm.description ?? ''}
+            onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value })}
           />
           <FormField
             id="rule-action"
             label="Action"
             as="select"
-            value={form.action ?? 'allow'}
-            onChange={(e) => setForm({ ...form, action: e.target.value as FirewallRule['action'] })}
+            value={ruleForm.action ?? 'allow'}
+            onChange={(e) => setRuleForm({ ...ruleForm, action: e.target.value as FirewallRule['action'] })}
           >
             <option value="allow">Allow</option>
             <option value="deny">Deny</option>
@@ -169,8 +286,8 @@ export default function Firewall() {
             id="rule-direction"
             label="Direction"
             as="select"
-            value={form.direction ?? 'in'}
-            onChange={(e) => setForm({ ...form, direction: e.target.value as FirewallRule['direction'] })}
+            value={ruleForm.direction ?? 'in'}
+            onChange={(e) => setRuleForm({ ...ruleForm, direction: e.target.value as FirewallRule['direction'] })}
           >
             <option value="in">Inbound</option>
             <option value="out">Outbound</option>
@@ -180,8 +297,8 @@ export default function Firewall() {
             id="rule-protocol"
             label="Protocol"
             as="select"
-            value={form.protocol ?? 'tcp'}
-            onChange={(e) => setForm({ ...form, protocol: e.target.value as FirewallRule['protocol'] })}
+            value={ruleForm.protocol ?? 'tcp'}
+            onChange={(e) => setRuleForm({ ...ruleForm, protocol: e.target.value as FirewallRule['protocol'] })}
           >
             <option value="tcp">TCP</option>
             <option value="udp">UDP</option>
@@ -192,53 +309,125 @@ export default function Firewall() {
             id="rule-iface"
             label="Interface"
             placeholder="e.g. eth0 (leave blank for any)"
-            value={form.interface ?? ''}
-            onChange={(e) => setForm({ ...form, interface: e.target.value })}
+            value={ruleForm.interface ?? ''}
+            onChange={(e) => setRuleForm({ ...ruleForm, interface: e.target.value })}
           />
           <FormField
             id="rule-src"
             label="Source"
             placeholder="any / 192.168.1.0/24"
-            value={form.source ?? 'any'}
-            onChange={(e) => setForm({ ...form, source: e.target.value })}
+            value={ruleForm.source ?? 'any'}
+            onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value })}
           />
           <FormField
             id="rule-src-port"
             label="Source Port"
             placeholder="any / 80 / 1024:65535"
-            value={form.sourcePort ?? ''}
-            onChange={(e) => setForm({ ...form, sourcePort: e.target.value })}
+            value={ruleForm.sourcePort ?? ''}
+            onChange={(e) => setRuleForm({ ...ruleForm, sourcePort: e.target.value })}
           />
           <FormField
             id="rule-dst"
             label="Destination"
             placeholder="any / 10.0.0.1"
-            value={form.destination ?? 'any'}
-            onChange={(e) => setForm({ ...form, destination: e.target.value })}
+            value={ruleForm.destination ?? 'any'}
+            onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value })}
           />
           <FormField
             id="rule-dst-port"
             label="Destination Port"
             placeholder="any / 443"
-            value={form.destinationPort ?? ''}
-            onChange={(e) => setForm({ ...form, destinationPort: e.target.value })}
+            value={ruleForm.destinationPort ?? ''}
+            onChange={(e) => setRuleForm({ ...ruleForm, destinationPort: e.target.value })}
           />
         </div>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Rule Modal */}
       <Modal
-        open={deleteId !== null}
+        open={deleteRuleId !== null}
         title="Delete Firewall Rule"
-        onClose={() => setDeleteId(null)}
-        onConfirm={handleDelete}
+        onClose={() => setDeleteRuleId(null)}
+        onConfirm={handleDeleteRule}
         confirmLabel="Delete"
         confirmVariant="danger"
-        loading={deleting}
+        loading={deletingRule}
         size="sm"
       >
         <p className="text-sm text-gray-600">
           Are you sure you want to delete this firewall rule? This action cannot be undone.
+        </p>
+      </Modal>
+
+      {/* Add Alias Modal */}
+      <Modal
+        open={aliasModalOpen}
+        title="Add Alias"
+        onClose={() => setAliasModalOpen(false)}
+        onConfirm={handleSaveAlias}
+        confirmLabel="Create Alias"
+        loading={aliasSaving}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <FormField
+            id="alias-name"
+            label="Name"
+            required
+            placeholder="e.g. RFC1918_NETWORKS"
+            value={aliasForm.name}
+            onChange={(e) => setAliasForm({ ...aliasForm, name: e.target.value })}
+          />
+          <FormField
+            id="alias-type"
+            label="Type"
+            as="select"
+            value={aliasForm.type}
+            onChange={(e) => setAliasForm({ ...aliasForm, type: e.target.value as AliasType })}
+          >
+            <option value="host">Host</option>
+            <option value="network">Network</option>
+            <option value="port">Port</option>
+            <option value="url">URL</option>
+          </FormField>
+          <FormField
+            id="alias-desc"
+            label="Description"
+            placeholder="Optional description"
+            value={aliasForm.description}
+            onChange={(e) => setAliasForm({ ...aliasForm, description: e.target.value })}
+          />
+          <FormField
+            id="alias-content"
+            label="Entries"
+            as="textarea"
+            rows={4}
+            hint="One IP, CIDR, port, or URL per line"
+            value={aliasForm.content.join('\n')}
+            onChange={(e) =>
+              setAliasForm({
+                ...aliasForm,
+                content: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
+              })
+            }
+          />
+        </div>
+      </Modal>
+
+      {/* Delete Alias Modal */}
+      <Modal
+        open={deleteAliasId !== null}
+        title="Delete Alias"
+        onClose={() => setDeleteAliasId(null)}
+        onConfirm={handleDeleteAlias}
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        loading={deletingAlias}
+        size="sm"
+      >
+        <p className="text-sm text-gray-600">
+          Deleting this alias will cause any firewall rules that reference it by name to fail
+          validation. This action cannot be undone.
         </p>
       </Modal>
     </div>
