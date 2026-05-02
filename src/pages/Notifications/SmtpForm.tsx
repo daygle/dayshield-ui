@@ -39,10 +39,18 @@ export default function SmtpForm({ smtp, errors, disabled, onChange }: SmtpFormP
         min={1}
         max={65535}
         placeholder="587"
-        value={smtp.port}
+        value={smtp.port === 0 ? '' : smtp.port}
         error={errors.port}
         disabled={disabled}
-        onChange={(e) => set('port', parseInt(e.target.value, 10) || 587)}
+        onChange={(e) => {
+          const raw = e.target.value
+          if (raw === '') {
+            set('port', 0)
+          } else {
+            const v = parseInt(raw, 10)
+            if (!isNaN(v)) set('port', v)
+          }
+        }}
       />
 
       <FormField

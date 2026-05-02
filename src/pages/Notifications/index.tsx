@@ -101,7 +101,7 @@ export default function NotificationsPage() {
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
   const addToast = useCallback((kind: ToastKind, text: string) => {
-    const id = ++toastSeq
+    const id = toastSeq++
     setToasts((prev) => [...prev, { id, kind, text }])
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000)
   }, [])

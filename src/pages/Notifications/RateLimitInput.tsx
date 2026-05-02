@@ -20,7 +20,7 @@ export default function RateLimitInput({ minutes, disabled, onChange }: RateLimi
           value={minutes}
           onChange={(e) => {
             const v = parseInt(e.target.value, 10)
-            if (!isNaN(v) && v >= 1) onChange(v)
+            if (!isNaN(v) && v >= 1 && v <= 1440) onChange(v)
           }}
           className="w-24 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm
             focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500
