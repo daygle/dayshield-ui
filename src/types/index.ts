@@ -218,6 +218,29 @@ export interface CrowdSecAlert {
   decisions: number
 }
 
+// ── ACME / Certificates ───────────────────────────────────────────────────────
+
+export type AcmeCertificateStatus = 'valid' | 'pending' | 'expired' | 'error'
+
+export interface AcmeAccount {
+  email: string
+  server: string      // ACME directory URL, e.g. Let's Encrypt production
+  registered: boolean
+  keyId?: string
+}
+
+export interface AcmeCertificate {
+  id: number
+  domain: string
+  sans: string[]                   // Subject Alternative Names
+  status: AcmeCertificateStatus
+  issuer: string
+  notBefore: string                // ISO timestamp
+  notAfter: string                 // ISO timestamp
+  autoRenew: boolean
+  lastRenewed?: string             // ISO timestamp
+}
+
 // ── System ────────────────────────────────────────────────────────────────────
 
 export interface SystemStatus {
