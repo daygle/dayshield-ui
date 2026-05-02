@@ -14,6 +14,7 @@ const defaultForm: Partial<NetworkInterface> = {
   description: '',
   type: 'ethernet',
   enabled: true,
+  dhcp4: false,
   ipv4Address: '',
   ipv4Prefix: 24,
 }
@@ -69,10 +70,18 @@ export default function Interfaces() {
     {
       key: 'ipv4Address',
       header: 'IPv4 Address',
-      render: (row) =>
-        row.ipv4Address
+      render: (row) => {
+        if (row.dhcp4) {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+              DHCP
+            </span>
+          )
+        }
+        return row.ipv4Address
           ? `${row.ipv4Address}/${row.ipv4Prefix ?? ''}`
-          : '—',
+          : '—'
+      },
     },
     {
       key: 'enabled',
@@ -171,11 +180,26 @@ export default function Interfaces() {
             <option value="wireless">Wireless</option>
             <option value="loopback">Loopback</option>
           </FormField>
+          <div className="col-span-2 flex items-center gap-3">
+            <input
+              id="iface-dhcp4"
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              checked={form.dhcp4 ?? false}
+              onChange={(e) =>
+                setForm({ ...form, dhcp4: e.target.checked, ipv4Address: '', ipv4Prefix: 24 })
+              }
+            />
+            <label htmlFor="iface-dhcp4" className="text-sm font-medium text-gray-700">
+              Obtain IPv4 address via DHCP
+            </label>
+          </div>
           <FormField
             id="iface-ip"
             label="IPv4 Address"
             placeholder="192.168.1.1"
             value={form.ipv4Address ?? ''}
+            disabled={form.dhcp4 ?? false}
             onChange={(e) => setForm({ ...form, ipv4Address: e.target.value })}
           />
           <FormField
@@ -185,6 +209,7 @@ export default function Interfaces() {
             min={0}
             max={32}
             value={String(form.ipv4Prefix ?? 24)}
+            disabled={form.dhcp4 ?? false}
             onChange={(e) => setForm({ ...form, ipv4Prefix: Number(e.target.value) })}
           />
         </div>

@@ -13,6 +13,7 @@ export interface NetworkInterface {
   description: string
   type: 'ethernet' | 'vlan' | 'bridge' | 'loopback' | 'wireless'
   enabled: boolean
+  dhcp4?: boolean
   ipv4Address?: string
   ipv4Prefix?: number
   ipv6Address?: string
