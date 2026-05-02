@@ -197,6 +197,11 @@ export default function BackupRestorePage() {
     pendingPasswordResolve.current = null
   }
 
+  const handleRestoreClose = () => {
+    setRestoreOpen(false)
+    setRestoreEntry(null)
+  }
+
   const handlePasswordClose = () => {
     setEncOpen(false)
     pendingPasswordResolve.current?.('')
@@ -337,7 +342,7 @@ export default function BackupRestorePage() {
         open={restoreOpen}
         loading={restoring}
         entry={restoreEntry}
-        onClose={() => { setRestoreOpen(false); setRestoreEntry(null) }}
+        onClose={handleRestoreClose}
         onConfirm={handleRestoreConfirm}
       />
 
