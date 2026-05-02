@@ -13,6 +13,7 @@ import System from './pages/System'
 import LiveLogs from './pages/LiveLogs'
 import Metrics from './pages/Metrics'
 import Backup from './pages/Backup'
+import Notifications from './pages/Notifications'
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
           <Route path="system" element={<System />} />
           <Route path="live-logs" element={<LiveLogs />} />
           <Route path="backup" element={<Backup />} />
+          <Route path="notifications" element={<Notifications />} />
         </Route>
       </Routes>
     </BrowserRouter>
