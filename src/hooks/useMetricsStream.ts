@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MetricsSnapshot } from '../types'
 
-const WS_URL = 'ws://localhost:8080/api/metrics/ws'
+function getWsUrl(): string {
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const host = window.location.host || 'localhost:8080'
+  return `${proto}//${host}/api/metrics/ws`
+}
 
 export function useMetricsStream() {
   const [data, setData] = useState<MetricsSnapshot | null>(null)
@@ -16,7 +20,7 @@ export function useMetricsStream() {
     function connect() {
       if (unmountedRef.current) return
 
-      const ws = new WebSocket(WS_URL)
+      const ws = new WebSocket(getWsUrl())
       wsRef.current = ws
 
       ws.onopen = () => {

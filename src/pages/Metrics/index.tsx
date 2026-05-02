@@ -451,10 +451,10 @@ export default function Metrics() {
   const historyPoints = history.data?.points ?? []
   const cpuSparkData = historyPoints.length > 1
     ? extractField(historyPoints, 'cpu_percent')
-    : rxBuf.current.map(() => snap?.cpu_percent ?? 0)
+    : []
   const ramSparkData = historyPoints.length > 1
     ? extractField(historyPoints, 'ram_percent')
-    : rxBuf.current.map(() => snap?.ram_percent ?? 0)
+    : []
   const suricataSparkData = extractField(historyPoints, 'suricata_alert_rate')
   const crowdsecSparkData = extractField(historyPoints, 'crowdsec_decision_rate')
 
