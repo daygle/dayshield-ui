@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getSystemStatus } from '../../api/client'
+import { getSystemStatus } from '../../api/system'
 import type { SystemStatus } from '../../types'
 import Card from '../../components/Card'
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getInterfaces, createInterface } from '../../api/client'
+import { getInterfaces, createInterface, deleteInterface } from '../../api/interfaces'
 import type { NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -7,46 +7,7 @@ import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
 
-// TODO: Implement edit interface functionality (PUT /interfaces/:name)
-// TODO: Implement delete interface functionality (DELETE /interfaces/:name)
-// TODO: Add VLAN sub-interface creation support
-// TODO: Add interface statistics (bytes in/out, errors) via GET /interfaces/:name/stats
-// TODO: Add real-time status updates via polling
-
 type InterfaceRow = NetworkInterface & Record<string, unknown>
-
-const columns: Column<InterfaceRow>[] = [
-  { key: 'name', header: 'Name' },
-  { key: 'description', header: 'Description' },
-  { key: 'type', header: 'Type' },
-  {
-    key: 'ipv4Address',
-    header: 'IPv4 Address',
-    render: (row) =>
-      row.ipv4Address
-        ? `${row.ipv4Address}/${row.ipv4Prefix ?? ''}`
-        : '—',
-  },
-  {
-    key: 'enabled',
-    header: 'Status',
-    render: (row) => (
-      <span
-        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-          row.enabled
-            ? 'bg-green-100 text-green-700'
-            : 'bg-gray-100 text-gray-500'
-        }`}
-      >
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${row.enabled ? 'bg-green-500' : 'bg-gray-400'}`}
-        />
-        {row.enabled ? 'Up' : 'Down'}
-      </span>
-    ),
-  },
-  { key: 'mac', header: 'MAC Address', render: (row) => row.mac ?? '—' },
-]
 
 const defaultForm: Partial<NetworkInterface> = {
   name: '',
@@ -64,6 +25,8 @@ export default function Interfaces() {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<Partial<NetworkInterface>>(defaultForm)
   const [saving, setSaving] = useState(false)
+  const [deleteName, setDeleteName] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -86,6 +49,65 @@ export default function Interfaces() {
       .catch((err: Error) => setError(err.message))
       .finally(() => setSaving(false))
   }
+
+  const handleDelete = () => {
+    if (!deleteName) return
+    setDeleting(true)
+    deleteInterface(deleteName)
+      .then(() => {
+        setDeleteName(null)
+        load()
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setDeleting(false))
+  }
+
+  const columns: Column<InterfaceRow>[] = [
+    { key: 'name', header: 'Name' },
+    { key: 'description', header: 'Description' },
+    { key: 'type', header: 'Type' },
+    {
+      key: 'ipv4Address',
+      header: 'IPv4 Address',
+      render: (row) =>
+        row.ipv4Address
+          ? `${row.ipv4Address}/${row.ipv4Prefix ?? ''}`
+          : '—',
+    },
+    {
+      key: 'enabled',
+      header: 'Status',
+      render: (row) => (
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+            row.enabled
+              ? 'bg-green-100 text-green-700'
+              : 'bg-gray-100 text-gray-500'
+          }`}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${row.enabled ? 'bg-green-500' : 'bg-gray-400'}`}
+          />
+          {row.enabled ? 'Up' : 'Down'}
+        </span>
+      ),
+    },
+    { key: 'mac', header: 'MAC Address', render: (row) => (row.mac as string) ?? '—' },
+    {
+      key: 'actions',
+      header: '',
+      className: 'w-16 text-right',
+      render: (row) => (
+        <Button
+          variant="danger"
+          size="sm"
+          onClick={() => setDeleteName(row.name as string)}
+        >
+          Delete
+        </Button>
+      ),
+    },
+  ]
 
   return (
     <div className="space-y-4">
@@ -166,6 +188,22 @@ export default function Interfaces() {
             onChange={(e) => setForm({ ...form, ipv4Prefix: Number(e.target.value) })}
           />
         </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        open={deleteName !== null}
+        title="Delete Interface"
+        onClose={() => setDeleteName(null)}
+        onConfirm={handleDelete}
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        loading={deleting}
+        size="sm"
+      >
+        <p className="text-sm text-gray-600">
+          Are you sure you want to delete interface <strong>{deleteName}</strong>? This action cannot be undone.
+        </p>
       </Modal>
     </div>
   )
