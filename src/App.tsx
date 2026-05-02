@@ -14,6 +14,7 @@ import LiveLogs from './pages/LiveLogs'
 import Metrics from './pages/Metrics'
 import Backup from './pages/Backup'
 import Notifications from './pages/Notifications'
+import NTP from './pages/NTP'
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
           <Route path="live-logs" element={<LiveLogs />} />
           <Route path="backup" element={<Backup />} />
           <Route path="notifications" element={<Notifications />} />
+          <Route path="ntp" element={<NTP />} />
         </Route>
       </Routes>
     </BrowserRouter>
