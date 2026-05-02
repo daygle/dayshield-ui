@@ -46,8 +46,10 @@ export default function Sparkline({
     ctx.lineTo((data.length - 1) * step, height)
     ctx.lineTo(0, height)
     ctx.closePath()
-    ctx.fillStyle = color + '22'
+    ctx.globalAlpha = 0.13
+    ctx.fillStyle = color
     ctx.fill()
+    ctx.globalAlpha = 1
   }, [data, color, height, width])
 
   return (
