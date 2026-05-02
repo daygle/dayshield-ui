@@ -8,7 +8,7 @@ export default function LoginPage() {
   const { addToast } = useToast()
   const navigate = useNavigate()
   const location = useLocation()
-  const from = (location.state as { from?: Location })?.from?.pathname ?? '/dashboard'
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/dashboard'
 
   async function handleLogin(username: string, password: string) {
     await signIn({ username, password })

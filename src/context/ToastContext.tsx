@@ -33,6 +33,8 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null)
 
+let _toastCounter = 0
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, { toasts: [] })
 
@@ -42,7 +44,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const addToast = useCallback(
     (message: string, variant: ToastVariant = 'info') => {
-      const id = `${Date.now()}-${Math.random()}`
+      const id = `toast-${++_toastCounter}`
       dispatch({ type: 'ADD', toast: { id, message, variant } })
       setTimeout(() => removeToast(id), 4000)
     },
