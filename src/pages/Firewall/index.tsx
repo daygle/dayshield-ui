@@ -426,7 +426,8 @@ export default function Firewall() {
         size="sm"
       >
         <p className="text-sm text-gray-600">
-          Are you sure you want to delete this alias? Firewall rules referencing it may break.
+          Deleting this alias will cause any firewall rules that reference it by name to fail
+          validation. This action cannot be undone.
         </p>
       </Modal>
     </div>
