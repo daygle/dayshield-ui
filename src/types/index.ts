@@ -406,6 +406,27 @@ export interface NtpStatus {
   stratum: number
 }
 
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+export interface AuthUser {
+  username: string
+}
+
+export interface AuthStatus {
+  authenticated: boolean
+  username?: string
+}
+
+export interface LoginRequest {
+  username: string
+  password: string
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string
+  newPassword: string
+}
+
 // ── Metrics ───────────────────────────────────────────────────────────────────
 
 export interface LanIfaceMetrics {

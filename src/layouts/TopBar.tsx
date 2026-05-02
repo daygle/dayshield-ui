@@ -1,4 +1,7 @@
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+import Button from '../components/Button'
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -8,11 +11,26 @@ const pageTitles: Record<string, string> = {
   '/dns': 'DNS',
   '/dhcp': 'DHCP',
   '/system': 'System',
+  '/change-password': 'Change Password',
 }
 
 export default function TopBar() {
   const { pathname } = useLocation()
   const title = pageTitles[pathname] ?? 'DayShield'
+  const { user, signOut } = useAuth()
+  const { addToast } = useToast()
+  const navigate = useNavigate()
+
+  async function handleLogout() {
+    await signOut()
+    addToast('You have been signed out.', 'info')
+    navigate('/login', { replace: true })
+  }
+
+  // Derive initials from username
+  const initials = user?.username
+    ? user.username.slice(0, 2).toUpperCase()
+    : 'DS'
 
   return (
     <header className="flex items-center justify-between h-14 px-6 bg-white border-b border-gray-200 shrink-0">
@@ -25,10 +43,22 @@ export default function TopBar() {
           Connected to core
         </span>
 
-        {/* User avatar placeholder */}
+        {/* Username */}
+        {user && (
+          <span className="text-xs text-gray-500 hidden sm:inline">
+            {user.username}
+          </span>
+        )}
+
+        {/* User avatar */}
         <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold select-none">
-          DS
+          {initials}
         </div>
+
+        {/* Logout button */}
+        <Button variant="ghost" size="sm" onClick={handleLogout}>
+          Sign out
+        </Button>
       </div>
     </header>
   )

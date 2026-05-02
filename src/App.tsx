@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout'
+import ProtectedRoute from './components/ProtectedRoute'
+import LoginPage from './pages/LoginPage'
 import Dashboard from './pages/Dashboard'
 import Interfaces from './pages/Interfaces'
 import Firewall from './pages/Firewall'
@@ -15,12 +17,24 @@ import Metrics from './pages/Metrics'
 import Backup from './pages/Backup'
 import Notifications from './pages/Notifications'
 import NTP from './pages/NTP'
+import ChangePasswordPage from './pages/ChangePasswordPage'
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<MainLayout />}>
+        {/* Public route */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Protected routes wrapped in MainLayout */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <MainLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="metrics" element={<Metrics />} />
@@ -37,6 +51,7 @@ function App() {
           <Route path="backup" element={<Backup />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="ntp" element={<NTP />} />
+          <Route path="change-password" element={<ChangePasswordPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
