@@ -14,6 +14,9 @@ export interface NetworkInterface {
   type: 'ethernet' | 'vlan' | 'bridge' | 'loopback' | 'wireless'
   enabled: boolean
   dhcp4?: boolean
+  wanMode?: 'dhcp' | 'pppoe'       // only relevant for WAN-designated interfaces
+  pppoeUsername?: string
+  pppoePassword?: string
   ipv4Address?: string
   ipv4Prefix?: number
   ipv6Address?: string

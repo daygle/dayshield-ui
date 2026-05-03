@@ -15,6 +15,9 @@ const defaultForm: Partial<NetworkInterface> = {
   type: 'ethernet',
   enabled: true,
   dhcp4: false,
+  wanMode: undefined,
+  pppoeUsername: '',
+  pppoePassword: '',
   ipv4Address: '',
   ipv4Prefix: 24,
 }
@@ -71,6 +74,13 @@ export default function Interfaces() {
       key: 'ipv4Address',
       header: 'IPv4 Address',
       render: (row) => {
+        if (row.wanMode === 'pppoe') {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+              PPPoE
+            </span>
+          )
+        }
         if (row.dhcp4) {
           return (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
@@ -187,13 +197,52 @@ export default function Interfaces() {
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               checked={form.dhcp4 ?? false}
               onChange={(e) =>
-                setForm({ ...form, dhcp4: e.target.checked, ipv4Address: '', ipv4Prefix: 24 })
+                setForm({ ...form, dhcp4: e.target.checked, wanMode: undefined, ipv4Address: '', ipv4Prefix: 24 })
               }
             />
             <label htmlFor="iface-dhcp4" className="text-sm font-medium text-gray-700">
               Obtain IPv4 address via DHCP
             </label>
           </div>
+
+          {/* WAN mode — only shown when DHCP is not ticked */}
+          {!form.dhcp4 && (
+            <FormField
+              id="iface-wan-mode"
+              label="WAN Connection Type"
+              as="select"
+              value={form.wanMode ?? ''}
+              onChange={(e) => {
+                const v = e.target.value as NetworkInterface['wanMode'] | ''
+                setForm({ ...form, wanMode: v || undefined, pppoeUsername: '', pppoePassword: '' })
+              }}
+            >
+              <option value="">— Not a WAN interface —</option>
+              <option value="dhcp">DHCP (automatic from ISP)</option>
+              <option value="pppoe">PPPoE (DSL / fibre — username &amp; password)</option>
+            </FormField>
+          )}
+
+          {/* PPPoE credentials — only when wan_mode == pppoe */}
+          {form.wanMode === 'pppoe' && (
+            <>
+              <FormField
+                id="iface-pppoe-user"
+                label="PPPoE Username"
+                placeholder="user@isp.example.com"
+                value={form.pppoeUsername ?? ''}
+                onChange={(e) => setForm({ ...form, pppoeUsername: e.target.value })}
+              />
+              <FormField
+                id="iface-pppoe-pass"
+                label="PPPoE Password"
+                type="password"
+                placeholder="••••••••"
+                value={form.pppoePassword ?? ''}
+                onChange={(e) => setForm({ ...form, pppoePassword: e.target.value })}
+              />
+            </>
+          )}
           <FormField
             id="iface-ip"
             label="IPv4 Address"
