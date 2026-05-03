@@ -1,12 +1,21 @@
 import { NavLink } from 'react-router-dom'
 
 interface NavItem {
+  type?: 'item'
   to: string
   label: string
   icon: React.ReactNode
+  indent?: boolean
 }
 
-const navItems: NavItem[] = [
+interface NavSection {
+  type: 'section'
+  label: string
+}
+
+type NavEntry = NavItem | NavSection
+
+const navEntries: NavEntry[] = [
   {
     to: '/dashboard',
     label: 'Dashboard',
@@ -34,12 +43,24 @@ const navItems: NavItem[] = [
       </svg>
     ),
   },
+  { type: 'section', label: 'Firewall' },
   {
     to: '/firewall',
-    label: 'Firewall',
+    label: 'Rules & Aliases',
+    indent: true,
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+      </svg>
+    ),
+  },
+  {
+    to: '/nat',
+    label: 'NAT',
+    indent: true,
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
       </svg>
     ),
   },
@@ -159,18 +180,35 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              ['sidebar-link', isActive ? 'active' : ''].join(' ')
-            }
-          >
-            {item.icon}
-            {item.label}
-          </NavLink>
-        ))}
+        {navEntries.map((entry, idx) => {
+          if (entry.type === 'section') {
+            return (
+              <p
+                key={`section-${idx}`}
+                className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500"
+              >
+                {entry.label}
+              </p>
+            )
+          }
+          const item = entry as NavItem
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                [
+                  'sidebar-link',
+                  isActive ? 'active' : '',
+                  item.indent ? 'pl-7' : '',
+                ].join(' ')
+              }
+            >
+              {item.icon}
+              {item.label}
+            </NavLink>
+          )
+        })}
       </nav>
 
       {/* Footer */}
