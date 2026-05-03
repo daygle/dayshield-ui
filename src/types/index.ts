@@ -392,6 +392,45 @@ export interface NotifyTestResult {
   message: string
 }
 
+// ── NAT ───────────────────────────────────────────────────────────────────────
+
+export type NatOutboundMode = 'automatic' | 'hybrid' | 'manual'
+export type NatProtocol = 'tcp' | 'udp' | 'tcp/udp' | 'icmp' | 'any'
+export type NatReflectionMode = 'disabled' | 'purenat'
+
+export interface NatConfig {
+  outboundMode: NatOutboundMode
+  reflection: NatReflectionMode
+}
+
+export interface NatRule {
+  id: number
+  enabled: boolean
+  interface: string
+  source: string
+  sourcePort?: string
+  destination: string
+  destinationPort?: string
+  translation: string      // NAT target address / "interface" / "any"
+  translationPort?: string
+  protocol: NatProtocol
+  description: string
+  order: number
+}
+
+export interface PortForward {
+  id: number
+  enabled: boolean
+  wanInterface: string
+  externalPort: string     // e.g. "80", "8080:8090"
+  internalHost: string
+  internalPort: string
+  protocol: NatProtocol
+  description: string
+  autoFirewallRule: boolean
+  natReflection: boolean
+}
+
 // ── NTP ───────────────────────────────────────────────────────────────────────
 
 export interface NtpConfig {

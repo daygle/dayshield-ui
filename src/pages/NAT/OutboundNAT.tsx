@@ -1,0 +1,354 @@
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getNatConfig, updateNatConfig, getNatRules, createNatRule, updateNatRule, deleteNatRule } from '../../api/nat'
+import { useToast } from '../../context/ToastContext'
+import type { NatRule, NatOutboundMode, NatProtocol } from '../../types'
+import Card from '../../components/Card'
+import Button from '../../components/Button'
+import Table, { Column } from '../../components/Table'
+import Modal from '../../components/Modal'
+import FormField from '../../components/FormField'
+
+type RuleRow = NatRule & Record<string, unknown>
+
+const defaultRuleForm = (): Omit<NatRule, 'id'> => ({
+  enabled: true,
+  interface: '',
+  source: 'any',
+  sourcePort: '',
+  destination: 'any',
+  destinationPort: '',
+  translation: 'interface',
+  translationPort: '',
+  protocol: 'any',
+  description: '',
+  order: 100,
+})
+
+export default function OutboundNAT() {
+  const qc = useQueryClient()
+  const { addToast } = useToast()
+
+  const { data: configData, isLoading: configLoading } = useQuery({
+    queryKey: ['nat', 'config'],
+    queryFn: getNatConfig,
+  })
+
+  const { data: rulesData, isLoading: rulesLoading } = useQuery({
+    queryKey: ['nat', 'rules'],
+    queryFn: getNatRules,
+  })
+
+  const config = configData?.data
+  const rules = (rulesData?.data ?? []) as RuleRow[]
+
+  // ── Mode mutation ────────────────────────────────────────────────────────────
+  const configMutation = useMutation({
+    mutationFn: updateNatConfig,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['nat', 'config'] })
+      addToast('NAT mode updated', 'success')
+    },
+    onError: (err: Error) => addToast(err.message, 'error'),
+  })
+
+  // ── Rule form state ──────────────────────────────────────────────────────────
+  const [ruleModalOpen, setRuleModalOpen] = useState(false)
+  const [editingRule, setEditingRule] = useState<NatRule | null>(null)
+  const [ruleForm, setRuleForm] = useState<Omit<NatRule, 'id'>>(defaultRuleForm())
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof NatRule, string>>>({})
+  const [deleteId, setDeleteId] = useState<number | null>(null)
+
+  const openAddModal = () => {
+    setEditingRule(null)
+    setRuleForm(defaultRuleForm())
+    setFormErrors({})
+    setRuleModalOpen(true)
+  }
+
+  const openEditModal = (rule: NatRule) => {
+    setEditingRule(rule)
+    const { id: _id, ...rest } = rule
+    setRuleForm(rest)
+    setFormErrors({})
+    setRuleModalOpen(true)
+  }
+
+  const validate = (): boolean => {
+    const errors: Partial<Record<keyof NatRule, string>> = {}
+    if (!ruleForm.interface.trim()) errors.interface = 'Interface is required'
+    if (!ruleForm.source.trim()) errors.source = 'Source is required'
+    if (!ruleForm.destination.trim()) errors.destination = 'Destination is required'
+    if (!ruleForm.translation.trim()) errors.translation = 'Translation is required'
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  // ── Mutations ────────────────────────────────────────────────────────────────
+  const createMutation = useMutation({
+    mutationFn: createNatRule,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['nat', 'rules'] })
+      setRuleModalOpen(false)
+      addToast('NAT rule created', 'success')
+    },
+    onError: (err: Error) => addToast(err.message, 'error'),
+  })
+
+  const editMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Omit<NatRule, 'id'>> }) =>
+      updateNatRule(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['nat', 'rules'] })
+      setRuleModalOpen(false)
+      addToast('NAT rule updated', 'success')
+    },
+    onError: (err: Error) => addToast(err.message, 'error'),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteNatRule,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['nat', 'rules'] })
+      setDeleteId(null)
+      addToast('NAT rule deleted', 'success')
+    },
+    onError: (err: Error) => addToast(err.message, 'error'),
+  })
+
+  const handleSave = () => {
+    if (!validate()) return
+    if (editingRule) {
+      editMutation.mutate({ id: editingRule.id, data: ruleForm })
+    } else {
+      createMutation.mutate(ruleForm)
+    }
+  }
+
+  const isSaving = createMutation.isPending || editMutation.isPending
+
+  const columns: Column<RuleRow>[] = [
+    {
+      key: 'enabled',
+      header: 'Enabled',
+      render: (row) => (
+        <span className={row.enabled ? 'text-green-600' : 'text-gray-400'}>
+          {row.enabled ? '✓' : '✗'}
+        </span>
+      ),
+    },
+    { key: 'interface', header: 'Interface' },
+    { key: 'source', header: 'Source' },
+    { key: 'destination', header: 'Destination' },
+    { key: 'translation', header: 'Translation' },
+    { key: 'protocol', header: 'Protocol' },
+    { key: 'description', header: 'Description' },
+    {
+      key: 'actions',
+      header: '',
+      className: 'w-24 text-right',
+      render: (row) => (
+        <div className="flex items-center justify-end gap-2">
+          <Button size="sm" variant="secondary" onClick={() => openEditModal(row as NatRule)}>
+            Edit
+          </Button>
+          <Button size="sm" variant="danger" onClick={() => setDeleteId(row.id as number)}>
+            Delete
+          </Button>
+        </div>
+      ),
+    },
+  ]
+
+  const modes: { value: NatOutboundMode; label: string; desc: string }[] = [
+    {
+      value: 'automatic',
+      label: 'Automatic',
+      desc: 'Outbound NAT rules are automatically generated.',
+    },
+    {
+      value: 'hybrid',
+      label: 'Hybrid',
+      desc: 'Automatic rules plus any manually added rules.',
+    },
+    {
+      value: 'manual',
+      label: 'Manual',
+      desc: 'Only manually defined rules are used.',
+    },
+  ]
+
+  return (
+    <div className="space-y-6">
+      {/* Mode selector */}
+      <Card title="Outbound NAT Mode" subtitle="Controls how outbound address translation is applied">
+        {configLoading ? (
+          <p className="text-sm text-gray-400">Loading…</p>
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-3">
+            {modes.map((m) => {
+              const active = config?.outboundMode === m.value
+              return (
+                <button
+                  key={m.value}
+                  onClick={() => configMutation.mutate({ outboundMode: m.value })}
+                  disabled={configMutation.isPending}
+                  className={[
+                    'flex-1 text-left rounded-lg border-2 px-4 py-3 transition-colors',
+                    active
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 bg-white hover:border-blue-300',
+                  ].join(' ')}
+                >
+                  <p className={`text-sm font-semibold ${active ? 'text-blue-700' : 'text-gray-800'}`}>
+                    {m.label}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">{m.desc}</p>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </Card>
+
+      {/* Rules table */}
+      <Card
+        title="Outbound NAT Rules"
+        subtitle="Rules are evaluated top-to-bottom. Manual rules are only active in Hybrid or Manual mode."
+        actions={
+          <Button size="sm" onClick={openAddModal}>
+            + Add Rule
+          </Button>
+        }
+      >
+        <Table
+          columns={columns}
+          data={rules}
+          keyField="id"
+          loading={rulesLoading}
+          emptyMessage="No outbound NAT rules defined."
+        />
+      </Card>
+
+      {/* Add / Edit Rule Modal */}
+      <Modal
+        open={ruleModalOpen}
+        title={editingRule ? 'Edit NAT Rule' : 'Add NAT Rule'}
+        onClose={() => setRuleModalOpen(false)}
+        onConfirm={handleSave}
+        confirmLabel={editingRule ? 'Save Changes' : 'Create Rule'}
+        loading={isSaving}
+        size="xl"
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            id="nat-iface"
+            label="Interface"
+            required
+            placeholder="e.g. eth0, WAN"
+            value={ruleForm.interface}
+            error={formErrors.interface}
+            onChange={(e) => setRuleForm({ ...ruleForm, interface: e.target.value })}
+          />
+          <FormField
+            id="nat-proto"
+            label="Protocol"
+            as="select"
+            value={ruleForm.protocol}
+            onChange={(e) => setRuleForm({ ...ruleForm, protocol: e.target.value as NatProtocol })}
+          >
+            <option value="any">Any</option>
+            <option value="tcp">TCP</option>
+            <option value="udp">UDP</option>
+            <option value="tcp/udp">TCP/UDP</option>
+            <option value="icmp">ICMP</option>
+          </FormField>
+          <FormField
+            id="nat-src"
+            label="Source"
+            required
+            placeholder="any / 192.168.1.0/24"
+            value={ruleForm.source}
+            error={formErrors.source}
+            onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value })}
+          />
+          <FormField
+            id="nat-src-port"
+            label="Source Port"
+            placeholder="any / 1024:65535"
+            value={ruleForm.sourcePort ?? ''}
+            onChange={(e) => setRuleForm({ ...ruleForm, sourcePort: e.target.value })}
+          />
+          <FormField
+            id="nat-dst"
+            label="Destination"
+            required
+            placeholder="any / 10.0.0.0/8"
+            value={ruleForm.destination}
+            error={formErrors.destination}
+            onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value })}
+          />
+          <FormField
+            id="nat-dst-port"
+            label="Destination Port"
+            placeholder="any / 80"
+            value={ruleForm.destinationPort ?? ''}
+            onChange={(e) => setRuleForm({ ...ruleForm, destinationPort: e.target.value })}
+          />
+          <FormField
+            id="nat-translation"
+            label="Translation / NAT Address"
+            required
+            placeholder="interface / 203.0.113.5"
+            value={ruleForm.translation}
+            error={formErrors.translation}
+            onChange={(e) => setRuleForm({ ...ruleForm, translation: e.target.value })}
+          />
+          <FormField
+            id="nat-translation-port"
+            label="Translation Port"
+            placeholder="leave blank to keep source port"
+            value={ruleForm.translationPort ?? ''}
+            onChange={(e) => setRuleForm({ ...ruleForm, translationPort: e.target.value })}
+          />
+          <FormField
+            id="nat-desc"
+            label="Description"
+            className="col-span-2"
+            placeholder="Optional description"
+            value={ruleForm.description}
+            onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value })}
+          />
+          <div className="col-span-2 flex items-center gap-2">
+            <input
+              id="nat-enabled"
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              checked={ruleForm.enabled}
+              onChange={(e) => setRuleForm({ ...ruleForm, enabled: e.target.checked })}
+            />
+            <label htmlFor="nat-enabled" className="text-sm font-medium text-gray-700">
+              Enable this rule
+            </label>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete confirmation Modal */}
+      <Modal
+        open={deleteId !== null}
+        title="Delete NAT Rule"
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => deleteId !== null && deleteMutation.mutate(deleteId)}
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        loading={deleteMutation.isPending}
+        size="sm"
+      >
+        <p className="text-sm text-gray-600">
+          Are you sure you want to delete this NAT rule? This action cannot be undone.
+        </p>
+      </Modal>
+    </div>
+  )
+}

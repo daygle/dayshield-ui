@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage'
 import Dashboard from './pages/Dashboard'
 import Interfaces from './pages/Interfaces'
 import Firewall from './pages/Firewall'
+import NAT from './pages/NAT'
 import VPN from './pages/VPN'
 import DNS from './pages/DNS'
 import DHCP from './pages/DHCP'
@@ -40,6 +41,7 @@ function App() {
           <Route path="metrics" element={<Metrics />} />
           <Route path="interfaces" element={<Interfaces />} />
           <Route path="firewall" element={<Firewall />} />
+          <Route path="nat" element={<NAT />} />
           <Route path="vpn" element={<VPN />} />
           <Route path="dns" element={<DNS />} />
           <Route path="dhcp" element={<DHCP />} />
