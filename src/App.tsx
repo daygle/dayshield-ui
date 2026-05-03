@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import Dashboard from './pages/Dashboard'
 import Interfaces from './pages/Interfaces'
+import Gateways from './pages/Gateways'
 import Firewall from './pages/Firewall'
 import NAT from './pages/NAT'
 import VPN from './pages/VPN'
@@ -40,6 +41,7 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="metrics" element={<Metrics />} />
           <Route path="interfaces" element={<Interfaces />} />
+          <Route path="gateways" element={<Gateways />} />
           <Route path="firewall" element={<Firewall />} />
           <Route path="nat" element={<NAT />} />
           <Route path="vpn" element={<VPN />} />

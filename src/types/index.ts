@@ -25,6 +25,31 @@ export interface NetworkInterface {
   mtu?: number
   speed?: number
   duplex?: 'full' | 'half' | 'auto'
+  gateway?: string  // static WAN gateway IP
+}
+
+// ── Gateways ──────────────────────────────────────────────────────────────────────
+
+export type GatewayState = 'online' | 'offline' | 'unknown'
+
+export interface Gateway {
+  name: string
+  description?: string
+  interface: string
+  gateway_ip?: string
+  monitor_ip?: string
+  weight: number
+  enabled: boolean
+}
+
+export interface GatewayStatus extends Gateway {
+  state: GatewayState
+  active_ip?: string
+}
+
+export interface ListGatewaysResponse {
+  gateways: GatewayStatus[]
+  default_interface?: string
 }
 
 // ── Firewall rules ────────────────────────────────────────────────────────────
@@ -125,9 +150,9 @@ export interface DhcpLease {
   mac: string
   ipAddress: string
   hostname: string
-  starts: string    // ISO timestamp
-  ends: string      // ISO timestamp
-  state: 'active' | 'expired' | 'reserved'
+  starts: string    // ISO timestamp or empty string
+  ends: string      // Unix epoch seconds (string) or ISO timestamp
+  state: 'active' | 'expired' | 'reserved' | 'declined' | 'reclaimed'
 }
 
 // ── WireGuard ─────────────────────────────────────────────────────────────────
