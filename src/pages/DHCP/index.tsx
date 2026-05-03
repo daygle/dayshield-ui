@@ -68,7 +68,7 @@ export default function DHCP() {
   const [leaseModalOpen, setLeaseModalOpen] = useState(false)
   const [leaseForm, setLeaseForm] = useState<Omit<DhcpStaticLease, 'id'>>(defaultLeaseForm)
   const [leaseSaving, setLeaseSaving] = useState(false)
-  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   const loadAll = () => {
@@ -116,7 +116,7 @@ export default function DHCP() {
       header: '',
       className: 'w-16 text-right',
       render: (row) => (
-        <Button variant="danger" size="sm" onClick={() => setDeleteId(row.id as number)}>
+        <Button variant="danger" size="sm" onClick={() => setDeleteId(row.id as string)}>
           Delete
         </Button>
       ),

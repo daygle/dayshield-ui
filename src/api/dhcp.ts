@@ -27,7 +27,7 @@ export const createDhcpPool = (
     .post<ApiResponse<DhcpPool>>('/dhcp/pools', pool)
     .then((r) => r.data)
 
-export const deleteDhcpPool = (id: number): Promise<ApiResponse<void>> =>
+export const deleteDhcpPool = (id: string): Promise<ApiResponse<void>> =>
   apiClient
     .delete<ApiResponse<void>>(`/dhcp/pools/${id}`)
     .then((r) => r.data)
@@ -46,7 +46,7 @@ export const createDhcpStaticLease = (
     .post<ApiResponse<DhcpStaticLease>>('/dhcp/static-leases', lease)
     .then((r) => r.data)
 
-export const deleteDhcpStaticLease = (id: number): Promise<ApiResponse<void>> =>
+export const deleteDhcpStaticLease = (id: string): Promise<ApiResponse<void>> =>
   apiClient
     .delete<ApiResponse<void>>(`/dhcp/static-leases/${id}`)
     .then((r) => r.data)

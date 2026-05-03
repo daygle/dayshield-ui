@@ -103,7 +103,7 @@ export interface DhcpConfig {
 }
 
 export interface DhcpPool {
-  id: number
+  id: string
   interface: string
   rangeStart: string
   rangeEnd: string
@@ -111,7 +111,7 @@ export interface DhcpPool {
 }
 
 export interface DhcpStaticLease {
-  id: number
+  id: string
   mac: string
   ipAddress: string
   hostname: string
