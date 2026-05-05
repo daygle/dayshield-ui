@@ -8,6 +8,7 @@ import {
   getBackupSchedule,
   updateBackupSchedule,
 } from '../../api/backup'
+import apiClient from '../../api/client'
 import type {
   BackupEntry,
   BackupSchedule,
@@ -382,7 +383,6 @@ function UploadRestoreSection({ restoring, onRestore, addToast }: UploadRestoreS
       formData.append('file', file)
 
       // POST the file to the server; expect it to return a BackupEntry
-      const { default: apiClient } = await import('../../api/client')
       const res = await apiClient.post<{ data: BackupEntry; success: boolean }>(
         '/backup/upload',
         formData,
