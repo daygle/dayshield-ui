@@ -41,7 +41,7 @@ export const getDnsForwarders = (): Promise<ApiResponse<DnsForwarder[]>> =>
 export const createDnsForwarder = (_forwarder: Omit<DnsForwarder, 'id'>): Promise<ApiResponse<DnsForwarder>> =>
   Promise.resolve({ data: { id: 0, ..._forwarder }, success: true })
 
-export const deleteDnsForwarder = (_id: number): Promise<ApiResponse<void>> =>
+export const deleteDnsForwarder = (_id: number | string): Promise<ApiResponse<void>> =>
   Promise.resolve({ data: undefined, success: true })
 
 export const getDnsHostOverrides = (): Promise<ApiResponse<DnsHostOverride[]>> =>
@@ -50,4 +50,5 @@ export const getDnsHostOverrides = (): Promise<ApiResponse<DnsHostOverride[]>> =
 export const createDnsHostOverride = (override: Omit<DnsHostOverride, 'id'>): Promise<ApiResponse<DnsHostOverride>> =>
   createDnsOverride({ kind: 'host', name: `${override.hostname}.${override.domain}`, target: override.ipv4 ?? override.ipv6 ?? '' })
 
-export const deleteDnsHostOverride = deleteDnsOverride
+export const deleteDnsHostOverride = (_id: number | string): Promise<ApiResponse<void>> =>
+  Promise.resolve({ data: undefined, success: true })

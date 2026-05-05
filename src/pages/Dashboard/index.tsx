@@ -57,13 +57,6 @@ function Badge({
   )
 }
 
-function severityBadge(sev: SuricataSeverity) {
-  if (sev === 'high') return <Badge variant="red">High</Badge>
-  if (sev === 'medium') return <Badge variant="yellow">Medium</Badge>
-  if (sev === 'low') return <Badge variant="blue">Low</Badge>
-  return <Badge variant="gray">Info</Badge>
-}
-
 function MetricRow({
   label,
   value,

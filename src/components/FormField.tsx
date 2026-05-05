@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, SelectHTMLAttributes, ReactNode } from 'react'
+import { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes, ReactNode } from 'react'
 
 interface BaseProps {
   id?: string
@@ -10,8 +10,9 @@ interface BaseProps {
 }
 
 type InputProps = BaseProps &
-  InputHTMLAttributes<HTMLInputElement> & {
+  Omit<InputHTMLAttributes<HTMLInputElement>, 'children'> & {
     as?: 'input'
+    children?: ReactNode
   }
 
 type SelectProps = BaseProps &
@@ -21,15 +22,16 @@ type SelectProps = BaseProps &
   }
 
 type TextareaProps = BaseProps &
-  InputHTMLAttributes<HTMLTextAreaElement> & {
+  Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'children'> & {
     as: 'textarea'
     rows?: number
+    children?: never
   }
 
 type FormFieldProps = InputProps | SelectProps | TextareaProps
 
 export default function FormField(props: FormFieldProps) {
-  const { id, label, error, hint, required, className = '', as = 'input', ...rest } = props
+  const { id, label, error, hint, required, className = '', as = 'input', children, ...rest } = props
 
   const baseInputClass =
     'block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm ' +
@@ -50,15 +52,17 @@ export default function FormField(props: FormFieldProps) {
           className={baseInputClass}
           {...(rest as SelectHTMLAttributes<HTMLSelectElement>)}
         >
-          {(props as SelectProps).children}
+          {children}
         </select>
       ) : as === 'textarea' ? (
         <textarea
           id={id}
           rows={(props as TextareaProps).rows ?? 3}
           className={baseInputClass}
-          {...(rest as InputHTMLAttributes<HTMLTextAreaElement>)}
+          {...(rest as TextareaHTMLAttributes<HTMLTextAreaElement>)}
         />
+      ) : children ? (
+        <div className={baseInputClass}>{children}</div>
       ) : (
         <input
           id={id}

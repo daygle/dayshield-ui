@@ -49,7 +49,9 @@ export const getWgServer = (): Promise<ApiResponse<WgServer>> =>
 export const getWgPeers = (): Promise<ApiResponse<WgPeer[]>> =>
   Promise.resolve({ data: [], success: true })
 
-export const createWgPeer = (_peer: WgPeer): Promise<ApiResponse<WgPeer>> =>
+export const createWgPeer = (
+  _peer: Omit<WgPeer, 'id'>,
+): Promise<ApiResponse<WgPeer>> =>
   Promise.resolve({ data: { ..._peer, id: 0 }, success: true })
 
 export const deleteWgPeer = (_id: number): Promise<ApiResponse<void>> =>

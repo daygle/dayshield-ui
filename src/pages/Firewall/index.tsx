@@ -63,7 +63,7 @@ export default function Firewall() {
   const [aliasModalOpen, setAliasModalOpen] = useState(false)
   const [aliasForm, setAliasForm] = useState<Omit<Alias, 'id'>>(defaultAliasForm)
   const [aliasSaving, setAliasSaving] = useState(false)
-  const [deleteAliasId, setDeleteAliasId] = useState<number | null>(null)
+  const [deleteAliasName, setDeleteAliasName] = useState<string | null>(null)
   const [deletingAlias, setDeletingAlias] = useState(false)
 
   const loadRules = () => {
@@ -124,11 +124,11 @@ export default function Firewall() {
   }
 
   const handleDeleteAlias = () => {
-    if (deleteAliasId === null) return
+    if (deleteAliasName === null) return
     setDeletingAlias(true)
-    deleteAlias(deleteAliasId)
+    deleteAlias(deleteAliasName)
       .then(() => {
-        setDeleteAliasId(null)
+        setDeleteAliasName(null)
         loadAliases()
       })
       .catch((err: Error) => setAliasesError(err.message))
@@ -202,7 +202,7 @@ export default function Firewall() {
         <Button
           variant="danger"
           size="sm"
-          onClick={() => setDeleteAliasId(row.id as number)}
+          onClick={() => setDeleteAliasName(row.name)}
         >
           Delete
         </Button>
@@ -416,9 +416,9 @@ export default function Firewall() {
 
       {/* Delete Alias Modal */}
       <Modal
-        open={deleteAliasId !== null}
+        open={deleteAliasName !== null}
         title="Delete Alias"
-        onClose={() => setDeleteAliasId(null)}
+        onClose={() => setDeleteAliasName(null)}
         onConfirm={handleDeleteAlias}
         confirmLabel="Delete"
         confirmVariant="danger"

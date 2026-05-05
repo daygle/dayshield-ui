@@ -14,7 +14,7 @@ export const createAlias = (alias: Omit<Alias, 'id'>): Promise<ApiResponse<Alias
     .post<ApiResponse<Alias>>('/firewall/aliases', alias)
     .then((r: { data: ApiResponse<Alias> }) => r.data)
 
-export const deleteAlias = (name: string): Promise<ApiResponse<void>> =>
+export const deleteAlias = (name: string | number): Promise<ApiResponse<void>> =>
   apiClient
-    .delete<ApiResponse<void>>(`/firewall/aliases/${encodeURIComponent(name)}`)
+    .delete<ApiResponse<void>>(`/firewall/aliases/${encodeURIComponent(String(name))}`)
     .then((r: { data: ApiResponse<void> }) => r.data)

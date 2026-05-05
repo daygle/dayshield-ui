@@ -7,14 +7,14 @@ import type { ApiResponse, FirewallRule } from '../types'
 export const getFirewallRules = (): Promise<ApiResponse<FirewallRule[]>> =>
   apiClient
     .get<ApiResponse<FirewallRule[]>>('/firewall/rules')
-    .then((r) => r.data)
+    .then((r: { data: ApiResponse<FirewallRule[]> }) => r.data)
 
 export const createFirewallRule = (
   rule: Omit<FirewallRule, 'id'>,
 ): Promise<ApiResponse<FirewallRule>> =>
   apiClient
     .post<ApiResponse<FirewallRule>>('/firewall/rules', rule)
-    .then((r) => r.data)
+    .then((r: { data: ApiResponse<FirewallRule> }) => r.data)
 
 export const deleteFirewallRule = (_id: number): Promise<ApiResponse<void>> =>
   Promise.resolve({ data: undefined, success: true })

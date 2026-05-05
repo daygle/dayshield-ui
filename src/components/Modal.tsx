@@ -32,12 +32,13 @@ export default function Modal({
   cancelLabel = 'Cancel',
   confirmVariant = 'primary',
   loading = false,
+  footer,
   size = 'md',
 }: ModalProps) {
   // Close on Escape key
   useEffect(() => {
     if (!open) return
-    const handler = (e: KeyboardEvent) => {
+    const handler = (e: any) => {
       if (e.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', handler)

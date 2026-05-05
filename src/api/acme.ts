@@ -33,7 +33,13 @@ export const getAcmeAccount = getAcmeConfig
 export const updateAcmeAccount = updateAcmeConfig
 export const getAcmeCertificates = (): Promise<ApiResponse<AcmeCertificate[]>> =>
   getAcmeCertStatus().then((r) => ({ ...r, data: [r.data] }))
-export const issueAcmeCertificate = issueAcmeCertificates
+export const issueAcmeCertificate = (
+  payload: { domain: string; sans: string[]; autoRenew: boolean },
+): Promise<ApiResponse<void>> =>
+  apiClient
+    .post<ApiResponse<void>>('/acme/issue', payload)
+    .then((r: { data: ApiResponse<void> }) => r.data)
+
 export const renewAcmeCertificate = (_id: number): Promise<ApiResponse<void>> =>
   Promise.resolve({ data: undefined, success: true })
 export const deleteAcmeCertificate = (_id: number): Promise<ApiResponse<void>> =>
