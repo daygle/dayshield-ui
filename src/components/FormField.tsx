@@ -1,7 +1,7 @@
 import { InputHTMLAttributes, SelectHTMLAttributes, ReactNode } from 'react'
 
 interface BaseProps {
-  id: string
+  id?: string
   label: string
   error?: string
   hint?: string

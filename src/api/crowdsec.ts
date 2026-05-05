@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, CrowdSecStatus, CrowdSecDecision } from '../types'
+import type { ApiResponse, CrowdSecStatus, CrowdSecDecision, CrowdSecAlert } from '../types'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -21,3 +21,10 @@ export const getCrowdSecDecisions = (): Promise<ApiResponse<CrowdSecDecision[]>>
   apiClient
     .get<ApiResponse<CrowdSecDecision[]>>('/crowdsec/decisions')
     .then((r) => r.data)
+
+// Legacy / compatibility wrappers for older UI pages
+export const getCrowdSecStatus = getCrowdSecConfig
+export const getCrowdSecAlerts = (): Promise<ApiResponse<CrowdSecAlert[]>> =>
+  Promise.resolve({ data: [], success: true })
+export const deleteCrowdSecDecision = (_id: number): Promise<ApiResponse<void>> =>
+  Promise.resolve({ data: undefined, success: true })

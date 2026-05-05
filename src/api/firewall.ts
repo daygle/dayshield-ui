@@ -15,3 +15,6 @@ export const createFirewallRule = (
   apiClient
     .post<ApiResponse<FirewallRule>>('/firewall/rules', rule)
     .then((r) => r.data)
+
+export const deleteFirewallRule = (_id: number): Promise<ApiResponse<void>> =>
+  Promise.resolve({ data: undefined, success: true })

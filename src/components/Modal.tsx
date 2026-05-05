@@ -11,6 +11,7 @@ interface ModalProps {
   cancelLabel?: string
   confirmVariant?: 'primary' | 'danger'
   loading?: boolean
+  footer?: ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
@@ -88,7 +89,11 @@ export default function Modal({
         <div className="px-6 py-4">{children}</div>
 
         {/* Footer */}
-        {onConfirm && (
+        {footer ? (
+          <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+            {footer}
+          </div>
+        ) : onConfirm ? (
           <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
             <Button variant="secondary" onClick={onClose} disabled={loading}>
               {cancelLabel}
@@ -101,7 +106,7 @@ export default function Modal({
               {confirmLabel}
             </Button>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )

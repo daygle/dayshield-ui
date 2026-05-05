@@ -184,6 +184,7 @@ export default function Gateways() {
         <Table
           columns={columns}
           data={rows}
+          keyField="name"
           loading={loading}
           emptyMessage="No gateways configured. Add one to define your upstream routing."
         />

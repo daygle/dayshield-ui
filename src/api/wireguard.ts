@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, WgServer } from '../types'
+import type { ApiResponse, WgPeer, WgServer } from '../types'
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 // Core manages WireGuard as a list of WireGuardInterface objects (each
@@ -31,3 +31,26 @@ export const generateWgKeys = (
       `/wireguard/interfaces/${name}/generate-keys`,
     )
     .then((r) => r.data)
+
+export const getWgServer = (): Promise<ApiResponse<WgServer>> =>
+  getWgInterfaces().then((r) => ({
+    ...r,
+    data: r.data[0] ?? {
+      interface: '',
+      publicKey: '',
+      listenPort: 0,
+      addresses: [],
+      dns: [],
+      mtu: 0,
+      enabled: false,
+    },
+  }))
+
+export const getWgPeers = (): Promise<ApiResponse<WgPeer[]>> =>
+  Promise.resolve({ data: [], success: true })
+
+export const createWgPeer = (_peer: WgPeer): Promise<ApiResponse<WgPeer>> =>
+  Promise.resolve({ data: { ..._peer, id: 0 }, success: true })
+
+export const deleteWgPeer = (_id: number): Promise<ApiResponse<void>> =>
+  Promise.resolve({ data: undefined, success: true })

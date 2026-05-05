@@ -119,7 +119,7 @@ export default function Dashboard() {
   )
 
   const hasCriticalAlerts =
-    sec.data?.suricata_alerts.some((a) => a.severity === 'high') ?? false
+    (sec.data?.suricata_alert_rate ?? 0) > 10
 
   return (
     <div className="space-y-6">
@@ -299,36 +299,11 @@ export default function Dashboard() {
           {sec.isError && <ErrorBanner message={sec.error?.message ?? 'Failed to load security status'} />}
           {sec.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
           {sec.data && (
-            sec.data.suricata_alerts.length === 0 ? (
-              <p className="text-sm text-gray-400">No recent alerts</p>
-            ) : (
-              <div className="overflow-x-auto -mx-2">
-                <table className="min-w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left px-2 py-1.5 text-gray-500 font-medium">Time</th>
-                      <th className="text-left px-2 py-1.5 text-gray-500 font-medium">Src IP</th>
-                      <th className="text-left px-2 py-1.5 text-gray-500 font-medium">Signature</th>
-                      <th className="text-left px-2 py-1.5 text-gray-500 font-medium">Sev</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {sec.data.suricata_alerts.map((alert) => (
-                      <tr key={alert.id} className="hover:bg-gray-50">
-                        <td className="px-2 py-1.5 text-gray-500 whitespace-nowrap">
-                          {new Date(alert.timestamp).toLocaleTimeString()}
-                        </td>
-                        <td className="px-2 py-1.5 font-mono text-gray-700">{alert.srcIp}</td>
-                        <td className="px-2 py-1.5 text-gray-700 max-w-[180px] truncate" title={alert.signature}>
-                          {alert.signature}
-                        </td>
-                        <td className="px-2 py-1.5">{severityBadge(alert.severity)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
+            <div className="space-y-3">
+              <div className="text-sm text-gray-500">Suricata alert rate</div>
+              <div className="text-2xl font-semibold text-gray-900">{sec.data.suricata_alert_rate.toFixed(1)} alerts/sec</div>
+              <p className="text-sm text-gray-500">Detailed alert data is unavailable in this version.</p>
+            </div>
           )}
         </Card>
 
@@ -337,40 +312,11 @@ export default function Dashboard() {
           {sec.isError && <ErrorBanner message={sec.error?.message ?? 'Failed to load security status'} />}
           {sec.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
           {sec.data && (
-            sec.data.crowdsec_decisions.length === 0 ? (
-              <p className="text-sm text-gray-400">No active decisions</p>
-            ) : (
-              <div className="overflow-x-auto -mx-2">
-                <table className="min-w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left px-2 py-1.5 text-gray-500 font-medium">Value</th>
-                      <th className="text-left px-2 py-1.5 text-gray-500 font-medium">Type</th>
-                      <th className="text-left px-2 py-1.5 text-gray-500 font-medium">Origin</th>
-                      <th className="text-left px-2 py-1.5 text-gray-500 font-medium">Duration</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {sec.data.crowdsec_decisions.map((d) => (
-                      <tr key={d.id} className="hover:bg-gray-50">
-                        <td className="px-2 py-1.5 font-mono text-gray-700">{d.value}</td>
-                        <td className="px-2 py-1.5">
-                          {d.type === 'ban' ? (
-                            <Badge variant="red">Ban</Badge>
-                          ) : d.type === 'captcha' ? (
-                            <Badge variant="yellow">Captcha</Badge>
-                          ) : (
-                            <Badge variant="blue">Throttle</Badge>
-                          )}
-                        </td>
-                        <td className="px-2 py-1.5 text-gray-500">{d.origin}</td>
-                        <td className="px-2 py-1.5 text-gray-500">{d.duration}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
+            <div className="space-y-3">
+              <div className="text-sm text-gray-500">Active CrowdSec decisions</div>
+              <div className="text-2xl font-semibold text-gray-900">{sec.data.crowdsec_active_decisions}</div>
+              <p className="text-sm text-gray-500">Detailed decision rows are unavailable in this version.</p>
+            </div>
           )}
         </Card>
       </div>

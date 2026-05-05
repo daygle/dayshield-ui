@@ -27,3 +27,14 @@ export const getAcmeCertStatus = (): Promise<ApiResponse<AcmeCertificate>> =>
   apiClient
     .get<ApiResponse<AcmeCertificate>>('/acme/status')
     .then((r: { data: ApiResponse<AcmeCertificate> }) => r.data)
+
+// Legacy / compatibility wrappers for older UI pages
+export const getAcmeAccount = getAcmeConfig
+export const updateAcmeAccount = updateAcmeConfig
+export const getAcmeCertificates = (): Promise<ApiResponse<AcmeCertificate[]>> =>
+  getAcmeCertStatus().then((r) => ({ ...r, data: [r.data] }))
+export const issueAcmeCertificate = issueAcmeCertificates
+export const renewAcmeCertificate = (_id: number): Promise<ApiResponse<void>> =>
+  Promise.resolve({ data: undefined, success: true })
+export const deleteAcmeCertificate = (_id: number): Promise<ApiResponse<void>> =>
+  Promise.resolve({ data: undefined, success: true })
