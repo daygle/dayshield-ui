@@ -6,7 +6,6 @@ import { useAcmeStatus } from '../../hooks/useAcmeStatus'
 import Card from '../../components/Card'
 import ErrorBanner from '../../components/ErrorBanner'
 import Sparkline from '../../components/Sparkline'
-import type { SuricataSeverity } from '../../types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
