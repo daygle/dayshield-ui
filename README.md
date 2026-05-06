@@ -14,7 +14,7 @@ npm install
 npm run dev
 ```
 
-By default, Vite serves on `http://localhost:5173`.
+By default, Vite serves on `https://localhost:8443`.
 
 ## Build
 
