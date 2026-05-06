@@ -1,4 +1,4 @@
-import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig, type RawAxiosHeaders } from 'axios'
+import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig, type AxiosHeaders } from 'axios'
 
 const apiClient = axios.create({
   baseURL: '/',
@@ -50,7 +50,7 @@ apiClient.interceptors.request.use(
     const token = getAuthToken()
     if (token) {
       const headers = config.headers ?? {}
-      const rawHeaders = headers as RawAxiosHeaders
+      const rawHeaders = headers as AxiosHeaders
       rawHeaders.Authorization = `Bearer ${token}`
       config.headers = rawHeaders
     }
