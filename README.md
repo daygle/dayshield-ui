@@ -14,7 +14,21 @@ npm install
 npm run dev
 ```
 
-By default, Vite serves on `https://localhost:8443`.
+By default, the UI server listens on `http://localhost:8443`.
+
+### Override the UI port
+
+Set `DAYSHIELD_UI_PORT` or `UI_PORT` before running the dev server or preview server:
+
+```sh
+DAYSHIELD_UI_PORT=8080 npm run dev
+```
+
+You can also put the setting in a `.env` file in the repository root:
+
+```env
+DAYSHIELD_UI_PORT=8080
+```
 
 ## Build
 
