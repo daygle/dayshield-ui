@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type AxiosError, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 
 const apiClient = axios.create({
   baseURL: '/',
@@ -46,20 +46,23 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
 
 // Attach Bearer token on every request when one is available
 apiClient.interceptors.request.use(
-  (config) => {
+  (config: AxiosRequestConfig) => {
     const token = getAuthToken()
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      config.headers = {
+        ...(config.headers ?? {}),
+        Authorization: `Bearer ${token}`,
+      }
     }
     return config
   },
-  (error) => Promise.reject(error),
+  (error: AxiosError) => Promise.reject(error),
 )
 
 // Response interceptor for error normalisation
 apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response: AxiosResponse) => response,
+  (error: AxiosError) => {
     if (error.response?.status === 401) {
       unauthorizedHandler?.()
     }
