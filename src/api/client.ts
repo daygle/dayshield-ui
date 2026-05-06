@@ -1,4 +1,4 @@
-import axios, { type AxiosError, type AxiosRequestConfig, type AxiosResponse } from 'axios'
+import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig, type RawAxiosHeaders } from 'axios'
 
 const apiClient = axios.create({
   baseURL: '/',
@@ -46,13 +46,13 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
 
 // Attach Bearer token on every request when one is available
 apiClient.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = getAuthToken()
     if (token) {
-      config.headers = {
-        ...(config.headers ?? {}),
-        Authorization: `Bearer ${token}`,
-      }
+      const headers = config.headers ?? {}
+      const rawHeaders = headers as RawAxiosHeaders
+      rawHeaders.Authorization = `Bearer ${token}`
+      config.headers = rawHeaders
     }
     return config
   },
@@ -62,12 +62,13 @@ apiClient.interceptors.request.use(
 // Response interceptor for error normalisation
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
-  (error: AxiosError) => {
+  (error: AxiosError<unknown>) => {
     if (error.response?.status === 401) {
       unauthorizedHandler?.()
     }
+    const responseData = error.response?.data as Record<string, unknown> | undefined
     const message =
-      error.response?.data?.message ?? error.message ?? 'Unknown error'
+      (responseData?.message as string | undefined) ?? error.message ?? 'Unknown error'
     return Promise.reject(new Error(message))
   },
 )
