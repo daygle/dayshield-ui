@@ -11,14 +11,17 @@ interface TestEmailButtonProps {
 
 export default function TestEmailButton({ defaultRecipient, disabled, onResult }: TestEmailButtonProps) {
   const [recipient, setRecipient] = useState(defaultRecipient || '')
+  const [userModified, setUserModified] = useState(false)
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
 
   // Sync local recipient when the async-loaded defaultRecipient prop changes,
-  // but only if the user has not already typed their own value.
+  // but only if the user has not explicitly modified the field themselves.
   useEffect(() => {
-    setRecipient((prev) => (prev === '' || prev === defaultRecipient) ? (defaultRecipient || '') : prev)
-  }, [defaultRecipient])
+    if (!userModified) {
+      setRecipient(defaultRecipient || '')
+    }
+  }, [defaultRecipient, userModified])
 
   const handle = () => {
     const email = recipient.trim()
@@ -50,7 +53,7 @@ export default function TestEmailButton({ defaultRecipient, disabled, onResult }
           value={recipient}
           disabled={disabled || sending}
           className="flex-1"
-          onChange={(e) => setRecipient(e.target.value)}
+          onChange={(e) => { setUserModified(true); setRecipient(e.target.value) }}
         />
         <Button
           variant="secondary"
