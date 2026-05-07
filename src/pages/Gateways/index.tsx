@@ -47,6 +47,7 @@ export default function Gateways() {
   const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<Gateway>(defaultForm)
+  const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleteName, setDeleteName] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -66,6 +67,7 @@ export default function Gateways() {
 
   const openAdd = () => {
     setForm(defaultForm)
+    setIsEditing(false)
     setModalOpen(true)
   }
 
@@ -79,6 +81,7 @@ export default function Gateways() {
       weight: row.weight,
       enabled: row.enabled,
     })
+    setIsEditing(true)
     setModalOpen(true)
   }
 
@@ -213,7 +216,7 @@ export default function Gateways() {
               placeholder="e.g. WAN_GW"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              disabled={!!form.name && modalOpen}
+              disabled={isEditing}
             />
           </FormField>
           <FormField label="Description">

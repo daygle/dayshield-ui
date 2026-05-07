@@ -64,7 +64,7 @@ export default function DNS() {
   const [hostModalOpen, setHostModalOpen] = useState(false)
   const [hostForm, setHostForm] = useState<Omit<DnsHostOverride, 'id'>>(defaultHostForm)
   const [hostSaving, setHostSaving] = useState(false)
-  const [hostDeleteId, setHostDeleteId] = useState<number | null>(null)
+  const [hostDeleteId, setHostDeleteId] = useState<string | null>(null)
   const [hostDeleting, setHostDeleting] = useState(false)
 
   const loadAll = () => {
@@ -150,7 +150,7 @@ export default function DNS() {
       header: '',
       className: 'w-16 text-right',
       render: (row) => (
-        <Button variant="danger" size="sm" onClick={() => setHostDeleteId(row.id as number)}>
+        <Button variant="danger" size="sm" onClick={() => setHostDeleteId(`${row.hostname as string}.${row.domain as string}`)}>
           Delete
         </Button>
       ),

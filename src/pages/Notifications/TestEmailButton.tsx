@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { sendTestEmail } from '../../api/notifications'
 import Button from '../../components/Button'
 import FormField from '../../components/FormField'
@@ -13,6 +13,12 @@ export default function TestEmailButton({ defaultRecipient, disabled, onResult }
   const [recipient, setRecipient] = useState(defaultRecipient || '')
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+
+  // Sync local recipient when the async-loaded defaultRecipient prop changes,
+  // but only if the user has not already typed their own value.
+  useEffect(() => {
+    setRecipient((prev) => (prev === '' || prev === defaultRecipient) ? (defaultRecipient || '') : prev)
+  }, [defaultRecipient])
 
   const handle = () => {
     const email = recipient.trim()

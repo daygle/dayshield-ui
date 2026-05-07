@@ -16,5 +16,7 @@ export const createFirewallRule = (
     .post<ApiResponse<FirewallRule>>('/firewall/rules', rule)
     .then((r: { data: ApiResponse<FirewallRule> }) => r.data)
 
-export const deleteFirewallRule = (_id: number): Promise<ApiResponse<void>> =>
-  Promise.resolve({ data: undefined, success: true })
+export const deleteFirewallRule = (id: number): Promise<ApiResponse<void>> =>
+  apiClient
+    .delete<ApiResponse<void>>(`/firewall/rules/${id}`)
+    .then((r: { data: ApiResponse<void> }) => r.data)

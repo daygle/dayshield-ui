@@ -20,7 +20,7 @@ export const createWgInterface = (
 
 export const deleteWgInterface = (name: string): Promise<ApiResponse<void>> =>
   apiClient
-    .delete<ApiResponse<void>>(`/wireguard/interfaces/${name}`)
+    .delete<ApiResponse<void>>(`/wireguard/interfaces/${encodeURIComponent(name)}`)
     .then((r) => r.data)
 
 export const generateWgKeys = (
@@ -28,7 +28,7 @@ export const generateWgKeys = (
 ): Promise<ApiResponse<{ private_key: string; public_key: string }>> =>
   apiClient
     .post<ApiResponse<{ private_key: string; public_key: string }>>(
-      `/wireguard/interfaces/${name}/generate-keys`,
+      `/wireguard/interfaces/${encodeURIComponent(name)}/generate-keys`,
     )
     .then((r) => r.data)
 
@@ -52,7 +52,7 @@ export const getWgPeers = (): Promise<ApiResponse<WgPeer[]>> =>
 export const createWgPeer = (
   _peer: Omit<WgPeer, 'id'>,
 ): Promise<ApiResponse<WgPeer>> =>
-  Promise.resolve({ data: { ..._peer, id: 0 }, success: true })
+  Promise.reject(new Error('WireGuard peer management is not supported by the current backend'))
 
 export const deleteWgPeer = (_id: number): Promise<ApiResponse<void>> =>
-  Promise.resolve({ data: undefined, success: true })
+  Promise.reject(new Error('WireGuard peer management is not supported by the current backend'))

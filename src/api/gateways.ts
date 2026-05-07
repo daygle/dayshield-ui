@@ -13,5 +13,5 @@ export const upsertGateway = (gateway: Gateway): Promise<ApiResponse<{ ok: boole
 
 export const deleteGateway = (name: string): Promise<ApiResponse<{ ok: boolean }>> =>
   apiClient
-    .delete<ApiResponse<{ ok: boolean }>>(`/gateways/${name}`)
+    .delete<ApiResponse<{ ok: boolean }>>(`/gateways/${encodeURIComponent(name)}`)
     .then((r) => r.data)
