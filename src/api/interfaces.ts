@@ -23,5 +23,5 @@ export const updateInterface = (
 
 export const deleteInterface = (name: string): Promise<ApiResponse<void>> =>
   apiClient
-    .delete<ApiResponse<void>>(`/interfaces/${name}`)
+    .delete<ApiResponse<void>>(`/interfaces/${encodeURIComponent(name)}`)
     .then((r) => r.data)

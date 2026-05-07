@@ -29,7 +29,7 @@ export const createDhcpPool = (
 
 export const deleteDhcpPool = (id: string): Promise<ApiResponse<void>> =>
   apiClient
-    .delete<ApiResponse<void>>(`/dhcp/pools/${id}`)
+    .delete<ApiResponse<void>>(`/dhcp/pools/${encodeURIComponent(id)}`)
     .then((r) => r.data)
 
 // ── Static leases ─────────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ export const createDhcpStaticLease = (
 
 export const deleteDhcpStaticLease = (id: string): Promise<ApiResponse<void>> =>
   apiClient
-    .delete<ApiResponse<void>>(`/dhcp/static-leases/${id}`)
+    .delete<ApiResponse<void>>(`/dhcp/static-leases/${encodeURIComponent(id)}`)
     .then((r) => r.data)
 
 // ── Active leases ─────────────────────────────────────────────────────────────

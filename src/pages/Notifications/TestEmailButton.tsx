@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { sendTestEmail } from '../../api/notifications'
 import Button from '../../components/Button'
 import FormField from '../../components/FormField'
@@ -13,6 +13,13 @@ export default function TestEmailButton({ defaultRecipient, disabled, onResult }
   const [recipient, setRecipient] = useState(defaultRecipient || '')
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+
+  // Sync the field when the parent's default recipient changes (e.g. after
+  // async config load or after the recipients list is saved), but only when
+  // the user hasn't already typed a custom value.
+  useEffect(() => {
+    setRecipient((current) => (current === '' ? defaultRecipient || '' : current))
+  }, [defaultRecipient])
 
   const handle = () => {
     const email = recipient.trim()
