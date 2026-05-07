@@ -15,18 +15,22 @@ const apiClient = axios.create({
 
 const TOKEN_KEY = 'dayshield_token'
 
-/** Persist (or remove) the JWT token in localStorage. */
+/**
+ * Persist (or remove) the JWT token in sessionStorage.
+ * sessionStorage is scoped to the browser tab and is cleared when the tab
+ * closes, limiting the window of exposure compared to localStorage.
+ */
 export function setAuthToken(token: string | null): void {
   if (token) {
-    localStorage.setItem(TOKEN_KEY, token)
+    sessionStorage.setItem(TOKEN_KEY, token)
   } else {
-    localStorage.removeItem(TOKEN_KEY)
+    sessionStorage.removeItem(TOKEN_KEY)
   }
 }
 
 /** Read the stored JWT token, or null if none. */
 export function getAuthToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
+  return sessionStorage.getItem(TOKEN_KEY)
 }
 
 // ---------------------------------------------------------------------------

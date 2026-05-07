@@ -25,6 +25,10 @@ export const getCrowdSecDecisions = (): Promise<ApiResponse<CrowdSecDecision[]>>
 // Legacy / compatibility wrappers for older UI pages
 export const getCrowdSecStatus = getCrowdSecConfig
 export const getCrowdSecAlerts = (): Promise<ApiResponse<CrowdSecAlert[]>> =>
-  Promise.resolve({ data: [], success: true })
-export const deleteCrowdSecDecision = (_id: number): Promise<ApiResponse<void>> =>
-  Promise.resolve({ data: undefined, success: true })
+  apiClient
+    .get<ApiResponse<CrowdSecAlert[]>>('/crowdsec/alerts')
+    .then((r) => r.data)
+export const deleteCrowdSecDecision = (id: number): Promise<ApiResponse<void>> =>
+  apiClient
+    .delete<ApiResponse<void>>(`/crowdsec/decisions/${id}`)
+    .then((r) => r.data)
