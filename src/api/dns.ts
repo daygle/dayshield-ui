@@ -1,8 +1,7 @@
 import apiClient from './client'
-import type { ApiResponse, DnsConfig, DnsForwarder, DnsHostOverride } from '../types'
+import type { ApiResponse, DnsConfig, DnsHostOverride, DnsDomainOverride } from '../types'
 
 // ── Config ────────────────────────────────────────────────────────────────────
-// Core DNS API: GET/POST /dns/config, GET/POST/DELETE /dns/overrides
 
 export const getDnsConfig = (): Promise<ApiResponse<DnsConfig>> =>
   apiClient
@@ -14,19 +13,23 @@ export const updateDnsConfig = (config: Partial<DnsConfig>): Promise<ApiResponse
     .post<ApiResponse<DnsConfig>>('/dns/config', config)
     .then((r) => r.data)
 
-// ── Overrides (host + domain) ─────────────────────────────────────────────────
-// Returns { host_overrides: DnsHostOverride[], domain_overrides: DnsHostOverride[] }
+// ── Overrides ────────────────────────────────────────────────────────────────
 
-export const getDnsOverrides = (): Promise<ApiResponse<{ host_overrides: DnsHostOverride[]; domain_overrides: DnsHostOverride[] }>> =>
+export interface DnsOverridesData {
+  host_overrides: DnsHostOverride[]
+  domain_overrides: DnsDomainOverride[]
+}
+
+export const getDnsOverrides = (): Promise<ApiResponse<DnsOverridesData>> =>
   apiClient
-    .get<ApiResponse<{ host_overrides: DnsHostOverride[]; domain_overrides: DnsHostOverride[] }>>('/dns/overrides')
+    .get<ApiResponse<DnsOverridesData>>('/dns/overrides')
     .then((r) => r.data)
 
 export const createDnsOverride = (
   override: { kind: 'host' | 'domain'; name: string; target: string },
-): Promise<ApiResponse<DnsHostOverride>> =>
+): Promise<ApiResponse<DnsHostOverride | DnsDomainOverride>> =>
   apiClient
-    .post<ApiResponse<DnsHostOverride>>('/dns/overrides', override)
+    .post<ApiResponse<DnsHostOverride | DnsDomainOverride>>('/dns/overrides', override)
     .then((r) => r.data)
 
 export const deleteDnsOverride = (name: string): Promise<ApiResponse<void>> =>
@@ -34,25 +37,28 @@ export const deleteDnsOverride = (name: string): Promise<ApiResponse<void>> =>
     .delete<ApiResponse<void>>(`/dns/overrides/${encodeURIComponent(name)}`)
     .then((r) => r.data)
 
-// Legacy / compatibility wrappers for older UI pages
-export const getDnsForwarders = (): Promise<ApiResponse<DnsForwarder[]>> =>
-  Promise.resolve({ data: [], success: true })
-
-export const createDnsForwarder = (_forwarder: Omit<DnsForwarder, 'id'>): Promise<ApiResponse<DnsForwarder>> =>
-  Promise.reject(new Error('DNS forwarders are not supported by this backend. Configure upstream servers via the DNS settings.'))
-
-export const deleteDnsForwarder = (_id: number | string): Promise<ApiResponse<void>> =>
-  Promise.reject(new Error('DNS forwarders are not supported by this backend.'))
+// ── Convenience wrappers ──────────────────────────────────────────────────────
 
 export const getDnsHostOverrides = (): Promise<ApiResponse<DnsHostOverride[]>> =>
   getDnsOverrides().then((r) => ({ ...r, data: r.data.host_overrides }))
 
-export const createDnsHostOverride = (override: Omit<DnsHostOverride, 'id'>): Promise<ApiResponse<DnsHostOverride>> =>
-  createDnsOverride({ kind: 'host', name: `${override.hostname}.${override.domain}`, target: override.ipv4 ?? override.ipv6 ?? '' })
+export const getDnsDomainOverrides = (): Promise<ApiResponse<DnsDomainOverride[]>> =>
+  getDnsOverrides().then((r) => ({ ...r, data: r.data.domain_overrides }))
 
-/**
- * Delete a host override by its fully-qualified name (hostname.domain).
- * Pass the result of `${override.hostname}.${override.domain}`.
- */
-export const deleteDnsHostOverride = (name: string): Promise<ApiResponse<void>> =>
-  deleteDnsOverride(name)
+export const createDnsHostOverride = (
+  hostname: string,
+  address: string,
+): Promise<ApiResponse<DnsHostOverride | DnsDomainOverride>> =>
+  createDnsOverride({ kind: 'host', name: hostname, target: address })
+
+export const createDnsDomainOverride = (
+  domain: string,
+  forwardTo: string,
+): Promise<ApiResponse<DnsHostOverride | DnsDomainOverride>> =>
+  createDnsOverride({ kind: 'domain', name: domain, target: forwardTo })
+
+export const deleteDnsHostOverride = (hostname: string): Promise<ApiResponse<void>> =>
+  deleteDnsOverride(hostname)
+
+export const deleteDnsDomainOverride = (domain: string): Promise<ApiResponse<void>> =>
+  deleteDnsOverride(domain)

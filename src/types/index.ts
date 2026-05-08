@@ -85,33 +85,37 @@ export interface Alias {
 }
 
 // ── DNS ───────────────────────────────────────────────────────────────────────
-
-export type DnsMode = 'resolver' | 'forwarder'
+// Fields use snake_case to match Unbound/backend serialization directly.
 
 export interface DnsConfig {
   enabled: boolean
-  mode: DnsMode
-  dnssec: boolean
-  listenPort: number
-  allowedNetworks: string[]
-  blockPrivateReverse: boolean
-}
-
-export interface DnsForwarder {
-  id: number
-  address: string
+  /** Interface names or IP addresses Unbound binds to (e.g. ["eth1", "127.0.0.1"]). */
+  listen_addresses: string[]
+  /** UDP/TCP port Unbound listens on. Default 53. */
   port: number
-  domain: string   // empty string = all domains
-  description: string
+  /** Upstream forwarder IPs. Empty = full recursion mode. */
+  forwarders: string[]
+  dnssec: boolean
+  /** Static local records embedded in the DNS config (managed separately via /dns/overrides). */
+  local_records: DnsLocalRecord[]
 }
 
+export interface DnsLocalRecord {
+  name: string         // hostname or FQDN
+  record_type: string  // 'A' | 'AAAA' | 'CNAME' | 'PTR' | 'MX' | 'TXT'
+  value: string
+}
+
+/** Host override: maps a fully-qualified hostname to an IP address. */
 export interface DnsHostOverride {
-  id: number
-  hostname: string
-  domain: string
-  ipv4?: string
-  ipv6?: string
-  description: string
+  hostname: string   // FQDN e.g. "myserver.home.lan"
+  address: string    // IPv4 or IPv6
+}
+
+/** Domain override: forwards all queries for a domain to a specific resolver. */
+export interface DnsDomainOverride {
+  domain: string     // e.g. "internal.corp"
+  forward_to: string // IP of the upstream DNS to forward to
 }
 
 // ── DHCP ─────────────────────────────────────────────────────────────────────
