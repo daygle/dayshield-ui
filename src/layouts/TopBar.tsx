@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import Button from '../components/Button'
@@ -43,11 +43,15 @@ export default function TopBar() {
           Connected to core
         </span>
 
-        {/* Username */}
+        {/* Username + change-password link */}
         {user && (
-          <span className="text-xs text-gray-500 hidden sm:inline">
+          <Link
+            to="/change-password"
+            className="text-xs text-gray-500 hover:text-blue-600 hidden sm:inline"
+            title="Change password"
+          >
             {user.username}
-          </span>
+          </Link>
         )}
 
         {/* User avatar */}
