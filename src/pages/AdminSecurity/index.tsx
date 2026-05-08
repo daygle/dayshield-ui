@@ -87,7 +87,7 @@ export default function AdminSecurity() {
     min: number,
     help?: string,
   ) => (
-    <FormField label={label} help={help}>
+    <FormField label={label} hint={help}>
       <input
         type="number"
         min={min}
