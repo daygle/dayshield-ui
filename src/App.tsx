@@ -20,6 +20,7 @@ import Backup from './pages/Backup'
 import Notifications from './pages/Notifications'
 import NTP from './pages/NTP'
 import ChangePasswordPage from './pages/ChangePasswordPage'
+import AdminSecurity from './pages/AdminSecurity'
 
 function App() {
   return (
@@ -56,6 +57,7 @@ function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="ntp" element={<NTP />} />
           <Route path="change-password" element={<ChangePasswordPage />} />
+          <Route path="admin-security" element={<AdminSecurity />} />
         </Route>
       </Routes>
     </BrowserRouter>

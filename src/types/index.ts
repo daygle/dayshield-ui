@@ -585,3 +585,15 @@ export interface MetricsHistory {
   points: MetricsHistoryPoint[]
   seconds: number
 }
+
+// ── Admin security settings ───────────────────────────────────────────────────
+
+export interface AdminSecuritySettings {
+  session_timeout_minutes: number
+  max_login_attempts: number
+  lockout_duration_minutes: number
+  min_password_length: number
+  require_uppercase: boolean
+  require_number: boolean
+  require_special: boolean
+}
