@@ -6,9 +6,10 @@ import {
   deleteFirewallRule,
   getFirewallSettings,
   updateFirewallSettings,
+  getFirewallStats,
 } from '../../api/firewall'
 import { getAliases, createAlias, deleteAlias } from '../../api/aliases'
-import type { Alias, AliasType, FirewallRule, FirewallSettings } from '../../types'
+import type { Alias, AliasType, FirewallRule, FirewallRuleStats, FirewallSchedule, FirewallSettings } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
@@ -29,6 +30,17 @@ const defaultRuleForm: Partial<FirewallRule> = {
   interface: null,
   log: false,
   priority: 100,
+  enabled: true,
+  schedule: null,
+}
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function formatBytes(b: number): string {
+  if (b < 1024) return `${b} B`
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`
+  if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`
+  return `${(b / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 
 const defaultAliasForm: Alias = {
@@ -104,12 +116,20 @@ export default function Firewall() {
   const [allowedSourcesInput, setAllowedSourcesInput] = useState('')
   const [managementPortsInput, setManagementPortsInput] = useState('22, 443, 8443')
 
+  const [stats, setStats] = useState<FirewallRuleStats[]>([])
+
   const loadRules = () => {
     setRulesLoading(true)
     getFirewallRules()
       .then((res) => setRules((res.data as RuleRow[]) ?? []))
       .catch((err: Error) => setRulesError(err.message))
       .finally(() => setRulesLoading(false))
+  }
+
+  const loadStats = () => {
+    getFirewallStats()
+      .then((res) => setStats((res.data as FirewallRuleStats[]) ?? []))
+      .catch(() => { /* stats are best-effort */ })
   }
 
   const loadAliases = () => {
@@ -130,6 +150,7 @@ export default function Firewall() {
     loadRules()
     loadAliases()
     loadSettings()
+    loadStats()
   }, [])
 
   const openSettingsModal = () => {
@@ -175,6 +196,7 @@ export default function Firewall() {
         setRuleModalOpen(false)
         setRuleForm(defaultRuleForm)
         loadRules()
+        loadStats()
       })
       .catch((err: Error) => setRulesError(err.message))
       .finally(() => setRuleSaving(false))
@@ -187,9 +209,16 @@ export default function Firewall() {
       .then(() => {
         setEditRule(null)
         loadRules()
+        loadStats()
       })
       .catch((err: Error) => setRulesError(err.message))
       .finally(() => setEditSaving(false))
+  }
+
+  const handleToggleRule = (rule: FirewallRule) => {
+    updateFirewallRule(rule.id, { ...rule, enabled: !rule.enabled })
+      .then(() => loadRules())
+      .catch((err: Error) => setRulesError(err.message))
   }
 
   const handleDeleteRule = () => {
@@ -229,6 +258,22 @@ export default function Firewall() {
   }
 
   const ruleColumns: Column<RuleRow>[] = [
+    {
+      key: 'enabled',
+      header: '',
+      className: 'w-8',
+      render: (row) => (
+        <button
+          title={row.enabled ? 'Disable rule' : 'Enable rule'}
+          onClick={() => handleToggleRule(row as unknown as FirewallRule)}
+          className={`w-4 h-4 rounded-full border-2 transition-colors ${
+            row.enabled
+              ? 'bg-green-500 border-green-500'
+              : 'bg-gray-200 border-gray-300'
+          }`}
+        />
+      ),
+    },
     { key: 'priority', header: '#', className: 'w-10' },
     { key: 'description', header: 'Description' },
     { key: 'action', header: 'Action', render: (row) => actionBadge(row.action as FirewallRule['action']) },
@@ -236,6 +281,39 @@ export default function Firewall() {
     { key: 'source', header: 'Source', render: (row) => (row.source as string) ?? 'any' },
     { key: 'destination', header: 'Destination', render: (row) => (row.destination as string) ?? 'any' },
     { key: 'interface', header: 'Interface', render: (row) => (row.interface as string) ?? 'any' },
+    {
+      key: 'schedule',
+      header: 'Schedule',
+      render: (row) => {
+        const sched = row.schedule as FirewallSchedule | null
+        if (!sched) return <span className="text-gray-400 text-xs">always</span>
+        const dayLabels = sched.days.length > 0
+          ? sched.days.map((d) => DAY_NAMES[d]).join(',')
+          : 'all'
+        const timeLabel = sched.time_start || sched.time_end
+          ? `${sched.time_start ?? '00:00'}\u2013${sched.time_end ?? '23:59'}`
+          : null
+        return (
+          <span className="inline-block px-1.5 py-0.5 rounded text-xs bg-yellow-50 text-yellow-800">
+            {dayLabels}{timeLabel ? ` ${timeLabel}` : ''}
+          </span>
+        )
+      },
+    },
+    {
+      key: 'counters',
+      header: 'Hits',
+      render: (row) => {
+        const s = stats.find((x) => x.id === row.id)
+        if (!s) return <span className="text-gray-400 text-xs">—</span>
+        return (
+          <span className="text-xs text-gray-600">
+            {s.packets.toLocaleString()} pkts<br />
+            {formatBytes(s.bytes)}
+          </span>
+        )
+      },
+    },
     {
       key: 'actions',
       header: '',
@@ -338,9 +416,14 @@ export default function Firewall() {
         title="Firewall Rules"
         subtitle="Define allow/deny rules evaluated top-to-bottom"
         actions={
-          <Button size="sm" onClick={() => setRuleModalOpen(true)}>
-            + Add Rule
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="secondary" onClick={loadStats}>
+              Refresh Counters
+            </Button>
+            <Button size="sm" onClick={() => setRuleModalOpen(true)}>
+              + Add Rule
+            </Button>
+          </div>
         }
       >
         {rulesError && <p className="text-sm text-red-600 mb-3">{rulesError}</p>}
@@ -557,6 +640,56 @@ export default function Firewall() {
             value={ruleForm.destination_port != null ? String(ruleForm.destination_port) : ''}
             onChange={(e) => setRuleForm({ ...ruleForm, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
           />
+
+          {/* Enabled toggle */}
+          <label className="flex items-center gap-3 col-span-2">
+            <input
+              type="checkbox"
+              checked={ruleForm.enabled ?? true}
+              onChange={(e) => setRuleForm({ ...ruleForm, enabled: e.target.checked })}
+            />
+            <span className="text-sm text-gray-700">Rule enabled</span>
+          </label>
+
+          {/* Schedule */}
+          <div className="col-span-2 border rounded-lg p-3 space-y-3">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Schedule (optional)</p>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Days active (leave all unchecked = every day)</p>
+              <div className="flex gap-3 flex-wrap">
+                {DAY_NAMES.map((name, idx) => (
+                  <label key={idx} className="flex items-center gap-1 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={(ruleForm.schedule?.days ?? []).includes(idx)}
+                      onChange={(e) => {
+                        const days = [...(ruleForm.schedule?.days ?? [])]
+                        if (e.target.checked) { if (!days.includes(idx)) days.push(idx) }
+                        else { days.splice(days.indexOf(idx), 1) }
+                        days.sort()
+                        setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), days } })
+                      }}
+                    />
+                    {name}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField id="rule-sched-ts" label="Time start (HH:MM)" placeholder="e.g. 08:00"
+                value={ruleForm.schedule?.time_start ?? ''}
+                onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_start: e.target.value || null } })} />
+              <FormField id="rule-sched-te" label="Time end (HH:MM)" placeholder="e.g. 17:00"
+                value={ruleForm.schedule?.time_end ?? ''}
+                onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_end: e.target.value || null } })} />
+              <FormField id="rule-sched-ds" label="Date start (YYYY-MM-DD)" placeholder="e.g. 2026-01-01"
+                value={ruleForm.schedule?.date_start ?? ''}
+                onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_start: e.target.value || null } })} />
+              <FormField id="rule-sched-de" label="Date end (YYYY-MM-DD)" placeholder="e.g. 2026-12-31"
+                value={ruleForm.schedule?.date_end ?? ''}
+                onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_end: e.target.value || null } })} />
+            </div>
+          </div>
         </div>
       </Modal>
 
@@ -642,6 +775,56 @@ export default function Firewall() {
               value={editRule.destination_port != null ? String(editRule.destination_port) : ''}
               onChange={(e) => setEditRule({ ...editRule, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
             />
+
+            {/* Enabled toggle */}
+            <label className="flex items-center gap-3 col-span-2">
+              <input
+                type="checkbox"
+                checked={editRule.enabled}
+                onChange={(e) => setEditRule({ ...editRule, enabled: e.target.checked })}
+              />
+              <span className="text-sm text-gray-700">Rule enabled</span>
+            </label>
+
+            {/* Schedule */}
+            <div className="col-span-2 border rounded-lg p-3 space-y-3">
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Schedule (optional)</p>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Days active (leave all unchecked = every day)</p>
+                <div className="flex gap-3 flex-wrap">
+                  {DAY_NAMES.map((name, idx) => (
+                    <label key={idx} className="flex items-center gap-1 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={(editRule.schedule?.days ?? []).includes(idx)}
+                        onChange={(e) => {
+                          const days = [...(editRule.schedule?.days ?? [])]
+                          if (e.target.checked) { if (!days.includes(idx)) days.push(idx) }
+                          else { days.splice(days.indexOf(idx), 1) }
+                          days.sort()
+                          setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), days } })
+                        }}
+                      />
+                      {name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField id="edit-sched-ts" label="Time start (HH:MM)" placeholder="e.g. 08:00"
+                  value={editRule.schedule?.time_start ?? ''}
+                  onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_start: e.target.value || null } })} />
+                <FormField id="edit-sched-te" label="Time end (HH:MM)" placeholder="e.g. 17:00"
+                  value={editRule.schedule?.time_end ?? ''}
+                  onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_end: e.target.value || null } })} />
+                <FormField id="edit-sched-ds" label="Date start (YYYY-MM-DD)" placeholder="e.g. 2026-01-01"
+                  value={editRule.schedule?.date_start ?? ''}
+                  onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_start: e.target.value || null } })} />
+                <FormField id="edit-sched-de" label="Date end (YYYY-MM-DD)" placeholder="e.g. 2026-12-31"
+                  value={editRule.schedule?.date_end ?? ''}
+                  onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_end: e.target.value || null } })} />
+              </div>
+            </div>
           </div>
         )}
       </Modal>

@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, FirewallRule, FirewallSettings } from '../types'
+import type { ApiResponse, FirewallRule, FirewallRuleStats, FirewallSettings } from '../types'
 
 function normalize<T>(payload: unknown): ApiResponse<T> {
   const p = payload as { success?: boolean; data?: T; message?: string; error?: string }
@@ -48,3 +48,8 @@ export const updateFirewallSettings = (
   apiClient
     .put<ApiResponse<FirewallSettings>>('/firewall/settings', settings)
     .then((r) => normalize<FirewallSettings>(r.data))
+
+export const getFirewallStats = (): Promise<ApiResponse<FirewallRuleStats[]>> =>
+  apiClient
+    .get<ApiResponse<FirewallRuleStats[]>>('/firewall/stats')
+    .then((r) => normalize<FirewallRuleStats[]>(r.data))

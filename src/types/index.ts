@@ -58,6 +58,20 @@ export type FirewallAction = 'accept' | 'drop' | 'reject' | 'jump' | 'log'
 export type FirewallProtocol = 'tcp' | 'udp' | 'icmp' | 'icmpv6' | 'any'
 export type FirewallChainPolicy = 'accept' | 'drop'
 
+/** Time-based schedule that gates when a firewall rule is active. */
+export interface FirewallSchedule {
+  /** Days of week: 0=Sunday … 6=Saturday.  Empty = all days. */
+  days: number[]
+  /** Start of active window, e.g. "08:00", or null for midnight. */
+  time_start: string | null
+  /** End of active window, e.g. "17:00", or null for midnight. */
+  time_end: string | null
+  /** First active date "YYYY-MM-DD", or null for no lower bound. */
+  date_start: string | null
+  /** Last active date "YYYY-MM-DD", or null for no upper bound. */
+  date_end: string | null
+}
+
 export interface FirewallRule {
   id: string               // UUID
   description: string | null
@@ -70,6 +84,15 @@ export interface FirewallRule {
   action: FirewallAction
   interface: string | null
   log: boolean
+  enabled: boolean
+  schedule: FirewallSchedule | null
+}
+
+/** Per-rule hit counter returned by GET /firewall/stats. */
+export interface FirewallRuleStats {
+  id: string
+  packets: number
+  bytes: number
 }
 
 export interface FirewallSettings {
