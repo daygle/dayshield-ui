@@ -48,6 +48,7 @@ export default function Gateways() {
   const [modalOpen, setModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [form, setForm] = useState<Gateway>(defaultForm)
+  const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleteName, setDeleteName] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
