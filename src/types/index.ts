@@ -54,36 +54,34 @@ export interface ListGatewaysResponse {
 
 // ── Firewall rules ────────────────────────────────────────────────────────────
 
-export type FirewallAction = 'allow' | 'deny' | 'reject'
-export type FirewallDirection = 'in' | 'out' | 'both'
-export type FirewallProtocol = 'tcp' | 'udp' | 'icmp' | 'any'
+export type FirewallAction = 'accept' | 'drop' | 'reject' | 'jump' | 'log'
+export type FirewallProtocol = 'tcp' | 'udp' | 'icmp' | 'icmpv6' | 'any'
 
 export interface FirewallRule {
-  id: number
-  enabled: boolean
-  description: string
+  id: string               // UUID
+  description: string | null
+  priority: number         // lower = higher priority; rules are sorted ascending
+  source: string | null    // CIDR or null for any
+  destination: string | null
+  protocol: FirewallProtocol | null
+  source_port: number | null
+  destination_port: number | null
   action: FirewallAction
-  direction: FirewallDirection
-  protocol: FirewallProtocol
-  source: string
-  sourcePort?: string
-  destination: string
-  destinationPort?: string
-  interface?: string
+  interface: string | null
   log: boolean
-  order: number
 }
 
 // ── Aliases ───────────────────────────────────────────────────────────────────
 
-export type AliasType = 'host' | 'network' | 'port' | 'url'
+export type AliasType = 'host' | 'network' | 'port' | 'urltable'
 
 export interface Alias {
-  id: number
   name: string
-  type: AliasType
-  description: string
-  content: string[]  // IPs / CIDRs / ports / URLs
+  alias_type: AliasType
+  description: string | null
+  values: string[]  // IPs / CIDRs / ports / URLs depending on alias_type
+  ttl: number | null
+  enabled: boolean
 }
 
 // ── DNS ───────────────────────────────────────────────────────────────────────
@@ -420,40 +418,38 @@ export interface NotifyTestResult {
 // ── NAT ───────────────────────────────────────────────────────────────────────
 
 export type NatOutboundMode = 'automatic' | 'hybrid' | 'manual'
-export type NatProtocol = 'tcp' | 'udp' | 'tcp/udp' | 'icmp' | 'any'
-export type NatReflectionMode = 'disabled' | 'purenat'
+export type NatProtocol = 'tcp' | 'udp' | 'tcp_udp' | 'any'
+export type NatRuleType = 'masquerade' | 'snat' | 'dnat'
+
+export interface NatTranslation {
+  address: string | null
+  port: number | null
+  port_end: number | null
+}
 
 export interface NatConfig {
-  outboundMode: NatOutboundMode
-  reflection: NatReflectionMode
+  outbound_mode: NatOutboundMode
+  wan_interfaces: string[]
+  rules: NatRule[]
+  nat_reflection: boolean
 }
 
 export interface NatRule {
-  id: number
+  id: string                        // UUID
   enabled: boolean
-  interface: string
-  source: string
-  sourcePort?: string
-  destination: string
-  destinationPort?: string
-  translation: string      // NAT target address / "interface" / "any"
-  translationPort?: string
+  description: string | null
+  rule_type: NatRuleType
+  interface: string | null          // outbound for masq/SNAT; inbound for DNAT
+  source: string | null             // IPv4 CIDR filter, null = any
+  destination: string | null
   protocol: NatProtocol
-  description: string
-  order: number
-}
-
-export interface PortForward {
-  id: number
-  enabled: boolean
-  wanInterface: string
-  externalPort: string     // e.g. "80", "8080:8090"
-  internalHost: string
-  internalPort: string
-  protocol: NatProtocol
-  description: string
-  autoFirewallRule: boolean
-  natReflection: boolean
+  source_port: number | null
+  destination_port: number | null   // for DNAT: the external port being forwarded
+  translation: NatTranslation | null
+  nat_reflection: boolean
+  priority: number
+  log: boolean
+  auto_firewall_rule: boolean       // auto-generate companion forward accept for DNAT
 }
 
 // ── NTP ───────────────────────────────────────────────────────────────────────

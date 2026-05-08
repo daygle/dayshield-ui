@@ -16,6 +16,14 @@ export const createFirewallRule = (
     .post<ApiResponse<FirewallRule>>('/firewall/rules', rule)
     .then((r: { data: ApiResponse<FirewallRule> }) => r.data)
 
+export const updateFirewallRule = (
+  id: string,
+  rule: Partial<Omit<FirewallRule, 'id'>>,
+): Promise<ApiResponse<FirewallRule>> =>
+  apiClient
+    .put<ApiResponse<FirewallRule>>(`/firewall/rules/${encodeURIComponent(id)}`, rule)
+    .then((r: { data: ApiResponse<FirewallRule> }) => r.data)
+
 export const deleteFirewallRule = (id: number | string): Promise<ApiResponse<void>> =>
   apiClient
     .delete<ApiResponse<void>>(`/firewall/rules/${encodeURIComponent(String(id))}`)

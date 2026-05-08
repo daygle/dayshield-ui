@@ -9,7 +9,7 @@ export const getAliases = (): Promise<ApiResponse<Alias[]>> =>
     .get<ApiResponse<Alias[]>>('/firewall/aliases')
     .then((r: { data: ApiResponse<Alias[]> }) => r.data)
 
-export const createAlias = (alias: Omit<Alias, 'id'>): Promise<ApiResponse<Alias>> =>
+export const createAlias = (alias: Alias): Promise<ApiResponse<Alias>> =>
   apiClient
     .post<ApiResponse<Alias>>('/firewall/aliases', alias)
     .then((r: { data: ApiResponse<Alias> }) => r.data)

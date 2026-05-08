@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getFirewallRules, createFirewallRule, deleteFirewallRule } from '../../api/firewall'
+import { getFirewallRules, createFirewallRule, updateFirewallRule, deleteFirewallRule } from '../../api/firewall'
 import { getAliases, createAlias, deleteAlias } from '../../api/aliases'
 import type { FirewallRule, Alias, AliasType } from '../../types'
 import Card from '../../components/Card'
@@ -13,9 +13,11 @@ type AliasRow = Alias & Record<string, unknown>
 
 const actionBadge = (action: FirewallRule['action']) => {
   const map: Record<FirewallRule['action'], string> = {
-    allow: 'bg-green-100 text-green-700',
-    deny: 'bg-red-100 text-red-700',
+    accept: 'bg-green-100 text-green-700',
+    drop: 'bg-red-100 text-red-700',
     reject: 'bg-orange-100 text-orange-700',
+    jump: 'bg-purple-100 text-purple-700',
+    log: 'bg-gray-100 text-gray-700',
   }
   return (
     <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase ${map[action]}`}>
@@ -25,24 +27,24 @@ const actionBadge = (action: FirewallRule['action']) => {
 }
 
 const defaultRuleForm: Partial<FirewallRule> = {
-  enabled: true,
   description: '',
-  action: 'allow',
-  direction: 'in',
+  action: 'accept',
   protocol: 'tcp',
-  source: 'any',
-  sourcePort: '',
-  destination: 'any',
-  destinationPort: '',
+  source: null,
+  source_port: null,
+  destination: null,
+  destination_port: null,
   log: false,
-  order: 100,
+  priority: 100,
 }
 
-const defaultAliasForm: Omit<Alias, 'id'> = {
+const defaultAliasForm: Alias = {
   name: '',
-  type: 'host',
-  description: '',
-  content: [],
+  alias_type: 'host',
+  description: null,
+  values: [],
+  ttl: null,
+  enabled: true,
 }
 
 export default function Firewall() {
@@ -53,15 +55,17 @@ export default function Firewall() {
   const [ruleModalOpen, setRuleModalOpen] = useState(false)
   const [ruleForm, setRuleForm] = useState<Partial<FirewallRule>>(defaultRuleForm)
   const [ruleSaving, setRuleSaving] = useState(false)
-  const [deleteRuleId, setDeleteRuleId] = useState<number | null>(null)
+  const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null)
   const [deletingRule, setDeletingRule] = useState(false)
+  const [editRule, setEditRule] = useState<FirewallRule | null>(null)
+  const [editSaving, setEditSaving] = useState(false)
 
-  // ── Aliases ────────────────────────────────────────────────────────────────
+  // ── Aliases ──────────────────────────────────────────────────────────────────────
   const [aliases, setAliases] = useState<AliasRow[]>([])
   const [aliasesLoading, setAliasesLoading] = useState(true)
   const [aliasesError, setAliasesError] = useState<string | null>(null)
   const [aliasModalOpen, setAliasModalOpen] = useState(false)
-  const [aliasForm, setAliasForm] = useState<Omit<Alias, 'id'>>(defaultAliasForm)
+  const [aliasForm, setAliasForm] = useState<Alias>(defaultAliasForm)
   const [aliasSaving, setAliasSaving] = useState(false)
   const [deleteAliasName, setDeleteAliasName] = useState<string | null>(null)
   const [deletingAlias, setDeletingAlias] = useState(false)
@@ -97,6 +101,18 @@ export default function Firewall() {
       })
       .catch((err: Error) => setRulesError(err.message))
       .finally(() => setRuleSaving(false))
+  }
+
+  const handleUpdateRule = () => {
+    if (!editRule) return
+    setEditSaving(true)
+    updateFirewallRule(editRule.id, editRule)
+      .then(() => {
+        setEditRule(null)
+        loadRules()
+      })
+      .catch((err: Error) => setRulesError(err.message))
+      .finally(() => setEditSaving(false))
   }
 
   const handleDeleteRule = () => {
@@ -136,35 +152,34 @@ export default function Firewall() {
   }
 
   const ruleColumns: Column<RuleRow>[] = [
-    { key: 'order', header: '#', className: 'w-10' },
-    {
-      key: 'enabled',
-      header: 'Enabled',
-      render: (row) => (
-        <span className={row.enabled ? 'text-green-600' : 'text-gray-400'}>
-          {row.enabled ? '✓' : '✗'}
-        </span>
-      ),
-    },
+    { key: 'priority', header: '#', className: 'w-10' },
     { key: 'description', header: 'Description' },
     { key: 'action', header: 'Action', render: (row) => actionBadge(row.action as FirewallRule['action']) },
-    { key: 'direction', header: 'Direction' },
-    { key: 'protocol', header: 'Protocol' },
-    { key: 'source', header: 'Source' },
-    { key: 'destination', header: 'Destination' },
+    { key: 'protocol', header: 'Protocol', render: (row) => (row.protocol as string) ?? 'any' },
+    { key: 'source', header: 'Source', render: (row) => (row.source as string) ?? 'any' },
+    { key: 'destination', header: 'Destination', render: (row) => (row.destination as string) ?? 'any' },
     { key: 'interface', header: 'Interface', render: (row) => (row.interface as string) ?? 'any' },
     {
       key: 'actions',
       header: '',
-      className: 'w-16 text-right',
+      className: 'w-36 text-right',
       render: (row) => (
-        <Button
-          variant="danger"
-          size="sm"
-          onClick={() => setDeleteRuleId(row.id as number)}
-        >
-          Delete
-        </Button>
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setEditRule(row as unknown as FirewallRule)}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => setDeleteRuleId(row.id as string)}
+          >
+            Delete
+          </Button>
+        </div>
       ),
     },
   ]
@@ -246,7 +261,7 @@ export default function Firewall() {
         <Table
           columns={aliasColumns}
           data={aliases}
-          keyField="id"
+          keyField="name"
           loading={aliasesLoading}
           emptyMessage="No aliases defined."
         />
@@ -269,78 +284,171 @@ export default function Firewall() {
             className="col-span-2"
             placeholder="Brief rule description"
             value={ruleForm.description ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value })}
+            onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value || null })}
+          />
+          <FormField
+            id="rule-priority"
+            label="Priority"
+            type="number"
+            placeholder="100 (lower number = higher priority)"
+            value={String(ruleForm.priority ?? 100)}
+            onChange={(e) => setRuleForm({ ...ruleForm, priority: parseInt(e.target.value, 10) || 100 })}
           />
           <FormField
             id="rule-action"
             label="Action"
             as="select"
-            value={ruleForm.action ?? 'allow'}
+            value={ruleForm.action ?? 'accept'}
             onChange={(e) => setRuleForm({ ...ruleForm, action: e.target.value as FirewallRule['action'] })}
           >
-            <option value="allow">Allow</option>
-            <option value="deny">Deny</option>
+            <option value="accept">Accept</option>
+            <option value="drop">Drop</option>
             <option value="reject">Reject</option>
+            <option value="log">Log only (then accept)</option>
           </FormField>
-          <FormField
-            id="rule-direction"
-            label="Direction"
-            as="select"
-            value={ruleForm.direction ?? 'in'}
-            onChange={(e) => setRuleForm({ ...ruleForm, direction: e.target.value as FirewallRule['direction'] })}
-          >
-            <option value="in">Inbound</option>
-            <option value="out">Outbound</option>
-            <option value="both">Both</option>
-          </FormField>
-          <FormField
-            id="rule-protocol"
             label="Protocol"
             as="select"
-            value={ruleForm.protocol ?? 'tcp'}
-            onChange={(e) => setRuleForm({ ...ruleForm, protocol: e.target.value as FirewallRule['protocol'] })}
+            value={ruleForm.protocol ?? ''}
+            onChange={(e) => setRuleForm({ ...ruleForm, protocol: (e.target.value || null) as FirewallRule['protocol'] | null })}
           >
+            <option value="">Any</option>
             <option value="tcp">TCP</option>
             <option value="udp">UDP</option>
             <option value="icmp">ICMP</option>
-            <option value="any">Any</option>
+            <option value="icmpv6">ICMPv6</option>
           </FormField>
           <FormField
             id="rule-iface"
             label="Interface"
-            placeholder="e.g. eth0 (leave blank for any)"
+            placeholder="Leave blank for any (e.g. eth0)"
             value={ruleForm.interface ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, interface: e.target.value })}
+            onChange={(e) => setRuleForm({ ...ruleForm, interface: e.target.value || null })}
           />
           <FormField
             id="rule-src"
-            label="Source"
-            placeholder="any / 192.168.1.0/24"
-            value={ruleForm.source ?? 'any'}
-            onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value })}
+            label="Source CIDR"
+            placeholder="Leave blank for any (e.g. 192.168.1.0/24)"
+            value={ruleForm.source ?? ''}
+            onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
           />
           <FormField
             id="rule-src-port"
             label="Source Port"
-            placeholder="any / 80 / 1024:65535"
-            value={ruleForm.sourcePort ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, sourcePort: e.target.value })}
+            type="number"
+            placeholder="Leave blank for any (1–65535)"
+            value={ruleForm.source_port != null ? String(ruleForm.source_port) : ''}
+            onChange={(e) => setRuleForm({ ...ruleForm, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
           />
           <FormField
             id="rule-dst"
-            label="Destination"
-            placeholder="any / 10.0.0.1"
-            value={ruleForm.destination ?? 'any'}
-            onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value })}
+            label="Destination CIDR"
+            placeholder="Leave blank for any (e.g. 10.0.0.0/8)"
+            value={ruleForm.destination ?? ''}
+            onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
           />
           <FormField
             id="rule-dst-port"
             label="Destination Port"
-            placeholder="any / 443"
-            value={ruleForm.destinationPort ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, destinationPort: e.target.value })}
+            type="number"
+            placeholder="Leave blank for any (1–65535)"
+            value={ruleForm.destination_port != null ? String(ruleForm.destination_port) : ''}
+            onChange={(e) => setRuleForm({ ...ruleForm, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
           />
         </div>
+      </Modal>
+
+      {/* Edit Rule Modal */}
+      <Modal
+        open={editRule !== null}
+        title="Edit Firewall Rule"
+        onClose={() => setEditRule(null)}
+        onConfirm={handleUpdateRule}
+        confirmLabel="Save Changes"
+        loading={editSaving}
+        size="xl"
+      >
+        {editRule && (
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              id="edit-rule-desc"
+              label="Description"
+              className="col-span-2"
+              placeholder="Brief rule description"
+              value={editRule.description ?? ''}
+              onChange={(e) => setEditRule({ ...editRule, description: e.target.value || null })}
+            />
+            <FormField
+              id="edit-rule-priority"
+              label="Priority"
+              type="number"
+              placeholder="100"
+              value={String(editRule.priority)}
+              onChange={(e) => setEditRule({ ...editRule, priority: parseInt(e.target.value, 10) || 100 })}
+            />
+            <FormField
+              id="edit-rule-action"
+              label="Action"
+              as="select"
+              value={editRule.action}
+              onChange={(e) => setEditRule({ ...editRule, action: e.target.value as FirewallRule['action'] })}
+            >
+              <option value="accept">Accept</option>
+              <option value="drop">Drop</option>
+              <option value="reject">Reject</option>
+              <option value="log">Log only (then accept)</option>
+            </FormField>
+            <FormField
+              id="edit-rule-protocol"
+              label="Protocol"
+              as="select"
+              value={editRule.protocol ?? ''}
+              onChange={(e) => setEditRule({ ...editRule, protocol: (e.target.value || null) as FirewallRule['protocol'] | null })}
+            >
+              <option value="">Any</option>
+              <option value="tcp">TCP</option>
+              <option value="udp">UDP</option>
+              <option value="icmp">ICMP</option>
+              <option value="icmpv6">ICMPv6</option>
+            </FormField>
+            <FormField
+              id="edit-rule-iface"
+              label="Interface"
+              placeholder="Leave blank for any"
+              value={editRule.interface ?? ''}
+              onChange={(e) => setEditRule({ ...editRule, interface: e.target.value || null })}
+            />
+            <FormField
+              id="edit-rule-src"
+              label="Source CIDR"
+              placeholder="Leave blank for any"
+              value={editRule.source ?? ''}
+              onChange={(e) => setEditRule({ ...editRule, source: e.target.value || null })}
+            />
+            <FormField
+              id="edit-rule-src-port"
+              label="Source Port"
+              type="number"
+              placeholder="Leave blank for any"
+              value={editRule.source_port != null ? String(editRule.source_port) : ''}
+              onChange={(e) => setEditRule({ ...editRule, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+            />
+            <FormField
+              id="edit-rule-dst"
+              label="Destination CIDR"
+              placeholder="Leave blank for any"
+              value={editRule.destination ?? ''}
+              onChange={(e) => setEditRule({ ...editRule, destination: e.target.value || null })}
+            />
+            <FormField
+              id="edit-rule-dst-port"
+              label="Destination Port"
+              type="number"
+              placeholder="Leave blank for any"
+              value={editRule.destination_port != null ? String(editRule.destination_port) : ''}
+              onChange={(e) => setEditRule({ ...editRule, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+            />
+          </div>
+        )}
       </Modal>
 
       {/* Delete Rule Modal */}
@@ -382,32 +490,32 @@ export default function Firewall() {
             id="alias-type"
             label="Type"
             as="select"
-            value={aliasForm.type}
-            onChange={(e) => setAliasForm({ ...aliasForm, type: e.target.value as AliasType })}
+            value={aliasForm.alias_type}
+            onChange={(e) => setAliasForm({ ...aliasForm, alias_type: e.target.value as AliasType })}
           >
-            <option value="host">Host</option>
-            <option value="network">Network</option>
-            <option value="port">Port</option>
-            <option value="url">URL</option>
+            <option value="host">Host (IP addresses)</option>
+            <option value="network">Network (CIDR prefixes)</option>
+            <option value="port">Port (numbers / ranges)</option>
+            <option value="urltable">URL Table (remote IP list)</option>
           </FormField>
           <FormField
             id="alias-desc"
             label="Description"
             placeholder="Optional description"
-            value={aliasForm.description}
-            onChange={(e) => setAliasForm({ ...aliasForm, description: e.target.value })}
+            value={aliasForm.description ?? ''}
+            onChange={(e) => setAliasForm({ ...aliasForm, description: e.target.value || null })}
           />
           <FormField
-            id="alias-content"
+            id="alias-values"
             label="Entries"
             as="textarea"
             rows={4}
             hint="One IP, CIDR, port, or URL per line"
-            value={aliasForm.content.join('\n')}
+            value={aliasForm.values.join('\n')}
             onChange={(e) =>
               setAliasForm({
                 ...aliasForm,
-                content: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
+                values: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
               })
             }
           />
