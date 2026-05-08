@@ -25,13 +25,13 @@ export const createNatRule = (
     .post<ApiResponse<NatRule>>('/nat/rules', rule)
     .then((r) => r.data)
 
+// Note: PUT /nat/rules/{id} is not implemented in the backend.
+// To update a rule, delete it and re-create it.
 export const updateNatRule = (
-  id: number,
-  rule: Partial<Omit<NatRule, 'id'>>,
+  _id: number,
+  _rule: Partial<Omit<NatRule, 'id'>>,
 ): Promise<ApiResponse<NatRule>> =>
-  apiClient
-    .put<ApiResponse<NatRule>>(`/nat/rules/${id}`, rule)
-    .then((r) => r.data)
+  Promise.reject(new Error('NAT rule update is not supported. Delete the rule and create a new one.'))
 
 export const deleteNatRule = (id: number): Promise<ApiResponse<void>> =>
   apiClient
@@ -39,28 +39,22 @@ export const deleteNatRule = (id: number): Promise<ApiResponse<void>> =>
     .then((r) => r.data)
 
 // ── Port Forwards ─────────────────────────────────────────────────────────────
+// Note: /nat/portforwards is not implemented in the backend.
+// Port forwarding is managed via NAT rules (DNAT rule type).
 
 export const getPortForwards = (): Promise<ApiResponse<PortForward[]>> =>
-  apiClient
-    .get<ApiResponse<PortForward[]>>('/nat/portforwards')
-    .then((r) => r.data)
+  Promise.resolve({ data: [], success: true })
 
 export const createPortForward = (
-  pf: Omit<PortForward, 'id'>,
+  _pf: Omit<PortForward, 'id'>,
 ): Promise<ApiResponse<PortForward>> =>
-  apiClient
-    .post<ApiResponse<PortForward>>('/nat/portforwards', pf)
-    .then((r) => r.data)
+  Promise.reject(new Error('Port forwards are not supported as a separate resource. Create a NAT rule with type DNAT instead.'))
 
 export const updatePortForward = (
-  id: number,
-  pf: Partial<Omit<PortForward, 'id'>>,
+  _id: number,
+  _pf: Partial<Omit<PortForward, 'id'>>,
 ): Promise<ApiResponse<PortForward>> =>
-  apiClient
-    .put<ApiResponse<PortForward>>(`/nat/portforwards/${id}`, pf)
-    .then((r) => r.data)
+  Promise.reject(new Error('Port forwards are not supported as a separate resource. Create a NAT rule with type DNAT instead.'))
 
-export const deletePortForward = (id: number): Promise<ApiResponse<void>> =>
-  apiClient
-    .delete<ApiResponse<void>>(`/nat/portforwards/${id}`)
-    .then((r) => r.data)
+export const deletePortForward = (_id: number): Promise<ApiResponse<void>> =>
+  Promise.reject(new Error('Port forwards are not supported as a separate resource. Manage via NAT rules.'))

@@ -24,11 +24,9 @@ export const getCrowdSecDecisions = (): Promise<ApiResponse<CrowdSecDecision[]>>
 
 // Legacy / compatibility wrappers for older UI pages
 export const getCrowdSecStatus = getCrowdSecConfig
+// Note: /crowdsec/alerts and DELETE /crowdsec/decisions/{id} are not implemented
+// in the backend — the backend only exposes GET /crowdsec/decisions.
 export const getCrowdSecAlerts = (): Promise<ApiResponse<CrowdSecAlert[]>> =>
-  apiClient
-    .get<ApiResponse<CrowdSecAlert[]>>('/crowdsec/alerts')
-    .then((r) => r.data)
-export const deleteCrowdSecDecision = (id: number): Promise<ApiResponse<void>> =>
-  apiClient
-    .delete<ApiResponse<void>>(`/crowdsec/decisions/${id}`)
-    .then((r) => r.data)
+  Promise.resolve({ data: [], success: true })
+export const deleteCrowdSecDecision = (_id: number): Promise<ApiResponse<void>> =>
+  Promise.reject(new Error('CrowdSec decision deletion is not supported. Decisions expire automatically based on their duration.'))
