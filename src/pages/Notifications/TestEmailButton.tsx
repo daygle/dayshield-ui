@@ -11,7 +11,6 @@ interface TestEmailButtonProps {
 
 export default function TestEmailButton({ defaultRecipient, disabled, onResult }: TestEmailButtonProps) {
   const [recipient, setRecipient] = useState(defaultRecipient || '')
-  const [userModified, setUserModified] = useState(false)
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
 
@@ -52,7 +51,7 @@ export default function TestEmailButton({ defaultRecipient, disabled, onResult }
           value={recipient}
           disabled={disabled || sending}
           className="flex-1"
-          onChange={(e) => { setUserModified(true); setRecipient(e.target.value) }}
+          onChange={(e) => setRecipient(e.target.value)}
         />
         <Button
           variant="secondary"
