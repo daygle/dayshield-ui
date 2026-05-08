@@ -119,9 +119,10 @@ export interface DnsHostOverride {
 export interface DhcpConfig {
   enabled: boolean
   interface: string
+  subnet: string      // CIDR e.g. "192.168.1.0/24" — must match the LAN network
   rangeStart: string
   rangeEnd: string
-  subnetMask: string
+  subnetMask: string  // derived dotted-decimal, read-only from API
   gateway: string
   dnsServers: string[]
   leaseTime: number   // seconds
