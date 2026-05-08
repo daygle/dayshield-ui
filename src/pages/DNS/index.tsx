@@ -64,7 +64,7 @@ export default function DNS() {
   const [hostModalOpen, setHostModalOpen] = useState(false)
   const [hostForm, setHostForm] = useState<Omit<DnsHostOverride, 'id'>>(defaultHostForm)
   const [hostSaving, setHostSaving] = useState(false)
-  const [hostDeleteName, setHostDeleteName] = useState<string | null>(null)
+  const [hostDeleteId, setHostDeleteId] = useState<string | null>(null)
   const [hostDeleting, setHostDeleting] = useState(false)
 
   const loadAll = () => {

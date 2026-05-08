@@ -52,7 +52,7 @@ export const getWgPeers = (): Promise<ApiResponse<WgPeer[]>> =>
 export const createWgPeer = (
   _peer: Omit<WgPeer, 'id'>,
 ): Promise<ApiResponse<WgPeer>> =>
-  Promise.reject(new Error('WireGuard peer management is not supported by the current backend'))
+  Promise.reject(new Error('WireGuard peer management is not yet available. Manage peers via the interface configuration.'))
 
 export const deleteWgPeer = (_id: number): Promise<ApiResponse<void>> =>
-  Promise.reject(new Error('WireGuard peer management is not supported by the current backend'))
+  Promise.reject(new Error('WireGuard peer management is not yet available. Manage peers via the interface configuration.'))

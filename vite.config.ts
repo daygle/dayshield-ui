@@ -26,6 +26,8 @@ export default defineConfig(({ mode }) => {
     server: {
       port: uiPort,
       proxy: {
+        // WebSocket upgrade for metrics stream – must be listed before the
+        // generic /api HTTP proxy so Vite routes it to the WS target.
         '/api/metrics/ws': {
           target: 'ws://127.0.0.1:3000',
           ws: true,

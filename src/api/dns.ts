@@ -39,10 +39,10 @@ export const getDnsForwarders = (): Promise<ApiResponse<DnsForwarder[]>> =>
   Promise.resolve({ data: [], success: true })
 
 export const createDnsForwarder = (_forwarder: Omit<DnsForwarder, 'id'>): Promise<ApiResponse<DnsForwarder>> =>
-  Promise.reject(new Error('DNS forwarders are not supported by the current backend'))
+  Promise.reject(new Error('DNS forwarders are not supported by this backend. Configure upstream servers via the DNS settings.'))
 
 export const deleteDnsForwarder = (_id: number | string): Promise<ApiResponse<void>> =>
-  Promise.reject(new Error('DNS forwarders are not supported by the current backend'))
+  Promise.reject(new Error('DNS forwarders are not supported by this backend.'))
 
 export const getDnsHostOverrides = (): Promise<ApiResponse<DnsHostOverride[]>> =>
   getDnsOverrides().then((r) => ({ ...r, data: r.data.host_overrides }))
@@ -50,5 +50,9 @@ export const getDnsHostOverrides = (): Promise<ApiResponse<DnsHostOverride[]>> =
 export const createDnsHostOverride = (override: Omit<DnsHostOverride, 'id'>): Promise<ApiResponse<DnsHostOverride>> =>
   createDnsOverride({ kind: 'host', name: `${override.hostname}.${override.domain}`, target: override.ipv4 ?? override.ipv6 ?? '' })
 
+/**
+ * Delete a host override by its fully-qualified name (hostname.domain).
+ * Pass the result of `${override.hostname}.${override.domain}`.
+ */
 export const deleteDnsHostOverride = (name: string): Promise<ApiResponse<void>> =>
   deleteDnsOverride(name)

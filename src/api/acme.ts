@@ -41,6 +41,6 @@ export const issueAcmeCertificate = (
     .then((r: { data: ApiResponse<void> }) => r.data)
 
 export const renewAcmeCertificate = (_id: number): Promise<ApiResponse<void>> =>
-  Promise.reject(new Error('Per-certificate renew is not supported; use issueAcmeCertificates() to renew all'))
+  Promise.reject(new Error('Per-certificate renewal is not available. Use the Issue Certificates action to renew all certificates.'))
 export const deleteAcmeCertificate = (_id: number): Promise<ApiResponse<void>> =>
-  Promise.reject(new Error('Certificate deletion is not supported by the current backend'))
+  Promise.reject(new Error('Certificate deletion is not supported by this backend.'))

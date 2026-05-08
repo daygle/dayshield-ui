@@ -15,7 +15,11 @@ const apiClient = axios.create({
 
 const TOKEN_KEY = 'dayshield_token'
 
-/** Persist (or remove) the JWT token in sessionStorage. */
+/**
+ * Persist (or remove) the JWT token in sessionStorage.
+ * sessionStorage is scoped to the browser tab and is cleared when the tab
+ * closes, limiting the window of exposure compared to localStorage.
+ */
 export function setAuthToken(token: string | null): void {
   if (token) {
     sessionStorage.setItem(TOKEN_KEY, token)
@@ -63,11 +67,26 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError<unknown>) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const requestUrl = (error.config?.url ?? '').toLowerCase()
+    const isAuthEndpoint =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/logout') ||
+      requestUrl.includes('/auth/status')
+
+    // Only auto-logout on 401 for protected endpoints when a token exists.
+    // This avoids loops/noise on intentional unauthenticated auth endpoints.
+    if (status === 401 && !isAuthEndpoint && getAuthToken()) {
       unauthorizedHandler?.()
     }
+
+    if (!error.response) {
+      return Promise.reject(new Error('Network error: could not reach DayShield API'))
+    }
+
     const responseData = error.response?.data as Record<string, unknown> | undefined
     const message =
+      (responseData?.error as string | undefined) ??
       (responseData?.message as string | undefined) ?? error.message ?? 'Unknown error'
     return Promise.reject(new Error(message))
   },

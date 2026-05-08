@@ -15,13 +15,12 @@ export default function TestEmailButton({ defaultRecipient, disabled, onResult }
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
 
-  // Sync local recipient when the async-loaded defaultRecipient prop changes,
-  // but only if the user has not explicitly modified the field themselves.
+  // Sync the field when the parent's default recipient changes (e.g. after
+  // async config load or after the recipients list is saved), but only when
+  // the user hasn't already typed a custom value.
   useEffect(() => {
-    if (!userModified) {
-      setRecipient(defaultRecipient || '')
-    }
-  }, [defaultRecipient, userModified])
+    setRecipient((current) => (current === '' ? defaultRecipient || '' : current))
+  }, [defaultRecipient])
 
   const handle = () => {
     const email = recipient.trim()
