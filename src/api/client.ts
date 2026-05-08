@@ -67,11 +67,26 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError<unknown>) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const requestUrl = (error.config?.url ?? '').toLowerCase()
+    const isAuthEndpoint =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/logout') ||
+      requestUrl.includes('/auth/status')
+
+    // Only auto-logout on 401 for protected endpoints when a token exists.
+    // This avoids loops/noise on intentional unauthenticated auth endpoints.
+    if (status === 401 && !isAuthEndpoint && getAuthToken()) {
       unauthorizedHandler?.()
     }
+
+    if (!error.response) {
+      return Promise.reject(new Error('Network error: could not reach DayShield API'))
+    }
+
     const responseData = error.response?.data as Record<string, unknown> | undefined
     const message =
+      (responseData?.error as string | undefined) ??
       (responseData?.message as string | undefined) ?? error.message ?? 'Unknown error'
     return Promise.reject(new Error(message))
   },
