@@ -56,6 +56,7 @@ export interface ListGatewaysResponse {
 
 export type FirewallAction = 'accept' | 'drop' | 'reject' | 'jump' | 'log'
 export type FirewallProtocol = 'tcp' | 'udp' | 'icmp' | 'icmpv6' | 'any'
+export type FirewallChainPolicy = 'accept' | 'drop'
 
 export interface FirewallRule {
   id: string               // UUID
@@ -69,6 +70,20 @@ export interface FirewallRule {
   action: FirewallAction
   interface: string | null
   log: boolean
+}
+
+export interface FirewallSettings {
+  input_policy: FirewallChainPolicy
+  forward_policy: FirewallChainPolicy
+  output_policy: FirewallChainPolicy
+  drop_invalid_state: boolean
+  syn_flood_protection: boolean
+  syn_flood_rate: number
+  syn_flood_burst: number
+  management_anti_lockout: boolean
+  management_interface: string | null
+  management_allowed_sources: string[]
+  management_ports: number[]
 }
 
 // ── Aliases ───────────────────────────────────────────────────────────────────
