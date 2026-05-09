@@ -8,18 +8,29 @@ import type { MetricsSnapshot, MetricsHistoryPoint, LanIfaceMetrics, FirewallRul
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes.toFixed(0)} B`
-  if (bytes < 1_048_576) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1_073_741_824) return `${(bytes / 1_048_576).toFixed(1)} MB`
-  return `${(bytes / 1_073_741_824).toFixed(2)} GB`
+function formatBytes(bytes: unknown): string {
+  const value = toFiniteNumber(bytes)
+  if (value < 1024) return `${value.toFixed(0)} B`
+  if (value < 1_048_576) return `${(value / 1024).toFixed(1)} KB`
+  if (value < 1_073_741_824) return `${(value / 1_048_576).toFixed(1)} MB`
+  return `${(value / 1_073_741_824).toFixed(2)} GB`
 }
 
-function formatBps(bps: number): string {
-  if (bps < 1000) return `${bps.toFixed(0)} B/s`
-  if (bps < 1_000_000) return `${(bps / 1000).toFixed(1)} KB/s`
-  if (bps < 1_000_000_000) return `${(bps / 1_000_000).toFixed(1)} MB/s`
-  return `${(bps / 1_000_000_000).toFixed(2)} GB/s`
+function formatBps(bps: unknown): string {
+  const value = toFiniteNumber(bps)
+  if (value < 1000) return `${value.toFixed(0)} B/s`
+  if (value < 1_000_000) return `${(value / 1000).toFixed(1)} KB/s`
+  if (value < 1_000_000_000) return `${(value / 1_000_000).toFixed(1)} MB/s`
+  return `${(value / 1_000_000_000).toFixed(2)} GB/s`
+}
+
+function toFiniteNumber(value: unknown, fallback = 0): number {
+  if (typeof value !== 'number') return fallback
+  return Number.isFinite(value) ? value : fallback
+}
+
+function formatPercent(value: unknown, digits = 1): string {
+  return `${toFiniteNumber(value).toFixed(digits)}%`
 }
 
 // ── Canvas utilities ──────────────────────────────────────────────────────────
@@ -342,14 +353,15 @@ function MetricCard({
 }
 
 function TemperatureBadge({ celsius }: { celsius: number }) {
+  const temp = toFiniteNumber(celsius)
   const color =
-    celsius >= 80 ? 'bg-red-100 text-red-700 border-red-200' :
-    celsius >= 65 ? 'bg-orange-100 text-orange-700 border-orange-200' :
-    celsius >= 50 ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+    temp >= 80 ? 'bg-red-100 text-red-700 border-red-200' :
+    temp >= 65 ? 'bg-orange-100 text-orange-700 border-orange-200' :
+    temp >= 50 ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
     'bg-green-100 text-green-700 border-green-200'
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border ${color}`}>
-      {celsius.toFixed(1)} °C
+      {temp.toFixed(1)} °C
     </span>
   )
 }
@@ -423,7 +435,7 @@ function extractField<K extends keyof MetricsHistoryPoint>(
   points: MetricsHistoryPoint[],
   key: K,
 ): number[] {
-  return points.map((p) => p[key] as number)
+  return points.map((p) => toFiniteNumber(p[key]))
 }
 
 // ── Metrics Page ──────────────────────────────────────────────────────────────
@@ -443,8 +455,8 @@ export default function Metrics() {
 
   useEffect(() => {
     if (!snap) return
-    rxBuf.current = [...rxBuf.current.slice(-59), snap.wan_rx_bps]
-    txBuf.current = [...txBuf.current.slice(-59), snap.wan_tx_bps]
+    rxBuf.current = [...rxBuf.current.slice(-59), toFiniteNumber(snap.wan_rx_bps)]
+    txBuf.current = [...txBuf.current.slice(-59), toFiniteNumber(snap.wan_tx_bps)]
     forceRender((n) => n + 1)
   }, [snap])
 
@@ -488,8 +500,8 @@ export default function Metrics() {
 
         <MetricCard
           title="CPU Usage"
-          value={snap ? `${snap.cpu_percent.toFixed(1)}%` : '—'}
-          percent={snap?.cpu_percent}
+          value={snap ? formatPercent(snap.cpu_percent) : '—'}
+          percent={snap ? toFiniteNumber(snap.cpu_percent) : undefined}
           warn={85}
           sparkData={cpuSparkData}
           sparkColor="#3b82f6"
@@ -497,9 +509,9 @@ export default function Metrics() {
 
         <MetricCard
           title="RAM Usage"
-          value={snap ? `${snap.ram_percent.toFixed(1)}%` : '—'}
-          sub={snap ? `${formatBytes(snap.ram_used_bytes)} / ${formatBytes(snap.ram_total_bytes)}` : undefined}
-          percent={snap?.ram_percent}
+          value={snap ? formatPercent(snap.ram_percent) : '—'}
+          sub={snap ? `${formatBytes(toFiniteNumber(snap.ram_used_bytes))} / ${formatBytes(toFiniteNumber(snap.ram_total_bytes))}` : undefined}
+          percent={snap ? toFiniteNumber(snap.ram_percent) : undefined}
           warn={85}
           sparkData={ramSparkData}
           sparkColor="#8b5cf6"
@@ -510,12 +522,17 @@ export default function Metrics() {
           {snap ? (
             <div className="mt-2 space-y-1.5">
               {([1, 5, 15] as const).map((min, idx) => (
+                (() => {
+                  const load = toFiniteNumber(snap.loadavg?.[idx])
+                  return (
                 <div key={min} className="flex justify-between items-center text-sm">
                   <span className="text-gray-400 text-xs">{min}m</span>
-                  <span className={`font-bold ${snap.loadavg[idx] > 2 ? 'text-red-600' : snap.loadavg[idx] > 1 ? 'text-yellow-600' : 'text-gray-900'}`}>
-                    {snap.loadavg[idx].toFixed(2)}
+                  <span className={`font-bold ${load > 2 ? 'text-red-600' : load > 1 ? 'text-yellow-600' : 'text-gray-900'}`}>
+                    {load.toFixed(2)}
                   </span>
                 </div>
+                  )
+                })()
               ))}
             </div>
           ) : (
@@ -525,8 +542,8 @@ export default function Metrics() {
 
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
           <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-2">Temperature</p>
-          {snap?.temperature !== undefined ? (
-            <TemperatureBadge celsius={snap.temperature} />
+          {snap?.temperature != null ? (
+            <TemperatureBadge celsius={toFiniteNumber(snap.temperature)} />
           ) : (
             <span className="text-gray-300 text-lg font-bold">N/A</span>
           )}
@@ -572,11 +589,11 @@ export default function Metrics() {
             <div className="flex-1">
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-gray-500">Usage</span>
-                <span className="font-medium text-gray-800">{snap.disk_percent.toFixed(1)}%</span>
+                <span className="font-medium text-gray-800">{formatPercent(snap.disk_percent)}</span>
               </div>
-              <ProgressBar value={snap.disk_percent} warn={80} />
+              <ProgressBar value={toFiniteNumber(snap.disk_percent)} warn={80} />
               <p className="text-xs text-gray-400 mt-1">
-                {formatBytes(snap.disk_used_bytes)} used of {formatBytes(snap.disk_total_bytes)}
+                {formatBytes(toFiniteNumber(snap.disk_used_bytes))} used of {formatBytes(toFiniteNumber(snap.disk_total_bytes))}
               </p>
             </div>
           </div>
@@ -612,8 +629,8 @@ export default function Metrics() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Alert Rate</span>
-                <span className={`text-xl font-bold ${snap.suricata_alert_rate > 10 ? 'text-red-600' : snap.suricata_alert_rate > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
-                  {snap.suricata_alert_rate.toFixed(1)}<span className="text-sm font-normal text-gray-400">/min</span>
+                <span className={`text-xl font-bold ${toFiniteNumber(snap.suricata_alert_rate) > 10 ? 'text-red-600' : toFiniteNumber(snap.suricata_alert_rate) > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
+                  {toFiniteNumber(snap.suricata_alert_rate).toFixed(1)}<span className="text-sm font-normal text-gray-400">/min</span>
                 </span>
               </div>
               {suricataSparkData.length > 1 && (
@@ -621,7 +638,7 @@ export default function Metrics() {
                   <p className="text-xs text-gray-400 mb-1">5-min history</p>
                   <SparklineGraph
                     data={suricataSparkData}
-                    color={snap.suricata_alert_rate > 0 ? '#f59e0b' : '#22c55e'}
+                    color={toFiniteNumber(snap.suricata_alert_rate) > 0 ? '#f59e0b' : '#22c55e'}
                     height={48}
                   />
                 </div>
@@ -638,8 +655,8 @@ export default function Metrics() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Decision Rate</span>
-                <span className={`text-xl font-bold ${snap.crowdsec_decision_rate > 5 ? 'text-red-600' : snap.crowdsec_decision_rate > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
-                  {snap.crowdsec_decision_rate.toFixed(1)}<span className="text-sm font-normal text-gray-400">/min</span>
+                <span className={`text-xl font-bold ${toFiniteNumber(snap.crowdsec_decision_rate) > 5 ? 'text-red-600' : toFiniteNumber(snap.crowdsec_decision_rate) > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
+                  {toFiniteNumber(snap.crowdsec_decision_rate).toFixed(1)}<span className="text-sm font-normal text-gray-400">/min</span>
                 </span>
               </div>
               {crowdsecSparkData.length > 1 && (
@@ -647,7 +664,7 @@ export default function Metrics() {
                   <p className="text-xs text-gray-400 mb-1">5-min history</p>
                   <SparklineGraph
                     data={crowdsecSparkData}
-                    color={snap.crowdsec_decision_rate > 0 ? '#ef4444' : '#22c55e'}
+                    color={toFiniteNumber(snap.crowdsec_decision_rate) > 0 ? '#ef4444' : '#22c55e'}
                     height={48}
                   />
                 </div>

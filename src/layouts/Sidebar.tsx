@@ -1,4 +1,8 @@
+import { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import { getInterfaces } from '../api/interfaces'
+import { getSuricataConfig } from '../api/suricata'
+import type { NetworkInterface } from '../types'
 
 interface NavItem {
   type?: 'item'
@@ -194,6 +198,48 @@ const navEntries: NavEntry[] = [
 ]
 
 export default function Sidebar() {
+  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
+  const [suricataConfiguredInterfaces, setSuricataConfiguredInterfaces] = useState<string[]>([])
+
+  useEffect(() => {
+    let isMounted = true
+    Promise.all([getInterfaces(), getSuricataConfig()])
+      .then(([ifaceRes, suricataRes]) => {
+        if (!isMounted) return
+        setInterfaces(Array.isArray(ifaceRes.data) ? ifaceRes.data : [])
+        setSuricataConfiguredInterfaces(
+          Array.isArray(suricataRes.data?.interfaces) ? suricataRes.data.interfaces : [],
+        )
+      })
+      .catch(() => {
+        if (!isMounted) return
+        setInterfaces([])
+        setSuricataConfiguredInterfaces([])
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const firewallInterfaces = useMemo(
+    () => interfaces.filter((iface) => iface.enabled),
+    [interfaces],
+  )
+
+  const dhcpInterfaces = useMemo(
+    () => interfaces.filter((iface) => iface.enabled && iface.dhcp4),
+    [interfaces],
+  )
+
+  const suricataInterfaces = useMemo(
+    () =>
+      interfaces.filter(
+        (iface) => iface.enabled && suricataConfiguredInterfaces.includes(iface.name),
+      ),
+    [interfaces, suricataConfiguredInterfaces],
+  )
+
   return (
     <aside className="flex flex-col h-full w-60 bg-[#0f172a] shrink-0">
       {/* Logo */}
@@ -220,19 +266,53 @@ export default function Sidebar() {
           }
           const item = entry as NavItem
           return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                [
-                  'sidebar-link',
-                  isActive ? 'active' : '',
-                ].join(' ')
-              }
-            >
-              {item.icon}
-              {item.label}
-            </NavLink>
+            <div key={item.to}>
+              <NavLink
+                to={item.to}
+                className={({ isActive }) =>
+                  [
+                    'sidebar-link',
+                    isActive ? 'active' : '',
+                  ].join(' ')
+                }
+              >
+                {item.icon}
+                {item.label}
+              </NavLink>
+
+              {item.to === '/firewall' && firewallInterfaces.map((iface) => (
+                <NavLink
+                  key={`fw-${iface.name}`}
+                  to={`/interfaces?iface=${encodeURIComponent(iface.name)}&section=firewall`}
+                  className="sidebar-link pl-10 text-sm text-slate-300 hover:text-white"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+                  {iface.description || iface.name}
+                </NavLink>
+              ))}
+
+              {item.to === '/dhcp' && dhcpInterfaces.map((iface) => (
+                <NavLink
+                  key={`dhcp-${iface.name}`}
+                  to={`/interfaces?iface=${encodeURIComponent(iface.name)}&section=dhcp`}
+                  className="sidebar-link pl-10 text-sm text-slate-300 hover:text-white"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+                  {iface.description || iface.name}
+                </NavLink>
+              ))}
+
+              {item.to === '/suricata' && suricataInterfaces.map((iface) => (
+                <NavLink
+                  key={`suricata-${iface.name}`}
+                  to={`/suricata?iface=${encodeURIComponent(iface.name)}`}
+                  className="sidebar-link pl-10 text-sm text-slate-300 hover:text-white"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+                  {iface.description || iface.name}
+                </NavLink>
+              ))}
+            </div>
           )
         })}
       </nav>

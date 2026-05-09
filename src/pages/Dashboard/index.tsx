@@ -23,6 +23,15 @@ function formatBps(bps: number): string {
   return `${(bps / 1_000_000_000).toFixed(2)} GB/s`
 }
 
+function toFiniteNumber(value: unknown, fallback = 0): number {
+  if (typeof value !== 'number') return fallback
+  return Number.isFinite(value) ? value : fallback
+}
+
+function formatPercent(value: unknown, digits = 1): string {
+  return `${toFiniteNumber(value).toFixed(digits)}%`
+}
+
 function ProgressBar({ value, warn = 80 }: { value: number; warn?: number }) {
   const clamped = Math.min(100, Math.max(0, value))
   return (
@@ -130,27 +139,27 @@ export default function Dashboard() {
               <MetricRow label="Uptime" value={formatUptime(sys.data.uptime)} />
               <MetricRow
                 label="Load Average"
-                value={sys.data.loadavg.map((v) => v.toFixed(2)).join(' / ')}
+                value={sys.data.loadavg.map((v) => toFiniteNumber(v).toFixed(2)).join(' / ')}
               />
               <MetricRow
                 label="CPU"
-                value={`${sys.data.cpu_percent.toFixed(1)}%`}
-                bar={sys.data.cpu_percent}
+                value={formatPercent(sys.data.cpu_percent)}
+                bar={toFiniteNumber(sys.data.cpu_percent)}
               />
               <MetricRow
                 label="RAM"
-                value={`${sys.data.ram_percent.toFixed(1)}%`}
-                bar={sys.data.ram_percent}
+                value={formatPercent(sys.data.ram_percent)}
+                bar={toFiniteNumber(sys.data.ram_percent)}
               />
               <MetricRow
                 label="Disk"
-                value={`${sys.data.disk_percent.toFixed(1)}%`}
-                bar={sys.data.disk_percent}
+                value={formatPercent(sys.data.disk_percent)}
+                bar={toFiniteNumber(sys.data.disk_percent)}
               />
-              {sys.data.temperature !== undefined && (
+              {sys.data.temperature != null && (
                 <MetricRow
                   label="Temperature"
-                  value={`${sys.data.temperature.toFixed(1)} °C`}
+                  value={`${toFiniteNumber(sys.data.temperature).toFixed(1)} °C`}
                 />
               )}
             </div>
@@ -184,11 +193,11 @@ export default function Dashboard() {
               {/* Throughput sparklines */}
               <div className="pt-1 space-y-2">
                 <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>↓ RX&nbsp;{formatBps(net.data.wan_rx_bps)}</span>
+                  <span>↓ RX&nbsp;{formatBps(toFiniteNumber(net.data.wan_rx_bps))}</span>
                   <Sparkline data={rxHistory} color="#22c55e" height={32} width={100} />
                 </div>
                 <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>↑ TX&nbsp;{formatBps(net.data.wan_tx_bps)}</span>
+                  <span>↑ TX&nbsp;{formatBps(toFiniteNumber(net.data.wan_tx_bps))}</span>
                   <Sparkline data={txHistory} color="#3b82f6" height={32} width={100} />
                 </div>
               </div>
@@ -293,7 +302,7 @@ export default function Dashboard() {
           {sec.data && (
             <div className="space-y-3">
               <div className="text-sm text-gray-500">Suricata alert rate</div>
-              <div className="text-2xl font-semibold text-gray-900">{sec.data.suricata_alert_rate.toFixed(1)} alerts/sec</div>
+              <div className="text-2xl font-semibold text-gray-900">{toFiniteNumber(sec.data.suricata_alert_rate).toFixed(1)} alerts/sec</div>
               <p className="text-sm text-gray-500">Detailed alert data is unavailable in this version.</p>
             </div>
           )}

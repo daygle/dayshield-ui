@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   getSuricataConfig,
   updateSuricataConfig,
@@ -39,6 +40,8 @@ const actionBadge = (action: 'alert' | 'drop') => (
 )
 
 export default function Suricata() {
+  const [searchParams] = useSearchParams()
+  const selectedInterface = searchParams.get('iface')
   const [config, setConfig] = useState<SuricataConfig | null>(null)
   const [rulesets, setRulesets] = useState<RulesetRow[]>([])
   const [alerts, setAlerts] = useState<AlertRow[]>([])
@@ -187,6 +190,28 @@ export default function Suricata() {
                 {config.homeNet.join(', ') || '—'}
               </dd>
             </div>
+            {selectedInterface && (
+              <div>
+                <dt className="text-gray-500">Selected Interface</dt>
+                <dd className="font-medium text-gray-800">{selectedInterface}</dd>
+              </div>
+            )}
+            {selectedInterface && (
+              <div>
+                <dt className="text-gray-500">Monitoring</dt>
+                <dd
+                  className={`font-medium ${
+                    config.interfaces.includes(selectedInterface)
+                      ? 'text-green-600'
+                      : 'text-amber-600'
+                  }`}
+                >
+                  {config.interfaces.includes(selectedInterface)
+                    ? 'Included in Suricata interfaces'
+                    : 'Not included in Suricata interfaces'}
+                </dd>
+              </div>
+            )}
           </dl>
         </Card>
       )}

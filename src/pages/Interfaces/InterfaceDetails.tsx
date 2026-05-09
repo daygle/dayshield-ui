@@ -13,10 +13,11 @@ import Modal from '../../components/Modal'
 interface InterfaceDetailsProps {
   iface: NetworkInterface
   onUpdate?: () => void
+  initialSection?: 'dhcp' | 'leases' | 'firewall' | null
 }
 
-export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsProps) {
-  const [expandedSection, setExpandedSection] = useState<'dhcp' | 'leases' | 'firewall' | null>(null)
+export default function InterfaceDetails({ iface, onUpdate, initialSection = null }: InterfaceDetailsProps) {
+  const [expandedSection, setExpandedSection] = useState<'dhcp' | 'leases' | 'firewall' | null>(initialSection)
 
   // DHCP state
   const [dhcpConfig, setDhcpConfig] = useState<DhcpConfigPerInterface | null>(null)

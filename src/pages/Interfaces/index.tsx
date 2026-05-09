@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { getInterfaces, createInterface, deleteInterface } from '../../api/interfaces'
 import type { NetworkInterface } from '../../types'
 import Card from '../../components/Card'
@@ -23,6 +24,7 @@ const defaultForm: Partial<NetworkInterface> = {
 }
 
 export default function Interfaces() {
+  const [searchParams] = useSearchParams()
   const [ifaces, setIfaces] = useState<InterfaceRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -31,17 +33,33 @@ export default function Interfaces() {
   const [saving, setSaving] = useState(false)
   const [deleteName, setDeleteName] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [expandedInterface, setExpandedInterface] = useState<string | null>(null)
+  const [expandedInterface, setExpandedInterface] = useState<string | null>(searchParams.get('iface'))
+
+  const requestedInterface = searchParams.get('iface')
+  const sectionParam = searchParams.get('section')
+  const requestedSection: 'dhcp' | 'leases' | 'firewall' | null =
+    sectionParam === 'dhcp' || sectionParam === 'leases' || sectionParam === 'firewall'
+      ? sectionParam
+      : null
+
+  const isInterfaceRowArray = (value: unknown): value is InterfaceRow[] =>
+    Array.isArray(value)
 
   const load = () => {
     setLoading(true)
     getInterfaces()
-      .then((res) => setIfaces(res.data as InterfaceRow[]))
+      .then((res) => {
+        const rows = isInterfaceRowArray(res.data) ? res.data : []
+        setIfaces(rows)
+        if (requestedInterface && rows.some((i) => i.name === requestedInterface)) {
+          setExpandedInterface(requestedInterface)
+        }
+      })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [])
+  useEffect(load, [requestedInterface])
 
   const handleSave = () => {
     setSaving(true)
@@ -167,8 +185,12 @@ export default function Interfaces() {
                 {expandedInterface === iface.name && (
                   <div className="border-t border-gray-200 p-4 bg-white">
                     <InterfaceDetails
+                      key={`${iface.name}:${expandedInterface === iface.name ? requestedSection ?? 'none' : 'none'}`}
                       iface={iface}
                       onUpdate={load}
+                      initialSection={
+                        expandedInterface === iface.name ? requestedSection : null
+                      }
                     />
                   </div>
                 )}
