@@ -25,5 +25,5 @@ The production assets are emitted to `dist/`.
 
 ## Notes
 
-- The backend API is provided by `dayshield-core` (default service port `3000`).
+- The backend API is provided by `dayshield-core` (default service port `8443`).
 - There is no supported development server or preview workflow in this package.

@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { getAuthToken } from '../api/client'
 import type { MetricsSnapshot } from '../types'
 
 function getWsUrl(): string {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const host = window.location.host || 'localhost:8080'
-  return `${proto}//${host}/api/metrics/ws`
+  const host = window.location.host || 'localhost:8443'
+  const token = getAuthToken()
+  const suffix = token ? `?token=${encodeURIComponent(token)}` : ''
+  return `${proto}//${host}/metrics/ws${suffix}`
 }
 
 export function useMetricsStream() {

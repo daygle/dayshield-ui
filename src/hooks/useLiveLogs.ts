@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { getAuthToken } from '../api/client'
 import type { LiveLogsFilter, LogEntry, WsStatus } from '../types/logs'
 
 const MAX_BUFFER = 2000
 
 function buildWsUrl(): string {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${proto}//${window.location.host}/logs/ws`
+  const token = getAuthToken()
+  const suffix = token ? `?token=${encodeURIComponent(token)}` : ''
+  return `${proto}//${window.location.host}/logs/ws${suffix}`
 }
 
 export function useLiveLogs() {
