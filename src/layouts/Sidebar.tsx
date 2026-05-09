@@ -227,7 +227,6 @@ export default function Sidebar() {
                 [
                   'sidebar-link',
                   isActive ? 'active' : '',
-                  item.indent ? 'pl-7' : '',
                 ].join(' ')
               }
             >

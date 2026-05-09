@@ -1,4 +1,5 @@
 import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig, type AxiosHeaders } from 'axios'
+import type { ApiResponse } from '../types'
 
 const apiClient = axios.create({
   baseURL: '/',
@@ -65,7 +66,30 @@ apiClient.interceptors.request.use(
 
 // Response interceptor for error normalisation
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response: AxiosResponse) => {
+    const responseType = response.config.responseType
+
+    // Leave non-JSON payloads alone so blob downloads continue to work.
+    if (responseType && responseType !== 'json') {
+      return response
+    }
+
+    const payload = response.data
+    const isEnvelope =
+      payload !== null &&
+      typeof payload === 'object' &&
+      'success' in payload &&
+      'data' in payload
+
+    if (!isEnvelope) {
+      response.data = {
+        success: true,
+        data: payload,
+      } as ApiResponse<unknown>
+    }
+
+    return response
+  },
   (error: AxiosError<unknown>) => {
     const status = error.response?.status
     const requestUrl = (error.config?.url ?? '').toLowerCase()
