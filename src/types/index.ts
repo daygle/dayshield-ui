@@ -171,6 +171,19 @@ export interface DhcpConfig {
   domainName: string
 }
 
+/** Per-interface DHCP configuration. Used by /interfaces/{name}/dhcp endpoints. */
+export interface DhcpConfigPerInterface {
+  enabled: boolean
+  subnet: string      // CIDR e.g. "192.168.1.0/24" — must match the interface network
+  rangeStart: string
+  rangeEnd: string
+  subnetMask: string  // derived dotted-decimal, read-only from API
+  gateway: string
+  dnsServers: string[]
+  leaseTime: number   // seconds
+  domainName: string
+}
+
 export interface DhcpPool {
   id: string
   interface: string
@@ -228,7 +241,7 @@ export type SuricataMode = 'ids' | 'ips'
 
 export interface SuricataConfig {
   enabled: boolean
-  interface: string
+  interfaces: string[]
   mode: SuricataMode
   homeNet: string[]
   externalNet: string[]

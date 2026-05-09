@@ -3,9 +3,9 @@ import { getInterfaces, createInterface, deleteInterface } from '../../api/inter
 import type { NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
-import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
+import InterfaceDetails from './InterfaceDetails'
 
 type InterfaceRow = NetworkInterface & Record<string, unknown>
 
@@ -31,6 +31,7 @@ export default function Interfaces() {
   const [saving, setSaving] = useState(false)
   const [deleteName, setDeleteName] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [expandedInterface, setExpandedInterface] = useState<string | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -66,73 +67,11 @@ export default function Interfaces() {
       .finally(() => setDeleting(false))
   }
 
-  const columns: Column<InterfaceRow>[] = [
-    { key: 'name', header: 'Name' },
-    { key: 'description', header: 'Description' },
-    { key: 'type', header: 'Type' },
-    {
-      key: 'ipv4Address',
-      header: 'IPv4 Address',
-      render: (row) => {
-        if (row.wanMode === 'pppoe') {
-          return (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-              PPPoE
-            </span>
-          )
-        }
-        if (row.dhcp4) {
-          return (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-              DHCP
-            </span>
-          )
-        }
-        return row.ipv4Address
-          ? `${row.ipv4Address}/${row.ipv4Prefix ?? ''}`
-          : '—'
-      },
-    },
-    {
-      key: 'enabled',
-      header: 'Status',
-      render: (row) => (
-        <span
-          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-            row.enabled
-              ? 'bg-green-100 text-green-700'
-              : 'bg-gray-100 text-gray-500'
-          }`}
-        >
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${row.enabled ? 'bg-green-500' : 'bg-gray-400'}`}
-          />
-          {row.enabled ? 'Up' : 'Down'}
-        </span>
-      ),
-    },
-    { key: 'mac', header: 'MAC Address', render: (row) => (row.mac as string) ?? '—' },
-    {
-      key: 'actions',
-      header: '',
-      className: 'w-16 text-right',
-      render: (row) => (
-        <Button
-          variant="danger"
-          size="sm"
-          onClick={() => setDeleteName(row.name as string)}
-        >
-          Delete
-        </Button>
-      ),
-    },
-  ]
-
   return (
     <div className="space-y-4">
       <Card
         title="Network Interfaces"
-        subtitle="Manage physical and virtual network interfaces"
+        subtitle="Manage physical and virtual network interfaces, DHCP, and firewall rules"
         actions={
           <Button size="sm" onClick={() => setModalOpen(true)}>
             + Add Interface
@@ -142,13 +81,101 @@ export default function Interfaces() {
         {error && (
           <p className="text-sm text-red-600 mb-3">{error}</p>
         )}
-        <Table
-          columns={columns}
-          data={ifaces}
-          keyField="name"
-          loading={loading}
-          emptyMessage="No interfaces found. Add one to get started."
-        />
+
+        {loading ? (
+          <p className="text-gray-500">Loading interfaces...</p>
+        ) : ifaces.length === 0 ? (
+          <p className="text-gray-500">No interfaces found. Add one to get started.</p>
+        ) : (
+          <div className="space-y-3">
+            {ifaces.map((iface) => (
+              <div
+                key={iface.name}
+                className="border border-gray-200 rounded-lg overflow-hidden"
+              >
+                {/* Interface Header */}
+                <button
+                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                  onClick={() =>
+                    setExpandedInterface(
+                      expandedInterface === iface.name ? null : iface.name
+                    )
+                  }
+                >
+                  <div className="flex items-center gap-4 flex-1 text-left">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">
+                        {iface.description || iface.name}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {iface.name} • {iface.type}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {iface.dhcp4 && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                          DHCP
+                        </span>
+                      )}
+                      {iface.wanMode === 'pppoe' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                          PPPoE
+                        </span>
+                      )}
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                          iface.enabled
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-500'
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            iface.enabled ? 'bg-green-500' : 'bg-gray-400'
+                          }`}
+                        />
+                        {iface.enabled ? 'Up' : 'Down'}
+                      </span>
+                      <span className="text-gray-400 text-sm">
+                        {iface.ipv4Address && !iface.dhcp4
+                          ? `${iface.ipv4Address}/${iface.ipv4Prefix ?? ''}`
+                          : iface.mac
+                            ? iface.mac
+                            : '—'}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    className="ml-2 p-2 hover:bg-gray-100 rounded transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setDeleteName(iface.name)
+                    }}
+                  >
+                    <span className="text-red-600 text-sm font-medium">Delete</span>
+                  </button>
+                  <span
+                    className={`ml-2 text-gray-500 transition-transform ${
+                      expandedInterface === iface.name ? 'rotate-180' : ''
+                    }`}
+                  >
+                    ▼
+                  </span>
+                </button>
+
+                {/* Expanded Details */}
+                {expandedInterface === iface.name && (
+                  <div className="border-t border-gray-200 p-4 bg-white">
+                    <InterfaceDetails
+                      iface={iface}
+                      onUpdate={load}
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       {/* Add Interface Modal */}
@@ -197,7 +224,13 @@ export default function Interfaces() {
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               checked={form.dhcp4 ?? false}
               onChange={(e) =>
-                setForm({ ...form, dhcp4: e.target.checked, wanMode: undefined, ipv4Address: '', ipv4Prefix: 24 })
+                setForm({
+                  ...form,
+                  dhcp4: e.target.checked,
+                  wanMode: undefined,
+                  ipv4Address: '',
+                  ipv4Prefix: 24,
+                })
               }
             />
             <label htmlFor="iface-dhcp4" className="text-sm font-medium text-gray-700">
@@ -276,7 +309,8 @@ export default function Interfaces() {
         size="sm"
       >
         <p className="text-sm text-gray-600">
-          Are you sure you want to delete interface <strong>{deleteName}</strong>? This action cannot be undone.
+          Are you sure you want to delete interface <strong>{deleteName}</strong>? This action
+          cannot be undone.
         </p>
       </Modal>
     </div>

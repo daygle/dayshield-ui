@@ -36,3 +36,33 @@ export const getSuricataAlerts = (limit = 100): Promise<ApiResponse<SuricataAler
   apiClient
     .get<ApiResponse<SuricataAlert[]>>('/suricata/alerts', { params: { limit } })
     .then((r) => r.data)
+
+// ── Per-interface Suricata ────────────────────────────────────────────────────
+
+interface InterfaceSuricataConfig {
+  interface: string
+  monitored: boolean
+  enabled: boolean
+  mode: string
+  interfaces: string[]
+}
+
+export const getInterfaceSuricataConfig = (
+  interfaceName: string,
+): Promise<ApiResponse<InterfaceSuricataConfig>> =>
+  apiClient
+    .get<ApiResponse<InterfaceSuricataConfig>>(
+      `/interfaces/${encodeURIComponent(interfaceName)}/suricata`,
+    )
+    .then((r) => r.data)
+
+export const updateInterfaceSuricataConfig = (
+  interfaceName: string,
+  monitored: boolean,
+): Promise<ApiResponse<InterfaceSuricataConfig>> =>
+  apiClient
+    .post<ApiResponse<InterfaceSuricataConfig>>(
+      `/interfaces/${encodeURIComponent(interfaceName)}/suricata`,
+      { monitored },
+    )
+    .then((r) => r.data)
