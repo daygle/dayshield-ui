@@ -3,6 +3,10 @@ import type {
   ApiResponse,
   SystemStatus,
   SystemConfig,
+  UpdateSettings,
+  UpdatesStatus,
+  UpdatesActionResult,
+  UpdateComponent,
   DashboardSystemStatus,
   NetworkStatus,
   SecurityStatus,
@@ -34,6 +38,49 @@ export const rebootSystem = (): Promise<ApiResponse<void>> =>
 export const shutdownSystem = (): Promise<ApiResponse<void>> =>
   apiClient
     .post<ApiResponse<void>>('/system/shutdown')
+    .then((r) => r.data)
+
+export const getUpdatesStatus = (): Promise<ApiResponse<UpdatesStatus>> =>
+  apiClient
+    .get<ApiResponse<UpdatesStatus>>('/system/updates/status')
+    .then((r) => r.data)
+
+export const getUpdateSettings = (): Promise<ApiResponse<UpdateSettings>> =>
+  apiClient
+    .get<ApiResponse<UpdateSettings>>('/system/updates/settings')
+    .then((r) => r.data)
+
+export const updateUpdateSettings = (
+  settings: UpdateSettings,
+): Promise<ApiResponse<UpdateSettings>> =>
+  apiClient
+    .put<ApiResponse<UpdateSettings>>('/system/updates/settings', settings)
+    .then((r) => r.data)
+
+export const checkForUpdates = (): Promise<ApiResponse<UpdatesStatus>> =>
+  apiClient
+    .post<ApiResponse<UpdatesStatus>>('/system/updates/check')
+    .then((r) => r.data)
+
+export const applyUpdates = (
+  component: UpdateComponent = 'both',
+): Promise<ApiResponse<UpdatesActionResult>> =>
+  apiClient
+    .post<ApiResponse<UpdatesActionResult>>('/system/updates/apply', { component })
+    .then((r) => r.data)
+
+export const rollbackUpdates = (
+  component: UpdateComponent = 'both',
+): Promise<ApiResponse<UpdatesActionResult>> =>
+  apiClient
+    .post<ApiResponse<UpdatesActionResult>>('/system/updates/rollback', { component })
+    .then((r) => r.data)
+
+export const validateUpdates = (
+  component: UpdateComponent = 'both',
+): Promise<ApiResponse<UpdatesActionResult>> =>
+  apiClient
+    .post<ApiResponse<UpdatesActionResult>>('/system/updates/validate', { component })
     .then((r) => r.data)
 
 // ── Dashboard-specific endpoints ──────────────────────────────────────────────

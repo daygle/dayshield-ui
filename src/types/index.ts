@@ -393,6 +393,50 @@ export interface SystemConfig {
   webPort: number
 }
 
+export type UpdateComponent = 'core' | 'ui' | 'both'
+
+export interface UpdateSettings {
+  autoCheckEnabled: boolean
+  checkIntervalMinutes: number
+  rebootRequiredAfterApply: boolean
+  coreRepoPath: string
+  uiRepoPath: string
+  coreRepoUrl: string
+  uiRepoUrl: string
+  coreBranch: string
+  uiBranch: string
+}
+
+export interface ComponentUpdateStatus {
+  component: 'core' | 'ui' | string
+  repoPath: string
+  branch: string
+  validRepo: boolean
+  dirtyWorktree: boolean
+  currentCommit?: string
+  remoteCommit?: string
+  updateAvailable: boolean
+  rollbackCommit?: string
+  lastAppliedCommit?: string
+  lastError?: string
+}
+
+export interface UpdatesStatus {
+  settings: UpdateSettings
+  lastCheckedAt?: string
+  lastAppliedAt?: string
+  pendingReboot: boolean
+  components: ComponentUpdateStatus[]
+}
+
+export interface UpdatesActionResult {
+  operation: string
+  success: boolean
+  message: string
+  details: string[]
+  status: UpdatesStatus
+}
+
 // ── Backup / Restore ─────────────────────────────────────────────────────────
 
 export interface BackupEntry {

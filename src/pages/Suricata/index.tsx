@@ -178,8 +178,8 @@ export default function Suricata() {
               <dd className="font-medium text-gray-800 uppercase">{config.mode}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Interface</dt>
-              <dd className="font-medium text-gray-800">{config.interface}</dd>
+              <dt className="text-gray-500">Interfaces</dt>
+              <dd className="font-medium text-gray-800">{config.interfaces.join(', ') || '—'}</dd>
             </div>
             <div>
               <dt className="text-gray-500">Home Networks</dt>
