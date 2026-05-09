@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   getFirewallRules,
   createFirewallRule,
@@ -89,6 +90,10 @@ function unwrapArray<T>(res: unknown): T[] {
 }
 
 export default function Firewall() {
+  const [searchParams] = useSearchParams()
+  const selectedSection = searchParams.get('section')
+  const selectedInterface = searchParams.get('iface')
+
   const [rules, setRules] = useState<RuleRow[]>([])
   const [rulesLoading, setRulesLoading] = useState(true)
   const [rulesError, setRulesError] = useState<string | null>(null)
@@ -117,6 +122,15 @@ export default function Firewall() {
   const [managementPortsInput, setManagementPortsInput] = useState('22, 443, 8443')
 
   const [stats, setStats] = useState<FirewallRuleStats[]>([])
+
+  const visibleRules = useMemo(
+    () => (selectedInterface ? rules.filter((rule) => (rule.interface as string | null) === selectedInterface) : rules),
+    [rules, selectedInterface],
+  )
+
+  const rulesEmptyMessage = selectedInterface
+    ? `No firewall rules defined for ${selectedInterface}.`
+    : 'No firewall rules defined.'
 
   const loadRules = () => {
     setRulesLoading(true)
@@ -152,6 +166,20 @@ export default function Firewall() {
     loadSettings()
     loadStats()
   }, [])
+
+  useEffect(() => {
+    const sectionId =
+      selectedSection === 'aliases'
+        ? 'firewall-aliases'
+        : selectedSection === 'settings'
+          ? 'firewall-settings'
+          : 'firewall-rules'
+
+    const target = document.getElementById(sectionId)
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [selectedSection])
 
   const openSettingsModal = () => {
     setAllowedSourcesInput((settings.management_allowed_sources ?? []).join(', '))
@@ -370,15 +398,16 @@ export default function Firewall() {
 
   return (
     <div className="space-y-6">
-      <Card
-        title="Firewall Settings"
-        subtitle="Global chain policies, management-plane protection, and advanced stateful controls"
-        actions={
-          <Button size="sm" variant="secondary" onClick={openSettingsModal}>
-            Edit Settings
-          </Button>
-        }
-      >
+      <div id="firewall-settings">
+        <Card
+          title="Firewall Settings"
+          subtitle="Global chain policies, management-plane protection, and advanced stateful controls"
+          actions={
+            <Button size="sm" variant="secondary" onClick={openSettingsModal}>
+              Edit Settings
+            </Button>
+          }
+        >
         {settingsError && <p className="text-sm text-red-600 mb-3">{settingsError}</p>}
         <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
           <div>
@@ -410,38 +439,48 @@ export default function Firewall() {
             <dd className="font-medium text-gray-800">{settings.management_anti_lockout ? 'Enabled' : 'Disabled'}</dd>
           </div>
         </dl>
-      </Card>
+        </Card>
+      </div>
 
-      <Card
-        title="Firewall Rules"
-        subtitle="Define allow/deny rules evaluated top-to-bottom"
-        actions={
-          <div className="flex gap-2">
-            <Button size="sm" variant="secondary" onClick={loadStats}>
-              Refresh Counters
-            </Button>
-            <Button size="sm" onClick={() => setRuleModalOpen(true)}>
-              + Add Rule
-            </Button>
-          </div>
-        }
-      >
-        {rulesError && <p className="text-sm text-red-600 mb-3">{rulesError}</p>}
-        <Table columns={ruleColumns} data={rules} keyField="id" loading={rulesLoading} emptyMessage="No firewall rules defined." />
-      </Card>
+      <div id="firewall-rules">
+        <Card
+          title="Firewall Rules"
+          subtitle={selectedInterface ? `Rules for interface ${selectedInterface}` : 'Define allow/deny rules evaluated top-to-bottom'}
+          actions={
+            <div className="flex gap-2">
+              <Button size="sm" variant="secondary" onClick={loadStats}>
+                Refresh Counters
+              </Button>
+              <Button size="sm" onClick={() => setRuleModalOpen(true)}>
+                + Add Rule
+              </Button>
+            </div>
+          }
+        >
+          {selectedInterface && (
+            <div className="mb-3 rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700">
+              Filtering rules for interface <span className="font-semibold">{selectedInterface}</span>
+            </div>
+          )}
+          {rulesError && <p className="text-sm text-red-600 mb-3">{rulesError}</p>}
+          <Table columns={ruleColumns} data={visibleRules} keyField="id" loading={rulesLoading} emptyMessage={rulesEmptyMessage} />
+        </Card>
+      </div>
 
-      <Card
-        title="Aliases"
-        subtitle="Named sets of hosts, networks, or ports reusable in firewall rules"
-        actions={
-          <Button size="sm" onClick={() => setAliasModalOpen(true)}>
-            + Add Alias
-          </Button>
-        }
-      >
-        {aliasesError && <p className="text-sm text-red-600 mb-3">{aliasesError}</p>}
-        <Table columns={aliasColumns} data={aliases} keyField="name" loading={aliasesLoading} emptyMessage="No aliases defined." />
-      </Card>
+      <div id="firewall-aliases">
+        <Card
+          title="Aliases"
+          subtitle="Named sets of hosts, networks, or ports reusable in firewall rules"
+          actions={
+            <Button size="sm" onClick={() => setAliasModalOpen(true)}>
+              + Add Alias
+            </Button>
+          }
+        >
+          {aliasesError && <p className="text-sm text-red-600 mb-3">{aliasesError}</p>}
+          <Table columns={aliasColumns} data={aliases} keyField="name" loading={aliasesLoading} emptyMessage="No aliases defined." />
+        </Card>
+      </div>
 
       <Modal
         open={settingsModalOpen}

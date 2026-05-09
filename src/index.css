@@ -14,7 +14,23 @@
     color: #94a3b8;
   }
 
+  .sidebar-sub-link {
+    @apply flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-medium transition-colors duration-150;
+    color: #94a3b8;
+  }
+
+  .sidebar-sub-link-nested {
+    @apply flex items-center gap-2 px-4 py-1.5 rounded-md text-[11px] font-medium transition-colors duration-150;
+    color: #cbd5e1;
+  }
+
   .sidebar-link:hover {
+    background-color: #1e293b;
+    color: #f1f5f9;
+  }
+
+  .sidebar-sub-link:hover,
+  .sidebar-sub-link-nested:hover {
     background-color: #1e293b;
     color: #f1f5f9;
   }
@@ -22,5 +38,11 @@
   .sidebar-link.active {
     background-color: #1d4ed8;
     color: #f1f5f9;
+  }
+
+  .sidebar-sub-link.active,
+  .sidebar-sub-link-nested.active {
+    background-color: #1e40af;
+    color: #f8fafc;
   }
 }

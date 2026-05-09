@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { getInterfaces } from '../api/interfaces'
+import { getFirewallRules } from '../api/firewall'
 import { getSuricataConfig } from '../api/suricata'
-import type { NetworkInterface } from '../types'
+import type { FirewallRule, NetworkInterface } from '../types'
 
 interface NavItem {
   type?: 'item'
   to: string
   label: string
   icon: React.ReactNode
-  indent?: boolean
+  level?: 0 | 1 | 2
 }
 
 interface NavSection {
@@ -18,6 +19,39 @@ interface NavSection {
 }
 
 type NavEntry = NavItem | NavSection
+
+function QueryNavLink({
+  to,
+  label,
+  icon,
+  level = 1,
+}: {
+  to: string
+  label: string
+  icon?: React.ReactNode
+  level?: 1 | 2
+}) {
+  const location = useLocation()
+  const [pathname, search = ''] = to.split('?')
+  const targetParams = new URLSearchParams(search)
+  const currentParams = new URLSearchParams(location.search)
+
+  const active = location.pathname === pathname && Array.from(targetParams.entries()).every(
+    ([key, value]) => currentParams.get(key) === value,
+  )
+
+  const className = [
+    level === 2 ? 'sidebar-sub-link-nested' : 'sidebar-sub-link',
+    active ? 'active' : '',
+  ].join(' ')
+
+  return (
+    <Link to={to} className={className}>
+      {icon}
+      {label}
+    </Link>
+  )
+}
 
 const navEntries: NavEntry[] = [
   {
@@ -56,24 +90,12 @@ const navEntries: NavEntry[] = [
       </svg>
     ),
   },
-  { type: 'section', label: 'Firewall' },
   {
     to: '/firewall',
-    label: 'Rules & Aliases',
-    indent: true,
+    label: 'Firewall',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-      </svg>
-    ),
-  },
-  {
-    to: '/nat',
-    label: 'NAT',
-    indent: true,
-    icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5h-3m3 3h-3m3-6h-3M8.25 4.5h7.5a2.25 2.25 0 012.25 2.25v10.5A2.25 2.25 0 0115.75 19.5h-7.5A2.25 2.25 0 016 17.25V6.75A2.25 2.25 0 018.25 4.5z" />
       </svg>
     ),
   },
@@ -199,23 +221,46 @@ const navEntries: NavEntry[] = [
 
 export default function Sidebar() {
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
+  const [firewallRuleInterfaces, setFirewallRuleInterfaces] = useState<string[]>([])
   const [suricataConfiguredInterfaces, setSuricataConfiguredInterfaces] = useState<string[]>([])
 
   useEffect(() => {
     let isMounted = true
-    Promise.all([getInterfaces(), getSuricataConfig()])
-      .then(([ifaceRes, suricataRes]) => {
+    Promise.allSettled([getInterfaces(), getFirewallRules(), getSuricataConfig()]).then(
+      ([ifaceRes, firewallRes, suricataRes]) => {
         if (!isMounted) return
-        setInterfaces(Array.isArray(ifaceRes.data) ? ifaceRes.data : [])
-        setSuricataConfiguredInterfaces(
-          Array.isArray(suricataRes.data?.interfaces) ? suricataRes.data.interfaces : [],
-        )
-      })
-      .catch(() => {
-        if (!isMounted) return
-        setInterfaces([])
-        setSuricataConfiguredInterfaces([])
-      })
+
+        if (ifaceRes.status === 'fulfilled') {
+          setInterfaces(Array.isArray(ifaceRes.value.data) ? ifaceRes.value.data : [])
+        } else {
+          setInterfaces([])
+        }
+
+        if (firewallRes.status === 'fulfilled') {
+          setFirewallRuleInterfaces(
+            Array.isArray(firewallRes.value.data)
+              ? Array.from(
+                  new Set(
+                    firewallRes.value.data
+                      .map((rule: FirewallRule) => rule.interface)
+                      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
+                  ),
+                ).sort((a, b) => a.localeCompare(b))
+              : [],
+          )
+        } else {
+          setFirewallRuleInterfaces([])
+        }
+
+        if (suricataRes.status === 'fulfilled') {
+          setSuricataConfiguredInterfaces(
+            Array.isArray(suricataRes.value.data?.interfaces) ? suricataRes.value.data.interfaces : [],
+          )
+        } else {
+          setSuricataConfiguredInterfaces([])
+        }
+      },
+    )
 
     return () => {
       isMounted = false
@@ -223,8 +268,8 @@ export default function Sidebar() {
   }, [])
 
   const firewallInterfaces = useMemo(
-    () => interfaces.filter((iface) => iface.enabled),
-    [interfaces],
+    () => firewallRuleInterfaces,
+    [firewallRuleInterfaces],
   )
 
   const dhcpInterfaces = useMemo(
@@ -265,53 +310,79 @@ export default function Sidebar() {
             )
           }
           const item = entry as NavItem
+          const level = item.level ?? 0
+          const itemClassName = level === 0 ? 'sidebar-link' : level === 2 ? 'sidebar-sub-link-nested' : 'sidebar-sub-link'
           return (
             <div key={item.to}>
-              <NavLink
-                to={item.to}
-                className={({ isActive }) =>
-                  [
-                    'sidebar-link',
-                    isActive ? 'active' : '',
-                  ].join(' ')
-                }
-              >
-                {item.icon}
-                {item.label}
-              </NavLink>
-
-              {item.to === '/firewall' && firewallInterfaces.map((iface) => (
+              {item.to.includes('?') ? (
+                <QueryNavLink
+                  to={item.to}
+                  label={item.label}
+                  icon={item.icon}
+                  level={level === 2 ? 2 : 1}
+                />
+              ) : (
                 <NavLink
-                  key={`fw-${iface.name}`}
-                  to={`/interfaces?iface=${encodeURIComponent(iface.name)}&section=firewall`}
-                  className="sidebar-link pl-10 text-sm text-slate-300 hover:text-white"
+                  to={item.to}
+                  className={({ isActive }) =>
+                    [itemClassName, isActive ? 'active' : ''].join(' ')
+                  }
                 >
-                  <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
-                  {iface.description || iface.name}
+                  {item.icon}
+                  {item.label}
                 </NavLink>
-              ))}
+              )}
 
-              {item.to === '/dhcp' && dhcpInterfaces.map((iface) => (
-                <NavLink
-                  key={`dhcp-${iface.name}`}
-                  to={`/interfaces?iface=${encodeURIComponent(iface.name)}&section=dhcp`}
-                  className="sidebar-link pl-10 text-sm text-slate-300 hover:text-white"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
-                  {iface.description || iface.name}
-                </NavLink>
-              ))}
+              {item.to === '/firewall' && (
+                <div className="mt-1 space-y-0.5">
+                  <QueryNavLink to="/firewall?section=rules" label="Rules" level={1} />
+                  {firewallInterfaces.map((iface) => (
+                    <QueryNavLink
+                      key={`fw-${iface}`}
+                      to={`/firewall?section=rules&iface=${encodeURIComponent(iface)}`}
+                      label={iface}
+                      level={2}
+                    />
+                  ))}
+                  <QueryNavLink to="/firewall?section=aliases" label="Aliases" level={1} />
+                  <QueryNavLink to="/firewall?section=settings" label="Settings" level={1} />
+                  <NavLink
+                    to="/nat"
+                    className={({ isActive }) => ['sidebar-sub-link', isActive ? 'active' : ''].join(' ')}
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                    </svg>
+                    NAT
+                  </NavLink>
+                </div>
+              )}
 
-              {item.to === '/suricata' && suricataInterfaces.map((iface) => (
-                <NavLink
-                  key={`suricata-${iface.name}`}
-                  to={`/suricata?iface=${encodeURIComponent(iface.name)}`}
-                  className="sidebar-link pl-10 text-sm text-slate-300 hover:text-white"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
-                  {iface.description || iface.name}
-                </NavLink>
-              ))}
+              {item.to === '/dhcp' && (
+                <div className="mt-1 space-y-0.5">
+                  {dhcpInterfaces.map((iface) => (
+                    <QueryNavLink
+                      key={`dhcp-${iface.name}`}
+                      to={`/interfaces?iface=${encodeURIComponent(iface.name)}&section=dhcp`}
+                      label={`[${iface.name}]`}
+                      level={2}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {item.to === '/suricata' && (
+                <div className="mt-1 space-y-0.5">
+                  {suricataInterfaces.map((iface) => (
+                    <QueryNavLink
+                      key={`suricata-${iface.name}`}
+                      to={`/suricata?iface=${encodeURIComponent(iface.name)}`}
+                      label={`[${iface.name}]`}
+                      level={2}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}
