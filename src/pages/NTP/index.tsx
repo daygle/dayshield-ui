@@ -94,7 +94,11 @@ export default function NtpPage() {
       .then(([cfg, stat, ifaces]) => {
         setConfig(cfg.data)
         setStatus(stat.data)
-        setInterfaces(ifaces.data.filter((i) => i.type !== 'loopback'))
+        setInterfaces(
+          Array.isArray(ifaces.data)
+            ? ifaces.data.filter((i) => i.type !== 'loopback')
+            : []
+        )
       })
       .catch((err: Error) => addToast('error', `Failed to load NTP data: ${err.message}`))
       .finally(() => setLoading(false))
@@ -193,11 +197,19 @@ export default function NtpPage() {
             </div>
             <div>
               <dt className="text-gray-500">Offset</dt>
-              <dd className="font-medium text-gray-800">{status.offset.toFixed(3)} ms</dd>
+              <dd className="font-medium text-gray-800">
+                {typeof status.offset === 'number' && Number.isFinite(status.offset)
+                  ? `${status.offset.toFixed(3)} ms`
+                  : '—'}
+              </dd>
             </div>
             <div>
               <dt className="text-gray-500">Jitter</dt>
-              <dd className="font-medium text-gray-800">{status.jitter.toFixed(3)} ms</dd>
+              <dd className="font-medium text-gray-800">
+                {typeof status.jitter === 'number' && Number.isFinite(status.jitter)
+                  ? `${status.jitter.toFixed(3)} ms`
+                  : '—'}
+              </dd>
             </div>
           </dl>
         ) : (

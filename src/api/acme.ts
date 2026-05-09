@@ -32,7 +32,7 @@ export const getAcmeCertStatus = (): Promise<ApiResponse<AcmeCertificate>> =>
 export const getAcmeAccount = getAcmeConfig
 export const updateAcmeAccount = updateAcmeConfig
 export const getAcmeCertificates = (): Promise<ApiResponse<AcmeCertificate[]>> =>
-  getAcmeCertStatus().then((r) => ({ ...r, data: [r.data] }))
+  getAcmeCertStatus().then((r) => ({ ...r, data: r.data ? [r.data] : [] }))
 export const issueAcmeCertificate = (
   payload: { domain: string; sans: string[]; autoRenew: boolean },
 ): Promise<ApiResponse<void>> =>

@@ -609,9 +609,9 @@ export default function Metrics() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Active States</span>
-                <span className="text-2xl font-bold text-blue-600">{snap.firewall_state_count.toLocaleString()}</span>
+                <span className="text-2xl font-bold text-blue-600">{toFiniteNumber(snap.firewall_state_count).toLocaleString()}</span>
               </div>
-              {snap.firewall_rule_hits.length > 0 && (
+              {snap.firewall_rule_hits && Array.isArray(snap.firewall_rule_hits) && snap.firewall_rule_hits.length > 0 && (
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Rule Hit Counters</p>
                   <FirewallRuleHitsChart items={snap.firewall_rule_hits} />

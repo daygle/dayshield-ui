@@ -40,7 +40,7 @@ export default function TopBar() {
         {/* Status indicator */}
         <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
           <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-          Connected to core
+          Connected
         </span>
 
         {/* Username + change-password link */}

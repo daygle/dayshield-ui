@@ -61,7 +61,7 @@ export default function ACME() {
       .then(([acc, c]) => {
         setAccount(acc.data)
         setAccountForm(acc.data)
-        setCerts(c.data as CertRow[])
+        setCerts(Array.isArray(c.data) ? (c.data as CertRow[]) : [])
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))
@@ -100,7 +100,7 @@ export default function ACME() {
   const handleRenew = (id: number) => {
     setRenewingId(id)
     renewAcmeCertificate(id)
-      .then(() => getAcmeCertificates().then((r) => setCerts(r.data as CertRow[])))
+      .then(() => getAcmeCertificates().then((r) => setCerts(Array.isArray(r.data) ? (r.data as CertRow[]) : [])))
       .catch((err: Error) => setError(err.message))
       .finally(() => setRenewingId(null))
   }
@@ -111,7 +111,7 @@ export default function ACME() {
     deleteAcmeCertificate(deleteId)
       .then(() => {
         setDeleteId(null)
-        getAcmeCertificates().then((r) => setCerts(r.data as CertRow[]))
+        getAcmeCertificates().then((r) => setCerts(Array.isArray(r.data) ? (r.data as CertRow[]) : []))
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setDeleting(false))
@@ -123,8 +123,8 @@ export default function ACME() {
       key: 'sans',
       header: 'SANs',
       render: (row) => {
-        const sans = row.sans as string[]
-        return sans.length ? sans.join(', ') : '—'
+        const sans = row.sans as string[] | undefined
+        return sans && Array.isArray(sans) && sans.length ? sans.join(', ') : '—'
       },
     },
     { key: 'status', header: 'Status', render: (row) => statusBadge(row.status as AcmeCertificateStatus) },
