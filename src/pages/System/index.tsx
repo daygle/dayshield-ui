@@ -523,18 +523,33 @@ export default function System() {
                       <dt className="inline text-gray-500">Branch: </dt>
                       <dd className="inline font-medium text-gray-800">{comp.branch}</dd>
                     </div>
+                    {/* Show version if available (registry mode), else show commit (git mode) */}
                     <div>
                       <dt className="inline text-gray-500">Current: </dt>
-                      <dd className="inline font-mono text-gray-800">{shortCommit(comp.currentCommit)}</dd>
+                      <dd className="inline font-mono text-gray-800">
+                        {comp.currentVersion ? comp.currentVersion : shortCommit(comp.currentCommit)}
+                      </dd>
                     </div>
                     <div>
                       <dt className="inline text-gray-500">Remote: </dt>
-                      <dd className="inline font-mono text-gray-800">{shortCommit(comp.remoteCommit)}</dd>
+                      <dd className="inline font-mono text-gray-800">
+                        {comp.remoteVersion ? comp.remoteVersion : shortCommit(comp.remoteCommit)}
+                      </dd>
                     </div>
-                    <div>
-                      <dt className="inline text-gray-500">Rollback: </dt>
-                      <dd className="inline font-mono text-gray-800">{shortCommit(comp.rollbackCommit)}</dd>
-                    </div>
+                    {/* Show last applied version if available */}
+                    {comp.lastAppliedVersion && (
+                      <div>
+                        <dt className="inline text-gray-500">Last Applied: </dt>
+                        <dd className="inline font-mono text-gray-800">{comp.lastAppliedVersion}</dd>
+                      </div>
+                    )}
+                    {/* Show rollback commit if available */}
+                    {comp.rollbackCommit && (
+                      <div>
+                        <dt className="inline text-gray-500">Rollback: </dt>
+                        <dd className="inline font-mono text-gray-800">{shortCommit(comp.rollbackCommit)}</dd>
+                      </div>
+                    )}
                     {comp.lastError && (() => {
                       const parsed = parseComponentError(comp.lastError)
                       return (
@@ -706,7 +721,7 @@ export default function System() {
                           <span className="text-amber-600">•</span>
                           <span className="font-medium uppercase">{c.component}</span>
                           <span className="text-amber-600 font-mono text-xs">
-                            {c.currentCommit ? c.currentCommit.slice(0, 8) : '—'} → {c.remoteCommit ? c.remoteCommit.slice(0, 8) : '—'}
+                            {c.currentVersion ? c.currentVersion : c.currentCommit?.slice(0, 8)} → {c.remoteVersion ? c.remoteVersion : c.remoteCommit?.slice(0, 8)}
                           </span>
                         </li>
                       ))}

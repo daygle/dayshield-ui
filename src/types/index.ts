@@ -453,9 +453,12 @@ export interface ComponentUpdateStatus {
   dirtyWorktree: boolean
   currentCommit?: string
   remoteCommit?: string
+  currentVersion?: string
+  remoteVersion?: string
   updateAvailable: boolean
   rollbackCommit?: string
   lastAppliedCommit?: string
+  lastAppliedVersion?: string
   lastError?: string
 }
 
