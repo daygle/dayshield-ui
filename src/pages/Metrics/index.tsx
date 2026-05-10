@@ -185,14 +185,17 @@ function drawBarChart(
   items.forEach((item, i) => {
     const y = i * (barH + 4) + 2
     const barW = (item.hits / max) * barAreaW
+    const description = typeof item.description === 'string'
+      ? item.description
+      : `Rule ${item.rule_id}`
 
     // Label
     ctx.fillStyle = 'rgba(71,85,105,0.9)'
     ctx.font = '11px system-ui, sans-serif'
     ctx.textAlign = 'right'
-    const label = item.description.length > 18
-      ? item.description.slice(0, 17) + '…'
-      : item.description
+    const label = description.length > 18
+      ? description.slice(0, 17) + '…'
+      : description
     ctx.fillText(label, labelW - 6, y + barH - 3)
 
     // Bar bg

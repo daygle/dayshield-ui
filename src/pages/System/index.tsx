@@ -38,6 +38,21 @@ function shortCommit(value?: string): string {
   return value ? value.slice(0, 8) : '—'
 }
 
+/**
+ * Parse component error message. Format: "component: error message"
+ * Example: "core: preflight failed (path is not writable: /usr/local/sbin)"
+ */
+function parseComponentError(error: string): { component?: string; message: string } {
+  const match = error.match(/^([^:]+):\s*(.+)$/)
+  if (match) {
+    return {
+      component: match[1].trim().toUpperCase(),
+      message: match[2].trim(),
+    }
+  }
+  return { message: error }
+}
+
 function updateActionMessageClasses(message: string): string {
   const normalized = message.toLowerCase()
 
@@ -54,6 +69,63 @@ function updateActionMessageClasses(message: string): string {
   }
 
   return 'rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700'
+}
+
+/**
+ * Parse validation message to extract structured warning/error information.
+ * Format: "validation passed with N warning(s): component: message | component: message"
+ * Or: "validation failed: error message"
+ * Or: "update preflight failed" / "update action failed"
+ */
+function parseValidationMessage(message: string): {
+  status: 'passed' | 'failed' | 'error'
+  warningCount?: number
+  warnings?: Array<{ component: string; message: string }>
+  error?: string
+} {
+  // Handle preflight/general update failures
+  if (message.includes('preflight failed') || message.includes('update action failed')) {
+    return {
+      status: 'error',
+      error: message,
+    }
+  }
+
+  if (message.includes('validation failed')) {
+    const errorMatch = message.match(/validation failed:\s*(.+)/)
+    return {
+      status: 'failed',
+      error: errorMatch ? errorMatch[1] : 'Validation failed',
+    }
+  }
+
+  if (message.includes('validation passed')) {
+    const countMatch = message.match(/validation passed with (\d+) warning\(s\)/)
+    const warningCount = countMatch ? parseInt(countMatch[1], 10) : 0
+
+    const warningPart = message.split(': ', 2)[1] || ''
+    const warnings: Array<{ component: string; message: string }> = []
+
+    // Split by pipe and parse each warning
+    const items = warningPart.split(' | ').filter(Boolean)
+    for (const item of items) {
+      const match = item.match(/^([^:]+):\s*(.+)$/)
+      if (match) {
+        warnings.push({
+          component: match[1].trim().toUpperCase(),
+          message: match[2].trim(),
+        })
+      }
+    }
+
+    return {
+      status: 'passed',
+      warningCount,
+      warnings,
+    }
+  }
+
+  return { status: 'passed' }
 }
 
 export default function System() {
@@ -378,9 +450,15 @@ export default function System() {
                       <dt className="inline text-gray-500">Rollback: </dt>
                       <dd className="inline font-mono text-gray-800">{shortCommit(comp.rollbackCommit)}</dd>
                     </div>
-                    {comp.lastError && (
-                      <div className="text-red-600">{comp.lastError}</div>
-                    )}
+                    {comp.lastError && (() => {
+                      const parsed = parseComponentError(comp.lastError)
+                      return (
+                        <div className="mt-2 rounded bg-red-50 border border-red-200 p-2">
+                          <div className="text-xs font-medium text-red-700">{parsed.component ? `${parsed.component} Error` : 'Error'}</div>
+                          <div className="text-xs text-red-600 mt-1">{parsed.message}</div>
+                        </div>
+                      )
+                    })()}
                   </dl>
                 </div>
               ))}
@@ -471,11 +549,59 @@ export default function System() {
               </div>
             )}
 
-            {updateActionMessage && (
-              <div className={updateActionMessageClasses(updateActionMessage)}>
-                {updateActionMessage}
-              </div>
-            )}
+            {updateActionMessage && (() => {
+              const parsed = parseValidationMessage(updateActionMessage)
+              const containerClasses = updateActionMessageClasses(updateActionMessage)
+
+              if (parsed.status === 'error') {
+                return (
+                  <div className={containerClasses}>
+                    <div className="space-y-2">
+                      <div className="font-medium">Update Failed</div>
+                      <div className="text-sm">{parsed.error}</div>
+                    </div>
+                  </div>
+                )
+              }
+
+              if (parsed.status === 'failed') {
+                return (
+                  <div className={containerClasses}>
+                    <div className="font-medium mb-2">Validation Failed</div>
+                    <div className="text-sm">{parsed.error}</div>
+                  </div>
+                )
+              }
+
+              if (parsed.status === 'passed' && parsed.warningCount && parsed.warnings && parsed.warnings.length > 0) {
+                return (
+                  <div className={containerClasses}>
+                    <div className="space-y-3">
+                      <div className="font-medium">
+                        Validation Passed with {parsed.warningCount} Warning{parsed.warningCount !== 1 ? 's' : ''}
+                      </div>
+                      <div className="space-y-2">
+                        {/* Group warnings by component */}
+                        {Array.from(new Map(
+                          parsed.warnings.map(w => [w.component, w])
+                        ).entries()).map(([component, warning]) => (
+                          <div key={component} className="border-l-2 border-current pl-3">
+                            <div className="font-medium text-sm">{component}</div>
+                            <div className="text-xs mt-1">{warning.message}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+
+              return (
+                <div className={containerClasses}>
+                  {updateActionMessage}
+                </div>
+              )
+            })()}
 
             {updates && updates.availableUpdateCount && updates.availableUpdateCount > 1 && (
               <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 space-y-3">

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   getDhcpConfig,
   updateDhcpConfig,
@@ -6,9 +7,14 @@ import {
   createDhcpStaticLease,
   deleteDhcpStaticLease,
   getDhcpLeases,
+  getInterfaceDhcpConfig,
+  updateInterfaceDhcpConfig,
+  getInterfaceStaticLeases,
+  createInterfaceStaticLease,
+  deleteInterfaceStaticLease,
 } from '../../api/dhcp'
 import { getInterfaces } from '../../api/interfaces'
-import type { DhcpConfig, DhcpStaticLease, DhcpLease } from '../../types'
+import type { DhcpConfig, DhcpConfigPerInterface, DhcpStaticLease, DhcpLease, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
@@ -83,7 +89,10 @@ const defaultConfigForm = (): Partial<DhcpConfig> => ({
 })
 
 export default function DHCP() {
+  const [searchParams] = useSearchParams()
+  const selectedInterface = searchParams.get('iface')
   const [config, setConfig] = useState<DhcpConfig | null>(null)
+  const [interfaceConfig, setInterfaceConfig] = useState<DhcpConfigPerInterface | null>(null)
   const [staticLeases, setStaticLeases] = useState<StaticLeaseRow[]>([])
   const [activeLeases, setActiveLeases] = useState<ActiveLeaseRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -95,17 +104,47 @@ export default function DHCP() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [configModalOpen, setConfigModalOpen] = useState(false)
-  const [configForm, setConfigForm] = useState<Partial<DhcpConfig>>(defaultConfigForm())
+  const [configForm, setConfigForm] = useState<Partial<DhcpConfig | DhcpConfigPerInterface>>(defaultConfigForm())
   const [configSaving, setConfigSaving] = useState(false)
   // DNS servers are edited as a comma-separated string in the input
   const [dnsInput, setDnsInput] = useState('')
-  const [interfaces, setInterfaces] = useState<string[]>([])
+  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
+
+  const selectedInterfaceMeta = useMemo(
+    () => interfaces.find((iface) => iface.name === selectedInterface) ?? null,
+    [interfaces, selectedInterface],
+  )
 
   const loadAll = () => {
     setLoading(true)
-    Promise.all([getDhcpConfig(), getDhcpStaticLeases(), getDhcpLeases()])
-      .then(([cfg, statics, actives]) => {
+    const loadPromise = selectedInterface
+      ? Promise.all([
+          getInterfaceDhcpConfig(selectedInterface),
+          getInterfaceStaticLeases(selectedInterface),
+        ])
+      : Promise.all([getDhcpConfig(), getDhcpStaticLeases(), getDhcpLeases()])
+
+    loadPromise
+      .then((results) => {
+        if (selectedInterface) {
+          const [cfg, statics] = results as [
+            { data: DhcpConfigPerInterface },
+            { data: DhcpStaticLease[] },
+          ]
+          setInterfaceConfig(cfg.data)
+          setConfig(null)
+          setStaticLeases(statics.data as StaticLeaseRow[])
+          setActiveLeases([])
+          return
+        }
+
+        const [cfg, statics, actives] = results as [
+          { data: DhcpConfig },
+          { data: DhcpStaticLease[] },
+          { data: DhcpLease[] },
+        ]
         setConfig(cfg.data)
+        setInterfaceConfig(null)
         setStaticLeases(statics.data as StaticLeaseRow[])
         setActiveLeases(actives.data as ActiveLeaseRow[])
       })
@@ -113,21 +152,23 @@ export default function DHCP() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(loadAll, [])
+  useEffect(loadAll, [selectedInterface])
 
   useEffect(() => {
     getInterfaces()
       .then((res) => {
         const names = (res.data ?? [])
           .filter((iface) => iface.enabled !== false)
-          .map((iface) => iface.name)
         setInterfaces(names)
       })
       .catch(() => setInterfaces([]))
   }, [])
 
   const openConfigModal = () => {
-    if (config) {
+    if (selectedInterface && interfaceConfig) {
+      setConfigForm({ ...interfaceConfig })
+      setDnsInput((interfaceConfig.dnsServers ?? []).join(', '))
+    } else if (config) {
       setConfigForm({ ...config })
       setDnsInput((config.dnsServers ?? []).join(', '))
     } else {
@@ -145,9 +186,17 @@ export default function DHCP() {
       .filter(Boolean)
     const payload = { ...configForm, dnsServers }
     setConfigSaving(true)
-    updateDhcpConfig(payload)
+    const savePromise = selectedInterface
+      ? updateInterfaceDhcpConfig(selectedInterface, payload as Partial<DhcpConfigPerInterface>)
+      : updateDhcpConfig(payload as Partial<DhcpConfig>)
+
+    savePromise
       .then((r) => {
-        setConfig(r.data)
+        if (selectedInterface) {
+          setInterfaceConfig(r.data as DhcpConfigPerInterface)
+        } else {
+          setConfig(r.data as DhcpConfig)
+        }
         setConfigModalOpen(false)
       })
       .catch((err: Error) => setError(err.message))
@@ -156,11 +205,18 @@ export default function DHCP() {
 
   const handleAddLease = () => {
     setLeaseSaving(true)
-    createDhcpStaticLease(leaseForm)
+    const addPromise = selectedInterface
+      ? createInterfaceStaticLease(selectedInterface, leaseForm)
+      : createDhcpStaticLease(leaseForm)
+
+    addPromise
       .then(() => {
         setLeaseModalOpen(false)
         setLeaseForm(defaultLeaseForm)
-        getDhcpStaticLeases().then((r) => setStaticLeases(r.data as StaticLeaseRow[]))
+        const reloadLeases = selectedInterface
+          ? getInterfaceStaticLeases(selectedInterface)
+          : getDhcpStaticLeases()
+        reloadLeases.then((r) => setStaticLeases(r.data as StaticLeaseRow[]))
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLeaseSaving(false))
@@ -169,10 +225,17 @@ export default function DHCP() {
   const handleDeleteLease = () => {
     if (deleteId === null) return
     setDeleting(true)
-    deleteDhcpStaticLease(deleteId)
+    const deletePromise = selectedInterface
+      ? deleteInterfaceStaticLease(selectedInterface, deleteId)
+      : deleteDhcpStaticLease(deleteId)
+
+    deletePromise
       .then(() => {
         setDeleteId(null)
-        getDhcpStaticLeases().then((r) => setStaticLeases(r.data as StaticLeaseRow[]))
+        const reloadLeases = selectedInterface
+          ? getInterfaceStaticLeases(selectedInterface)
+          : getDhcpStaticLeases()
+        reloadLeases.then((r) => setStaticLeases(r.data as StaticLeaseRow[]))
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setDeleting(false))
@@ -209,63 +272,67 @@ export default function DHCP() {
 
       {/* DHCP Config summary */}
       <Card
-        title="DHCP Server"
-        subtitle="Kea DHCPv4 configuration"
+        title={selectedInterface ? `DHCP: ${selectedInterfaceMeta?.description || selectedInterface}` : 'DHCP Server'}
+        subtitle={selectedInterface ? 'Per-interface DHCPv4 scope and reservation settings' : 'Kea DHCPv4 configuration'}
         actions={
           <Button size="sm" variant="secondary" onClick={openConfigModal}>
-            Edit Settings
+            {selectedInterface ? 'Edit Interface DHCP' : 'Edit Settings'}
           </Button>
         }
       >
         {loading ? (
           <p className="text-sm text-gray-400">Loading…</p>
-        ) : config ? (
+        ) : (selectedInterface ? interfaceConfig : config) ? (
           <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+            {!selectedInterface && (
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Interface</dt>
+                <dd className="mt-1 font-medium text-gray-800 font-mono">{config?.interface || '—'}</dd>
+              </div>
+            )}
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
-              <dd className={`mt-1 font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
-                {config.enabled ? 'Enabled' : 'Disabled'}
+              <dd className={`mt-1 font-semibold ${(selectedInterface ? interfaceConfig?.enabled : config?.enabled) ? 'text-green-600' : 'text-gray-400'}`}>
+                {(selectedInterface ? interfaceConfig?.enabled : config?.enabled) ? 'Enabled' : 'Disabled'}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Interface</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">{config.interface || '—'}</dd>
-            </div>
-            <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Subnet</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">{config.subnet || '—'}</dd>
+              <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.subnet : config?.subnet) || '—'}</dd>
             </div>
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Pool Range</dt>
               <dd className="mt-1 font-medium text-gray-800 font-mono">
-                {config.rangeStart && config.rangeEnd
-                  ? `${config.rangeStart} – ${config.rangeEnd}`
+                {(selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart) && (selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd)
+                  ? `${selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart} – ${selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd}`
                   : '—'}
               </dd>
             </div>
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Default Gateway</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">{config.gateway || '—'}</dd>
+              <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.gateway : config?.gateway) || '—'}</dd>
             </div>
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNS Servers</dt>
               <dd className="mt-1 font-medium text-gray-800 font-mono">
-                {config.dnsServers?.length ? config.dnsServers.join(', ') : '—'}
+                {(selectedInterface ? interfaceConfig?.dnsServers : config?.dnsServers)?.length
+                  ? (selectedInterface ? interfaceConfig?.dnsServers : config?.dnsServers)?.join(', ')
+                  : '—'}
               </dd>
             </div>
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Lease Time</dt>
-              <dd className="mt-1 font-medium text-gray-800">{leaseTimeFmt(config.leaseTime)}</dd>
+              <dd className="mt-1 font-medium text-gray-800">{leaseTimeFmt((selectedInterface ? interfaceConfig?.leaseTime : config?.leaseTime) ?? 86400)}</dd>
             </div>
-            {config.domainName && (
+            {(selectedInterface ? interfaceConfig?.domainName : config?.domainName) && (
               <div>
                 <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Domain Name</dt>
-                <dd className="mt-1 font-medium text-gray-800 font-mono">{config.domainName}</dd>
+                <dd className="mt-1 font-medium text-gray-800 font-mono">{selectedInterface ? interfaceConfig?.domainName : config?.domainName}</dd>
               </div>
             )}
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Subnet Mask</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">{config.subnetMask || '—'}</dd>
+              <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.subnetMask : config?.subnetMask) || '—'}</dd>
             </div>
           </dl>
         ) : (
@@ -275,8 +342,8 @@ export default function DHCP() {
 
       {/* Static Leases */}
       <Card
-        title="Static Leases"
-        subtitle="MAC → IP address reservations (always assigned the same IP)"
+        title={selectedInterface ? 'Static IP Reservations' : 'Static Leases'}
+        subtitle={selectedInterface ? `Reservations for ${selectedInterfaceMeta?.description || selectedInterface}` : 'MAC → IP address reservations (always assigned the same IP)'}
         actions={
           <Button size="sm" onClick={() => setLeaseModalOpen(true)}>
             + Add Lease
@@ -292,21 +359,22 @@ export default function DHCP() {
         />
       </Card>
 
-      {/* Active Leases */}
-      <Card title="Active Leases" subtitle="Currently assigned DHCP leases">
-        <Table
-          columns={activeColumns}
-          data={activeLeases}
-          keyField="mac"
-          loading={loading}
-          emptyMessage="No active leases."
-        />
-      </Card>
+      {!selectedInterface && (
+        <Card title="Active Leases" subtitle="Currently assigned DHCP leases">
+          <Table
+            columns={activeColumns}
+            data={activeLeases}
+            keyField="mac"
+            loading={loading}
+            emptyMessage="No active leases."
+          />
+        </Card>
+      )}
 
       {/* Edit DHCP Config Modal */}
       <Modal
         open={configModalOpen}
-        title="Edit DHCP Server"
+        title={selectedInterface ? `Edit DHCP: ${selectedInterfaceMeta?.description || selectedInterface}` : 'Edit DHCP Server'}
         onClose={() => setConfigModalOpen(false)}
         onConfirm={handleSaveConfig}
         confirmLabel="Save"
@@ -327,19 +395,21 @@ export default function DHCP() {
 
           <div className="grid grid-cols-2 gap-4">
             {/* Interface */}
-            <FormField
-              id="cfg-iface"
-              label="LAN Interface"
-              as="select"
-              required
-              value={configForm.interface ?? ''}
-              onChange={(e) => setConfigForm((f) => ({ ...f, interface: e.target.value }))}
-            >
-              <option value="">Select interface</option>
-              {interfaces.map((iface) => (
-                <option key={iface} value={iface}>{iface}</option>
-              ))}
-            </FormField>
+            {!selectedInterface && (
+              <FormField
+                id="cfg-iface"
+                label="LAN Interface"
+                as="select"
+                required
+                value={(configForm as Partial<DhcpConfig>).interface ?? ''}
+                onChange={(e) => setConfigForm((f) => ({ ...f, interface: e.target.value }))}
+              >
+                <option value="">Select interface</option>
+                {interfaces.map((iface) => (
+                  <option key={iface.name} value={iface.name}>{iface.description || iface.name}</option>
+                ))}
+              </FormField>
+            )}
 
             {/* Subnet CIDR */}
             <FormField
@@ -414,9 +484,7 @@ export default function DHCP() {
           </div>
 
           <p className="text-xs text-gray-500">
-            <strong>Subnet</strong> must match the LAN interface network (e.g. if your LAN IP is
-            192.168.1.1/24, enter 192.168.1.0/24). Kea uses this to decide which interface to
-            listen on and will silently not respond if it doesn't match.
+            <strong>Subnet</strong> must match the interface network. Configure per-interface scopes from the DHCP submenu for each interface.
           </p>
         </div>
       </Modal>
@@ -424,7 +492,7 @@ export default function DHCP() {
       {/* Add Static Lease Modal */}
       <Modal
         open={leaseModalOpen}
-        title="Add Static Lease"
+        title={selectedInterface ? `Add Static IP Reservation: ${selectedInterfaceMeta?.description || selectedInterface}` : 'Add Static Lease'}
         onClose={() => setLeaseModalOpen(false)}
         onConfirm={handleAddLease}
         confirmLabel="Add"

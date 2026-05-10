@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getAuthToken } from '../api/client'
+import { normalizeMetricsSnapshot } from '../api/metrics'
 import type { MetricsSnapshot } from '../types'
 
 function getWsUrl(): string {
@@ -33,7 +34,9 @@ export function useMetricsStream() {
       ws.onmessage = (event) => {
         if (unmountedRef.current) return
         try {
-          const snapshot: MetricsSnapshot = JSON.parse(event.data as string)
+          const snapshot: MetricsSnapshot = normalizeMetricsSnapshot(
+            JSON.parse(event.data as string),
+          )
           setData(snapshot)
         } catch {
           // ignore malformed messages

@@ -36,12 +36,6 @@ export default function Interfaces() {
   const [expandedInterface, setExpandedInterface] = useState<string | null>(searchParams.get('iface'))
 
   const requestedInterface = searchParams.get('iface')
-  const sectionParam = searchParams.get('section')
-  const requestedSection: 'dhcp' | 'leases' | null =
-    sectionParam === 'dhcp' || sectionParam === 'leases'
-      ? sectionParam
-      : null
-
   const isInterfaceRowArray = (value: unknown): value is InterfaceRow[] =>
     Array.isArray(value)
 
@@ -89,7 +83,7 @@ export default function Interfaces() {
     <div className="space-y-4">
       <Card
         title="Network Interfaces"
-        subtitle="Manage physical and virtual network interfaces and DHCP settings"
+        subtitle="Manage physical and virtual network interfaces"
         actions={
           <Button size="sm" onClick={() => setModalOpen(true)}>
             + Add Interface
@@ -130,11 +124,6 @@ export default function Interfaces() {
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
-                      {iface.dhcp4 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                          DHCP
-                        </span>
-                      )}
                       {iface.wanMode === 'pppoe' && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
                           PPPoE
@@ -185,12 +174,9 @@ export default function Interfaces() {
                 {expandedInterface === iface.name && (
                   <div className="border-t border-gray-200 p-4 bg-white">
                     <InterfaceDetails
-                      key={`${iface.name}:${expandedInterface === iface.name ? requestedSection ?? 'none' : 'none'}`}
+                      key={iface.name}
                       iface={iface}
                       onUpdate={load}
-                      initialSection={
-                        expandedInterface === iface.name ? requestedSection : null
-                      }
                     />
                   </div>
                 )}

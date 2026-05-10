@@ -112,7 +112,7 @@ function toIpv4NetworkCidr(address?: string, prefix?: number): string | null {
 }
 
 export default function Firewall() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const selectedSection = searchParams.get('section')
   const selectedInterface = searchParams.get('iface')
 
@@ -162,6 +162,22 @@ export default function Firewall() {
   const showRulesSection = activeSection === 'rules'
   const showAliasesSection = activeSection === 'aliases'
   const showSettingsSection = activeSection === 'settings'
+
+  const updateRulesInterfaceFilter = (interfaceName: string) => {
+    const next = new URLSearchParams(searchParams)
+    next.set('section', 'rules')
+    if (interfaceName) next.set('iface', interfaceName)
+    else next.delete('iface')
+    setSearchParams(next)
+  }
+
+  const openAddRuleModal = () => {
+    setRuleForm({
+      ...defaultRuleForm,
+      interface: selectedInterface || null,
+    })
+    setRuleModalOpen(true)
+  }
 
   const loadRules = () => {
     setRulesLoading(true)
@@ -512,12 +528,34 @@ export default function Firewall() {
               <Button size="sm" variant="secondary" onClick={loadStats}>
                 Refresh Counters
               </Button>
-              <Button size="sm" onClick={() => setRuleModalOpen(true)}>
+              <Button size="sm" onClick={openAddRuleModal}>
                 + Add Rule
               </Button>
             </div>
           }
         >
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div className="w-full max-w-sm">
+              <FormField
+                id="firewall-rules-interface-filter"
+                label="Interface"
+                as="select"
+                value={selectedInterface ?? ''}
+                onChange={(e) => updateRulesInterfaceFilter(e.target.value)}
+              >
+                <option value="">All interfaces</option>
+                {interfaces.map((iface) => (
+                  <option key={iface.name} value={iface.name}>
+                    {iface.description ? `${iface.description} (${iface.name})` : iface.name}
+                  </option>
+                ))}
+              </FormField>
+            </div>
+            <p className="text-xs text-gray-500">
+              Select an interface to show only that interface's firewall rules.
+            </p>
+          </div>
+
           {selectedInterface && (
             <div className="mb-3 rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700">
               Filtering rules for interface <span className="font-semibold">{selectedInterface}</span>

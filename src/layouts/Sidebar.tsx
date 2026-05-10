@@ -357,12 +357,13 @@ export default function Sidebar() {
 
               {item.to === '/dhcp' && isDhcpMenuOpen && (
                 <div className="mt-1 space-y-0.5">
+                  <QueryNavLink to="/dhcp" label="Settings" level={1} />
                   {dhcpInterfaces.map((iface) => (
                     <QueryNavLink
                       key={`dhcp-${iface.name}`}
-                      to={`/interfaces?iface=${encodeURIComponent(iface.name)}&section=dhcp`}
-                      label={`[${iface.name}]`}
-                      level={2}
+                      to={`/dhcp?iface=${encodeURIComponent(iface.name)}`}
+                      label={iface.description?.trim() || iface.name}
+                      level={1}
                     />
                   ))}
                 </div>

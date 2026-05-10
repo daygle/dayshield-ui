@@ -41,7 +41,7 @@ function toIsoTimestamp(ts: unknown): string {
   return new Date().toISOString()
 }
 
-function normalizeSnapshot(raw: unknown): MetricsSnapshot {
+export function normalizeMetricsSnapshot(raw: unknown): MetricsSnapshot {
   const value = (raw ?? {}) as Record<string, unknown>
   if ('cpu_percent' in value && 'wan_rx_bps' in value) {
     const snap = value as Partial<MetricsSnapshot>
@@ -110,7 +110,7 @@ function normalizeSnapshot(raw: unknown): MetricsSnapshot {
   }
 }
 
-function normalizeHistory(raw: unknown, seconds: number): MetricsHistory {
+export function normalizeMetricsHistory(raw: unknown, seconds: number): MetricsHistory {
   const value = raw as unknown
 
   if (value && typeof value === 'object' && 'points' in (value as Record<string, unknown>)) {
@@ -142,9 +142,9 @@ function normalizeHistory(raw: unknown, seconds: number): MetricsHistory {
 export const getMetrics = (): Promise<ApiResponse<MetricsSnapshot>> =>
   apiClient
     .get<ApiResponse<unknown>>('/metrics')
-    .then((r) => ({ ...r.data, data: normalizeSnapshot(r.data.data) }))
+    .then((r) => ({ ...r.data, data: normalizeMetricsSnapshot(r.data.data) }))
 
 export const getMetricsHistory = (seconds = 300): Promise<ApiResponse<MetricsHistory>> =>
   apiClient
     .get<ApiResponse<unknown>>('/metrics/history', { params: { seconds } })
-    .then((r) => ({ ...r.data, data: normalizeHistory(r.data.data, seconds) }))
+    .then((r) => ({ ...r.data, data: normalizeMetricsHistory(r.data.data, seconds) }))
