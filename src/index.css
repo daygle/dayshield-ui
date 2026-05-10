@@ -15,12 +15,12 @@
   }
 
   .sidebar-sub-link {
-    @apply flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-medium transition-colors duration-150;
+    @apply flex items-center pr-4 pl-12 py-1.5 rounded-md text-sm font-medium transition-colors duration-150;
     color: #94a3b8;
   }
 
   .sidebar-sub-link-nested {
-    @apply flex items-center gap-2 px-4 py-1.5 rounded-md text-[11px] font-medium transition-colors duration-150;
+    @apply flex items-center pr-4 pl-12 py-1.5 rounded-md text-sm font-medium transition-colors duration-150;
     color: #cbd5e1;
   }
 

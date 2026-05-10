@@ -1,11 +1,6 @@
 import { useState } from 'react'
-import type { NetworkInterface, DhcpConfigPerInterface, FirewallRule, DhcpStaticLease } from '../../types'
+import type { NetworkInterface, DhcpConfigPerInterface, DhcpStaticLease } from '../../types'
 import { getInterfaceDhcpConfig, updateInterfaceDhcpConfig, getInterfaceStaticLeases, createInterfaceStaticLease, deleteInterfaceStaticLease } from '../../api/dhcp'
-import {
-  getInterfaceFirewallRules,
-  createInterfaceFirewallRule,
-  deleteInterfaceFirewallRule,
-} from '../../api/firewall'
 import Button from '../../components/Button'
 import FormField from '../../components/FormField'
 import Modal from '../../components/Modal'
@@ -13,11 +8,11 @@ import Modal from '../../components/Modal'
 interface InterfaceDetailsProps {
   iface: NetworkInterface
   onUpdate?: () => void
-  initialSection?: 'dhcp' | 'leases' | 'firewall' | null
+  initialSection?: 'dhcp' | 'leases' | null
 }
 
 export default function InterfaceDetails({ iface, onUpdate, initialSection = null }: InterfaceDetailsProps) {
-  const [expandedSection, setExpandedSection] = useState<'dhcp' | 'leases' | 'firewall' | null>(initialSection)
+  const [expandedSection, setExpandedSection] = useState<'dhcp' | 'leases' | null>(initialSection)
 
   // DHCP state
   const [dhcpConfig, setDhcpConfig] = useState<DhcpConfigPerInterface | null>(null)
@@ -34,15 +29,6 @@ export default function InterfaceDetails({ iface, onUpdate, initialSection = nul
   const [leaseSaving, setLeaseSaving] = useState(false)
   const [deleteLeaseId, setDeleteLeaseId] = useState<string | null>(null)
   const [deleteLeaseLoading, setDeleteLeaseLoading] = useState(false)
-
-  // Firewall rules state
-  const [rules, setRules] = useState<FirewallRule[]>([])
-  const [rulesLoading, setRulesLoading] = useState(false)
-  const [ruleModalOpen, setRuleModalOpen] = useState(false)
-  const [ruleForm, setRuleForm] = useState<Partial<FirewallRule>>({})
-  const [ruleSaving, setRuleSaving] = useState(false)
-  const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null)
-  const [deleteRuleLoading, setDeleteRuleLoading] = useState(false)
 
   // Load DHCP configuration
   const loadDhcp = () => {
@@ -65,23 +51,13 @@ export default function InterfaceDetails({ iface, onUpdate, initialSection = nul
       .finally(() => setLeasesLoading(false))
   }
 
-  // Load firewall rules for this interface
-  const loadRules = () => {
-    setRulesLoading(true)
-    getInterfaceFirewallRules(iface.name)
-      .then((res) => setRules(res.data))
-      .catch((err) => console.error('Failed to load rules:', err))
-      .finally(() => setRulesLoading(false))
-  }
-
-  const handleExpandSection = (section: 'dhcp' | 'leases' | 'firewall') => {
+  const handleExpandSection = (section: 'dhcp' | 'leases') => {
     if (expandedSection === section) {
       setExpandedSection(null)
     } else {
       setExpandedSection(section)
       if (section === 'dhcp') loadDhcp()
-      else if (section === 'leases') loadLeases()
-      else loadRules()
+      else loadLeases()
     }
   }
 
@@ -124,38 +100,10 @@ export default function InterfaceDetails({ iface, onUpdate, initialSection = nul
       .finally(() => setDeleteLeaseLoading(false))
   }
 
-  const handleCreateRule = () => {
-    if (!ruleForm.action) return
-    setRuleSaving(true)
-    createInterfaceFirewallRule(iface.name, ruleForm as Omit<FirewallRule, 'id' | 'interface'>)
-      .then(() => {
-        setRuleModalOpen(false)
-        setRuleForm({})
-        loadRules()
-        onUpdate?.()
-      })
-      .catch((err) => console.error('Failed to create rule:', err))
-      .finally(() => setRuleSaving(false))
-  }
-
-  const handleDeleteRule = () => {
-    if (!deleteRuleId) return
-    setDeleteRuleLoading(true)
-    deleteInterfaceFirewallRule(iface.name, deleteRuleId)
-      .then(() => {
-        setDeleteRuleId(null)
-        loadRules()
-        onUpdate?.()
-      })
-      .catch((err) => console.error('Failed to delete rule:', err))
-      .finally(() => setDeleteRuleLoading(false))
-  }
-
   return (
     <div className="space-y-3 bg-gray-50 rounded-lg p-4 border border-gray-200">
       {/* DHCP Section */}
-      {iface.dhcp4 && (
-        <div className="border-b border-gray-200 pb-3">
+      <div className="border-b border-gray-200 pb-3">
           <button
             className="w-full flex items-center justify-between p-2 hover:bg-gray-100 rounded transition-colors"
             onClick={() => handleExpandSection('dhcp')}
@@ -265,11 +213,9 @@ export default function InterfaceDetails({ iface, onUpdate, initialSection = nul
             </div>
           )}
         </div>
-      )}
 
       {/* Static Leases Section */}
-      {iface.dhcp4 && (
-        <div className="border-b border-gray-200 pb-3">
+      <div className="border-b border-gray-200 pb-3">
           <button
             className="w-full flex items-center justify-between p-2 hover:bg-gray-100 rounded transition-colors"
             onClick={() => handleExpandSection('leases')}
@@ -332,197 +278,7 @@ export default function InterfaceDetails({ iface, onUpdate, initialSection = nul
             </div>
           )}
         </div>
-      )}
-
-      {/* Firewall Rules Section */}
-      <div>
-        <button
-          className="w-full flex items-center justify-between p-2 hover:bg-gray-100 rounded transition-colors"
-          onClick={() => handleExpandSection('firewall')}
-        >
-          <span className="font-semibold text-gray-800">
-            Firewall Rules ({rules.length})
-          </span>
-          <span className={`text-gray-500 transition-transform ${
-            expandedSection === 'firewall' ? 'rotate-180' : ''
-          }`}>
-            ▼
-          </span>
-        </button>
-
-        {expandedSection === 'firewall' && (
-          <div className="mt-3 space-y-3 pl-2">
-            {rulesLoading ? (
-              <p className="text-sm text-gray-500">Loading firewall rules...</p>
-            ) : (
-              <>
-                <Button
-                  size="sm"
-                  onClick={() => setRuleModalOpen(true)}
-                >
-                  + Add Rule
-                </Button>
-                {rules.length > 0 ? (
-                  <div className="space-y-2">
-                    {rules.map((rule) => (
-                      <div
-                        key={rule.id}
-                        className="bg-white p-3 rounded border border-gray-200 flex items-center justify-between"
-                      >
-                        <div className="flex-1 text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Priority {rule.priority}</span>
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                                rule.action === 'accept'
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-red-100 text-red-700'
-                              }`}
-                            >
-                              {rule.action}
-                            </span>
-                            {!rule.enabled && (
-                              <span className="text-gray-400">○ Disabled</span>
-                            )}
-                          </div>
-                          <p className="text-gray-600">
-                            {rule.description || '(no description)'}
-                          </p>
-                          <p className="text-gray-500 text-xs mt-1">
-                            {rule.source || 'any'} → {rule.destination || 'any'}
-                            {rule.protocol && ` (${rule.protocol})`}
-                          </p>
-                        </div>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => setDeleteRuleId(rule.id)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">No firewall rules configured for this interface.</p>
-                )}
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Add Firewall Rule Modal */}
-      <Modal
-        open={ruleModalOpen}
-        title={`Add Firewall Rule for ${iface.description || iface.name}`}
-        onClose={() => {
-          setRuleModalOpen(false)
-          setRuleForm({})
-        }}
-        onConfirm={handleCreateRule}
-        confirmLabel="Create"
-        loading={ruleSaving}
-        size="lg"
-      >
-        <div className="grid grid-cols-2 gap-4 space-y-4">
-          <FormField
-            id="rule-priority"
-            label="Priority"
-            type="number"
-            value={String(ruleForm.priority ?? 0)}
-            onChange={(e) => setRuleForm({ ...ruleForm, priority: Number(e.target.value) })}
-          />
-          <FormField
-            id="rule-action"
-            label="Action"
-            as="select"
-            value={ruleForm.action ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, action: e.target.value as any })}
-            required
-          >
-            <option value="">— Select action —</option>
-            <option value="accept">Accept</option>
-            <option value="drop">Drop</option>
-            <option value="reject">Reject</option>
-          </FormField>
-          <FormField
-            id="rule-description"
-            label="Description"
-            placeholder="e.g., Allow HTTP traffic"
-            value={ruleForm.description ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value })}
-            className="col-span-2"
-          />
-          <FormField
-            id="rule-source"
-            label="Source"
-            placeholder="192.168.0.0/24 or leave empty"
-            value={ruleForm.source ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || undefined })}
-          />
-          <FormField
-            id="rule-destination"
-            label="Destination"
-            placeholder="192.168.1.0/24 or leave empty"
-            value={ruleForm.destination ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || undefined })}
-          />
-          <FormField
-            id="rule-protocol"
-            label="Protocol"
-            as="select"
-            value={ruleForm.protocol ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, protocol: (e.target.value || undefined) as any })}
-          >
-            <option value="">Any</option>
-            <option value="tcp">TCP</option>
-            <option value="udp">UDP</option>
-            <option value="icmp">ICMP</option>
-          </FormField>
-          <FormField
-            id="rule-dport"
-            label="Destination Port"
-            type="number"
-            placeholder="e.g. 80"
-            value={String(ruleForm.destination_port ?? '')}
-            onChange={(e) =>
-              setRuleForm({
-                ...ruleForm,
-                destination_port: e.target.value ? Number(e.target.value) : undefined,
-              })
-            }
-          />
-          <div className="col-span-2 flex items-center gap-2">
-            <input
-              id="rule-enabled"
-              type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-blue-600"
-              checked={ruleForm.enabled ?? true}
-              onChange={(e) => setRuleForm({ ...ruleForm, enabled: e.target.checked })}
-            />
-            <label htmlFor="rule-enabled" className="text-sm font-medium text-gray-700">
-              Enabled
-            </label>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Delete Rule Confirmation */}
-      <Modal
-        open={deleteRuleId !== null}
-        title="Delete Firewall Rule"
-        onClose={() => setDeleteRuleId(null)}
-        onConfirm={handleDeleteRule}
-        confirmLabel="Delete"
-        confirmVariant="danger"
-        loading={deleteRuleLoading}
-        size="sm"
-      >
-        <p className="text-sm text-gray-600">
-          Are you sure you want to delete this firewall rule? This action cannot be undone.
-        </p>
-      </Modal>
+      
 
       {/* Add Static Lease Modal */}
       <Modal

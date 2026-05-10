@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { getInterfaces } from '../api/interfaces'
-import { getFirewallRules } from '../api/firewall'
-import { getSuricataConfig } from '../api/suricata'
-import type { FirewallRule, NetworkInterface } from '../types'
+import type { NetworkInterface } from '../types'
 
 interface NavItem {
   type?: 'item'
@@ -220,14 +218,17 @@ const navEntries: NavEntry[] = [
 ]
 
 export default function Sidebar() {
+  const location = useLocation()
+  const [isInterfacesMenuOpen, setIsInterfacesMenuOpen] = useState(false)
+  const [isFirewallMenuOpen, setIsFirewallMenuOpen] = useState(false)
+  const [isDhcpMenuOpen, setIsDhcpMenuOpen] = useState(false)
+  const [isSuricataMenuOpen, setIsSuricataMenuOpen] = useState(false)
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
-  const [firewallRuleInterfaces, setFirewallRuleInterfaces] = useState<string[]>([])
-  const [suricataConfiguredInterfaces, setSuricataConfiguredInterfaces] = useState<string[]>([])
 
   useEffect(() => {
     let isMounted = true
-    Promise.allSettled([getInterfaces(), getFirewallRules(), getSuricataConfig()]).then(
-      ([ifaceRes, firewallRes, suricataRes]) => {
+    Promise.allSettled([getInterfaces()]).then(
+      ([ifaceRes]) => {
         if (!isMounted) return
 
         if (ifaceRes.status === 'fulfilled') {
@@ -236,29 +237,6 @@ export default function Sidebar() {
           setInterfaces([])
         }
 
-        if (firewallRes.status === 'fulfilled') {
-          setFirewallRuleInterfaces(
-            Array.isArray(firewallRes.value.data)
-              ? Array.from(
-                  new Set(
-                    firewallRes.value.data
-                      .map((rule: FirewallRule) => rule.interface)
-                      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
-                  ),
-                ).sort((a, b) => a.localeCompare(b))
-              : [],
-          )
-        } else {
-          setFirewallRuleInterfaces([])
-        }
-
-        if (suricataRes.status === 'fulfilled') {
-          setSuricataConfiguredInterfaces(
-            Array.isArray(suricataRes.value.data?.interfaces) ? suricataRes.value.data.interfaces : [],
-          )
-        } else {
-          setSuricataConfiguredInterfaces([])
-        }
       },
     )
 
@@ -267,22 +245,23 @@ export default function Sidebar() {
     }
   }, [])
 
-  const firewallInterfaces = useMemo(
-    () => firewallRuleInterfaces,
-    [firewallRuleInterfaces],
+  const interfaceNavItems = useMemo(
+    () =>
+      interfaces.map((iface) => ({
+        name: iface.name,
+        label: (iface.description?.trim() || iface.name).toUpperCase(),
+      })),
+    [interfaces],
   )
 
   const dhcpInterfaces = useMemo(
-    () => interfaces.filter((iface) => iface.enabled && iface.dhcp4),
+    () => interfaces.filter((iface) => iface.enabled),
     [interfaces],
   )
 
   const suricataInterfaces = useMemo(
-    () =>
-      interfaces.filter(
-        (iface) => iface.enabled && suricataConfiguredInterfaces.includes(iface.name),
-      ),
-    [interfaces, suricataConfiguredInterfaces],
+    () => interfaces.filter((iface) => iface.enabled),
+    [interfaces],
   )
 
   return (
@@ -324,6 +303,19 @@ export default function Sidebar() {
               ) : (
                 <NavLink
                   to={item.to}
+                  onClick={
+                    item.to === '/interfaces' || item.to === '/firewall' || item.to === '/dhcp' || item.to === '/suricata'
+                      ? (event) => {
+                          if (location.pathname === item.to) {
+                            event.preventDefault()
+                          }
+                          if (item.to === '/interfaces') setIsInterfacesMenuOpen((open) => !open)
+                          if (item.to === '/firewall') setIsFirewallMenuOpen((open) => !open)
+                          if (item.to === '/dhcp') setIsDhcpMenuOpen((open) => !open)
+                          if (item.to === '/suricata') setIsSuricataMenuOpen((open) => !open)
+                        }
+                      : undefined
+                  }
                   className={({ isActive }) =>
                     [itemClassName, isActive ? 'active' : ''].join(' ')
                   }
@@ -333,32 +325,29 @@ export default function Sidebar() {
                 </NavLink>
               )}
 
-              {item.to === '/firewall' && (
+              {item.to === '/interfaces' && isInterfacesMenuOpen && (
                 <div className="mt-1 space-y-0.5">
-                  <QueryNavLink to="/firewall?section=rules" label="Rules" level={1} />
-                  {firewallInterfaces.map((iface) => (
+                  {interfaceNavItems.map((iface) => (
                     <QueryNavLink
-                      key={`fw-${iface}`}
-                      to={`/firewall?section=rules&iface=${encodeURIComponent(iface)}`}
-                      label={iface}
-                      level={2}
+                      key={`iface-${iface.name}`}
+                      to={`/interfaces?iface=${encodeURIComponent(iface.name)}`}
+                      label={iface.label}
+                      level={1}
                     />
                   ))}
-                  <QueryNavLink to="/firewall?section=aliases" label="Aliases" level={1} />
-                  <QueryNavLink to="/firewall?section=settings" label="Settings" level={1} />
-                  <NavLink
-                    to="/nat"
-                    className={({ isActive }) => ['sidebar-sub-link', isActive ? 'active' : ''].join(' ')}
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-                    </svg>
-                    NAT
-                  </NavLink>
                 </div>
               )}
 
-              {item.to === '/dhcp' && (
+              {item.to === '/firewall' && isFirewallMenuOpen && (
+                <div className="mt-1 space-y-0.5">
+                  <QueryNavLink to="/firewall?section=rules" label="Rules" level={1} />
+                  <QueryNavLink to="/firewall?section=aliases" label="Aliases" level={1} />
+                  <QueryNavLink to="/firewall?section=settings" label="Settings" level={1} />
+                  <QueryNavLink to="/nat" label="NAT" level={1} />
+                </div>
+              )}
+
+              {item.to === '/dhcp' && isDhcpMenuOpen && (
                 <div className="mt-1 space-y-0.5">
                   {dhcpInterfaces.map((iface) => (
                     <QueryNavLink
@@ -371,7 +360,7 @@ export default function Sidebar() {
                 </div>
               )}
 
-              {item.to === '/suricata' && (
+              {item.to === '/suricata' && isSuricataMenuOpen && (
                 <div className="mt-1 space-y-0.5">
                   {suricataInterfaces.map((iface) => (
                     <QueryNavLink

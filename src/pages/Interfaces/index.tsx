@@ -37,8 +37,8 @@ export default function Interfaces() {
 
   const requestedInterface = searchParams.get('iface')
   const sectionParam = searchParams.get('section')
-  const requestedSection: 'dhcp' | 'leases' | 'firewall' | null =
-    sectionParam === 'dhcp' || sectionParam === 'leases' || sectionParam === 'firewall'
+  const requestedSection: 'dhcp' | 'leases' | null =
+    sectionParam === 'dhcp' || sectionParam === 'leases'
       ? sectionParam
       : null
 
@@ -89,7 +89,7 @@ export default function Interfaces() {
     <div className="space-y-4">
       <Card
         title="Network Interfaces"
-        subtitle="Manage physical and virtual network interfaces, DHCP, and firewall rules"
+        subtitle="Manage physical and virtual network interfaces and DHCP settings"
         actions={
           <Button size="sm" onClick={() => setModalOpen(true)}>
             + Add Interface
