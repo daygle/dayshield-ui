@@ -393,23 +393,41 @@ export interface SystemConfig {
   webPort: number
 }
 
-export type UpdateComponent = 'core' | 'ui' | 'both'
+export type UpdateComponent = 'core' | 'ui' | 'rootfs' | 'both'
 
 export interface UpdateSettings {
   autoCheckEnabled: boolean
   checkIntervalMinutes: number
   rebootRequiredAfterApply: boolean
   deployRuntimeAfterApply: boolean
+  requireSignedCommits: boolean
+  verifyRootfsManifest: boolean
+  trustedSignersFile: string
+  bootstrapMissingRootfsRepo: boolean
   coreRepoPath: string
   uiRepoPath: string
+  rootfsRepoPath: string
   coreRepoUrl: string
   uiRepoUrl: string
+  rootfsRepoUrl: string
   coreBranch: string
   uiBranch: string
+  rootfsBranch: string
+}
+
+export interface RootfsLiveUpdateSummary {
+  reportTimestamp?: string
+  reportCommit?: string
+  stagedFiles: string[]
+  backupDir?: string
+  changedUnits: string[]
+  migrationFromVersion?: number
+  migrationToVersion?: number
+  rollbackAvailable: boolean
 }
 
 export interface ComponentUpdateStatus {
-  component: 'core' | 'ui' | string
+  component: 'core' | 'ui' | 'rootfs' | string
   repoPath: string
   branch: string
   validRepo: boolean
@@ -427,7 +445,13 @@ export interface UpdatesStatus {
   lastCheckedAt?: string
   lastAppliedAt?: string
   pendingReboot: boolean
+  pendingApplianceRebuild: boolean
+  applianceRebuildReason?: string
+  applianceRebuildMarkedAt?: string
+  rootfsLiveUpdate?: RootfsLiveUpdateSummary
   components: ComponentUpdateStatus[]
+  /** Number of components with available updates (read-only, computed server-side) */
+  availableUpdateCount?: number
 }
 
 export interface UpdatesActionResult {

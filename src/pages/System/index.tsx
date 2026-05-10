@@ -11,6 +11,8 @@ import {
   applyUpdates,
   rollbackUpdates,
   validateUpdates,
+  markApplianceRebuildComplete,
+  rollbackRootfsLiveUpdate,
 } from '../../api/system'
 import type { SystemStatus, SystemConfig, UpdatesStatus, UpdateSettings } from '../../types'
 import Card from '../../components/Card'
@@ -55,6 +57,8 @@ export default function System() {
   const [updateActionLoading, setUpdateActionLoading] = useState(false)
   const [updateActionMessage, setUpdateActionMessage] = useState<string | null>(null)
   const [updateSaving, setUpdateSaving] = useState(false)
+  const [markingApplianceRebuildComplete, setMarkingApplianceRebuildComplete] = useState(false)
+  const [rollingBackRootfsLive, setRollingBackRootfsLive] = useState(false)
 
   const loadAll = () => {
     setLoading(true)
@@ -150,6 +154,30 @@ export default function System() {
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateSaving(false))
+  }
+
+  const handleMarkApplianceRebuildComplete = () => {
+    setMarkingApplianceRebuildComplete(true)
+    setUpdateActionMessage(null)
+    markApplianceRebuildComplete()
+      .then((res) => {
+        setUpdates(res.data)
+        setUpdateActionMessage('Appliance rebuild status cleared.')
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setMarkingApplianceRebuildComplete(false))
+  }
+
+  const handleRollbackRootfsLiveUpdate = () => {
+    setRollingBackRootfsLive(true)
+    setUpdateActionMessage(null)
+    rollbackRootfsLiveUpdate()
+      .then((res) => {
+        setUpdates(res.data.status)
+        setUpdateActionMessage(`${res.data.message}: ${res.data.details.join(' | ')}`)
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setRollingBackRootfsLive(false))
   }
 
   if (loading) {
@@ -257,7 +285,7 @@ export default function System() {
       {updates && (
         <Card
           title="Software Updates"
-          subtitle="GitHub-based updates for DayShield core and UI"
+          subtitle="Git-based updates for DayShield core, UI, and rootfs repositories"
           actions={
             <Button
               size="sm"
@@ -346,9 +374,115 @@ export default function System() {
               </div>
             )}
 
+            {updates.pendingApplianceRebuild && (
+              <div className="rounded-md bg-orange-50 border border-orange-200 px-4 py-3 text-sm text-orange-800 space-y-3">
+                <div>
+                  <p className="font-medium">Appliance rebuild required.</p>
+                  <p>
+                    {updates.applianceRebuildReason ?? 'RootFS changes require rebuilding the appliance rootfs and installer ISO artifacts.'}
+                  </p>
+                  <p className="mt-1 text-xs text-orange-700">
+                    Rebuild and publish a new rootfs.tar.zst and installer ISO from the build environment, then clear this status.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleMarkApplianceRebuildComplete}
+                    disabled={markingApplianceRebuildComplete || updateActionLoading}
+                  >
+                    Mark Rebuild Complete
+                  </Button>
+                  {updates.applianceRebuildMarkedAt && (
+                    <span className="text-xs text-orange-700">
+                      Last changed: {formatIsoDate(updates.applianceRebuildMarkedAt)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {updates.rootfsLiveUpdate && (
+              <div className="rounded-md bg-slate-50 border border-slate-200 px-4 py-3 text-sm text-slate-800 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium">RootFS Live Update Report</p>
+                  {updates.rootfsLiveUpdate.reportCommit && (
+                    <span className="text-xs font-mono text-slate-600">
+                      {shortCommit(updates.rootfsLiveUpdate.reportCommit)}
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-600 space-y-1">
+                  <p>Last run: {formatIsoDate(updates.rootfsLiveUpdate.reportTimestamp)}</p>
+                  {updates.rootfsLiveUpdate.backupDir && (
+                    <p>Backup: {updates.rootfsLiveUpdate.backupDir}</p>
+                  )}
+                  {typeof updates.rootfsLiveUpdate.migrationFromVersion === 'number' && typeof updates.rootfsLiveUpdate.migrationToVersion === 'number' && (
+                    <p>
+                      Migration schema: {updates.rootfsLiveUpdate.migrationFromVersion} → {updates.rootfsLiveUpdate.migrationToVersion}
+                    </p>
+                  )}
+                </div>
+
+                {updates.rootfsLiveUpdate.stagedFiles.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-amber-700 mb-1">
+                      Staged config deltas (merge required)
+                    </p>
+                    <ul className="max-h-36 overflow-auto rounded border border-amber-200 bg-amber-50 p-2 text-xs font-mono text-amber-800 space-y-1">
+                      {updates.rootfsLiveUpdate.stagedFiles.map((file) => (
+                        <li key={file}>{file}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleRollbackRootfsLiveUpdate}
+                    disabled={rollingBackRootfsLive || updateActionLoading || !updates.rootfsLiveUpdate.rollbackAvailable}
+                  >
+                    Roll Back RootFS Live Update
+                  </Button>
+                  {!updates.rootfsLiveUpdate.rollbackAvailable && (
+                    <span className="text-xs text-slate-500">No rollback snapshot available.</span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {updateActionMessage && (
               <div className="rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700">
                 {updateActionMessage}
+              </div>
+            )}
+
+            {updates && updates.availableUpdateCount && updates.availableUpdateCount > 1 && (
+              <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 space-y-3">
+                <div>
+                  <p className="font-medium">Multiple Component Updates Available</p>
+                  <p className="text-xs mt-1">
+                    {updates.availableUpdateCount} components have available updates. For consistency, all available components should be updated together.
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-amber-700 mb-1">Components to update:</p>
+                  <ul className="text-xs space-y-1 ml-2">
+                    {updates.components
+                      .filter((c) => c.updateAvailable)
+                      .map((c) => (
+                        <li key={c.component} className="flex items-center gap-2">
+                          <span className="text-amber-600">•</span>
+                          <span className="font-medium uppercase">{c.component}</span>
+                          <span className="text-amber-600 font-mono text-xs">
+                            {c.currentCommit ? c.currentCommit.slice(0, 8) : '—'} → {c.remoteCommit ? c.remoteCommit.slice(0, 8) : '—'}
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
               </div>
             )}
 
@@ -356,7 +490,14 @@ export default function System() {
               <Button size="sm" onClick={handleCheckUpdates} disabled={updateActionLoading}>
                 Check Now
               </Button>
-              <Button size="sm" onClick={handleApplyUpdates} disabled={updateActionLoading}>
+              <Button 
+                size="sm" 
+                onClick={handleApplyUpdates} 
+                disabled={updateActionLoading}
+                title={updates && updates.availableUpdateCount && updates.availableUpdateCount > 1 
+                  ? `Apply ${updates.availableUpdateCount} available component updates`
+                  : 'Apply available updates'}
+              >
                 Apply Updates
               </Button>
               <Button size="sm" onClick={handleValidateUpdates} disabled={updateActionLoading}>
@@ -521,7 +662,58 @@ export default function System() {
                 }
               />
               <label htmlFor="upd-deploy-runtime" className="text-sm font-medium text-gray-700">
-                Build and deploy runtime artifacts after apply (core binary and UI static assets)
+                Build and deploy runtime updates after apply (core binary, UI assets, and managed rootfs files)
+              </label>
+            </div>
+            <div className="col-span-2 flex items-center gap-2">
+              <input
+                id="upd-signed-commits"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                checked={updateSettings.requireSignedCommits}
+                onChange={(e) =>
+                  setUpdateSettings({
+                    ...updateSettings,
+                    requireSignedCommits: e.target.checked,
+                  })
+                }
+              />
+              <label htmlFor="upd-signed-commits" className="text-sm font-medium text-gray-700">
+                Require signed commits for updates
+              </label>
+            </div>
+            <div className="col-span-2 flex items-center gap-2">
+              <input
+                id="upd-verify-rootfs-manifest"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                checked={updateSettings.verifyRootfsManifest}
+                onChange={(e) =>
+                  setUpdateSettings({
+                    ...updateSettings,
+                    verifyRootfsManifest: e.target.checked,
+                  })
+                }
+              />
+              <label htmlFor="upd-verify-rootfs-manifest" className="text-sm font-medium text-gray-700">
+                Verify rootfs live-update manifest before deploy
+              </label>
+            </div>
+            <div className="col-span-2 flex items-center gap-2">
+              <input
+                id="upd-bootstrap-rootfs"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                checked={updateSettings.bootstrapMissingRootfsRepo}
+                onChange={(e) =>
+                  setUpdateSettings({
+                    ...updateSettings,
+                    bootstrapMissingRootfsRepo: e.target.checked,
+                  })
+                }
+              />
+              <label htmlFor="upd-bootstrap-rootfs" className="text-sm font-medium text-gray-700">
+                Auto-bootstrap missing rootfs repo on older installations
               </label>
             </div>
 
@@ -565,6 +757,34 @@ export default function System() {
               label="UI Branch"
               value={updateSettings.uiBranch}
               onChange={(e) => setUpdateSettings({ ...updateSettings, uiBranch: e.target.value })}
+            />
+
+            <FormField
+              id="upd-rootfs-path"
+              label="RootFS Repo Path"
+              className="col-span-2"
+              value={updateSettings.rootfsRepoPath}
+              onChange={(e) => setUpdateSettings({ ...updateSettings, rootfsRepoPath: e.target.value })}
+            />
+            <FormField
+              id="upd-rootfs-url"
+              label="RootFS Repo URL"
+              className="col-span-2"
+              value={updateSettings.rootfsRepoUrl}
+              onChange={(e) => setUpdateSettings({ ...updateSettings, rootfsRepoUrl: e.target.value })}
+            />
+            <FormField
+              id="upd-rootfs-branch"
+              label="RootFS Branch"
+              value={updateSettings.rootfsBranch}
+              onChange={(e) => setUpdateSettings({ ...updateSettings, rootfsBranch: e.target.value })}
+            />
+            <FormField
+              id="upd-signers-file"
+              label="Trusted Signers File"
+              className="col-span-2"
+              value={updateSettings.trustedSignersFile}
+              onChange={(e) => setUpdateSettings({ ...updateSettings, trustedSignersFile: e.target.value })}
             />
           </div>
         )}

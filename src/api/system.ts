@@ -177,23 +177,36 @@ export const checkForUpdates = (): Promise<ApiResponse<UpdatesStatus>> =>
 
 export const applyUpdates = (
   component: UpdateComponent = 'both',
+  forcePartialApply: boolean = false,
 ): Promise<ApiResponse<UpdatesActionResult>> =>
   apiClient
-    .post<ApiResponse<UpdatesActionResult>>('/system/updates/apply', { component })
+    .post<ApiResponse<UpdatesActionResult>>('/system/updates/apply', { component, forcePartialApply })
     .then((r) => r.data)
 
 export const rollbackUpdates = (
   component: UpdateComponent = 'both',
+  forcePartialApply: boolean = false,
 ): Promise<ApiResponse<UpdatesActionResult>> =>
   apiClient
-    .post<ApiResponse<UpdatesActionResult>>('/system/updates/rollback', { component })
+    .post<ApiResponse<UpdatesActionResult>>('/system/updates/rollback', { component, forcePartialApply })
     .then((r) => r.data)
 
 export const validateUpdates = (
   component: UpdateComponent = 'both',
+  forcePartialApply: boolean = false,
 ): Promise<ApiResponse<UpdatesActionResult>> =>
   apiClient
-    .post<ApiResponse<UpdatesActionResult>>('/system/updates/validate', { component })
+    .post<ApiResponse<UpdatesActionResult>>('/system/updates/validate', { component, forcePartialApply })
+    .then((r) => r.data)
+
+export const markApplianceRebuildComplete = (): Promise<ApiResponse<UpdatesStatus>> =>
+  apiClient
+    .post<ApiResponse<UpdatesStatus>>('/system/updates/appliance-rebuild-complete')
+    .then((r) => r.data)
+
+export const rollbackRootfsLiveUpdate = (): Promise<ApiResponse<UpdatesActionResult>> =>
+  apiClient
+    .post<ApiResponse<UpdatesActionResult>>('/system/updates/rootfs-live-rollback')
     .then((r) => r.data)
 
 // ── Dashboard-specific endpoints ──────────────────────────────────────────────
