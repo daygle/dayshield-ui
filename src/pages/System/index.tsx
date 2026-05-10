@@ -38,6 +38,24 @@ function shortCommit(value?: string): string {
   return value ? value.slice(0, 8) : '—'
 }
 
+function updateActionMessageClasses(message: string): string {
+  const normalized = message.toLowerCase()
+
+  if (normalized.includes('failed') || normalized.includes('error')) {
+    return 'rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700'
+  }
+
+  if (normalized.includes('warning')) {
+    return 'rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800'
+  }
+
+  if (normalized.includes('applied successfully') || normalized.includes('passed')) {
+    return 'rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700'
+  }
+
+  return 'rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700'
+}
+
 export default function System() {
   const [status, setStatus] = useState<SystemStatus | null>(null)
   const [config, setConfig] = useState<SystemConfig | null>(null)
@@ -454,7 +472,7 @@ export default function System() {
             )}
 
             {updateActionMessage && (
-              <div className="rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700">
+              <div className={updateActionMessageClasses(updateActionMessage)}>
                 {updateActionMessage}
               </div>
             )}
