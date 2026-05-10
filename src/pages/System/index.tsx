@@ -232,7 +232,11 @@ export default function System() {
   const [markingApplianceRebuildComplete, setMarkingApplianceRebuildComplete] = useState(false)
   const [rollingBackRootfsLive, setRollingBackRootfsLive] = useState(false)
 
-  const activeSection = searchParams.get('section') === 'reboot' ? 'reboot' : 'updates'
+  const activeSection = searchParams.get('section') === 'updates'
+    ? 'updates'
+    : searchParams.get('section') === 'reboot'
+      ? 'reboot'
+      : 'overview'
 
   const loadAll = () => {
     setLoading(true)
@@ -370,7 +374,7 @@ export default function System() {
         </div>
       )}
 
-      {activeSection === 'updates' && status && (
+      {activeSection === 'overview' && status && (
         <Card title="System Status">
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
             <div>
@@ -413,7 +417,7 @@ export default function System() {
         </Card>
       )}
 
-      {activeSection === 'updates' && config && (
+      {activeSection === 'overview' && config && (
         <Card
           title="System Configuration"
           actions={

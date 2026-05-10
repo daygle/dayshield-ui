@@ -148,6 +148,12 @@ export default function Firewall() {
 
   const [stats, setStats] = useState<FirewallRuleStats[]>([])
 
+  const interfaceLabel = (iface: NetworkInterface): string => {
+    const prefix = vpnInterfaceNames.includes(iface.name) ? 'VPN • ' : ''
+    const base = iface.description?.trim() || (iface.wanMode || iface.gateway ? 'WAN' : iface.name)
+    return `${prefix}${base}`
+  }
+
   const visibleRules = useMemo(
     () => (selectedInterface ? rules.filter((rule) => (rule.interface as string | null) === selectedInterface) : rules),
     [rules, selectedInterface],
@@ -160,7 +166,7 @@ export default function Firewall() {
   const activeSection =
     selectedSection === 'aliases' || selectedSection === 'settings' || selectedSection === 'rules'
       ? selectedSection
-      : 'rules'
+      : 'settings'
   const showRulesSection = activeSection === 'rules'
   const showAliasesSection = activeSection === 'aliases'
   const showSettingsSection = activeSection === 'settings'
@@ -239,12 +245,6 @@ export default function Firewall() {
         setVpnInterfaceNames([])
         setInterfaces([])
       })
-  }
-
-  const interfaceOptionLabel = (iface: NetworkInterface): string => {
-    const prefix = vpnInterfaceNames.includes(iface.name) ? 'VPN • ' : ''
-    const base = iface.description ? `${iface.description} (${iface.name})` : iface.name
-    return `${prefix}${base}`
   }
 
   const loadSettings = () => {
@@ -423,7 +423,16 @@ export default function Firewall() {
     { key: 'protocol', header: 'Protocol', render: (row) => (row.protocol as string) ?? 'any' },
     { key: 'source', header: 'Source', render: (row) => (row.source as string) ?? 'any' },
     { key: 'destination', header: 'Destination', render: (row) => (row.destination as string) ?? 'any' },
-    { key: 'interface', header: 'Interface', render: (row) => (row.interface as string) ?? 'any' },
+    {
+      key: 'interface',
+      header: 'Interface',
+      render: (row) => {
+        const name = row.interface as string | null
+        if (!name) return 'any'
+        const iface = interfaces.find((item) => item.name === name)
+        return iface ? interfaceLabel(iface) : name
+      },
+    },
     {
       key: 'schedule',
       header: 'Schedule',
@@ -584,7 +593,7 @@ export default function Firewall() {
                 <option value="">All interfaces</option>
                 {interfaces.map((iface) => (
                   <option key={iface.name} value={iface.name}>
-                    {interfaceOptionLabel(iface)}
+                    {interfaceLabel(iface)}
                   </option>
                 ))}
               </FormField>
@@ -715,7 +724,7 @@ export default function Firewall() {
             <option value="">Any interface</option>
             {interfaces.map((iface) => (
               <option key={iface.name} value={iface.name}>
-                {interfaceOptionLabel(iface)}
+                {interfaceLabel(iface)}
               </option>
             ))}
           </FormField>
@@ -798,7 +807,7 @@ export default function Firewall() {
             <option value="">Any</option>
             {interfaces.map((iface) => (
               <option key={iface.name} value={iface.name}>
-                {interfaceOptionLabel(iface)}
+                {interfaceLabel(iface)}
               </option>
             ))}
           </FormField>
@@ -965,7 +974,7 @@ export default function Firewall() {
               <option value="">Any</option>
               {interfaces.map((iface) => (
                 <option key={iface.name} value={iface.name}>
-                  {interfaceOptionLabel(iface)}
+                  {interfaceLabel(iface)}
                 </option>
               ))}
             </FormField>

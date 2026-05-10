@@ -54,6 +54,8 @@ export default function Gateways() {
   const [deleting, setDeleting] = useState(false)
   const [interfaces, setInterfaces] = useState<string[]>([])
 
+  const interfaceLabel = (name: string) => (defaultIface && name === defaultIface ? 'WAN' : name)
+
   const load = () => {
     setLoading(true)
     getGateways()
@@ -129,7 +131,7 @@ export default function Gateways() {
   const columns: Column<GatewayRow>[] = [
     { key: 'name', header: 'Name' },
     { key: 'description', header: 'Description', render: (row) => (row.description as string) || '—' },
-    { key: 'interface', header: 'Interface' },
+    { key: 'interface', header: 'Interface', render: (row) => interfaceLabel(row.interface as string) },
     {
       key: 'active_ip',
       header: 'Gateway IP',
@@ -182,7 +184,7 @@ export default function Gateways() {
           <h1 className="text-xl font-semibold text-gray-900">Gateways</h1>
           {defaultIface && (
             <p className="text-sm text-gray-500 mt-0.5">
-              Default route via: <span className="font-medium text-gray-700">{defaultIface}</span>
+              Default route via: <span className="font-medium text-gray-700">{interfaceLabel(defaultIface)}</span>
             </p>
           )}
         </div>
@@ -247,7 +249,7 @@ export default function Gateways() {
             >
               <option value="">Select interface</option>
               {interfaces.map((iface) => (
-                <option key={iface} value={iface}>{iface}</option>
+                <option key={iface} value={iface}>{interfaceLabel(iface)}</option>
               ))}
             </select>
           </FormField>

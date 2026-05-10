@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import {
   getWgServer,
   getWgPeers,
+  createWgInterface,
+  generateWgKeys,
   createWgPeer,
   deleteWgPeer,
 } from '../../api/wireguard'
@@ -23,6 +25,15 @@ const defaultPeerForm = {
   enabled: true,
 }
 
+const defaultServerForm = {
+  interface: 'wg0',
+  listenPort: 51820,
+  addresses: '10.8.0.1/24',
+  enabled: true,
+  publicKey: '',
+  privateKey: '',
+}
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`
@@ -41,6 +52,9 @@ export default function VPN() {
   const [peerSaving, setPeerSaving] = useState(false)
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [serverModalOpen, setServerModalOpen] = useState(false)
+  const [serverSaving, setServerSaving] = useState(false)
+  const [serverForm, setServerForm] = useState(defaultServerForm)
 
   const loadAll = () => {
     setLoading(true)
@@ -61,6 +75,50 @@ export default function VPN() {
     } else {
       setExpandedSection(section)
     }
+  }
+
+  const openServerModal = () => {
+    setServerForm({
+      interface: server?.interface || defaultServerForm.interface,
+      listenPort: server?.listenPort || defaultServerForm.listenPort,
+      addresses: server?.addresses?.join(', ') || defaultServerForm.addresses,
+      enabled: server?.enabled ?? true,
+      publicKey: server?.publicKey || '',
+      privateKey: '',
+    })
+    setServerModalOpen(true)
+  }
+
+  const handleGenerateServerKeys = () => {
+    const name = serverForm.interface.trim() || defaultServerForm.interface
+    generateWgKeys(name)
+      .then((res) => {
+        setServerForm((current) => ({
+          ...current,
+          privateKey: res.data.private_key,
+          publicKey: res.data.public_key,
+        }))
+      })
+      .catch((err: Error) => setError(err.message))
+  }
+
+  const handleSaveServer = () => {
+    setServerSaving(true)
+    createWgInterface({
+      interface: serverForm.interface.trim(),
+      publicKey: serverForm.publicKey.trim(),
+      privateKey: serverForm.privateKey.trim(),
+      listenPort: Number(serverForm.listenPort) || defaultServerForm.listenPort,
+      addresses: serverForm.addresses.split(',').map((s) => s.trim()).filter(Boolean),
+      peers: server?.peers ?? [],
+      enabled: serverForm.enabled,
+    })
+      .then(() => {
+        setServerModalOpen(false)
+        loadAll()
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setServerSaving(false))
   }
 
   const handleAddPeer = () => {
@@ -105,7 +163,96 @@ export default function VPN() {
   }
 
   if (!server || !server.interface) {
-    return <div className="text-center py-8 text-gray-500">No WireGuard server configured.</div>
+    return (
+      <div className="space-y-6">
+        {error && (
+          <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 text-center space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">No WireGuard server configured</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Create the VPN interface first, then add peers and export client settings.
+            </p>
+          </div>
+          <Button onClick={openServerModal}>Create VPN Server</Button>
+        </div>
+
+        <Modal
+          open={serverModalOpen}
+          title="Create WireGuard Server"
+          onClose={() => setServerModalOpen(false)}
+          onConfirm={handleSaveServer}
+          confirmLabel="Create Server"
+          loading={serverSaving}
+          size="lg"
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              id="server-interface"
+              label="Interface"
+              required
+              value={serverForm.interface}
+              onChange={(e) => setServerForm({ ...serverForm, interface: e.target.value })}
+            />
+            <FormField
+              id="server-port"
+              label="Listen Port"
+              type="number"
+              min={1}
+              max={65535}
+              value={String(serverForm.listenPort)}
+              onChange={(e) => setServerForm({ ...serverForm, listenPort: Number(e.target.value) || 51820 })}
+            />
+            <FormField
+              id="server-addresses"
+              label="Tunnel Addresses"
+              className="col-span-2"
+              placeholder="10.8.0.1/24, fd10:8::1/64"
+              value={serverForm.addresses}
+              onChange={(e) => setServerForm({ ...serverForm, addresses: e.target.value })}
+            />
+            <FormField
+              id="server-public-key"
+              label="Public Key"
+              className="col-span-2"
+              placeholder="Generate or paste a base64 public key"
+              value={serverForm.publicKey}
+              onChange={(e) => setServerForm({ ...serverForm, publicKey: e.target.value })}
+            />
+            <FormField
+              id="server-private-key"
+              label="Private Key"
+              className="col-span-2"
+              placeholder="Generate a keypair to populate this"
+              value={serverForm.privateKey}
+              onChange={(e) => setServerForm({ ...serverForm, privateKey: e.target.value })}
+            />
+            <div className="col-span-2 flex items-center gap-3">
+              <input
+                id="server-enabled"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                checked={serverForm.enabled}
+                onChange={(e) => setServerForm({ ...serverForm, enabled: e.target.checked })}
+              />
+              <label htmlFor="server-enabled" className="text-sm font-medium text-gray-700">
+                Enabled
+              </label>
+            </div>
+            <div className="col-span-2 flex justify-between items-center gap-3">
+              <Button variant="secondary" size="sm" onClick={handleGenerateServerKeys}>
+                Generate Keys
+              </Button>
+              <p className="text-xs text-gray-500">Generate a new keypair before creating the server.</p>
+            </div>
+          </div>
+        </Modal>
+      </div>
+    )
   }
 
   return (
@@ -116,16 +263,21 @@ export default function VPN() {
         </div>
       )}
 
-      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 flex items-center justify-between">
+      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 flex items-center justify-between gap-3">
         <span>
           VPN firewall rules are managed from Firewall Rules.
         </span>
-        <Link
-          to={`/firewall?section=rules&iface=${encodeURIComponent(server.interface)}`}
-          className="font-medium underline hover:text-blue-900"
-        >
-          Open Firewall Rules
-        </Link>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={openServerModal}>
+            Server Settings
+          </Button>
+          <Link
+            to={`/firewall?section=rules&iface=${encodeURIComponent(server.interface)}`}
+            className="font-medium underline hover:text-blue-900"
+          >
+            Open Firewall Rules
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -359,6 +511,77 @@ export default function VPN() {
         size="sm"
       >
         <p className="text-sm text-gray-600">Remove this WireGuard peer?</p>
+      </Modal>
+
+      <Modal
+        open={serverModalOpen}
+        title={server?.interface ? `Server Settings — ${server.interface}` : 'Create WireGuard Server'}
+        onClose={() => setServerModalOpen(false)}
+        onConfirm={handleSaveServer}
+        confirmLabel={server?.interface ? 'Save Server' : 'Create Server'}
+        loading={serverSaving}
+        size="lg"
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            id="server-interface"
+            label="Interface"
+            required
+            value={serverForm.interface}
+            onChange={(e) => setServerForm({ ...serverForm, interface: e.target.value })}
+          />
+          <FormField
+            id="server-port"
+            label="Listen Port"
+            type="number"
+            min={1}
+            max={65535}
+            value={String(serverForm.listenPort)}
+            onChange={(e) => setServerForm({ ...serverForm, listenPort: Number(e.target.value) || 51820 })}
+          />
+          <FormField
+            id="server-addresses"
+            label="Tunnel Addresses"
+            className="col-span-2"
+            placeholder="10.8.0.1/24, fd10:8::1/64"
+            value={serverForm.addresses}
+            onChange={(e) => setServerForm({ ...serverForm, addresses: e.target.value })}
+          />
+          <FormField
+            id="server-public-key"
+            label="Public Key"
+            className="col-span-2"
+            placeholder="Generate or paste a base64 public key"
+            value={serverForm.publicKey}
+            onChange={(e) => setServerForm({ ...serverForm, publicKey: e.target.value })}
+          />
+          <FormField
+            id="server-private-key"
+            label="Private Key"
+            className="col-span-2"
+            placeholder="Generate a keypair to populate this"
+            value={serverForm.privateKey}
+            onChange={(e) => setServerForm({ ...serverForm, privateKey: e.target.value })}
+          />
+          <div className="col-span-2 flex items-center gap-3">
+            <input
+              id="server-enabled"
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+              checked={serverForm.enabled}
+              onChange={(e) => setServerForm({ ...serverForm, enabled: e.target.checked })}
+            />
+            <label htmlFor="server-enabled" className="text-sm font-medium text-gray-700">
+              Enabled
+            </label>
+          </div>
+          <div className="col-span-2 flex justify-between items-center gap-3">
+            <Button variant="secondary" size="sm" onClick={handleGenerateServerKeys}>
+              Generate Keys
+            </Button>
+            <p className="text-xs text-gray-500">Generate a new keypair before creating the server.</p>
+          </div>
+        </div>
       </Modal>
     </div>
   )

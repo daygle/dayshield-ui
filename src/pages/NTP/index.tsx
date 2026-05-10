@@ -174,7 +174,7 @@ export default function NtpPage() {
     <div className="space-y-6">
 
       {/* NTP Status */}
-      <Card title="NTP Status" subtitle="Current synchronisation state">
+      <Card title="NTP Status" subtitle="Current synchronization state">
         {loading ? (
           <p className="text-sm text-gray-400">Loading…</p>
         ) : status ? (
@@ -192,7 +192,7 @@ export default function NtpPage() {
                       status.synced ? 'bg-green-500' : 'bg-red-500'
                     }`}
                   />
-                  {status.synced ? 'Synced' : 'Not synced'}
+                  {status.synced ? 'Synchronized' : 'Not synchronized'}
                 </span>
               </dd>
             </div>
@@ -309,8 +309,8 @@ export default function NtpPage() {
 
       {/* Serve LAN Clients */}
       <Card
-        title="Serve LAN Clients"
-        subtitle="Allow devices on the local network to use this firewall as an NTP server."
+        title="LAN NTP Server"
+        subtitle="Enable chrony to serve time to LAN clients. The interface list below controls where it listens."
       >
         <label className="flex cursor-pointer items-center gap-3">
           <div className="relative">
@@ -333,7 +333,9 @@ export default function NtpPage() {
             />
           </div>
           <span className="text-sm font-medium text-gray-700">
-            {config.serveLan ? 'Enabled — LAN clients can use this NTP server' : 'Disabled'}
+            {config.serveLan
+              ? 'Enabled — the firewall serves time to LAN clients'
+              : 'Disabled — the firewall only syncs its own clock'}
           </span>
         </label>
       </Card>
@@ -341,7 +343,7 @@ export default function NtpPage() {
       {/* Listen Interfaces */}
       <Card
         title="Listen Interfaces"
-        subtitle="Select which network interfaces NTP should listen on. When none are selected, the backend default applies (typically all interfaces)."
+        subtitle="Select which network interfaces NTP should bind to. This narrows the server-side listener set."
       >
         {loading ? (
           <p className="text-sm text-gray-400">Loading interfaces…</p>

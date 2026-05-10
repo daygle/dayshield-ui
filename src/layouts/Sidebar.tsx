@@ -283,7 +283,6 @@ export default function Sidebar() {
                 <div className="mt-1 space-y-0.5">
                   <QueryNavLink to="/firewall?section=rules" label="Rules" level={1} />
                   <QueryNavLink to="/firewall?section=aliases" label="Aliases" level={1} />
-                  <QueryNavLink to="/firewall?section=settings" label="Settings" level={1} />
                 </div>
               )}
 

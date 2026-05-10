@@ -230,6 +230,7 @@ export interface DhcpLease {
 export interface WgServer {
   interface: string
   publicKey: string
+  privateKey?: string
   listenPort: number
   addresses: string[]
   peers?: WgPeer[]
