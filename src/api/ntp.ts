@@ -19,7 +19,7 @@ interface BackendNtpStatus {
 function normalizeNtpConfig(raw: unknown): NtpConfig {
   const value = (raw ?? {}) as Record<string, unknown>
   if (Array.isArray(value.servers) || 'serveLan' in value || 'listenInterfaces' in value) {
-    const ui = value as NtpConfig
+    const ui = value as unknown as Partial<NtpConfig>
     return {
       enabled: Boolean(ui.enabled),
       servers: Array.isArray(ui.servers) ? ui.servers : [],
@@ -28,7 +28,7 @@ function normalizeNtpConfig(raw: unknown): NtpConfig {
     }
   }
 
-  const cfg = value as BackendNtpConfig
+  const cfg = value as unknown as BackendNtpConfig
   return {
     enabled: Boolean(cfg.enabled),
     servers: Array.isArray(cfg.upstream_servers) ? cfg.upstream_servers : [],
@@ -49,7 +49,7 @@ function toBackendNtpConfig(config: NtpConfig): BackendNtpConfig {
 function normalizeNtpStatus(raw: unknown): NtpStatus {
   const value = (raw ?? {}) as Record<string, unknown>
   if ('synced' in value || 'upstream' in value || 'offset' in value || 'jitter' in value) {
-    const st = value as NtpStatus
+    const st = value as unknown as Partial<NtpStatus>
     return {
       synced: Boolean(st.synced),
       upstream: st.upstream ?? '',
@@ -59,7 +59,7 @@ function normalizeNtpStatus(raw: unknown): NtpStatus {
     }
   }
 
-  const st = value as BackendNtpStatus
+  const st = value as unknown as BackendNtpStatus
   return {
     synced: Boolean(st.synchronized),
     upstream: st.server ?? '',

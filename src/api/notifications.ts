@@ -45,7 +45,27 @@ function normalizeNotifyConfig(raw: unknown): NotifyConfig {
     typeof value.smtp === 'object' &&
     Array.isArray(value.recipients)
   ) {
-    return value as NotifyConfig
+    const cfg = value as Partial<NotifyConfig>
+    const smtp = (cfg.smtp ?? {}) as Partial<NotifyConfig['smtp']>
+    return {
+      enabled: Boolean(cfg.enabled),
+      smtp: {
+        host: smtp.host ?? '',
+        port: typeof smtp.port === 'number' ? smtp.port : 587,
+        username: smtp.username ?? '',
+        password: smtp.password ?? '',
+        tls: smtp.tls !== false,
+        fromAddress: smtp.fromAddress ?? '',
+        fromName: smtp.fromName ?? 'DayShield Alerts',
+      },
+      recipients: Array.isArray(cfg.recipients) ? cfg.recipients : [],
+      categories: Array.isArray(cfg.categories)
+        ? cfg.categories
+        : ['ids', 'crowdsec', 'acme', 'system'],
+      rateLimitMinutes:
+        typeof cfg.rateLimitMinutes === 'number' ? cfg.rateLimitMinutes : 10,
+      digestMode: Boolean(cfg.digestMode),
+    }
   }
 
   // Backend snake_case shape

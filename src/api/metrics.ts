@@ -44,12 +44,26 @@ function toIsoTimestamp(ts: unknown): string {
 function normalizeSnapshot(raw: unknown): MetricsSnapshot {
   const value = (raw ?? {}) as Record<string, unknown>
   if ('cpu_percent' in value && 'wan_rx_bps' in value) {
-    const snap = value as MetricsSnapshot
+    const snap = value as Partial<MetricsSnapshot>
     return {
-      ...snap,
-      lan_ifaces: Array.isArray(snap.lan_ifaces) ? snap.lan_ifaces : [],
-      firewall_rule_hits: Array.isArray(snap.firewall_rule_hits) ? snap.firewall_rule_hits : [],
+      timestamp: toIsoTimestamp(snap.timestamp),
+      cpu_percent: typeof snap.cpu_percent === 'number' ? snap.cpu_percent : 0,
+      ram_percent: typeof snap.ram_percent === 'number' ? snap.ram_percent : 0,
+      ram_used_bytes: typeof snap.ram_used_bytes === 'number' ? snap.ram_used_bytes : 0,
+      ram_total_bytes: typeof snap.ram_total_bytes === 'number' ? snap.ram_total_bytes : 0,
       loadavg: Array.isArray(snap.loadavg) ? snap.loadavg : [0, 0, 0],
+      temperature: typeof snap.temperature === 'number' ? snap.temperature : undefined,
+      uptime: typeof snap.uptime === 'number' ? snap.uptime : 0,
+      disk_percent: typeof snap.disk_percent === 'number' ? snap.disk_percent : 0,
+      disk_used_bytes: typeof snap.disk_used_bytes === 'number' ? snap.disk_used_bytes : 0,
+      disk_total_bytes: typeof snap.disk_total_bytes === 'number' ? snap.disk_total_bytes : 0,
+      wan_rx_bps: typeof snap.wan_rx_bps === 'number' ? snap.wan_rx_bps : 0,
+      wan_tx_bps: typeof snap.wan_tx_bps === 'number' ? snap.wan_tx_bps : 0,
+      lan_ifaces: Array.isArray(snap.lan_ifaces) ? snap.lan_ifaces : [],
+      firewall_state_count: typeof snap.firewall_state_count === 'number' ? snap.firewall_state_count : 0,
+      firewall_rule_hits: Array.isArray(snap.firewall_rule_hits) ? snap.firewall_rule_hits : [],
+      suricata_alert_rate: typeof snap.suricata_alert_rate === 'number' ? snap.suricata_alert_rate : 0,
+      crowdsec_decision_rate: typeof snap.crowdsec_decision_rate === 'number' ? snap.crowdsec_decision_rate : 0,
     }
   }
 
