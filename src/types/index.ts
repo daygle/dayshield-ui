@@ -466,9 +466,9 @@ export interface UpdatesActionResult {
 
 export interface BackupEntry {
   filename: string
-  size: number          // bytes
-  createdAt: string     // ISO timestamp
-  sha256: string
+  size?: number          // bytes (may be undefined if still processing)
+  createdAt: string      // ISO timestamp (always provided)
+  sha256?: string        // (may be undefined if still processing)
   encrypted: boolean
 }
 

@@ -37,7 +37,11 @@ const columns = (
     header: 'Size',
     className: 'whitespace-nowrap',
     render: (row) => (
-      <span className="text-gray-600">{formatBytes((row as BackupEntry).size)}</span>
+      <span className="text-gray-600">
+        {(row as BackupEntry).size !== undefined && (row as BackupEntry).size !== null
+          ? formatBytes((row as BackupEntry).size!)
+          : '—'}
+      </span>
     ),
   },
   {
@@ -53,14 +57,17 @@ const columns = (
   {
     key: 'sha256',
     header: 'SHA256',
-    render: (row) => (
-      <span
-        className="font-mono text-xs text-gray-500 truncate block max-w-[140px]"
-        title={(row as BackupEntry).sha256}
-      >
-        {(row as BackupEntry).sha256.slice(0, 16)}…
-      </span>
-    ),
+    render: (row) => {
+      const sha256 = (row as BackupEntry).sha256
+      return (
+        <span
+          className="font-mono text-xs text-gray-500 truncate block max-w-[140px]"
+          title={sha256 ?? 'Computing...'}
+        >
+          {sha256 ? `${sha256.slice(0, 16)}…` : '—'}
+        </span>
+      )
+    },
   },
   {
     key: 'encrypted',
