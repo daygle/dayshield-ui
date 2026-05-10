@@ -10,7 +10,8 @@ import {
   getFirewallStats,
 } from '../../api/firewall'
 import { getAliases, createAlias, deleteAlias } from '../../api/aliases'
-import type { Alias, AliasType, FirewallRule, FirewallRuleStats, FirewallSchedule, FirewallSettings } from '../../types'
+import { getInterfaces } from '../../api/interfaces'
+import type { Alias, AliasType, FirewallRule, FirewallRuleStats, FirewallSchedule, FirewallSettings, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
@@ -89,6 +90,27 @@ function unwrapArray<T>(res: unknown): T[] {
   return []
 }
 
+function toIpv4NetworkCidr(address?: string, prefix?: number): string | null {
+  if (!address || typeof prefix !== 'number' || prefix < 0 || prefix > 32) return null
+  const parts = address.split('.').map((p) => Number(p))
+  if (parts.length !== 4 || parts.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return null
+
+  const ip =
+    ((parts[0] << 24) >>> 0) +
+    ((parts[1] << 16) >>> 0) +
+    ((parts[2] << 8) >>> 0) +
+    (parts[3] >>> 0)
+  const mask = prefix === 0 ? 0 : ((0xffffffff << (32 - prefix)) >>> 0)
+  const net = (ip & mask) >>> 0
+  const octets = [
+    (net >>> 24) & 0xff,
+    (net >>> 16) & 0xff,
+    (net >>> 8) & 0xff,
+    net & 0xff,
+  ]
+  return `${octets.join('.')}/${prefix}`
+}
+
 export default function Firewall() {
   const [searchParams] = useSearchParams()
   const selectedSection = searchParams.get('section')
@@ -106,6 +128,7 @@ export default function Firewall() {
   const [editSaving, setEditSaving] = useState(false)
 
   const [aliases, setAliases] = useState<AliasRow[]>([])
+  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
   const [aliasesLoading, setAliasesLoading] = useState(true)
   const [aliasesError, setAliasesError] = useState<string | null>(null)
   const [aliasModalOpen, setAliasModalOpen] = useState(false)
@@ -132,6 +155,14 @@ export default function Firewall() {
     ? `No firewall rules defined for ${selectedInterface}.`
     : 'No firewall rules defined.'
 
+  const activeSection =
+    selectedSection === 'aliases' || selectedSection === 'settings' || selectedSection === 'rules'
+      ? selectedSection
+      : 'rules'
+  const showRulesSection = activeSection === 'rules'
+  const showAliasesSection = activeSection === 'aliases'
+  const showSettingsSection = activeSection === 'settings'
+
   const loadRules = () => {
     setRulesLoading(true)
     getFirewallRules()
@@ -154,6 +185,14 @@ export default function Firewall() {
       .finally(() => setAliasesLoading(false))
   }
 
+  const loadInterfaces = () => {
+    getInterfaces()
+      .then((res) => setInterfaces((res.data ?? []).filter((iface) => iface.enabled !== false)))
+      .catch(() => {
+        setInterfaces([])
+      })
+  }
+
   const loadSettings = () => {
     getFirewallSettings()
       .then((res) => setSettings({ ...defaultSettings, ...res.data }))
@@ -163,23 +202,45 @@ export default function Firewall() {
   useEffect(() => {
     loadRules()
     loadAliases()
+    loadInterfaces()
     loadSettings()
     loadStats()
   }, [])
 
-  useEffect(() => {
-    const sectionId =
-      selectedSection === 'aliases'
-        ? 'firewall-aliases'
-        : selectedSection === 'settings'
-          ? 'firewall-settings'
-          : 'firewall-rules'
+  const lanNetworkCidr = useMemo(() => {
+    const preferredLan = interfaces.find((iface) => {
+      const name = iface.name.toLowerCase()
+      const desc = (iface.description ?? '').toLowerCase()
+      return name.includes('lan') || desc.includes('lan')
+    })
+    const fallback = interfaces.find((iface) => Boolean(iface.ipv4Address) && typeof iface.ipv4Prefix === 'number')
+    return toIpv4NetworkCidr(preferredLan?.ipv4Address, preferredLan?.ipv4Prefix) ?? toIpv4NetworkCidr(fallback?.ipv4Address, fallback?.ipv4Prefix)
+  }, [interfaces])
 
-    const target = document.getElementById(sectionId)
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const thisFirewallAddress = useMemo(() => {
+    const mgmtIface = settings.management_interface
+      ? interfaces.find((iface) => iface.name === settings.management_interface)
+      : undefined
+    const fallback = interfaces.find((iface) => Boolean(iface.ipv4Address))
+    const addr = mgmtIface?.ipv4Address ?? fallback?.ipv4Address
+    return addr ? `${addr}/32` : null
+  }, [interfaces, settings.management_interface])
+
+  const addressPresetOptions = useMemo(() => {
+    const options: Array<{ label: string; value: string }> = [{ label: 'Any', value: '' }]
+    if (thisFirewallAddress) {
+      options.push({ label: `This Firewall (${thisFirewallAddress})`, value: thisFirewallAddress })
     }
-  }, [selectedSection])
+    if (lanNetworkCidr) {
+      options.push({ label: `LAN Network (${lanNetworkCidr})`, value: lanNetworkCidr })
+    }
+    aliases
+      .filter((alias) => alias.alias_type === 'host' || alias.alias_type === 'network')
+      .forEach((alias) => {
+        options.push({ label: `Alias: ${alias.name}`, value: alias.name })
+      })
+    return options
+  }, [aliases, lanNetworkCidr, thisFirewallAddress])
 
   const openSettingsModal = () => {
     setAllowedSourcesInput((settings.management_allowed_sources ?? []).join(', '))
@@ -398,7 +459,7 @@ export default function Firewall() {
 
   return (
     <div className="space-y-6">
-      <div id="firewall-settings">
+      {showSettingsSection && <div id="firewall-settings">
         <Card
           title="Firewall Settings"
           subtitle="Global chain policies, management-plane protection, and advanced stateful controls"
@@ -440,9 +501,9 @@ export default function Firewall() {
           </div>
         </dl>
         </Card>
-      </div>
+      </div>}
 
-      <div id="firewall-rules">
+      {showRulesSection && <div id="firewall-rules">
         <Card
           title="Firewall Rules"
           subtitle={selectedInterface ? `Rules for interface ${selectedInterface}` : 'Define allow/deny rules evaluated top-to-bottom'}
@@ -465,9 +526,9 @@ export default function Firewall() {
           {rulesError && <p className="text-sm text-red-600 mb-3">{rulesError}</p>}
           <Table columns={ruleColumns} data={visibleRules} keyField="id" loading={rulesLoading} emptyMessage={rulesEmptyMessage} />
         </Card>
-      </div>
+      </div>}
 
-      <div id="firewall-aliases">
+      {showAliasesSection && <div id="firewall-aliases">
         <Card
           title="Aliases"
           subtitle="Named sets of hosts, networks, or ports reusable in firewall rules"
@@ -480,7 +541,7 @@ export default function Firewall() {
           {aliasesError && <p className="text-sm text-red-600 mb-3">{aliasesError}</p>}
           <Table columns={aliasColumns} data={aliases} keyField="name" loading={aliasesLoading} emptyMessage="No aliases defined." />
         </Card>
-      </div>
+      </div>}
 
       <Modal
         open={settingsModalOpen}
@@ -571,10 +632,17 @@ export default function Firewall() {
             id="fw-mgmt-iface"
             className="col-span-2"
             label="Management Interface (optional)"
-            placeholder="Leave blank for any interface"
+            as="select"
             value={settings.management_interface ?? ''}
             onChange={(e) => setSettings({ ...settings, management_interface: e.target.value || null })}
-          />
+          >
+            <option value="">Any interface</option>
+            {interfaces.map((iface) => (
+              <option key={iface.name} value={iface.name}>
+                {iface.description ? `${iface.description} (${iface.name})` : iface.name}
+              </option>
+            ))}
+          </FormField>
           <FormField
             id="fw-mgmt-src"
             className="col-span-2"
@@ -647,14 +715,32 @@ export default function Firewall() {
           <FormField
             id="rule-iface"
             label="Interface"
-            placeholder="Leave blank for any"
+            as="select"
             value={ruleForm.interface ?? ''}
             onChange={(e) => setRuleForm({ ...ruleForm, interface: e.target.value || null })}
-          />
+          >
+            <option value="">Any</option>
+            {interfaces.map((iface) => (
+              <option key={iface.name} value={iface.name}>
+                {iface.description ? `${iface.description} (${iface.name})` : iface.name}
+              </option>
+            ))}
+          </FormField>
+          <FormField
+            id="rule-src-preset"
+            label="Source Preset"
+            as="select"
+            value={(ruleForm.source ?? '')}
+            onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
+          >
+            {addressPresetOptions.map((opt) => (
+              <option key={`src-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
+            ))}
+          </FormField>
           <FormField
             id="rule-src"
-            label="Source CIDR"
-            placeholder="Leave blank for any"
+            label="Source (custom CIDR/IP/Alias)"
+            placeholder="Optional override"
             value={ruleForm.source ?? ''}
             onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
           />
@@ -666,9 +752,20 @@ export default function Firewall() {
             onChange={(e) => setRuleForm({ ...ruleForm, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
           />
           <FormField
+            id="rule-dst-preset"
+            label="Destination Preset"
+            as="select"
+            value={(ruleForm.destination ?? '')}
+            onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
+          >
+            {addressPresetOptions.map((opt) => (
+              <option key={`dst-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
+            ))}
+          </FormField>
+          <FormField
             id="rule-dst"
-            label="Destination CIDR"
-            placeholder="Leave blank for any"
+            label="Destination (custom CIDR/IP/Alias)"
+            placeholder="Optional override"
             value={ruleForm.destination ?? ''}
             onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
           />
@@ -785,12 +882,31 @@ export default function Firewall() {
             <FormField
               id="edit-rule-iface"
               label="Interface"
+              as="select"
               value={editRule.interface ?? ''}
               onChange={(e) => setEditRule({ ...editRule, interface: e.target.value || null })}
-            />
+            >
+              <option value="">Any</option>
+              {interfaces.map((iface) => (
+                <option key={iface.name} value={iface.name}>
+                  {iface.description ? `${iface.description} (${iface.name})` : iface.name}
+                </option>
+              ))}
+            </FormField>
+            <FormField
+              id="edit-rule-src-preset"
+              label="Source Preset"
+              as="select"
+              value={(editRule.source ?? '')}
+              onChange={(e) => setEditRule({ ...editRule, source: e.target.value || null })}
+            >
+              {addressPresetOptions.map((opt) => (
+                <option key={`edit-src-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
+              ))}
+            </FormField>
             <FormField
               id="edit-rule-src"
-              label="Source CIDR"
+              label="Source (custom CIDR/IP/Alias)"
               value={editRule.source ?? ''}
               onChange={(e) => setEditRule({ ...editRule, source: e.target.value || null })}
             />
@@ -802,8 +918,19 @@ export default function Firewall() {
               onChange={(e) => setEditRule({ ...editRule, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
             />
             <FormField
+              id="edit-rule-dst-preset"
+              label="Destination Preset"
+              as="select"
+              value={(editRule.destination ?? '')}
+              onChange={(e) => setEditRule({ ...editRule, destination: e.target.value || null })}
+            >
+              {addressPresetOptions.map((opt) => (
+                <option key={`edit-dst-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
+              ))}
+            </FormField>
+            <FormField
               id="edit-rule-dst"
-              label="Destination CIDR"
+              label="Destination (custom CIDR/IP/Alias)"
               value={editRule.destination ?? ''}
               onChange={(e) => setEditRule({ ...editRule, destination: e.target.value || null })}
             />

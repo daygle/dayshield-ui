@@ -7,6 +7,7 @@ import {
   deleteDhcpStaticLease,
   getDhcpLeases,
 } from '../../api/dhcp'
+import { getInterfaces } from '../../api/interfaces'
 import type { DhcpConfig, DhcpStaticLease, DhcpLease } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -98,6 +99,7 @@ export default function DHCP() {
   const [configSaving, setConfigSaving] = useState(false)
   // DNS servers are edited as a comma-separated string in the input
   const [dnsInput, setDnsInput] = useState('')
+  const [interfaces, setInterfaces] = useState<string[]>([])
 
   const loadAll = () => {
     setLoading(true)
@@ -112,6 +114,17 @@ export default function DHCP() {
   }
 
   useEffect(loadAll, [])
+
+  useEffect(() => {
+    getInterfaces()
+      .then((res) => {
+        const names = (res.data ?? [])
+          .filter((iface) => iface.enabled !== false)
+          .map((iface) => iface.name)
+        setInterfaces(names)
+      })
+      .catch(() => setInterfaces([]))
+  }, [])
 
   const openConfigModal = () => {
     if (config) {
@@ -317,11 +330,16 @@ export default function DHCP() {
             <FormField
               id="cfg-iface"
               label="LAN Interface"
+              as="select"
               required
-              placeholder="e.g. eth1"
               value={configForm.interface ?? ''}
               onChange={(e) => setConfigForm((f) => ({ ...f, interface: e.target.value }))}
-            />
+            >
+              <option value="">Select interface</option>
+              {interfaces.map((iface) => (
+                <option key={iface} value={iface}>{iface}</option>
+              ))}
+            </FormField>
 
             {/* Subnet CIDR */}
             <FormField

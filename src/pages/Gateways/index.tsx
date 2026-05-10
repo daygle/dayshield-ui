@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getGateways, upsertGateway, deleteGateway } from '../../api/gateways'
+import { getInterfaces } from '../../api/interfaces'
 import type { Gateway, GatewayStatus } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -51,6 +52,7 @@ export default function Gateways() {
   const [saving, setSaving] = useState(false)
   const [deleteName, setDeleteName] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [interfaces, setInterfaces] = useState<string[]>([])
 
   const load = () => {
     setLoading(true)
@@ -64,6 +66,17 @@ export default function Gateways() {
   }
 
   useEffect(load, [])
+
+  useEffect(() => {
+    getInterfaces()
+      .then((res) => {
+        const names = (res.data ?? [])
+          .filter((iface) => iface.enabled !== false)
+          .map((iface) => iface.name)
+        setInterfaces(names)
+      })
+      .catch(() => setInterfaces([]))
+  }, [])
 
   const openAdd = () => {
     setForm(defaultForm)
@@ -228,12 +241,16 @@ export default function Gateways() {
             />
           </FormField>
           <FormField label="Interface" required>
-            <input
+            <select
               className="input"
-              placeholder="e.g. eth0"
               value={form.interface}
               onChange={(e) => setForm((f) => ({ ...f, interface: e.target.value }))}
-            />
+            >
+              <option value="">Select interface</option>
+              {interfaces.map((iface) => (
+                <option key={iface} value={iface}>{iface}</option>
+              ))}
+            </select>
           </FormField>
           <FormField
             label="Gateway IP"

@@ -19,10 +19,17 @@ import FormField from '../../components/FormField'
 import Modal from '../../components/Modal'
 
 function formatUptime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0d 0h 0m'
   const d = Math.floor(seconds / 86400)
   const h = Math.floor((seconds % 86400) / 3600)
   const m = Math.floor((seconds % 3600) / 60)
   return `${d}d ${h}h ${m}m`
+}
+
+function formatIsoDate(value?: string): string {
+  if (!value) return '—'
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleString()
 }
 
 function shortCommit(value?: string): string {
@@ -186,7 +193,7 @@ export default function System() {
             <div>
               <dt className="text-gray-500">Last Updated</dt>
               <dd className="font-medium text-gray-800">
-                {new Date(status.lastUpdated).toLocaleString()}
+                {formatIsoDate(status.lastUpdated)}
               </dd>
             </div>
             <div>
@@ -276,7 +283,7 @@ export default function System() {
               <div className="rounded border border-gray-200 p-3 bg-gray-50">
                 <p className="text-gray-500">Last Checked</p>
                 <p className="font-medium text-gray-900">
-                  {updates.lastCheckedAt ? new Date(updates.lastCheckedAt).toLocaleString() : 'Never'}
+                  {updates.lastCheckedAt ? formatIsoDate(updates.lastCheckedAt) : 'Never'}
                 </p>
               </div>
               <div className="rounded border border-gray-200 p-3 bg-gray-50">
