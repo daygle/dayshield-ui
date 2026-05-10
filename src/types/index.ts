@@ -570,6 +570,44 @@ export interface NtpStatus {
   stratum: number
 }
 
+// ── Cloudflared ─────────────────────────────────────────────────────────────
+
+export interface CloudflaredIngressRule {
+  hostname: string
+  service: string
+}
+
+export interface CloudflaredConfig {
+  enabled: boolean
+  tunnelName: string
+  tunnelToken: string
+  tunnelTokenConfigured: boolean
+  metricsAddress: string
+  logLevel: string
+  ingress: CloudflaredIngressRule[]
+}
+
+export interface CloudflaredStatus {
+  configured: boolean
+  enabled: boolean
+  running: boolean
+  unitEnabled: boolean
+  binaryPresent: boolean
+  activeState: string
+  subState: string
+  version?: string
+  ingressCount: number
+  lastError?: string | null
+}
+
+export interface CloudflaredLogsResponse {
+  lines: string[]
+}
+
+export interface CloudflaredActionResponse {
+  message: string
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 export interface AuthUser {

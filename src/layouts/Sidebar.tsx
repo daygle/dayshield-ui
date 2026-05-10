@@ -134,6 +134,15 @@ const navEntries: NavEntry[] = [
     ),
   },
   {
+    to: '/cloudflared',
+    label: 'Cloudflared',
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18h11.5a3.5 3.5 0 000-7 5 5 0 00-9.7-1.5A4 4 0 006 18z" />
+      </svg>
+    ),
+  },
+  {
     to: '/suricata',
     label: 'Suricata IDS',
     icon: (

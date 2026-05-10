@@ -19,6 +19,7 @@ import Metrics from './pages/Metrics'
 import Backup from './pages/Backup'
 import Notifications from './pages/Notifications'
 import NTP from './pages/NTP'
+import Cloudflared from './pages/Cloudflared'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 import AdminSecurity from './pages/AdminSecurity'
 
@@ -56,6 +57,7 @@ function App() {
           <Route path="backup" element={<Backup />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="ntp" element={<NTP />} />
+          <Route path="cloudflared" element={<Cloudflared />} />
           <Route path="change-password" element={<ChangePasswordPage />} />
           <Route path="admin-security" element={<AdminSecurity />} />
         </Route>
