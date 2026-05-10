@@ -123,7 +123,7 @@ export function normalizeMetricsHistory(raw: unknown, seconds: number): MetricsH
 
   const points = Array.isArray(value)
     ? value.map((item) => {
-        const s = normalizeSnapshot(item)
+        const s = normalizeMetricsSnapshot(item)
         return {
           timestamp: s.timestamp,
           cpu_percent: s.cpu_percent,
