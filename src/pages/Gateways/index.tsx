@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getGateways, upsertGateway, deleteGateway } from '../../api/gateways'
-import { getInterfaces } from '../../api/interfaces'
+import { getInterfacesInventory } from '../../api/interfaces'
 import type { Gateway, GatewayStatus } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -68,11 +68,10 @@ export default function Gateways() {
   useEffect(load, [])
 
   useEffect(() => {
-    getInterfaces()
+    getInterfacesInventory()
       .then((res) => {
-        const names = (res.data ?? [])
-          .filter((iface) => iface.enabled !== false)
-          .map((iface) => iface.name)
+        const names = (res.data?.names ?? [])
+          .filter((name) => name !== 'lo')
         setInterfaces(names)
       })
       .catch(() => setInterfaces([]))

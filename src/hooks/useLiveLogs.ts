@@ -1,8 +1,110 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getAuthToken } from '../api/client'
-import type { LiveLogsFilter, LogEntry, WsStatus } from '../types/logs'
+import type { LiveLogsFilter, LogEntry, LogLevel, LogSource, WsStatus } from '../types/logs'
 
 const MAX_BUFFER = 2000
+
+function levelFromSystemMessage(message: string): LogLevel {
+  const upper = message.toUpperCase()
+  if (upper.includes("CRITICAL") || upper.includes("PANIC")) return 'critical'
+  if (upper.includes("ERROR") || upper.includes("FAILED")) return 'error'
+  if (upper.includes("WARN")) return 'warning'
+  if (upper.includes("DEBUG") || upper.includes("TRACE")) return 'debug'
+  return 'info'
+}
+
+function sourceFromSystemEvent(unit: string, message: string): LogSource {
+  const hay = `${unit} ${message}`.toLowerCase()
+  if (hay.includes('suricata')) return 'suricata'
+  if (hay.includes('nft') || hay.includes('firewall')) return 'firewall'
+  if (hay.includes('kea') || hay.includes('dhcp') || hay.includes('dnsmasq')) return 'dhcp'
+  if (hay.includes('wireguard') || hay.includes('wg-') || hay.includes('vpn')) return 'vpn'
+  if (hay.includes('cloudflared')) return 'cloudflared'
+  if (hay.includes('acme') || hay.includes('cert') || hay.includes('letsencrypt')) return 'acme'
+  return 'system'
+}
+
+function normalizeWsEvent(raw: unknown, seq: number): LogEntry | null {
+  if (!raw || typeof raw !== 'object') return null
+  const event = raw as Record<string, unknown>
+
+  // Backward-compatible: already in LogEntry shape.
+  if (typeof event.source === 'string' && typeof event.level === 'string' && typeof event.message === 'string') {
+    const timestamp = typeof event.timestamp === 'string' && event.timestamp ? event.timestamp : new Date().toISOString()
+    const id = typeof event.id === 'string' && event.id ? event.id : `${timestamp}-${seq}`
+    return {
+      id,
+      timestamp,
+      source: event.source as LogSource,
+      level: event.level as LogLevel,
+      message: event.message,
+      raw: JSON.stringify(event),
+      meta: event.meta as Record<string, unknown> | undefined,
+    }
+  }
+
+  const kind = typeof event.type === 'string' ? event.type : ''
+
+  if (kind === 'suricata_alert') {
+    const timestamp = typeof event.timestamp === 'string' && event.timestamp ? event.timestamp : new Date().toISOString()
+    const severity = Number(event.severity ?? 3)
+    const level: LogLevel = severity <= 1 ? 'error' : severity === 2 ? 'warning' : 'info'
+    const src = String(event.src_ip ?? '')
+    const dst = String(event.dest_ip ?? '')
+    const proto = String(event.proto ?? '').toUpperCase()
+    const sig = String(event.signature ?? 'Suricata alert')
+    const flow = [src, dst].every(Boolean) ? ` (${src} -> ${dst}${proto ? ` ${proto}` : ''})` : ''
+    return {
+      id: `${timestamp}-suricata-${seq}`,
+      timestamp,
+      source: 'suricata',
+      level,
+      message: `${sig}${flow}`,
+      raw: JSON.stringify(event),
+      meta: event,
+    }
+  }
+
+  if (kind === 'firewall_event') {
+    const timestamp = typeof event.timestamp === 'string' && event.timestamp ? event.timestamp : new Date().toISOString()
+    const action = String(event.action ?? 'EVENT')
+    const src = String(event.src_ip ?? '')
+    const dst = String(event.dest_ip ?? '')
+    const sport = String(event.sport ?? '')
+    const dport = String(event.dport ?? '')
+    const iface = String(event.iface ?? '')
+    const endpoint = [src, sport].filter(Boolean).join(':')
+    const target = [dst, dport].filter(Boolean).join(':')
+    const where = iface ? ` on ${iface}` : ''
+    return {
+      id: `${timestamp}-firewall-${seq}`,
+      timestamp,
+      source: 'firewall',
+      level: action.toUpperCase().includes('DROP') ? 'warning' : 'info',
+      message: `${action}${where}${endpoint || target ? ` ${endpoint} -> ${target}` : ''}`,
+      raw: JSON.stringify(event),
+      meta: event,
+    }
+  }
+
+  if (kind === 'system_event') {
+    const timestamp = typeof event.timestamp === 'string' && event.timestamp ? event.timestamp : new Date().toISOString()
+    const unit = String(event.unit ?? 'system')
+    const message = String(event.message ?? '').trim()
+    const safeMessage = message || '(empty system log message)'
+    return {
+      id: `${timestamp}-system-${seq}`,
+      timestamp,
+      source: sourceFromSystemEvent(unit, safeMessage),
+      level: levelFromSystemMessage(safeMessage),
+      message: safeMessage,
+      raw: JSON.stringify(event),
+      meta: event,
+    }
+  }
+
+  return null
+}
 
 function buildWsUrl(): string {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -26,6 +128,7 @@ export function useLiveLogs() {
   const pausedRef = useRef(paused)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const unmountedRef = useRef(false)
+  const sequenceRef = useRef(0)
 
   // keep paused ref in sync so the WS message handler always sees latest value
   useEffect(() => {
@@ -52,7 +155,10 @@ export function useLiveLogs() {
     ws.onmessage = (event: MessageEvent) => {
       if (unmountedRef.current || pausedRef.current) return
       try {
-        const entry = JSON.parse(event.data as string) as LogEntry
+        const parsed = JSON.parse(event.data as string) as unknown
+        sequenceRef.current += 1
+        const entry = normalizeWsEvent(parsed, sequenceRef.current)
+        if (!entry) return
         setLogs((prev) => {
           const next = [...prev, entry]
           return next.length > MAX_BUFFER ? next.slice(next.length - MAX_BUFFER) : next

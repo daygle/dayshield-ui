@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react'
 import {
-  getCrowdSecStatus,
+  getCrowdSecConfig,
+  updateCrowdSecConfig,
   getCrowdSecDecisions,
-  getCrowdSecAlerts,
-  deleteCrowdSecDecision,
 } from '../../api/crowdsec'
-import type { CrowdSecStatus, CrowdSecDecision, CrowdSecAlert } from '../../types'
+import type { CrowdSecStatus, CrowdSecDecision } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
+import FormField from '../../components/FormField'
 
 type DecisionRow = CrowdSecDecision & Record<string, unknown>
-type AlertRow = CrowdSecAlert & Record<string, unknown>
 
 const decisionTypeBadge = (type: CrowdSecDecision['type']) => {
   const map: Record<CrowdSecDecision['type'], string> = {
@@ -35,31 +34,23 @@ const decisionColumns: Column<DecisionRow>[] = [
   { key: 'createdAt', header: 'Created', render: (row) => new Date(row.createdAt as string).toLocaleString() },
 ]
 
-const alertColumns: Column<AlertRow>[] = [
-  { key: 'createdAt', header: 'Time', render: (row) => new Date(row.createdAt as string).toLocaleString() },
-  { key: 'scenario', header: 'Scenario' },
-  { key: 'sourceIp', header: 'Source IP', render: (row) => <span className="font-mono text-xs">{row.sourceIp as string}</span> },
-  { key: 'sourceCN', header: 'Country' },
-  { key: 'decisions', header: 'Decisions' },
-]
-
 export default function CrowdSec() {
   const [status, setStatus] = useState<CrowdSecStatus | null>(null)
   const [decisions, setDecisions] = useState<DecisionRow[]>([])
-  const [alerts, setAlerts] = useState<AlertRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [deleteId, setDeleteId] = useState<number | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  const [configModalOpen, setConfigModalOpen] = useState(false)
+  const [configForm, setConfigForm] = useState<Partial<CrowdSecStatus>>({})
+  const [saving, setSaving] = useState(false)
 
   const loadAll = () => {
     setLoading(true)
-    Promise.all([getCrowdSecStatus(), getCrowdSecDecisions(), getCrowdSecAlerts()])
-      .then(([st, dec, alt]) => {
+    Promise.all([getCrowdSecConfig(), getCrowdSecDecisions()])
+      .then(([st, dec]) => {
         setStatus(st.data)
+        setConfigForm(st.data)
         setDecisions(dec.data as DecisionRow[])
-        setAlerts(alt.data as AlertRow[])
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))
@@ -67,31 +58,28 @@ export default function CrowdSec() {
 
   useEffect(loadAll, [])
 
-  const handleDeleteDecision = () => {
-    if (deleteId === null) return
-    setDeleting(true)
-    deleteCrowdSecDecision(deleteId)
-      .then(() => {
-        setDeleteId(null)
-        getCrowdSecDecisions().then((r) => setDecisions(r.data as DecisionRow[]))
+  const handleSaveConfig = () => {
+    if (!configForm.lapi_url || !configForm.update_interval || !configForm.ban_alias_name) {
+      setError('LAPI URL, update interval, and alias name are required.')
+      return
+    }
+
+    setSaving(true)
+    updateCrowdSecConfig({
+      enabled: !!configForm.enabled,
+      lapi_url: configForm.lapi_url,
+      api_key: configForm.api_key ?? '',
+      update_interval: Number(configForm.update_interval) || 60,
+      ban_alias_name: configForm.ban_alias_name,
+    })
+      .then((res) => {
+        setStatus(res.data)
+        setConfigForm(res.data)
+        setConfigModalOpen(false)
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setDeleting(false))
+      .finally(() => setSaving(false))
   }
-
-  const decisionColumnsWithActions: Column<DecisionRow>[] = [
-    ...decisionColumns,
-    {
-      key: 'actions',
-      header: '',
-      className: 'w-20 text-right',
-      render: (row) => (
-        <Button variant="danger" size="sm" onClick={() => setDeleteId(row.id as number)}>
-          Delete
-        </Button>
-      ),
-    },
-  ]
 
   if (loading) {
     return (
@@ -111,20 +99,52 @@ export default function CrowdSec() {
 
       {/* Status */}
       {status && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'Status', value: status.running ? 'Running' : 'Stopped', color: status.running ? 'text-green-600' : 'text-red-600' },
-            { label: 'Version', value: status.version || '', color: 'text-gray-900' },
-            { label: 'Active Decisions', value: status.decisions !== undefined ? String(status.decisions) : '', color: 'text-gray-900' },
-            { label: 'Alerts', value: status.alerts !== undefined ? String(status.alerts) : '', color: 'text-gray-900' },
-            { label: 'Bouncers', value: status.bouncers !== undefined ? String(status.bouncers) : '', color: 'text-gray-900' },
+            { label: 'Status', value: status.enabled ? 'Enabled' : 'Disabled', color: status.enabled ? 'text-green-600' : 'text-gray-500' },
+            { label: 'LAPI URL', value: status.lapi_url || '—', color: 'text-gray-900' },
+            { label: 'Decision Poll Interval', value: `${status.update_interval || 0}s`, color: 'text-gray-900' },
+            { label: 'Active Decisions', value: String(decisions.length), color: 'text-gray-900' },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-white rounded-lg border border-gray-200 shadow-sm px-6 py-5">
               <p className="text-sm text-gray-500 mb-1">{label}</p>
-              <p className={`text-2xl font-bold ${color}`}>{value}</p>
+              <p className={`text-base font-semibold ${color}`}>{value}</p>
             </div>
           ))}
         </div>
+      )}
+
+      {status && (
+        <Card
+          title="CrowdSec Settings"
+          subtitle="Configure CrowdSec Local API integration and decision synchronization"
+          actions={
+            <Button size="sm" onClick={() => setConfigModalOpen(true)}>
+              Edit Settings
+            </Button>
+          }
+        >
+          <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+            <div>
+              <dt className="text-gray-500">Enabled</dt>
+              <dd className={`font-medium ${status.enabled ? 'text-green-600' : 'text-gray-400'}`}>
+                {status.enabled ? 'Yes' : 'No'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">LAPI URL</dt>
+              <dd className="font-medium text-gray-800 break-all">{status.lapi_url || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Update Interval</dt>
+              <dd className="font-medium text-gray-800">{status.update_interval}s</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Ban Alias</dt>
+              <dd className="font-medium text-gray-800 font-mono">{status.ban_alias_name || '—'}</dd>
+            </div>
+          </dl>
+        </Card>
       )}
 
       {/* Decisions */}
@@ -133,7 +153,7 @@ export default function CrowdSec() {
         subtitle="IP bans, captchas and throttles enforced by CrowdSec"
       >
         <Table
-          columns={decisionColumnsWithActions}
+          columns={decisionColumns}
           data={decisions}
           keyField="id"
           loading={false}
@@ -141,34 +161,70 @@ export default function CrowdSec() {
         />
       </Card>
 
-      {/* Alerts */}
-      <Card
-        title="Recent Alerts"
-        subtitle="Attack scenarios detected by CrowdSec"
-      >
-        <Table
-          columns={alertColumns}
-          data={alerts}
-          keyField="id"
-          loading={false}
-          emptyMessage="No alerts."
-        />
-      </Card>
-
-      {/* Delete Decision Modal */}
+      {/* Edit CrowdSec Config Modal */}
       <Modal
-        open={deleteId !== null}
-        title="Delete Decision"
-        onClose={() => setDeleteId(null)}
-        onConfirm={handleDeleteDecision}
-        confirmLabel="Delete"
-        confirmVariant="danger"
-        loading={deleting}
-        size="sm"
+        open={configModalOpen}
+        title="Edit CrowdSec Settings"
+        onClose={() => setConfigModalOpen(false)}
+        onConfirm={handleSaveConfig}
+        confirmLabel="Save"
+        loading={saving}
+        size="lg"
       >
-        <p className="text-sm text-gray-600">
-          Remove this decision? The affected IP will no longer be blocked.
-        </p>
+        <div className="space-y-4">
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              checked={!!configForm.enabled}
+              onChange={(e) => setConfigForm((f) => ({ ...f, enabled: e.target.checked }))}
+            />
+            <span className="text-sm font-medium text-gray-700">Enable CrowdSec integration</span>
+          </label>
+
+          <FormField
+            id="crowdsec-lapi-url"
+            label="LAPI URL"
+            required
+            placeholder="http://127.0.0.1:8080"
+            value={configForm.lapi_url ?? ''}
+            onChange={(e) => setConfigForm((f) => ({ ...f, lapi_url: e.target.value }))}
+          />
+
+          <FormField
+            id="crowdsec-api-key"
+            label="API Key"
+            placeholder="Paste CrowdSec API key"
+            value={configForm.api_key ?? ''}
+            onChange={(e) => setConfigForm((f) => ({ ...f, api_key: e.target.value }))}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              id="crowdsec-update-interval"
+              label="Update Interval (seconds)"
+              type="number"
+              min={1}
+              required
+              value={String(configForm.update_interval ?? 60)}
+              onChange={(e) =>
+                setConfigForm((f) => ({
+                  ...f,
+                  update_interval: Math.max(1, Number(e.target.value) || 60),
+                }))
+              }
+            />
+
+            <FormField
+              id="crowdsec-ban-alias-name"
+              label="Ban Alias Name"
+              required
+              placeholder="crowdsec_bans"
+              value={configForm.ban_alias_name ?? ''}
+              onChange={(e) => setConfigForm((f) => ({ ...f, ban_alias_name: e.target.value }))}
+            />
+          </div>
+        </div>
       </Modal>
     </div>
   )

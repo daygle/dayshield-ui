@@ -10,7 +10,8 @@ import {
   getFirewallStats,
 } from '../../api/firewall'
 import { getAliases, createAlias, deleteAlias } from '../../api/aliases'
-import { getInterfaces } from '../../api/interfaces'
+import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
+import { getWgInterfaces } from '../../api/wireguard'
 import type { Alias, AliasType, FirewallRule, FirewallRuleStats, FirewallSchedule, FirewallSettings, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -129,6 +130,7 @@ export default function Firewall() {
 
   const [aliases, setAliases] = useState<AliasRow[]>([])
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
+  const [vpnInterfaceNames, setVpnInterfaceNames] = useState<string[]>([])
   const [aliasesLoading, setAliasesLoading] = useState(true)
   const [aliasesError, setAliasesError] = useState<string | null>(null)
   const [aliasModalOpen, setAliasModalOpen] = useState(false)
@@ -202,11 +204,47 @@ export default function Firewall() {
   }
 
   const loadInterfaces = () => {
-    getInterfaces()
-      .then((res) => setInterfaces((res.data ?? []).filter((iface) => iface.enabled !== false)))
+    Promise.all([getInterfaces(), getInterfacesInventory(), getWgInterfaces()])
+      .then(([ifacesRes, inventoryRes, wgRes]) => {
+        const configured = (ifacesRes.data ?? []).filter((iface) => iface.enabled !== false)
+        const known = new Set(configured.map((iface) => iface.name))
+        const extras = (inventoryRes.data?.names ?? [])
+          .filter((name) => name !== 'lo' && !known.has(name))
+          .map((name) => ({
+            name,
+            description: '',
+            type: 'ethernet' as const,
+            enabled: true,
+          }))
+
+        const enabledVpn = (wgRes.data ?? [])
+          .filter((wg) => wg.enabled)
+          .map((wg) => wg.interface)
+          .filter(Boolean)
+
+        const knownAfterKernel = new Set([...known, ...extras.map((e) => e.name)])
+        const vpnExtras = enabledVpn
+          .filter((name) => !knownAfterKernel.has(name))
+          .map((name) => ({
+            name,
+            description: 'WireGuard VPN',
+            type: 'ethernet' as const,
+            enabled: true,
+          }))
+
+        setVpnInterfaceNames(enabledVpn)
+        setInterfaces([...configured, ...extras, ...vpnExtras])
+      })
       .catch(() => {
+        setVpnInterfaceNames([])
         setInterfaces([])
       })
+  }
+
+  const interfaceOptionLabel = (iface: NetworkInterface): string => {
+    const prefix = vpnInterfaceNames.includes(iface.name) ? 'VPN • ' : ''
+    const base = iface.description ? `${iface.description} (${iface.name})` : iface.name
+    return `${prefix}${base}`
   }
 
   const loadSettings = () => {
@@ -546,7 +584,7 @@ export default function Firewall() {
                 <option value="">All interfaces</option>
                 {interfaces.map((iface) => (
                   <option key={iface.name} value={iface.name}>
-                    {iface.description ? `${iface.description} (${iface.name})` : iface.name}
+                    {interfaceOptionLabel(iface)}
                   </option>
                 ))}
               </FormField>
@@ -677,7 +715,7 @@ export default function Firewall() {
             <option value="">Any interface</option>
             {interfaces.map((iface) => (
               <option key={iface.name} value={iface.name}>
-                {iface.description ? `${iface.description} (${iface.name})` : iface.name}
+                {interfaceOptionLabel(iface)}
               </option>
             ))}
           </FormField>
@@ -760,7 +798,7 @@ export default function Firewall() {
             <option value="">Any</option>
             {interfaces.map((iface) => (
               <option key={iface.name} value={iface.name}>
-                {iface.description ? `${iface.description} (${iface.name})` : iface.name}
+                {interfaceOptionLabel(iface)}
               </option>
             ))}
           </FormField>
@@ -927,7 +965,7 @@ export default function Firewall() {
               <option value="">Any</option>
               {interfaces.map((iface) => (
                 <option key={iface.name} value={iface.name}>
-                  {iface.description ? `${iface.description} (${iface.name})` : iface.name}
+                  {interfaceOptionLabel(iface)}
                 </option>
               ))}
             </FormField>

@@ -27,6 +27,7 @@ export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsPr
     ipv4Prefix: iface.ipv4Prefix,
     gateway: iface.gateway,
     mtu: iface.mtu,
+    mss: iface.mss,
   })
 
   const ipv4ConfigurationType = iface.dhcp4
@@ -84,6 +85,10 @@ export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsPr
         <div className="rounded border border-gray-200 bg-white p-3">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Gateway</p>
           <p className="mt-1 font-mono text-sm text-gray-900">{iface.gateway ?? '—'}</p>
+        </div>
+        <div className="rounded border border-gray-200 bg-white p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">MSS</p>
+          <p className="mt-1 text-sm font-medium text-gray-900">{iface.mss ?? '—'}</p>
         </div>
         <div className="rounded border border-gray-200 bg-white p-3">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Description</p>
@@ -178,6 +183,15 @@ export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsPr
             min={68}
             value={String(form.mtu ?? '')}
             onChange={(e) => setForm({ ...form, mtu: e.target.value ? Number(e.target.value) : undefined })}
+          />
+          <FormField
+            id="iface-mss"
+            label="MSS"
+            type="number"
+            min={536}
+            max={65535}
+            value={String(form.mss ?? '')}
+            onChange={(e) => setForm({ ...form, mss: e.target.value ? Number(e.target.value) : undefined })}
           />
           {form.wanMode === 'pppoe' && (
             <>

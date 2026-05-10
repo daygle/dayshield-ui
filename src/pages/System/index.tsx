@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   getSystemStatus,
   getSystemConfig,
@@ -209,6 +210,7 @@ function parseValidationMessage(message: string): {
 }
 
 export default function System() {
+  const [searchParams] = useSearchParams()
   const [status, setStatus] = useState<SystemStatus | null>(null)
   const [config, setConfig] = useState<SystemConfig | null>(null)
   const [loading, setLoading] = useState(true)
@@ -229,6 +231,8 @@ export default function System() {
   const [updateSaving, setUpdateSaving] = useState(false)
   const [markingApplianceRebuildComplete, setMarkingApplianceRebuildComplete] = useState(false)
   const [rollingBackRootfsLive, setRollingBackRootfsLive] = useState(false)
+
+  const activeSection = searchParams.get('section') === 'reboot' ? 'reboot' : 'updates'
 
   const loadAll = () => {
     setLoading(true)
@@ -366,8 +370,7 @@ export default function System() {
         </div>
       )}
 
-      {/* Status */}
-      {status && (
+      {activeSection === 'updates' && status && (
         <Card title="System Status">
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
             <div>
@@ -410,8 +413,7 @@ export default function System() {
         </Card>
       )}
 
-      {/* Configuration */}
-      {config && (
+      {activeSection === 'updates' && config && (
         <Card
           title="System Configuration"
           actions={
@@ -451,8 +453,7 @@ export default function System() {
         </Card>
       )}
 
-      {/* Software updates */}
-      {updates && (
+      {activeSection === 'updates' && updates && (
         <Card
           title="Software Updates"
           subtitle="Git-based updates for DayShield core, UI, and rootfs repositories"
@@ -735,17 +736,18 @@ export default function System() {
         </Card>
       )}
 
-      {/* Danger zone */}
-      <Card title="Administration">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Button variant="danger" onClick={() => setRebootOpen(true)}>
-            Reboot System
-          </Button>
-          <p className="text-xs text-gray-500">
-            Rebooting will briefly interrupt all network services.
-          </p>
-        </div>
-      </Card>
+      {activeSection === 'reboot' && (
+        <Card title="Administration">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Button variant="danger" onClick={() => setRebootOpen(true)}>
+              Reboot System
+            </Button>
+            <p className="text-xs text-gray-500">
+              Rebooting will briefly interrupt all network services.
+            </p>
+          </div>
+        </Card>
+      )}
 
       {/* Edit Config Modal */}
       <Modal

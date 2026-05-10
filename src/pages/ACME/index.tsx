@@ -133,11 +133,17 @@ export default function ACME() {
       key: 'notAfter',
       header: 'Expires',
       render: (row) => {
-        const days = daysUntil(row.notAfter as string)
+        const notAfter = String(row.notAfter ?? '').trim()
+        if (!notAfter) return ''
+
+        const parsed = new Date(notAfter)
+        if (Number.isNaN(parsed.getTime())) return ''
+
+        const days = daysUntil(notAfter)
         const color = days < 14 ? 'text-red-600' : days < 30 ? 'text-yellow-600' : 'text-gray-800'
         return (
           <span className={`font-medium ${color}`}>
-            {new Date(row.notAfter as string).toLocaleDateString()} ({days}d)
+            {parsed.toLocaleDateString()} ({days}d)
           </span>
         )
       },

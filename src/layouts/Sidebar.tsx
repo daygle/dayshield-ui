@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { getInterfaces } from '../api/interfaces'
-import type { NetworkInterface } from '../types'
 
 interface NavItem {
   type?: 'item'
@@ -144,7 +142,7 @@ const navEntries: NavEntry[] = [
   },
   {
     to: '/suricata',
-    label: 'Suricata IDS',
+    label: 'Suricata',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
@@ -206,62 +204,13 @@ const navEntries: NavEntry[] = [
       </svg>
     ),
   },
-  {
-    to: '/change-password',
-    label: 'Change Password',
-    icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-      </svg>
-    ),
-  },
-  {
-    to: '/admin-security',
-    label: 'Admin Security',
-    icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-  },
 ]
 
 export default function Sidebar() {
   const location = useLocation()
   const [isFirewallMenuOpen, setIsFirewallMenuOpen] = useState(false)
-  const [isDhcpMenuOpen, setIsDhcpMenuOpen] = useState(false)
-  const [isSuricataMenuOpen, setIsSuricataMenuOpen] = useState(false)
-  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
-
-  useEffect(() => {
-    let isMounted = true
-    Promise.allSettled([getInterfaces()]).then(
-      ([ifaceRes]) => {
-        if (!isMounted) return
-
-        if (ifaceRes.status === 'fulfilled') {
-          setInterfaces(Array.isArray(ifaceRes.value.data) ? ifaceRes.value.data : [])
-        } else {
-          setInterfaces([])
-        }
-
-      },
-    )
-
-    return () => {
-      isMounted = false
-    }
-  }, [])
-
-  const dhcpInterfaces = useMemo(
-    () => interfaces.filter((iface) => iface.enabled),
-    [interfaces],
-  )
-
-  const suricataInterfaces = useMemo(
-    () => interfaces.filter((iface) => iface.enabled),
-    [interfaces],
-  )
+  const [isDnsMenuOpen, setIsDnsMenuOpen] = useState(false)
+  const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false)
 
   return (
     <aside className="flex flex-col h-full w-60 bg-[#0f172a] shrink-0">
@@ -303,14 +252,14 @@ export default function Sidebar() {
                 <NavLink
                   to={item.to}
                   onClick={
-                    item.to === '/firewall' || item.to === '/dhcp' || item.to === '/suricata'
+                    item.to === '/firewall' || item.to === '/dns' || item.to === '/system'
                       ? (event) => {
                           if (location.pathname === item.to) {
                             event.preventDefault()
                           }
                           if (item.to === '/firewall') setIsFirewallMenuOpen((open) => !open)
-                          if (item.to === '/dhcp') setIsDhcpMenuOpen((open) => !open)
-                          if (item.to === '/suricata') setIsSuricataMenuOpen((open) => !open)
+                          if (item.to === '/dns') setIsDnsMenuOpen((open) => !open)
+                          if (item.to === '/system') setIsSystemMenuOpen((open) => !open)
                         }
                       : undefined
                   }
@@ -323,6 +272,13 @@ export default function Sidebar() {
                 </NavLink>
               )}
 
+              {item.to === '/dns' && isDnsMenuOpen && (
+                <div className="mt-1 space-y-0.5">
+                  <QueryNavLink to="/dns?section=settings" label="Settings" level={1} />
+                  <QueryNavLink to="/dns?section=overrides" label="Overrides" level={1} />
+                </div>
+              )}
+
               {item.to === '/firewall' && isFirewallMenuOpen && (
                 <div className="mt-1 space-y-0.5">
                   <QueryNavLink to="/firewall?section=rules" label="Rules" level={1} />
@@ -331,30 +287,12 @@ export default function Sidebar() {
                 </div>
               )}
 
-              {item.to === '/dhcp' && isDhcpMenuOpen && (
+              {item.to === '/system' && isSystemMenuOpen && (
                 <div className="mt-1 space-y-0.5">
-                  <QueryNavLink to="/dhcp" label="Settings" level={1} />
-                  {dhcpInterfaces.map((iface) => (
-                    <QueryNavLink
-                      key={`dhcp-${iface.name}`}
-                      to={`/dhcp?iface=${encodeURIComponent(iface.name)}`}
-                      label={iface.description?.trim() || iface.name}
-                      level={1}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {item.to === '/suricata' && isSuricataMenuOpen && (
-                <div className="mt-1 space-y-0.5">
-                  {suricataInterfaces.map((iface) => (
-                    <QueryNavLink
-                      key={`suricata-${iface.name}`}
-                      to={`/suricata?iface=${encodeURIComponent(iface.name)}`}
-                      label={`[${iface.name}]`}
-                      level={2}
-                    />
-                  ))}
+                  <QueryNavLink to="/system?section=updates" label="Updates" level={1} />
+                  <QueryNavLink to="/system?section=reboot" label="Reboot" level={1} />
+                  <QueryNavLink to="/admin-security" label="Security" level={1} />
+                  <QueryNavLink to="/change-password" label="Change Password" level={1} />
                 </div>
               )}
             </div>

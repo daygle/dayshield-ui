@@ -26,6 +26,22 @@ export interface NetworkInterface {
   speed?: number
   duplex?: 'full' | 'half' | 'auto'
   gateway?: string  // static WAN gateway IP
+  mss?: number
+}
+
+export interface KernelInterface {
+  name: string
+  mac?: string
+  mtu?: number
+  state?: string
+  addresses?: string[]
+}
+
+export interface InterfacesInventory {
+  configured: NetworkInterface[]
+  kernel: KernelInterface[]
+  names: string[]
+  unusedKernelNames: string[]
 }
 
 // ── Gateways ──────────────────────────────────────────────────────────────────────
@@ -216,8 +232,9 @@ export interface WgServer {
   publicKey: string
   listenPort: number
   addresses: string[]
-  dns: string[]
-  mtu: number
+  peers?: WgPeer[]
+  dns?: string[]
+  mtu?: number
   enabled: boolean
 }
 
@@ -260,6 +277,7 @@ export type SuricataSeverity = 'high' | 'medium' | 'low' | 'informational'
 export interface SuricataAlert {
   id: number
   timestamp: string
+  interface?: string
   srcIp: string
   srcPort: number
   dstIp: string
@@ -274,11 +292,11 @@ export interface SuricataAlert {
 // ── CrowdSec ──────────────────────────────────────────────────────────────────
 
 export interface CrowdSecStatus {
-  running: boolean
-  version: string
-  decisions: number
-  alerts: number
-  bouncers: number
+  enabled: boolean
+  lapi_url: string
+  api_key: string
+  update_interval: number
+  ban_alias_name: string
 }
 
 export type CrowdSecDecisionType = 'ban' | 'captcha' | 'throttle'

@@ -22,7 +22,7 @@ export const getCrowdSecDecisions = (): Promise<ApiResponse<CrowdSecDecision[]>>
     .get<ApiResponse<CrowdSecDecision[]>>('/crowdsec/decisions')
     .then((r) => r.data)
 
-// Legacy / compatibility wrappers for older UI pages
+// Compatibility wrappers for page code that still references these names.
 export const getCrowdSecStatus = getCrowdSecConfig
 // Note: /crowdsec/alerts and DELETE /crowdsec/decisions/{id} are not implemented
 // in the backend — the backend only exposes GET /crowdsec/decisions.

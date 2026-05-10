@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   getDnsConfig,
   updateDnsConfig,
@@ -38,6 +39,7 @@ const defaultConfigForm = (): Partial<DnsConfig> => ({
 })
 
 export default function DNS() {
+  const [searchParams] = useSearchParams()
   const [config, setConfig] = useState<DnsConfig | null>(null)
   const [hostOverrides, setHostOverrides] = useState<HostRow[]>([])
   const [domainOverrides, setDomainOverrides] = useState<DomainRow[]>([])
@@ -189,6 +191,8 @@ export default function DNS() {
     },
   ]
 
+  const activeSection = searchParams.get('section') === 'overrides' ? 'overrides' : 'settings'
+
   return (
     <div className="space-y-6">
       {error && (
@@ -198,97 +202,100 @@ export default function DNS() {
         </div>
       )}
 
-      {/* DNS Settings summary */}
-      <Card
-        title="DNS Resolver (Unbound)"
-        subtitle="Recursive resolver / forwarder configuration"
-        actions={
-          <Button size="sm" variant="secondary" onClick={openConfigModal}>
-            Edit Settings
-          </Button>
-        }
-      >
-        {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
-        ) : config ? (
-          <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
-              <dd className={`mt-1 font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
-                {config.enabled ? 'Enabled' : 'Disabled'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Mode</dt>
-              <dd className="mt-1 font-medium text-gray-800">
-                {config.forwarders?.length ? 'Forwarder' : 'Full Recursion'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Port</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">{config.port ?? 53}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listen Addresses</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">
-                {config.listen_addresses?.length ? config.listen_addresses.join(', ') : 'All interfaces'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Upstream Forwarders</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">
-                {config.forwarders?.length ? config.forwarders.join(', ') : '— (recursive)'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNSSEC</dt>
-              <dd className={`mt-1 font-semibold ${config.dnssec ? 'text-green-600' : 'text-gray-400'}`}>
-                {config.dnssec ? 'Enabled' : 'Disabled'}
-              </dd>
-            </div>
-          </dl>
-        ) : (
-          <p className="text-sm text-gray-400">No DNS configuration found.</p>
-        )}
-      </Card>
+      {activeSection === 'settings' && (
+        <Card
+          title="DNS Resolver (Unbound)"
+          subtitle="Recursive resolver / forwarder configuration"
+          actions={
+            <Button size="sm" variant="secondary" onClick={openConfigModal}>
+              Edit Settings
+            </Button>
+          }
+        >
+          {loading ? (
+            <p className="text-sm text-gray-400">Loading…</p>
+          ) : config ? (
+            <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
+                <dd className={`mt-1 font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
+                  {config.enabled ? 'Enabled' : 'Disabled'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Mode</dt>
+                <dd className="mt-1 font-medium text-gray-800">
+                  {config.forwarders?.length ? 'Forwarder' : 'Full Recursion'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Port</dt>
+                <dd className="mt-1 font-medium text-gray-800 font-mono">{config.port ?? 53}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listen Addresses</dt>
+                <dd className="mt-1 font-medium text-gray-800 font-mono">
+                  {config.listen_addresses?.length ? config.listen_addresses.join(', ') : 'All interfaces'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Upstream Forwarders</dt>
+                <dd className="mt-1 font-medium text-gray-800 font-mono">
+                  {config.forwarders?.length ? config.forwarders.join(', ') : '— (recursive)'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNSSEC</dt>
+                <dd className={`mt-1 font-semibold ${config.dnssec ? 'text-green-600' : 'text-gray-400'}`}>
+                  {config.dnssec ? 'Enabled' : 'Disabled'}
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-sm text-gray-400">No DNS configuration found.</p>
+          )}
+        </Card>
+      )}
 
-      {/* Host Overrides */}
-      <Card
-        title="Host Overrides"
-        subtitle="Map fully-qualified hostnames to specific IP addresses (local A/AAAA records)"
-        actions={
-          <Button size="sm" onClick={() => setHostModalOpen(true)}>
-            + Add Host
-          </Button>
-        }
-      >
-        <Table
-          columns={hostColumnsWithActions}
-          data={hostOverrides}
-          keyField="hostname"
-          loading={loading}
-          emptyMessage="No host overrides configured."
-        />
-      </Card>
+      {activeSection === 'overrides' && (
+        <>
+          <Card
+            title="Host Overrides"
+            subtitle="Map fully-qualified hostnames to specific IP addresses (local A/AAAA records)"
+            actions={
+              <Button size="sm" onClick={() => setHostModalOpen(true)}>
+                + Add Host
+              </Button>
+            }
+          >
+            <Table
+              columns={hostColumnsWithActions}
+              data={hostOverrides}
+              keyField="hostname"
+              loading={loading}
+              emptyMessage="No host overrides configured."
+            />
+          </Card>
 
-      {/* Domain Overrides */}
-      <Card
-        title="Domain Overrides"
-        subtitle="Forward all DNS queries for a domain to a specific resolver"
-        actions={
-          <Button size="sm" onClick={() => setDomainModalOpen(true)}>
-            + Add Domain
-          </Button>
-        }
-      >
-        <Table
-          columns={domainColumnsWithActions}
-          data={domainOverrides}
-          keyField="domain"
-          loading={loading}
-          emptyMessage="No domain overrides configured."
-        />
-      </Card>
+          <Card
+            title="Domain Overrides"
+            subtitle="Forward all DNS queries for a domain to a specific resolver"
+            actions={
+              <Button size="sm" onClick={() => setDomainModalOpen(true)}>
+                + Add Domain
+              </Button>
+            }
+          >
+            <Table
+              columns={domainColumnsWithActions}
+              data={domainOverrides}
+              keyField="domain"
+              loading={loading}
+              emptyMessage="No domain overrides configured."
+            />
+          </Card>
+        </>
+      )}
 
       {/* Edit DNS Settings Modal */}
       <Modal

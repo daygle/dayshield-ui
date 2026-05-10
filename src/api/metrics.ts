@@ -6,11 +6,16 @@ interface BackendMetricsSnapshot {
   system?: {
     cpu_percent?: number
     ram_percent?: number
+    ram_used_bytes?: number
+    ram_total_bytes?: number
     loadavg_1?: number
     loadavg_5?: number
     loadavg_15?: number
     temperature_c?: number
     uptime_seconds?: number
+    disk_percent?: number
+    disk_used_bytes?: number
+    disk_total_bytes?: number
   }
   network?: Array<{
     name?: string
@@ -81,14 +86,14 @@ export function normalizeMetricsSnapshot(raw: unknown): MetricsSnapshot {
     timestamp: toIsoTimestamp(backend.timestamp),
     cpu_percent: backend.system?.cpu_percent ?? 0,
     ram_percent: backend.system?.ram_percent ?? 0,
-    ram_used_bytes: 0,
-    ram_total_bytes: 0,
+    ram_used_bytes: backend.system?.ram_used_bytes ?? 0,
+    ram_total_bytes: backend.system?.ram_total_bytes ?? 0,
     loadavg,
     temperature: backend.system?.temperature_c,
     uptime: backend.system?.uptime_seconds ?? 0,
-    disk_percent: 0,
-    disk_used_bytes: 0,
-    disk_total_bytes: 0,
+    disk_percent: backend.system?.disk_percent ?? 0,
+    disk_used_bytes: backend.system?.disk_used_bytes ?? 0,
+    disk_total_bytes: backend.system?.disk_total_bytes ?? 0,
     wan_rx_bps: wan?.rx_bps ?? 0,
     wan_tx_bps: wan?.tx_bps ?? 0,
     lan_ifaces: lan.map((iface) => ({

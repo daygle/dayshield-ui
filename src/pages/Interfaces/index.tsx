@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import type { ChangeEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { getInterfaces, createInterface, deleteInterface } from '../../api/interfaces'
+import { getInterfacesInventory, createInterface, deleteInterface } from '../../api/interfaces'
 import type { NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -21,6 +22,7 @@ const defaultForm: Partial<NetworkInterface> = {
   pppoePassword: '',
   ipv4Address: '',
   ipv4Prefix: 24,
+  mss: undefined,
 }
 
 export default function Interfaces() {
@@ -34,6 +36,8 @@ export default function Interfaces() {
   const [deleteName, setDeleteName] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [expandedInterface, setExpandedInterface] = useState<string | null>(searchParams.get('iface'))
+  const [unusedKernelNames, setUnusedKernelNames] = useState<string[]>([])
+  const [useCustomName, setUseCustomName] = useState(false)
 
   const requestedInterface = searchParams.get('iface')
   const isInterfaceRowArray = (value: unknown): value is InterfaceRow[] =>
@@ -41,9 +45,10 @@ export default function Interfaces() {
 
   const load = () => {
     setLoading(true)
-    getInterfaces()
+    getInterfacesInventory()
       .then((res) => {
-        const rows = isInterfaceRowArray(res.data) ? res.data : []
+        const rows = isInterfaceRowArray(res.data?.configured) ? res.data.configured : []
+        setUnusedKernelNames(Array.isArray(res.data?.unusedKernelNames) ? res.data.unusedKernelNames : [])
         setIfaces(rows)
         if (requestedInterface && rows.some((i) => i.name === requestedInterface)) {
           setExpandedInterface(requestedInterface)
@@ -61,6 +66,7 @@ export default function Interfaces() {
       .then(() => {
         setModalOpen(false)
         setForm(defaultForm)
+        setUseCustomName(false)
         load()
       })
       .catch((err: Error) => setError(err.message))
@@ -201,10 +207,43 @@ export default function Interfaces() {
             id="iface-name"
             label="Interface Name"
             required
-            placeholder="e.g. eth0"
+            as={useCustomName ? undefined : 'select'}
+            placeholder={useCustomName ? 'e.g. eth0' : undefined}
             value={form.name ?? ''}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
+            onChange={(e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+              const value = e.target.value
+              if (value === '__custom__') {
+                setUseCustomName(true)
+                setForm({ ...form, name: '' })
+                return
+              }
+              setForm({ ...form, name: value })
+            }}
+          >
+            {!useCustomName && (
+              <>
+                <option value="">Select unused NIC</option>
+                {unusedKernelNames.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+                <option value="__custom__">Custom name...</option>
+              </>
+            )}
+          </FormField>
+          {useCustomName && (
+            <div className="col-span-2 -mt-2">
+              <button
+                type="button"
+                className="text-xs text-blue-600 hover:text-blue-700"
+                onClick={() => {
+                  setUseCustomName(false)
+                  setForm({ ...form, name: '' })
+                }}
+              >
+                Choose from unused NIC list instead
+              </button>
+            </div>
+          )}
           <FormField
             id="iface-desc"
             label="Description"
@@ -301,6 +340,21 @@ export default function Interfaces() {
             value={String(form.ipv4Prefix ?? 24)}
             disabled={form.dhcp4 ?? false}
             onChange={(e) => setForm({ ...form, ipv4Prefix: Number(e.target.value) })}
+          />
+          <FormField
+            id="iface-mss"
+            label="MSS"
+            type="number"
+            min={536}
+            max={65535}
+            placeholder="Optional (e.g. 1452)"
+            value={form.mss != null ? String(form.mss) : ''}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                mss: e.target.value ? Number(e.target.value) : undefined,
+              })
+            }
           />
         </div>
       </Modal>

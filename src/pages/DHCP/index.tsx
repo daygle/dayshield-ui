@@ -13,7 +13,7 @@ import {
   createInterfaceStaticLease,
   deleteInterfaceStaticLease,
 } from '../../api/dhcp'
-import { getInterfaces } from '../../api/interfaces'
+import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
 import type { DhcpConfig, DhcpConfigPerInterface, DhcpStaticLease, DhcpLease, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -89,7 +89,7 @@ const defaultConfigForm = (): Partial<DhcpConfig> => ({
 })
 
 export default function DHCP() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const selectedInterface = searchParams.get('iface')
   const [config, setConfig] = useState<DhcpConfig | null>(null)
   const [interfaceConfig, setInterfaceConfig] = useState<DhcpConfigPerInterface | null>(null)
@@ -117,32 +117,25 @@ export default function DHCP() {
 
   const loadAll = () => {
     setLoading(true)
-    const loadPromise = selectedInterface
-      ? Promise.all([
-          getInterfaceDhcpConfig(selectedInterface),
-          getInterfaceStaticLeases(selectedInterface),
-        ])
-      : Promise.all([getDhcpConfig(), getDhcpStaticLeases(), getDhcpLeases()])
-
-    loadPromise
-      .then((results) => {
-        if (selectedInterface) {
-          const [cfg, statics] = results as [
-            { data: DhcpConfigPerInterface },
-            { data: DhcpStaticLease[] },
-          ]
+    if (selectedInterface) {
+      Promise.all([
+        getInterfaceDhcpConfig(selectedInterface),
+        getInterfaceStaticLeases(selectedInterface),
+        getDhcpLeases(),
+      ])
+        .then(([cfg, statics, active]) => {
           setInterfaceConfig(cfg.data)
           setConfig(null)
           setStaticLeases(statics.data as StaticLeaseRow[])
-          setActiveLeases([])
-          return
-        }
+          setActiveLeases(active.data as ActiveLeaseRow[])
+        })
+        .catch((err: Error) => setError(err.message))
+        .finally(() => setLoading(false))
+      return
+    }
 
-        const [cfg, statics, actives] = results as [
-          { data: DhcpConfig },
-          { data: DhcpStaticLease[] },
-          { data: DhcpLease[] },
-        ]
+    Promise.all([getDhcpConfig(), getDhcpStaticLeases(), getDhcpLeases()])
+      .then(([cfg, statics, actives]) => {
         setConfig(cfg.data)
         setInterfaceConfig(null)
         setStaticLeases(statics.data as StaticLeaseRow[])
@@ -155,11 +148,71 @@ export default function DHCP() {
   useEffect(loadAll, [selectedInterface])
 
   useEffect(() => {
-    getInterfaces()
-      .then((res) => {
-        const names = (res.data ?? [])
-          .filter((iface) => iface.enabled !== false)
-        setInterfaces(names)
+    if (selectedInterface || interfaces.length === 0) return
+
+    const preferred = interfaces.find((iface) => iface.name === config?.interface) ?? interfaces[0]
+    if (!preferred) return
+
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set('iface', preferred.name)
+      return next
+    }, { replace: true })
+  }, [selectedInterface, interfaces, config?.interface, setSearchParams])
+
+  const activeLeasesForSelectedInterface = useMemo(() => {
+    if (!selectedInterface) return activeLeases
+    const subnet = interfaceConfig?.subnet
+    if (!subnet) return []
+
+    const [network, prefixText] = subnet.split('/')
+    const prefix = Number(prefixText)
+    if (!network || !Number.isInteger(prefix) || prefix < 0 || prefix > 32) return activeLeases
+
+    const toIPv4Int = (value: string): number | null => {
+      const parts = value.split('.').map((part) => Number(part))
+      if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+        return null
+      }
+      return (((parts[0] << 24) >>> 0) + ((parts[1] << 16) >>> 0) + ((parts[2] << 8) >>> 0) + (parts[3] >>> 0)) >>> 0
+    }
+
+    const networkInt = toIPv4Int(network)
+    if (networkInt == null) return activeLeases
+    const mask = prefix === 0 ? 0 : ((0xffffffff << (32 - prefix)) >>> 0)
+
+    return activeLeases.filter((lease) => {
+      const ip = toIPv4Int(String(lease.ipAddress ?? ''))
+      return ip != null && (ip & mask) === (networkInt & mask)
+    })
+  }, [activeLeases, selectedInterface, interfaceConfig?.subnet])
+
+  const selectedInterfaceLabel = selectedInterfaceMeta?.description || selectedInterface || ''
+
+  const handleSelectInterface = (interfaceName: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (interfaceName) next.set('iface', interfaceName)
+      else next.delete('iface')
+      return next
+    })
+  }
+
+  useEffect(() => {
+    Promise.all([getInterfaces(), getInterfacesInventory()])
+      .then(([ifacesRes, inventoryRes]) => {
+        const configured = (ifacesRes.data ?? []).filter((iface) => iface.enabled !== false)
+        const known = new Set(configured.map((iface) => iface.name))
+        const extras = (inventoryRes.data?.names ?? [])
+          .filter((name) => name !== 'lo' && !known.has(name))
+          .map((name) => ({
+            name,
+            description: '',
+            type: 'ethernet' as const,
+            enabled: true,
+          }))
+
+        setInterfaces([...configured, ...extras])
       })
       .catch(() => setInterfaces([]))
   }, [])
@@ -270,9 +323,31 @@ export default function DHCP() {
         </div>
       )}
 
+      <Card
+        title="DHCP"
+        subtitle="Select the interface whose DHCP settings, reservations, and active leases you want to manage"
+      >
+        <div className="max-w-md">
+          <FormField
+            id="dhcp-interface-selector"
+            label="Interface"
+            as="select"
+            value={selectedInterface ?? ''}
+            onChange={(e) => handleSelectInterface(e.target.value)}
+          >
+            <option value="">Select interface</option>
+            {interfaces.map((iface) => (
+              <option key={iface.name} value={iface.name}>
+                {iface.description?.trim() ? `${iface.description} (${iface.name})` : iface.name}
+              </option>
+            ))}
+          </FormField>
+        </div>
+      </Card>
+
       {/* DHCP Config summary */}
       <Card
-        title={selectedInterface ? `DHCP: ${selectedInterfaceMeta?.description || selectedInterface}` : 'DHCP Server'}
+        title={selectedInterface ? `DHCP: ${selectedInterfaceLabel}` : 'DHCP Server'}
         subtitle={selectedInterface ? 'Per-interface DHCPv4 scope and reservation settings' : 'Kea DHCPv4 configuration'}
         actions={
           <Button size="sm" variant="secondary" onClick={openConfigModal}>
@@ -343,7 +418,7 @@ export default function DHCP() {
       {/* Static Leases */}
       <Card
         title={selectedInterface ? 'Static IP Reservations' : 'Static Leases'}
-        subtitle={selectedInterface ? `Reservations for ${selectedInterfaceMeta?.description || selectedInterface}` : 'MAC → IP address reservations (always assigned the same IP)'}
+        subtitle={selectedInterface ? `Reservations for ${selectedInterfaceLabel}` : 'MAC → IP address reservations (always assigned the same IP)'}
         actions={
           <Button size="sm" onClick={() => setLeaseModalOpen(true)}>
             + Add Lease
@@ -359,17 +434,18 @@ export default function DHCP() {
         />
       </Card>
 
-      {!selectedInterface && (
-        <Card title="Active Leases" subtitle="Currently assigned DHCP leases">
-          <Table
-            columns={activeColumns}
-            data={activeLeases}
-            keyField="mac"
-            loading={loading}
-            emptyMessage="No active leases."
-          />
-        </Card>
-      )}
+      <Card
+        title="Active Leases"
+        subtitle={selectedInterface ? `Active leases within ${selectedInterfaceLabel}` : 'Currently assigned DHCP leases'}
+      >
+        <Table
+          columns={activeColumns}
+          data={activeLeasesForSelectedInterface}
+          keyField="mac"
+          loading={loading}
+          emptyMessage="No active leases."
+        />
+      </Card>
 
       {/* Edit DHCP Config Modal */}
       <Modal

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getNtpConfig, updateNtpConfig, getNtpStatus, postNtpResync } from '../../api/ntp'
-import { getInterfaces } from '../../api/interfaces'
+import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
 import type { NtpConfig, NtpStatus, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -90,15 +90,24 @@ export default function NtpPage() {
 
   useEffect(() => {
     setLoading(true)
-    Promise.all([getNtpConfig(), getNtpStatus(), getInterfaces()])
-      .then(([cfg, stat, ifaces]) => {
+    Promise.all([getNtpConfig(), getNtpStatus(), getInterfaces(), getInterfacesInventory()])
+      .then(([cfg, stat, ifaces, inventory]) => {
         setConfig(cfg.data)
         setStatus(stat.data)
-        setInterfaces(
-          Array.isArray(ifaces.data)
-            ? ifaces.data.filter((i) => i.type !== 'loopback')
-            : []
-        )
+        const configured = Array.isArray(ifaces.data)
+          ? ifaces.data.filter((i) => i.type !== 'loopback')
+          : []
+        const known = new Set(configured.map((i) => i.name))
+        const extras = (inventory.data?.names ?? [])
+          .filter((name) => name !== 'lo' && !known.has(name))
+          .map((name) => ({
+            name,
+            description: '',
+            type: 'ethernet' as const,
+            enabled: true,
+          }))
+
+        setInterfaces([...configured, ...extras])
       })
       .catch((err: Error) => addToast('error', `Failed to load NTP data: ${err.message}`))
       .finally(() => setLoading(false))
