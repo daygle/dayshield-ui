@@ -33,6 +33,10 @@ function buildCounts(logs: LogEntry[]): Record<LogSource | 'all', number> {
     suricata: 0,
     firewall: 0,
     system: 0,
+    dhcp: 0,
+    vpn: 0,
+    cloudflared: 0,
+    acme: 0,
   }
   for (const log of logs) {
     counts[log.source] = (counts[log.source] ?? 0) + 1

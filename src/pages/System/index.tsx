@@ -39,6 +39,86 @@ function shortCommit(value?: string): string {
 }
 
 /**
+ * Get a list of IANA timezone identifiers for use in dropdowns
+ */
+function getTimezones(): Array<{ name: string; label: string }> {
+  // Common IANA timezones organized by region
+  const timezones = [
+    // UTC
+    { name: 'UTC', label: 'UTC' },
+    { name: 'GMT', label: 'GMT (Greenwich Mean Time)' },
+    
+    // Africa
+    { name: 'Africa/Cairo', label: 'Cairo' },
+    { name: 'Africa/Johannesburg', label: 'Johannesburg' },
+    { name: 'Africa/Lagos', label: 'Lagos' },
+    { name: 'Africa/Nairobi', label: 'Nairobi' },
+    
+    // Americas - US & Canada
+    { name: 'America/Anchorage', label: 'Anchorage' },
+    { name: 'America/Chicago', label: 'Chicago' },
+    { name: 'America/Denver', label: 'Denver' },
+    { name: 'America/Los_Angeles', label: 'Los Angeles' },
+    { name: 'America/New_York', label: 'New York' },
+    { name: 'America/Phoenix', label: 'Phoenix' },
+    { name: 'America/Toronto', label: 'Toronto' },
+    { name: 'America/Vancouver', label: 'Vancouver' },
+    
+    // Americas - Other
+    { name: 'America/Bogota', label: 'Bogota' },
+    { name: 'America/Buenos_Aires', label: 'Buenos Aires' },
+    { name: 'America/Caracas', label: 'Caracas' },
+    { name: 'America/Mexico_City', label: 'Mexico City' },
+    { name: 'America/Sao_Paulo', label: 'Sao Paulo' },
+    
+    // Asia
+    { name: 'Asia/Bangkok', label: 'Bangkok' },
+    { name: 'Asia/Dubai', label: 'Dubai' },
+    { name: 'Asia/Ho_Chi_Minh', label: 'Ho Chi Minh City' },
+    { name: 'Asia/Hong_Kong', label: 'Hong Kong' },
+    { name: 'Asia/Jakarta', label: 'Jakarta' },
+    { name: 'Asia/Kolkata', label: 'Kolkata' },
+    { name: 'Asia/Manila', label: 'Manila' },
+    { name: 'Asia/Singapore', label: 'Singapore' },
+    { name: 'Asia/Seoul', label: 'Seoul' },
+    { name: 'Asia/Shanghai', label: 'Shanghai' },
+    { name: 'Asia/Tokyo', label: 'Tokyo' },
+    
+    // Europe
+    { name: 'Europe/Amsterdam', label: 'Amsterdam' },
+    { name: 'Europe/Athens', label: 'Athens' },
+    { name: 'Europe/Berlin', label: 'Berlin' },
+    { name: 'Europe/Brussels', label: 'Brussels' },
+    { name: 'Europe/Budapest', label: 'Budapest' },
+    { name: 'Europe/Dublin', label: 'Dublin' },
+    { name: 'Europe/Helsinki', label: 'Helsinki' },
+    { name: 'Europe/Istanbul', label: 'Istanbul' },
+    { name: 'Europe/Lisbon', label: 'Lisbon' },
+    { name: 'Europe/London', label: 'London' },
+    { name: 'Europe/Madrid', label: 'Madrid' },
+    { name: 'Europe/Moscow', label: 'Moscow' },
+    { name: 'Europe/Paris', label: 'Paris' },
+    { name: 'Europe/Rome', label: 'Rome' },
+    { name: 'Europe/Stockholm', label: 'Stockholm' },
+    { name: 'Europe/Vienna', label: 'Vienna' },
+    { name: 'Europe/Warsaw', label: 'Warsaw' },
+    { name: 'Europe/Zurich', label: 'Zurich' },
+    
+    // Oceania
+    { name: 'Australia/Brisbane', label: 'Brisbane' },
+    { name: 'Australia/Melbourne', label: 'Melbourne' },
+    { name: 'Australia/Perth', label: 'Perth' },
+    { name: 'Australia/Sydney', label: 'Sydney' },
+    { name: 'Pacific/Auckland', label: 'Auckland' },
+    { name: 'Pacific/Fiji', label: 'Fiji' },
+    { name: 'Pacific/Honolulu', label: 'Honolulu' },
+  ]
+  
+  return timezones.sort((a, b) => a.label.localeCompare(b.label))
+}
+
+
+/**
  * Parse component error message. Format: "component: error message"
  * Example: "core: preflight failed (path is not writable: /usr/local/sbin)"
  */
@@ -687,10 +767,17 @@ export default function System() {
           <FormField
             id="cfg-timezone"
             label="Timezone"
-            placeholder="UTC"
-            value={editConfig.timezone ?? ''}
+            as="select"
+            value={editConfig.timezone ?? 'UTC'}
             onChange={(e) => setEditConfig({ ...editConfig, timezone: e.target.value })}
-          />
+          >
+            <option value="">-- Select Timezone --</option>
+            {getTimezones().map((tz) => (
+              <option key={tz.name} value={tz.name}>
+                {tz.label}
+              </option>
+            ))}
+          </FormField>
           <FormField
             id="cfg-ntp"
             label="NTP Servers (comma-separated)"

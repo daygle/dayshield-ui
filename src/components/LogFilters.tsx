@@ -5,6 +5,10 @@ const SOURCES: { value: LogSource | 'all'; label: string }[] = [
   { value: 'suricata', label: 'Suricata' },
   { value: 'firewall', label: 'Firewall' },
   { value: 'system', label: 'System' },
+  { value: 'dhcp', label: 'DHCP' },
+  { value: 'vpn', label: 'VPN' },
+  { value: 'cloudflared', label: 'Cloudflared' },
+  { value: 'acme', label: 'ACME' },
 ]
 
 const LEVELS: { value: LogLevel | 'all'; label: string }[] = [

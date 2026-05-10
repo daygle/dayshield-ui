@@ -1,4 +1,4 @@
-export type LogSource = 'suricata' | 'firewall' | 'system'
+export type LogSource = 'suricata' | 'firewall' | 'system' | 'dhcp' | 'vpn' | 'cloudflared' | 'acme'
 
 export type LogLevel = 'debug' | 'info' | 'warning' | 'error' | 'critical'
 

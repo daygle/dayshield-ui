@@ -228,7 +228,6 @@ const navEntries: NavEntry[] = [
 
 export default function Sidebar() {
   const location = useLocation()
-  const [isInterfacesMenuOpen, setIsInterfacesMenuOpen] = useState(false)
   const [isFirewallMenuOpen, setIsFirewallMenuOpen] = useState(false)
   const [isDhcpMenuOpen, setIsDhcpMenuOpen] = useState(false)
   const [isSuricataMenuOpen, setIsSuricataMenuOpen] = useState(false)
@@ -253,15 +252,6 @@ export default function Sidebar() {
       isMounted = false
     }
   }, [])
-
-  const interfaceNavItems = useMemo(
-    () =>
-      interfaces.map((iface) => ({
-        name: iface.name,
-        label: (iface.description?.trim() || iface.name).toUpperCase(),
-      })),
-    [interfaces],
-  )
 
   const dhcpInterfaces = useMemo(
     () => interfaces.filter((iface) => iface.enabled),
@@ -313,12 +303,11 @@ export default function Sidebar() {
                 <NavLink
                   to={item.to}
                   onClick={
-                    item.to === '/interfaces' || item.to === '/firewall' || item.to === '/dhcp' || item.to === '/suricata'
+                    item.to === '/firewall' || item.to === '/dhcp' || item.to === '/suricata'
                       ? (event) => {
                           if (location.pathname === item.to) {
                             event.preventDefault()
                           }
-                          if (item.to === '/interfaces') setIsInterfacesMenuOpen((open) => !open)
                           if (item.to === '/firewall') setIsFirewallMenuOpen((open) => !open)
                           if (item.to === '/dhcp') setIsDhcpMenuOpen((open) => !open)
                           if (item.to === '/suricata') setIsSuricataMenuOpen((open) => !open)
@@ -332,19 +321,6 @@ export default function Sidebar() {
                   {item.icon}
                   {item.label}
                 </NavLink>
-              )}
-
-              {item.to === '/interfaces' && isInterfacesMenuOpen && (
-                <div className="mt-1 space-y-0.5">
-                  {interfaceNavItems.map((iface) => (
-                    <QueryNavLink
-                      key={`iface-${iface.name}`}
-                      to={`/interfaces?iface=${encodeURIComponent(iface.name)}`}
-                      label={iface.label}
-                      level={1}
-                    />
-                  ))}
-                </div>
               )}
 
               {item.to === '/firewall' && isFirewallMenuOpen && (

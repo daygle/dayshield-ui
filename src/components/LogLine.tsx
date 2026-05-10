@@ -4,6 +4,10 @@ const SOURCE_LABEL: Record<LogSource, string> = {
   suricata: 'Suricata',
   firewall: 'Firewall',
   system: 'System',
+  dhcp: 'DHCP',
+  vpn: 'VPN',
+  cloudflared: 'Cloudflared',
+  acme: 'ACME',
 }
 
 const LEVEL_STYLES: Record<LogLevel, string> = {
@@ -18,6 +22,10 @@ const SOURCE_BADGE: Record<LogSource, string> = {
   suricata: 'bg-purple-900/60 text-purple-300',
   firewall: 'bg-blue-900/60 text-blue-300',
   system: 'bg-slate-700/70 text-slate-300',
+  dhcp: 'bg-green-900/60 text-green-300',
+  vpn: 'bg-indigo-900/60 text-indigo-300',
+  cloudflared: 'bg-pink-900/60 text-pink-300',
+  acme: 'bg-amber-900/60 text-amber-300',
 }
 
 const LEVEL_BADGE: Record<LogLevel, string> = {

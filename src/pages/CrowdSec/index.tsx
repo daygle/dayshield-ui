@@ -114,10 +114,10 @@ export default function CrowdSec() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
             { label: 'Status', value: status.running ? 'Running' : 'Stopped', color: status.running ? 'text-green-600' : 'text-red-600' },
-            { label: 'Version', value: status.version, color: 'text-gray-900' },
-            { label: 'Active Decisions', value: String(status.decisions), color: 'text-gray-900' },
-            { label: 'Alerts', value: String(status.alerts), color: 'text-gray-900' },
-            { label: 'Bouncers', value: String(status.bouncers), color: 'text-gray-900' },
+            { label: 'Version', value: status.version || '', color: 'text-gray-900' },
+            { label: 'Active Decisions', value: status.decisions !== undefined ? String(status.decisions) : '', color: 'text-gray-900' },
+            { label: 'Alerts', value: status.alerts !== undefined ? String(status.alerts) : '', color: 'text-gray-900' },
+            { label: 'Bouncers', value: status.bouncers !== undefined ? String(status.bouncers) : '', color: 'text-gray-900' },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-white rounded-lg border border-gray-200 shadow-sm px-6 py-5">
               <p className="text-sm text-gray-500 mb-1">{label}</p>
