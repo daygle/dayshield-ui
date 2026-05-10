@@ -500,6 +500,23 @@ export default function System() {
                 Mark reboot as required after successful apply
               </label>
             </div>
+            <div className="col-span-2 flex items-center gap-2">
+              <input
+                id="upd-deploy-runtime"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                checked={updateSettings.deployRuntimeAfterApply}
+                onChange={(e) =>
+                  setUpdateSettings({
+                    ...updateSettings,
+                    deployRuntimeAfterApply: e.target.checked,
+                  })
+                }
+              />
+              <label htmlFor="upd-deploy-runtime" className="text-sm font-medium text-gray-700">
+                Build and deploy runtime artifacts after apply (core binary and UI static assets)
+              </label>
+            </div>
 
             <FormField
               id="upd-core-path"

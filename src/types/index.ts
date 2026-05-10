@@ -399,6 +399,7 @@ export interface UpdateSettings {
   autoCheckEnabled: boolean
   checkIntervalMinutes: number
   rebootRequiredAfterApply: boolean
+  deployRuntimeAfterApply: boolean
   coreRepoPath: string
   uiRepoPath: string
   coreRepoUrl: string
