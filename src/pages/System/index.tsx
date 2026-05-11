@@ -21,6 +21,8 @@ import Button from '../../components/Button'
 import FormField from '../../components/FormField'
 import Modal from '../../components/Modal'
 
+const DEFAULT_GITHUB_REGISTRY_URL = 'https://api.github.com/repos/daygle/dayshield-core'
+
 function formatUptime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0d 0h 0m'
   const d = Math.floor(seconds / 86400)
@@ -172,6 +174,44 @@ function updateActionMessageClasses(message: string): string {
   }
 
   return 'rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700'
+}
+
+function normalizeRegistryUrl(input?: string): string {
+  const raw = (input ?? '').trim()
+  if (!raw) return raw
+
+  const trimmed = raw.replace(/\/+$/, '')
+
+  // Accept direct GitHub repo URLs and convert to GitHub API repo endpoint.
+  const webRepo = trimmed.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)$/i)
+  if (webRepo) {
+    const [, owner, repo] = webRepo
+    return `https://api.github.com/repos/${owner}/${repo}`
+  }
+
+  // Accept GitHub API "latest release" endpoints and normalize to repo base.
+  const apiLatest = trimmed.match(/^https?:\/\/api\.github\.com\/repos\/([^/]+)\/([^/]+)\/releases\/latest$/i)
+  if (apiLatest) {
+    const [, owner, repo] = apiLatest
+    return `https://api.github.com/repos/${owner}/${repo}`
+  }
+
+  return trimmed
+}
+
+function inferRegistryStatusLabel(validRepo: boolean, lastError?: string): string {
+  if (validRepo) return 'Up to Date'
+  const err = (lastError ?? '').toLowerCase()
+  if (err.includes('http 404')) return 'Registry 404'
+  if (err.includes('http 401') || err.includes('http 403')) return 'Registry Access Denied'
+  if (err.includes('timed out') || err.includes('dns') || err.includes('connection')) return 'Registry Unreachable'
+  return 'Registry Error'
+}
+
+function detectRegistry404Hint(components: UpdatesStatus['components']): string | null {
+  const with404 = components.find((comp) => (comp.lastError ?? '').toLowerCase().includes('http 404'))
+  if (!with404) return null
+  return with404.lastError ?? null
 }
 
 /**
@@ -348,13 +388,51 @@ export default function System() {
   const handleSaveUpdateSettings = () => {
     if (!updateSettings) return
     setUpdateSaving(true)
+    const normalizedRegistryUrl = normalizeRegistryUrl(updateSettings.registryUrl)
     updateUpdateSettings({
       ...updateSettings,
       updateMode: 'registry',
+      registryUrl: normalizedRegistryUrl,
     })
       .then((res) => {
         setUpdateSettings(res.data)
+        setUpdates((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            settings: {
+              ...prev.settings,
+              registryUrl: res.data.registryUrl,
+            },
+          }
+        })
         setUpdateSettingsOpen(false)
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setUpdateSaving(false))
+  }
+
+  const handleSetDefaultRegistry = () => {
+    if (!updateSettings) return
+    setUpdateSaving(true)
+    updateUpdateSettings({
+      ...updateSettings,
+      updateMode: 'registry',
+      registryUrl: DEFAULT_GITHUB_REGISTRY_URL,
+    })
+      .then((res) => {
+        setUpdateSettings(res.data)
+        setUpdates((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            settings: {
+              ...prev.settings,
+              registryUrl: res.data.registryUrl,
+            },
+          }
+        })
+        setUpdateActionMessage('Registry URL updated to the default GitHub releases repository. Run Check Now to retry.')
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateSaving(false))
@@ -391,6 +469,8 @@ export default function System() {
       </div>
     )
   }
+
+  const registry404Hint = updates ? detectRegistry404Hint(updates.components) : null
 
   return (
     <div className="space-y-6">
@@ -530,27 +610,62 @@ export default function System() {
               </div>
             )}
 
+            {isRegistryMode && registry404Hint && (
+              <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900 space-y-2">
+                <p className="font-medium">Registry returned HTTP 404.</p>
+                <p className="text-xs text-amber-800">
+                  This usually means the configured repository path is wrong, private without auth, or has no published releases yet.
+                </p>
+                <p className="text-xs text-amber-700 font-mono break-all">{registry404Hint}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleSetDefaultRegistry}
+                    disabled={updateSaving || updateActionLoading}
+                  >
+                    Use Default Registry
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setUpdateSettings(updates.settings)
+                      setUpdateSettingsOpen(true)
+                    }}
+                  >
+                    Edit Registry URL
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {updates.components.map((comp) => (
                 <div key={comp.component} className="rounded border border-gray-200 p-3">
+                  {(() => {
+                    const statusLabel = inferRegistryStatusLabel(comp.validRepo, comp.lastError)
+                    const statusClass = comp.validRepo
+                      ? comp.updateAvailable
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-green-100 text-green-700'
+                      : 'bg-red-100 text-red-700'
+
+                    return (
                   <div className="flex items-center justify-between">
                     <h4 className="font-medium text-gray-900 uppercase">{comp.component}</h4>
                     <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                        comp.validRepo
-                          ? comp.updateAvailable
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusClass}`}
                     >
                       {comp.validRepo
                         ? comp.updateAvailable
                           ? 'Update Available'
                           : 'Up to Date'
-                        : 'Registry Unreachable'}
+                        : statusLabel}
                     </span>
                   </div>
+                    )
+                  })()}
                   <dl className="mt-2 space-y-1 text-xs text-gray-600">
                     {!isRegistryMode && (
                       <div>
@@ -1015,6 +1130,7 @@ export default function System() {
               className="col-span-2"
               value={updateSettings.registryUrl ?? ''}
               onChange={(e) => setUpdateSettings({ ...updateSettings, registryUrl: e.target.value })}
+              hint="Accepts GitHub repo URLs (https://github.com/owner/repo) or GitHub API repo URLs; value is normalized on save."
             />
 
             {(updateSettings.updateMode ?? 'registry') !== 'registry' && (
