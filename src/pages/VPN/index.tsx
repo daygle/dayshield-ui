@@ -115,6 +115,7 @@ export default function VPN() {
     })
       .then(() => {
         setServerModalOpen(false)
+        setServerForm((f) => ({ ...f, privateKey: '' }))
         loadAll()
       })
       .catch((err: Error) => setError(err.message))
@@ -155,6 +156,7 @@ export default function VPN() {
 
   const listenPortLabel = useMemo(() => {
     if (!server) return 'Not configured'
+    if (server.listenPort === 0) return 'Auto (kernel-assigned)'
     return server.listenPort > 0 ? String(server.listenPort) : 'Not configured'
   }, [server])
 
@@ -226,6 +228,8 @@ export default function VPN() {
             <FormField
               id="server-private-key"
               label="Private Key"
+              type="password"
+              autoComplete="new-password"
               className="col-span-2"
               placeholder="Generate a keypair to populate this"
               value={serverForm.privateKey}
@@ -558,6 +562,8 @@ export default function VPN() {
           <FormField
             id="server-private-key"
             label="Private Key"
+            type="password"
+            autoComplete="new-password"
             className="col-span-2"
             placeholder="Generate a keypair to populate this"
             value={serverForm.privateKey}

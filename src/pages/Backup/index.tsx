@@ -16,6 +16,7 @@ import type {
 } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
+import Modal from '../../components/Modal'
 import BackupTable from './BackupTable'
 import CreateBackupDialog from './CreateBackupDialog'
 import RestoreBackupDialog from './RestoreBackupDialog'
@@ -87,6 +88,10 @@ export default function BackupRestorePage() {
   const [restoreEntry, setRestoreEntry] = useState<BackupEntry | null>(null)
   const [restoreOpen, setRestoreOpen] = useState(false)
   const [restoring, setRestoring] = useState(false)
+
+  // Delete confirmation dialog
+  const [deleteEntry, setDeleteEntry] = useState<BackupEntry | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   // Encryption password dialog (used for restore of encrypted backups)
   const [encOpen, setEncOpen] = useState(false)
@@ -214,14 +219,21 @@ export default function BackupRestorePage() {
 
   // ── Delete ─────────────────────────────────────────────────────────────────
 
-  const handleDelete = (entry: BackupEntry) => {
-    if (!window.confirm(`Delete backup "${entry.filename}"? This cannot be undone.`)) return
-    deleteBackup(entry.filename)
+  const handleDeleteClick = (entry: BackupEntry) => {
+    setDeleteEntry(entry)
+  }
+
+  const handleDeleteConfirm = () => {
+    if (!deleteEntry) return
+    setDeleting(true)
+    deleteBackup(deleteEntry.filename)
       .then(() => {
-        setBackups((prev) => prev.filter((b) => b.filename !== entry.filename))
-        addToast('success', `Backup "${entry.filename}" deleted.`)
+        setBackups((prev) => prev.filter((b) => b.filename !== deleteEntry.filename))
+        addToast('success', `Backup "${deleteEntry.filename}" deleted.`)
+        setDeleteEntry(null)
       })
       .catch((err: Error) => addToast('error', `Delete failed: ${err.message}`))
+      .finally(() => setDeleting(false))
   }
 
   // ── Schedule ───────────────────────────────────────────────────────────────
@@ -296,7 +308,7 @@ export default function BackupRestorePage() {
           restoring={restoring}
           onDownload={handleDownload}
           onRestore={handleRestoreClick}
-          onDelete={handleDelete}
+          onDelete={handleDeleteClick}
         />
       </Card>
 
@@ -354,6 +366,23 @@ export default function BackupRestorePage() {
         onClose={handlePasswordClose}
         onConfirm={handlePasswordConfirm}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        open={deleteEntry !== null}
+        title="Delete Backup"
+        onClose={() => setDeleteEntry(null)}
+        onConfirm={handleDeleteConfirm}
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        loading={deleting}
+        size="sm"
+      >
+        <p className="text-sm text-gray-600">
+          Delete backup <span className="font-semibold">{deleteEntry?.filename}</span>? This action
+          cannot be undone.
+        </p>
+      </Modal>
 
       {/* Toasts */}
       <Toast messages={toasts} />

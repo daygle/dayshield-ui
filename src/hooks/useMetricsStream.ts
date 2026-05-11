@@ -14,6 +14,7 @@ function getWsUrl(): string {
 export function useMetricsStream() {
   const [data, setData] = useState<MetricsSnapshot | null>(null)
   const [connected, setConnected] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const unmountedRef = useRef(false)
@@ -28,7 +29,10 @@ export function useMetricsStream() {
       wsRef.current = ws
 
       ws.onopen = () => {
-        if (!unmountedRef.current) setConnected(true)
+        if (!unmountedRef.current) {
+          setConnected(true)
+          setError(null)
+        }
       }
 
       ws.onmessage = (event) => {
@@ -51,6 +55,9 @@ export function useMetricsStream() {
       }
 
       ws.onerror = () => {
+        if (!unmountedRef.current) {
+          setError('Metrics stream connection failed. Retrying…')
+        }
         ws.close()
       }
     }
@@ -67,5 +74,5 @@ export function useMetricsStream() {
     }
   }, [])
 
-  return { data, connected }
+  return { data, connected, error }
 }

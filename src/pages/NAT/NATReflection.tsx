@@ -1,4 +1,4 @@
-﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getNatConfig, updateNatConfig } from '../../api/nat'
 import { useToast } from '../../context/ToastContext'
 import Card from '../../components/Card'
