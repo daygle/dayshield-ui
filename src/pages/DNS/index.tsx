@@ -1,16 +1,26 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
+  createInterfaceDnsBlocklist,
   getDnsConfig,
   updateDnsConfig,
   getDnsOverrides,
+  getInterfaceDnsBlocklists,
   createDnsHostOverride,
+  deleteInterfaceDnsBlocklist,
   deleteDnsHostOverride,
   createDnsDomainOverride,
   deleteDnsDomainOverride,
 } from '../../api/dns'
-import { getInterfacesInventory } from '../../api/interfaces'
-import type { DnsConfig, DnsHostOverride, DnsDomainOverride, KernelInterface } from '../../types'
+import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
+import type {
+  DnsBlocklistEntry,
+  DnsConfig,
+  DnsHostOverride,
+  DnsDomainOverride,
+  KernelInterface,
+  NetworkInterface,
+} from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
@@ -19,6 +29,7 @@ import FormField from '../../components/FormField'
 
 type HostRow = DnsHostOverride & Record<string, unknown>
 type DomainRow = DnsDomainOverride & Record<string, unknown>
+type BlocklistRow = DnsBlocklistEntry & Record<string, unknown>
 
 const hostColumns: Column<HostRow>[] = [
   { key: 'hostname', header: 'Hostname (FQDN)' },
@@ -28,6 +39,14 @@ const hostColumns: Column<HostRow>[] = [
 const domainColumns: Column<DomainRow>[] = [
   { key: 'domain', header: 'Domain' },
   { key: 'forward_to', header: 'Forward To (DNS IP)' },
+]
+
+const BLOCKLIST_PRESETS: Array<{ name: string; url: string }> = [
+  { name: 'StevenBlack Unified Hosts', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
+  { name: 'OISD Small', url: 'https://small.oisd.nl/' },
+  { name: 'AdGuard DNS Filter', url: 'https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt' },
+  { name: 'EasyList', url: 'https://easylist.to/easylist/easylist.txt' },
+  { name: 'EasyPrivacy', url: 'https://easylist.to/easylist/easyprivacy.txt' },
 ]
 
 const defaultConfigForm = (): Partial<DnsConfig> => ({
@@ -40,10 +59,11 @@ const defaultConfigForm = (): Partial<DnsConfig> => ({
 })
 
 export default function DNS() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [config, setConfig] = useState<DnsConfig | null>(null)
   const [hostOverrides, setHostOverrides] = useState<HostRow[]>([])
   const [domainOverrides, setDomainOverrides] = useState<DomainRow[]>([])
+  const [blocklists, setBlocklists] = useState<BlocklistRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -54,6 +74,7 @@ export default function DNS() {
   const [forwardersInput, setForwardersInput] = useState('')
   const [configSaving, setConfigSaving] = useState(false)
   const [dnsInterfaces, setDnsInterfaces] = useState<KernelInterface[]>([])
+  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
 
   // Host overrides
   const [hostModalOpen, setHostModalOpen] = useState(false)
@@ -69,6 +90,15 @@ export default function DNS() {
   const [domainDeleteName, setDomainDeleteName] = useState<string | null>(null)
   const [domainDeleting, setDomainDeleting] = useState(false)
 
+  // Blocklists
+  const [blocklistModalOpen, setBlocklistModalOpen] = useState(false)
+  const [blocklistForm, setBlocklistForm] = useState({ name: '', url: '', enabled: true })
+  const [selectedPreset, setSelectedPreset] = useState('')
+  const [blocklistSaving, setBlocklistSaving] = useState(false)
+  const [blocklistDeleteId, setBlocklistDeleteId] = useState<string | null>(null)
+  const [blocklistDeleting, setBlocklistDeleting] = useState(false)
+  const [blocklistsLoading, setBlocklistsLoading] = useState(false)
+
   const loadAll = () => {
     setLoading(true)
     Promise.all([getDnsConfig(), getDnsOverrides()])
@@ -81,7 +111,62 @@ export default function DNS() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(loadAll, [])
+  const loadInterfaces = () => {
+    Promise.all([getInterfaces(), getInterfacesInventory()])
+      .then(([configuredRes, inventoryRes]) => {
+        const configured = (configuredRes.data ?? []).filter((iface) => iface.enabled !== false)
+        const known = new Set(configured.map((iface) => iface.name))
+        const extras = (inventoryRes.data?.names ?? [])
+          .filter((name) => name !== 'lo' && !known.has(name))
+          .map((name) => ({
+            name,
+            description: '',
+            type: 'ethernet' as const,
+            enabled: true,
+          }))
+        setInterfaces([...configured, ...extras])
+      })
+      .catch(() => setInterfaces([]))
+  }
+
+  useEffect(() => {
+    loadAll()
+    loadInterfaces()
+  }, [])
+
+  const sectionParam = searchParams.get('section')
+  const activeSection =
+    sectionParam === 'overrides' || sectionParam === 'blocklists' ? sectionParam : 'settings'
+
+  const interfaceOptions = useMemo(() => interfaces.map((iface) => iface.name), [interfaces])
+  const selectedInterface = searchParams.get('iface') ?? ''
+  const effectiveInterface = selectedInterface || interfaceOptions[0] || ''
+
+  useEffect(() => {
+    if (activeSection !== 'blocklists') return
+    if (selectedInterface || interfaceOptions.length === 0) return
+    const next = new URLSearchParams(searchParams)
+    next.set('section', 'blocklists')
+    next.set('iface', interfaceOptions[0])
+    setSearchParams(next)
+  }, [activeSection, interfaceOptions, searchParams, selectedInterface, setSearchParams])
+
+  const loadInterfaceBlocklists = (interfaceName: string) => {
+    if (!interfaceName) {
+      setBlocklists([])
+      return
+    }
+    setBlocklistsLoading(true)
+    getInterfaceDnsBlocklists(interfaceName)
+      .then((res) => setBlocklists((res.data ?? []) as BlocklistRow[]))
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setBlocklistsLoading(false))
+  }
+
+  useEffect(() => {
+    if (activeSection !== 'blocklists') return
+    loadInterfaceBlocklists(effectiveInterface)
+  }, [activeSection, effectiveInterface])
 
   const openConfigModal = () => {
     if (config) {
@@ -109,6 +194,7 @@ export default function DNS() {
       dnssec: configForm.dnssec ?? false,
       // Preserve existing local_records — they're managed via the overrides API
       local_records: config?.local_records ?? [],
+      interface_blocklists: config?.interface_blocklists ?? [],
     }
     setConfigSaving(true)
     updateDnsConfig(payload)
@@ -168,6 +254,43 @@ export default function DNS() {
       .finally(() => setDomainDeleting(false))
   }
 
+  const openAddBlocklistModal = () => {
+    setSelectedPreset('')
+    setBlocklistForm({ name: '', url: '', enabled: true })
+    setBlocklistModalOpen(true)
+  }
+
+  const handleAddBlocklist = () => {
+    if (!effectiveInterface || !blocklistForm.url.trim()) {
+      setError('Please select an interface and enter a valid blocklist URL.')
+      return
+    }
+    setBlocklistSaving(true)
+    createInterfaceDnsBlocklist(effectiveInterface, {
+      name: blocklistForm.name.trim() || undefined,
+      url: blocklistForm.url.trim(),
+      enabled: blocklistForm.enabled,
+    })
+      .then(() => {
+        setBlocklistModalOpen(false)
+        loadInterfaceBlocklists(effectiveInterface)
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setBlocklistSaving(false))
+  }
+
+  const handleDeleteBlocklist = () => {
+    if (!effectiveInterface || !blocklistDeleteId) return
+    setBlocklistDeleting(true)
+    deleteInterfaceDnsBlocklist(effectiveInterface, blocklistDeleteId)
+      .then(() => {
+        setBlocklistDeleteId(null)
+        loadInterfaceBlocklists(effectiveInterface)
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setBlocklistDeleting(false))
+  }
+
   const hostColumnsWithActions: Column<HostRow>[] = [
     ...hostColumns,
     {
@@ -196,7 +319,45 @@ export default function DNS() {
     },
   ]
 
-  const activeSection = searchParams.get('section') === 'overrides' ? 'overrides' : 'settings'
+  const blocklistColumnsWithActions: Column<BlocklistRow>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      render: (row) => (row.name as string) || 'Custom List',
+    },
+    { key: 'url', header: 'URL' },
+    {
+      key: 'enabled',
+      header: 'Status',
+      render: (row) => (
+        <span
+          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${(row.enabled as boolean)
+            ? 'bg-green-100 text-green-700'
+            : 'bg-gray-100 text-gray-600'}`}
+        >
+          {(row.enabled as boolean) ? 'Enabled' : 'Disabled'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      className: 'w-16 text-right',
+      render: (row) => (
+        <Button variant="danger" size="sm" onClick={() => setBlocklistDeleteId(String(row.id))}>
+          Delete
+        </Button>
+      ),
+    },
+  ]
+
+  const handleChangeBlocklistInterface = (interfaceName: string) => {
+    const next = new URLSearchParams(searchParams)
+    next.set('section', 'blocklists')
+    if (interfaceName) next.set('iface', interfaceName)
+    else next.delete('iface')
+    setSearchParams(next)
+  }
 
   return (
     <div className="space-y-6">
@@ -300,6 +461,52 @@ export default function DNS() {
             />
           </Card>
         </>
+      )}
+
+      {activeSection === 'blocklists' && (
+        <Card
+          title="DNS Blocklists"
+          subtitle="Attach external DNS blocklist sources per interface"
+          actions={
+            <Button size="sm" onClick={openAddBlocklistModal} disabled={!effectiveInterface}>
+              + Add Blocklist
+            </Button>
+          }
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              <div className="rounded border border-gray-200 p-3 bg-gray-50 md:col-span-2">
+                <label className="block text-gray-500 text-xs font-medium uppercase tracking-wide mb-1">
+                  Interface
+                </label>
+                <select
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  value={effectiveInterface}
+                  onChange={(e) => handleChangeBlocklistInterface(e.target.value)}
+                >
+                  {interfaceOptions.length === 0 && <option value="">No interfaces available</option>}
+                  {interfaceOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="rounded border border-gray-200 p-3 bg-gray-50">
+                <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">Active Interface</p>
+                <p className="mt-1 font-medium text-gray-900 font-mono">{effectiveInterface || '—'}</p>
+              </div>
+            </div>
+
+            <Table
+              columns={blocklistColumnsWithActions}
+              data={blocklists}
+              keyField="id"
+              loading={blocklistsLoading}
+              emptyMessage={effectiveInterface ? `No blocklists configured for ${effectiveInterface}.` : 'Select an interface to manage blocklists.'}
+            />
+          </div>
+        </Card>
       )}
 
       {/* Edit DNS Settings Modal */}
@@ -513,6 +720,100 @@ export default function DNS() {
       >
         <p className="text-sm text-gray-600">
           Remove override for domain <strong className="font-mono">{domainDeleteName}</strong>?
+        </p>
+      </Modal>
+
+      {/* Add Blocklist Modal */}
+      <Modal
+        open={blocklistModalOpen}
+        title="Add DNS Blocklist"
+        onClose={() => setBlocklistModalOpen(false)}
+        onConfirm={handleAddBlocklist}
+        confirmLabel="Add"
+        loading={blocklistSaving}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+            <p className="text-gray-500">Interface</p>
+            <p className="font-mono text-gray-800">{effectiveInterface || '—'}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label htmlFor="dns-blocklist-preset" className="block text-xs font-medium text-gray-700 mb-1">
+                Preset Blocklist (optional)
+              </label>
+              <select
+                id="dns-blocklist-preset"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                value={selectedPreset}
+                onChange={(e) => {
+                  const presetUrl = e.target.value
+                  setSelectedPreset(presetUrl)
+                  if (!presetUrl) return
+                  const preset = BLOCKLIST_PRESETS.find((p) => p.url === presetUrl)
+                  if (!preset) return
+                  setBlocklistForm((prev) => ({
+                    ...prev,
+                    name: prev.name || preset.name,
+                    url: preset.url,
+                  }))
+                }}
+              >
+                <option value="">Select preset or enter custom URL</option>
+                {BLOCKLIST_PRESETS.map((preset) => (
+                  <option key={preset.url} value={preset.url}>
+                    {preset.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <FormField
+              id="dns-blocklist-name"
+              label="Name (optional)"
+              className="col-span-2"
+              placeholder="e.g. Ads + Tracker Block"
+              value={blocklistForm.name}
+              onChange={(e) => setBlocklistForm((prev) => ({ ...prev, name: e.target.value }))}
+            />
+            <FormField
+              id="dns-blocklist-url"
+              label="Blocklist URL"
+              required
+              className="col-span-2"
+              placeholder="https://example.com/blocklist.txt"
+              value={blocklistForm.url}
+              onChange={(e) => setBlocklistForm((prev) => ({ ...prev, url: e.target.value }))}
+            />
+          </div>
+
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              checked={blocklistForm.enabled}
+              onChange={(e) => setBlocklistForm((prev) => ({ ...prev, enabled: e.target.checked }))}
+            />
+            <span className="text-sm font-medium text-gray-700">Enable this blocklist now</span>
+          </label>
+        </div>
+      </Modal>
+
+      {/* Delete Blocklist Confirmation */}
+      <Modal
+        open={blocklistDeleteId !== null}
+        title="Remove DNS Blocklist"
+        onClose={() => setBlocklistDeleteId(null)}
+        onConfirm={handleDeleteBlocklist}
+        confirmLabel="Remove"
+        confirmVariant="danger"
+        loading={blocklistDeleting}
+        size="sm"
+      >
+        <p className="text-sm text-gray-600">
+          Remove this blocklist from <strong className="font-mono">{effectiveInterface}</strong>?
         </p>
       </Modal>
     </div>

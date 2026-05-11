@@ -164,6 +164,20 @@ export interface DnsConfig {
   dnssec: boolean
   /** Static local records embedded in the DNS config (managed separately via /dns/overrides). */
   local_records: DnsLocalRecord[]
+  /** Optional per-interface blocklist sources. */
+  interface_blocklists?: DnsInterfaceBlocklists[]
+}
+
+export interface DnsInterfaceBlocklists {
+  interface: string
+  blocklists: DnsBlocklistEntry[]
+}
+
+export interface DnsBlocklistEntry {
+  id: string
+  name?: string | null
+  url: string
+  enabled: boolean
 }
 
 export interface DnsLocalRecord {

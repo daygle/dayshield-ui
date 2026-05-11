@@ -1,5 +1,11 @@
 import apiClient from './client'
-import type { ApiResponse, DnsConfig, DnsHostOverride, DnsDomainOverride } from '../types'
+import type {
+  ApiResponse,
+  DnsBlocklistEntry,
+  DnsConfig,
+  DnsHostOverride,
+  DnsDomainOverride,
+} from '../types'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -62,3 +68,35 @@ export const deleteDnsHostOverride = (hostname: string): Promise<ApiResponse<voi
 
 export const deleteDnsDomainOverride = (domain: string): Promise<ApiResponse<void>> =>
   deleteDnsOverride(domain)
+
+// ── Per-interface blocklists ────────────────────────────────────────────────
+
+export const getInterfaceDnsBlocklists = (
+  interfaceName: string,
+): Promise<ApiResponse<DnsBlocklistEntry[]>> =>
+  apiClient
+    .get<ApiResponse<DnsBlocklistEntry[]>>(
+      `/interfaces/${encodeURIComponent(interfaceName)}/dns/blocklists`,
+    )
+    .then((r) => r.data)
+
+export const createInterfaceDnsBlocklist = (
+  interfaceName: string,
+  payload: { url: string; name?: string; enabled?: boolean },
+): Promise<ApiResponse<DnsBlocklistEntry>> =>
+  apiClient
+    .post<ApiResponse<DnsBlocklistEntry>>(
+      `/interfaces/${encodeURIComponent(interfaceName)}/dns/blocklists`,
+      payload,
+    )
+    .then((r) => r.data)
+
+export const deleteInterfaceDnsBlocklist = (
+  interfaceName: string,
+  blocklistId: string,
+): Promise<ApiResponse<void>> =>
+  apiClient
+    .delete<ApiResponse<void>>(
+      `/interfaces/${encodeURIComponent(interfaceName)}/dns/blocklists/${encodeURIComponent(blocklistId)}`,
+    )
+    .then((r) => r.data)

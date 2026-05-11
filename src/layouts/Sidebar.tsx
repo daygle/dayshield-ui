@@ -275,6 +275,7 @@ export default function Sidebar() {
               {item.to === '/dns' && isDnsMenuOpen && (
                 <div className="mt-1 space-y-0.5">
                   <QueryNavLink to="/dns?section=overrides" label="Overrides" level={1} />
+                  <QueryNavLink to="/dns?section=blocklists" label="Blocklists" level={1} />
                 </div>
               )}
 
