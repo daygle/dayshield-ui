@@ -354,14 +354,8 @@ export default function Suricata() {
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
             <div>
               <dt className="text-gray-500">Status</dt>
-              <dd className={`font-medium ${selectedInterface && config.interfaces.includes(selectedInterface) ? 'text-green-600' : config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
-                {selectedInterface
-                  ? config.interfaces.includes(selectedInterface)
-                    ? 'Monitoring'
-                    : 'Not Monitored'
-                  : config.enabled
-                    ? 'Running'
-                    : 'Stopped'}
+              <dd className={`font-medium ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
+                {config.enabled ? 'Running' : 'Stopped'}
               </dd>
             </div>
             <div>
@@ -380,13 +374,7 @@ export default function Suricata() {
             </div>
             {selectedInterface && (
               <div>
-                <dt className="text-gray-500">Selected Interface</dt>
-                <dd className="font-medium text-gray-800">{interfaceLabel(selectedInterface)}</dd>
-              </div>
-            )}
-            {selectedInterface && (
-              <div>
-                <dt className="text-gray-500">Monitoring</dt>
+                <dt className="text-gray-500">Monitored on selected interface</dt>
                 <dd
                   className={`font-medium ${
                     config.interfaces.includes(selectedInterface)
@@ -395,8 +383,8 @@ export default function Suricata() {
                   }`}
                 >
                   {config.interfaces.includes(selectedInterface)
-                    ? 'Included in Suricata interfaces'
-                    : 'Not included in Suricata interfaces'}
+                    ? 'Yes'
+                    : 'No'}
                 </dd>
               </div>
             )}
