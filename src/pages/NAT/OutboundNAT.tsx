@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getNatConfig, updateNatConfig, getNatRules, createNatRule, updateNatRule, deleteNatRule } from '../../api/nat'
 import { useToast } from '../../context/ToastContext'

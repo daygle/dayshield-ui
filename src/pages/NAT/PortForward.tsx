@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPortForwards, createPortForward, updatePortForward, deletePortForward } from '../../api/nat'
 import { useToast } from '../../context/ToastContext'

@@ -4,8 +4,6 @@ import {
   updateAcmeAccount,
   getAcmeCertificates,
   issueAcmeCertificate,
-  renewAcmeCertificate,
-  deleteAcmeCertificate,
 } from '../../api/acme'
 import type { AcmeAccount, AcmeCertificate, AcmeCertificateStatus } from '../../types'
 import Card from '../../components/Card'
@@ -50,11 +48,6 @@ export default function ACME() {
   const [certForm, setCertForm] = useState(defaultCertForm)
   const [issueSaving, setIssueSaving] = useState(false)
 
-  const [deleteId, setDeleteId] = useState<number | null>(null)
-  const [deleting, setDeleting] = useState(false)
-
-  const [renewingId, setRenewingId] = useState<number | null>(null)
-
   const loadAll = () => {
     setLoading(true)
     Promise.all([getAcmeAccount(), getAcmeCertificates()])
@@ -97,26 +90,6 @@ export default function ACME() {
       .finally(() => setIssueSaving(false))
   }
 
-  const handleRenew = (id: number) => {
-    setRenewingId(id)
-    renewAcmeCertificate(id)
-      .then(() => getAcmeCertificates().then((r) => setCerts(Array.isArray(r.data) ? (r.data as CertRow[]) : [])))
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setRenewingId(null))
-  }
-
-  const handleDelete = () => {
-    if (deleteId === null) return
-    setDeleting(true)
-    deleteAcmeCertificate(deleteId)
-      .then(() => {
-        setDeleteId(null)
-        getAcmeCertificates().then((r) => setCerts(Array.isArray(r.data) ? (r.data as CertRow[]) : []))
-      })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setDeleting(false))
-  }
-
   const certColumns: Column<CertRow>[] = [
     { key: 'domain', header: 'Domain' },
     {
@@ -155,25 +128,6 @@ export default function ACME() {
         <span className={row.autoRenew ? 'text-green-600' : 'text-gray-400'}>
           {row.autoRenew ? '✓' : '✗'}
         </span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: '',
-      className: 'w-36 text-right',
-      render: (row) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            size="sm"
-            onClick={() => handleRenew(row.id as number)}
-            disabled={renewingId === (row.id as number)}
-          >
-            {renewingId === (row.id as number) ? 'Renewing…' : 'Renew'}
-          </Button>
-          <Button variant="danger" size="sm" onClick={() => setDeleteId(row.id as number)}>
-            Delete
-          </Button>
-        </div>
       ),
     },
   ]
@@ -232,7 +186,7 @@ export default function ACME() {
       {/* Certificates */}
       <Card
         title="Certificates"
-        subtitle="TLS certificates issued via the ACME protocol"
+        subtitle="TLS certificates issued via the ACME protocol. Use Issue Certificate to add or renew certificates."
         actions={
           <Button size="sm" onClick={() => setIssueOpen(true)}>
             + Issue Certificate
@@ -308,22 +262,6 @@ export default function ACME() {
             onChange={(e) => setCertForm({ ...certForm, sans: e.target.value })}
           />
         </div>
-      </Modal>
-
-      {/* Delete Certificate Modal */}
-      <Modal
-        open={deleteId !== null}
-        title="Delete Certificate"
-        onClose={() => setDeleteId(null)}
-        onConfirm={handleDelete}
-        confirmLabel="Delete"
-        confirmVariant="danger"
-        loading={deleting}
-        size="sm"
-      >
-        <p className="text-sm text-gray-600">
-          Are you sure you want to delete this certificate? This action cannot be undone.
-        </p>
       </Modal>
     </div>
   )
