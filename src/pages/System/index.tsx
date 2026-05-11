@@ -39,6 +39,28 @@ function shortCommit(value?: string): string {
   return value ? value.slice(0, 8) : '—'
 }
 
+function componentCurrentDisplay(
+  comp: {
+  currentVersion?: string
+  currentCommit?: string
+  },
+  isRegistryMode: boolean,
+): string {
+  if (comp.currentVersion) return comp.currentVersion
+  return isRegistryMode ? 'Unknown' : shortCommit(comp.currentCommit)
+}
+
+function componentRemoteDisplay(
+  comp: {
+  remoteVersion?: string
+  remoteCommit?: string
+  },
+  isRegistryMode: boolean,
+): string {
+  if (comp.remoteVersion) return comp.remoteVersion
+  return isRegistryMode ? 'Unknown' : shortCommit(comp.remoteCommit)
+}
+
 /**
  * Get a list of IANA timezone identifiers for use in dropdowns
  */
@@ -237,6 +259,7 @@ export default function System() {
     : searchParams.get('section') === 'reboot'
       ? 'reboot'
       : 'overview'
+  const isRegistryMode = (updates?.settings.updateMode ?? 'registry') === 'registry'
 
   const loadAll = () => {
     setLoading(true)
@@ -325,7 +348,10 @@ export default function System() {
   const handleSaveUpdateSettings = () => {
     if (!updateSettings) return
     setUpdateSaving(true)
-    updateUpdateSettings(updateSettings)
+    updateUpdateSettings({
+      ...updateSettings,
+      updateMode: 'registry',
+    })
       .then((res) => {
         setUpdateSettings(res.data)
         setUpdateSettingsOpen(false)
@@ -497,6 +523,13 @@ export default function System() {
               </div>
             </div>
 
+            {isRegistryMode && updates.settings.registryUrl && (
+              <div className="rounded border border-gray-200 p-3 bg-gray-50 text-sm">
+                <p className="text-gray-500">Artifact Registry</p>
+                <p className="font-mono text-xs text-gray-800 break-all">{updates.settings.registryUrl}</p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {updates.components.map((comp) => (
                 <div key={comp.component} className="rounded border border-gray-200 p-3">
@@ -515,25 +548,26 @@ export default function System() {
                         ? comp.updateAvailable
                           ? 'Update Available'
                           : 'Up to Date'
-                        : 'Repo Invalid'}
+                        : 'Registry Unreachable'}
                     </span>
                   </div>
                   <dl className="mt-2 space-y-1 text-xs text-gray-600">
+                    {!isRegistryMode && (
+                      <div>
+                        <dt className="inline text-gray-500">Branch: </dt>
+                        <dd className="inline font-medium text-gray-800">{comp.branch}</dd>
+                      </div>
+                    )}
                     <div>
-                      <dt className="inline text-gray-500">Branch: </dt>
-                      <dd className="inline font-medium text-gray-800">{comp.branch}</dd>
-                    </div>
-                    {/* Show version if available (registry mode), else show commit (git mode) */}
-                    <div>
-                      <dt className="inline text-gray-500">Current: </dt>
+                      <dt className="inline text-gray-500">Installed: </dt>
                       <dd className="inline font-mono text-gray-800">
-                        {comp.currentVersion ? comp.currentVersion : shortCommit(comp.currentCommit)}
+                        {componentCurrentDisplay(comp, isRegistryMode)}
                       </dd>
                     </div>
                     <div>
-                      <dt className="inline text-gray-500">Remote: </dt>
+                      <dt className="inline text-gray-500">Latest: </dt>
                       <dd className="inline font-mono text-gray-800">
-                        {comp.remoteVersion ? comp.remoteVersion : shortCommit(comp.remoteCommit)}
+                        {componentRemoteDisplay(comp, isRegistryMode)}
                       </dd>
                     </div>
                     {/* Show last applied version if available */}
@@ -721,7 +755,7 @@ export default function System() {
                           <span className="text-amber-600">•</span>
                           <span className="font-medium uppercase">{c.component}</span>
                           <span className="text-amber-600 font-mono text-xs">
-                            {c.currentVersion ? c.currentVersion : c.currentCommit?.slice(0, 8)} → {c.remoteVersion ? c.remoteVersion : c.remoteCommit?.slice(0, 8)}
+                            {componentCurrentDisplay(c, isRegistryMode)} → {componentRemoteDisplay(c, isRegistryMode)}
                           </span>
                         </li>
                       ))}
@@ -876,6 +910,12 @@ export default function System() {
       >
         {updateSettings && (
           <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+              <p className="text-gray-500">Update Mode</p>
+              <p className="font-medium text-gray-900">
+                {(updateSettings.updateMode ?? 'registry') === 'registry' ? 'Registry (Recommended)' : 'Legacy Git Mode'}
+              </p>
+            </div>
             <div className="col-span-2 flex items-center gap-2">
               <input
                 id="upd-auto"
@@ -932,24 +972,7 @@ export default function System() {
                 }
               />
               <label htmlFor="upd-deploy-runtime" className="text-sm font-medium text-gray-700">
-                Build and deploy runtime updates after apply (core binary, UI assets, and managed rootfs files)
-              </label>
-            </div>
-            <div className="col-span-2 flex items-center gap-2">
-              <input
-                id="upd-signed-commits"
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-blue-600"
-                checked={updateSettings.requireSignedCommits}
-                onChange={(e) =>
-                  setUpdateSettings({
-                    ...updateSettings,
-                    requireSignedCommits: e.target.checked,
-                  })
-                }
-              />
-              <label htmlFor="upd-signed-commits" className="text-sm font-medium text-gray-700">
-                Require signed commits for updates
+                Run post-apply service health validation
               </label>
             </div>
             <div className="col-span-2 flex items-center gap-2">
@@ -971,91 +994,140 @@ export default function System() {
             </div>
             <div className="col-span-2 flex items-center gap-2">
               <input
-                id="upd-bootstrap-rootfs"
+                id="upd-verify-signatures"
                 type="checkbox"
                 className="h-4 w-4 rounded border-gray-300 text-blue-600"
-                checked={updateSettings.bootstrapMissingRootfsRepo}
+                checked={!!updateSettings.verifyArtifactSignatures}
                 onChange={(e) =>
                   setUpdateSettings({
                     ...updateSettings,
-                    bootstrapMissingRootfsRepo: e.target.checked,
+                    verifyArtifactSignatures: e.target.checked,
                   })
                 }
               />
-              <label htmlFor="upd-bootstrap-rootfs" className="text-sm font-medium text-gray-700">
-                Auto-bootstrap missing rootfs repo on older installations
+              <label htmlFor="upd-verify-signatures" className="text-sm font-medium text-gray-700">
+                Verify artifact signatures when available
               </label>
             </div>
-
             <FormField
-              id="upd-core-path"
-              label="Core Repo Path"
+              id="upd-registry-url"
+              label="Artifact Registry URL"
               className="col-span-2"
-              value={updateSettings.coreRepoPath}
-              onChange={(e) => setUpdateSettings({ ...updateSettings, coreRepoPath: e.target.value })}
-            />
-            <FormField
-              id="upd-core-url"
-              label="Core Repo URL"
-              className="col-span-2"
-              value={updateSettings.coreRepoUrl}
-              onChange={(e) => setUpdateSettings({ ...updateSettings, coreRepoUrl: e.target.value })}
-            />
-            <FormField
-              id="upd-core-branch"
-              label="Core Branch"
-              value={updateSettings.coreBranch}
-              onChange={(e) => setUpdateSettings({ ...updateSettings, coreBranch: e.target.value })}
+              value={updateSettings.registryUrl ?? ''}
+              onChange={(e) => setUpdateSettings({ ...updateSettings, registryUrl: e.target.value })}
             />
 
-            <FormField
-              id="upd-ui-path"
-              label="UI Repo Path"
-              className="col-span-2"
-              value={updateSettings.uiRepoPath}
-              onChange={(e) => setUpdateSettings({ ...updateSettings, uiRepoPath: e.target.value })}
-            />
-            <FormField
-              id="upd-ui-url"
-              label="UI Repo URL"
-              className="col-span-2"
-              value={updateSettings.uiRepoUrl}
-              onChange={(e) => setUpdateSettings({ ...updateSettings, uiRepoUrl: e.target.value })}
-            />
-            <FormField
-              id="upd-ui-branch"
-              label="UI Branch"
-              value={updateSettings.uiBranch}
-              onChange={(e) => setUpdateSettings({ ...updateSettings, uiBranch: e.target.value })}
-            />
+            {(updateSettings.updateMode ?? 'registry') !== 'registry' && (
+              <>
+                <div className="col-span-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  Legacy Git mode is deprecated. Switch to registry mode for production updates.
+                </div>
+                <div className="col-span-2 flex items-center gap-2">
+                  <input
+                    id="upd-signed-commits"
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                    checked={updateSettings.requireSignedCommits}
+                    onChange={(e) =>
+                      setUpdateSettings({
+                        ...updateSettings,
+                        requireSignedCommits: e.target.checked,
+                      })
+                    }
+                  />
+                  <label htmlFor="upd-signed-commits" className="text-sm font-medium text-gray-700">
+                    Require signed commits for updates
+                  </label>
+                </div>
+                <div className="col-span-2 flex items-center gap-2">
+                  <input
+                    id="upd-bootstrap-rootfs"
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                    checked={updateSettings.bootstrapMissingRootfsRepo}
+                    onChange={(e) =>
+                      setUpdateSettings({
+                        ...updateSettings,
+                        bootstrapMissingRootfsRepo: e.target.checked,
+                      })
+                    }
+                  />
+                  <label htmlFor="upd-bootstrap-rootfs" className="text-sm font-medium text-gray-700">
+                    Auto-bootstrap missing rootfs repo on older installations
+                  </label>
+                </div>
 
-            <FormField
-              id="upd-rootfs-path"
-              label="RootFS Repo Path"
-              className="col-span-2"
-              value={updateSettings.rootfsRepoPath}
-              onChange={(e) => setUpdateSettings({ ...updateSettings, rootfsRepoPath: e.target.value })}
-            />
-            <FormField
-              id="upd-rootfs-url"
-              label="RootFS Repo URL"
-              className="col-span-2"
-              value={updateSettings.rootfsRepoUrl}
-              onChange={(e) => setUpdateSettings({ ...updateSettings, rootfsRepoUrl: e.target.value })}
-            />
-            <FormField
-              id="upd-rootfs-branch"
-              label="RootFS Branch"
-              value={updateSettings.rootfsBranch}
-              onChange={(e) => setUpdateSettings({ ...updateSettings, rootfsBranch: e.target.value })}
-            />
-            <FormField
-              id="upd-signers-file"
-              label="Trusted Signers File"
-              className="col-span-2"
-              value={updateSettings.trustedSignersFile}
-              onChange={(e) => setUpdateSettings({ ...updateSettings, trustedSignersFile: e.target.value })}
-            />
+                <FormField
+                  id="upd-core-path"
+                  label="Core Repo Path"
+                  className="col-span-2"
+                  value={updateSettings.coreRepoPath}
+                  onChange={(e) => setUpdateSettings({ ...updateSettings, coreRepoPath: e.target.value })}
+                />
+                <FormField
+                  id="upd-core-url"
+                  label="Core Repo URL"
+                  className="col-span-2"
+                  value={updateSettings.coreRepoUrl}
+                  onChange={(e) => setUpdateSettings({ ...updateSettings, coreRepoUrl: e.target.value })}
+                />
+                <FormField
+                  id="upd-core-branch"
+                  label="Core Branch"
+                  value={updateSettings.coreBranch}
+                  onChange={(e) => setUpdateSettings({ ...updateSettings, coreBranch: e.target.value })}
+                />
+
+                <FormField
+                  id="upd-ui-path"
+                  label="UI Repo Path"
+                  className="col-span-2"
+                  value={updateSettings.uiRepoPath}
+                  onChange={(e) => setUpdateSettings({ ...updateSettings, uiRepoPath: e.target.value })}
+                />
+                <FormField
+                  id="upd-ui-url"
+                  label="UI Repo URL"
+                  className="col-span-2"
+                  value={updateSettings.uiRepoUrl}
+                  onChange={(e) => setUpdateSettings({ ...updateSettings, uiRepoUrl: e.target.value })}
+                />
+                <FormField
+                  id="upd-ui-branch"
+                  label="UI Branch"
+                  value={updateSettings.uiBranch}
+                  onChange={(e) => setUpdateSettings({ ...updateSettings, uiBranch: e.target.value })}
+                />
+
+                <FormField
+                  id="upd-rootfs-path"
+                  label="RootFS Repo Path"
+                  className="col-span-2"
+                  value={updateSettings.rootfsRepoPath}
+                  onChange={(e) => setUpdateSettings({ ...updateSettings, rootfsRepoPath: e.target.value })}
+                />
+                <FormField
+                  id="upd-rootfs-url"
+                  label="RootFS Repo URL"
+                  className="col-span-2"
+                  value={updateSettings.rootfsRepoUrl}
+                  onChange={(e) => setUpdateSettings({ ...updateSettings, rootfsRepoUrl: e.target.value })}
+                />
+                <FormField
+                  id="upd-rootfs-branch"
+                  label="RootFS Branch"
+                  value={updateSettings.rootfsBranch}
+                  onChange={(e) => setUpdateSettings({ ...updateSettings, rootfsBranch: e.target.value })}
+                />
+                <FormField
+                  id="upd-signers-file"
+                  label="Trusted Signers File"
+                  className="col-span-2"
+                  value={updateSettings.trustedSignersFile}
+                  onChange={(e) => setUpdateSettings({ ...updateSettings, trustedSignersFile: e.target.value })}
+                />
+              </>
+            )}
           </div>
         )}
       </Modal>

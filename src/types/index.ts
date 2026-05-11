@@ -419,6 +419,9 @@ export interface UpdateSettings {
   checkIntervalMinutes: number
   rebootRequiredAfterApply: boolean
   deployRuntimeAfterApply: boolean
+  updateMode?: string
+  registryUrl?: string
+  verifyArtifactSignatures?: boolean
   requireSignedCommits: boolean
   verifyRootfsManifest: boolean
   trustedSignersFile: string
