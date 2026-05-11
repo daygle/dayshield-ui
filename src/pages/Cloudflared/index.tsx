@@ -109,7 +109,7 @@ function CloudflaredPageContent() {
   )
 
   const hasIngressErrors = ingressValidation.some((entry) => entry.hostnameError || entry.serviceError)
-  const tunnelTokenHint = `${config.tunnelTokenConfigured ? 'A tunnel token is already stored. Leave blank to keep the existing token. ' : ''}The token is masked on screen but still sensitive. Avoid entering secrets on untrusted/shared devices.`
+  const tunnelTokenHint = `${config.tunnelTokenConfigured ? 'A tunnel token is already stored. Leave blank to keep the existing token. ' : ''}Treat tunnel tokens as sensitive credentials.`
 
   const moveIngress = (index: number, direction: -1 | 1) => {
     setConfig((current) => {
@@ -312,8 +312,8 @@ function CloudflaredPageContent() {
               One or more ingress rules are invalid. Fix the highlighted fields before saving.
             </p>
           )}
-          <p className="text-xs text-gray-500">
-            Keyboard tip: focus a rule and use Alt+↑ / Alt+↓ to reorder it.
+          <p id="cloudflared-ingress-keyboard-hint" className="text-xs text-gray-500">
+            Reorder routes with the ↑/↓ buttons, or focus a rule and use Alt+↑ / Alt+↓.
           </p>
           {config.ingress.length === 0 ? (
             <p className="text-sm text-gray-400">No public hostnames defined yet.</p>
@@ -323,6 +323,7 @@ function CloudflaredPageContent() {
                 key={`${rule.hostname}-${index}`}
                 className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 p-4 md:grid-cols-[1fr_1fr_auto]"
                 tabIndex={0}
+                aria-describedby="cloudflared-ingress-keyboard-hint"
                 onKeyDown={(e) => {
                   if (e.altKey && e.key === 'ArrowUp') {
                     e.preventDefault()
