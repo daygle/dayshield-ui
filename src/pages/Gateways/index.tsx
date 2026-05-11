@@ -129,7 +129,20 @@ export default function Gateways() {
   }
 
   const columns: Column<GatewayRow>[] = [
-    { key: 'name', header: 'Name' },
+    {
+      key: 'name',
+      header: 'Name',
+      render: (row) => (
+        <span className="flex items-center gap-1.5">
+          {row.name as string}
+          {String(row.name).endsWith('_AUTO') && (
+            <span className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-200">
+              Auto
+            </span>
+          )}
+        </span>
+      ),
+    },
     { key: 'description', header: 'Description', render: (row) => (row.description as string) || '—' },
     { key: 'interface', header: 'Interface', render: (row) => interfaceLabel(row.interface as string) },
     {
@@ -139,6 +152,11 @@ export default function Gateways() {
         const ip = (row.active_ip as string) ?? (row.gateway_ip as string)
         return ip || <span className="text-gray-400 text-xs">auto</span>
       },
+    },
+    {
+      key: 'monitor_ip',
+      header: 'Monitor IP',
+      render: (row) => (row.monitor_ip as string) || <span className="text-gray-400 text-xs">—</span>,
     },
     {
       key: 'state',
@@ -167,7 +185,7 @@ export default function Gateways() {
       render: (row) => (
         <div className="flex justify-end gap-2">
           <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
-            Edit
+            {String(row.name).endsWith('_AUTO') ? 'Configure' : 'Edit'}
           </Button>
           <Button size="sm" variant="danger" onClick={() => setDeleteName(row.name)}>
             Delete
@@ -210,7 +228,13 @@ export default function Gateways() {
       {/* Add / Edit modal */}
       <Modal
         open={modalOpen}
-        title={form.name ? `Edit Gateway — ${form.name}` : 'Add Gateway'}
+        title={
+          isEditing
+            ? String(form.name).endsWith('_AUTO')
+              ? `Configure Auto-discovered Gateway — ${form.name}`
+              : `Edit Gateway — ${form.name}`
+            : 'Add Gateway'
+        }
         onClose={() => setModalOpen(false)}
         footer={
           <>

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   getCloudflaredConfig,
-  getCloudflaredLogs,
   getCloudflaredStatus,
   restartCloudflared,
   updateCloudflaredConfig,
@@ -76,11 +75,9 @@ function statusBadge(status: CloudflaredStatus | null) {
 export default function CloudflaredPage() {
   const [config, setConfig] = useState<CloudflaredConfig>(DEFAULT_CONFIG)
   const [status, setStatus] = useState<CloudflaredStatus | null>(null)
-  const [logs, setLogs] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [restarting, setRestarting] = useState(false)
-  const [refreshingLogs, setRefreshingLogs] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
   const addToast = useCallback((kind: ToastKind, text: string) => {
@@ -91,11 +88,10 @@ export default function CloudflaredPage() {
 
   const loadAll = useCallback(() => {
     setLoading(true)
-    Promise.all([getCloudflaredConfig(), getCloudflaredStatus(), getCloudflaredLogs(100)])
-      .then(([cfg, stat, logRes]) => {
+    Promise.all([getCloudflaredConfig(), getCloudflaredStatus()])
+      .then(([cfg, stat]) => {
         setConfig(cfg.data)
         setStatus(stat.data)
-        setLogs(logRes.data.lines)
       })
       .catch((err: Error) => addToast('error', `Failed to load Cloudflared data: ${err.message}`))
       .finally(() => setLoading(false))
@@ -114,11 +110,10 @@ export default function CloudflaredPage() {
           tunnelToken: current.tunnelToken,
         }))
         addToast('success', 'Cloudflared configuration saved.')
-        return Promise.all([getCloudflaredStatus(), getCloudflaredLogs(100)])
+        return getCloudflaredStatus()
       })
-      .then(([stat, logRes]) => {
+      .then((stat) => {
         setStatus(stat.data)
-        setLogs(logRes.data.lines)
       })
       .catch((err: Error) => addToast('error', `Save failed: ${err.message}`))
       .finally(() => setSaving(false))
@@ -129,22 +124,13 @@ export default function CloudflaredPage() {
     restartCloudflared()
       .then(() => {
         addToast('success', 'Cloudflared service restarted.')
-        return Promise.all([getCloudflaredStatus(), getCloudflaredLogs(100)])
+        return getCloudflaredStatus()
       })
-      .then(([stat, logRes]) => {
+      .then((stat) => {
         setStatus(stat.data)
-        setLogs(logRes.data.lines)
       })
       .catch((err: Error) => addToast('error', `Restart failed: ${err.message}`))
       .finally(() => setRestarting(false))
-  }
-
-  const handleRefreshLogs = () => {
-    setRefreshingLogs(true)
-    getCloudflaredLogs(100)
-      .then((res) => setLogs(res.data.lines))
-      .catch((err: Error) => addToast('error', `Failed to load logs: ${err.message}`))
-      .finally(() => setRefreshingLogs(false))
   }
 
   const updateIngress = (index: number, next: CloudflaredIngressRule) => {
@@ -305,24 +291,6 @@ export default function CloudflaredPage() {
         </div>
       </Card>
 
-      <Card
-        title="Logs"
-        subtitle="Recent cloudflared journal output from the appliance."
-        actions={
-          <Button variant="secondary" size="sm" loading={refreshingLogs} onClick={handleRefreshLogs}>
-            Refresh Logs
-          </Button>
-        }
-      >
-        {logs.length === 0 ? (
-          <p className="text-sm text-gray-400">No logs available.</p>
-        ) : (
-          <pre className="max-h-80 overflow-auto rounded-md bg-slate-950 p-4 text-xs text-slate-100">
-            {logs.join('\n')}
-          </pre>
-        )}
-      </Card>
-
       <div className="flex items-center justify-between">
         <Button variant="secondary" loading={restarting} onClick={handleRestart}>
           Restart Service
@@ -331,6 +299,12 @@ export default function CloudflaredPage() {
           Save Configuration
         </Button>
       </div>
+
+      <p className="text-xs text-gray-400">
+        Cloudflared log output is streamed in real-time on the{' '}
+        <a href="/live-logs" className="underline hover:text-gray-600">Live Logs</a> page
+        — filter by source <span className="font-mono">cloudflared</span>.
+      </p>
 
       <Toast messages={toasts} />
     </div>

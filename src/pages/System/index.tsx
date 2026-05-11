@@ -460,7 +460,7 @@ export default function System() {
       {activeSection === 'updates' && updates && (
         <Card
           title="Software Updates"
-          subtitle="Git-based updates for DayShield core, UI, and rootfs repositories"
+          subtitle="Artifact registry and git-based updates for DayShield core, UI, and rootfs"
           actions={
             <Button
               size="sm"
@@ -756,16 +756,34 @@ export default function System() {
       )}
 
       {activeSection === 'reboot' && (
-        <Card title="Administration">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button variant="danger" onClick={() => setRebootOpen(true)}>
-              Reboot System
-            </Button>
-            <p className="text-xs text-gray-500">
-              Rebooting will briefly interrupt all network services.
-            </p>
-          </div>
-        </Card>
+        <div className="space-y-5">
+          {status && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-5 py-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Uptime</p>
+                <p className="mt-1 text-xl font-semibold text-gray-900 font-mono">
+                  {formatUptime(status.uptime)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-5 py-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Last Reboot</p>
+                <p className="mt-1 text-base font-semibold text-gray-900">
+                  {new Date(Date.now() - status.uptime * 1000).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          )}
+          <Card title="Reboot System">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Button variant="danger" onClick={() => setRebootOpen(true)}>
+                Reboot System
+              </Button>
+              <p className="text-xs text-gray-500">
+                Rebooting will briefly interrupt all network services.
+              </p>
+            </div>
+          </Card>
+        </div>
       )}
 
       {/* Edit Config Modal */}

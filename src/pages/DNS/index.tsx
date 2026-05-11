@@ -9,7 +9,8 @@ import {
   createDnsDomainOverride,
   deleteDnsDomainOverride,
 } from '../../api/dns'
-import type { DnsConfig, DnsHostOverride, DnsDomainOverride } from '../../types'
+import { getInterfacesInventory } from '../../api/interfaces'
+import type { DnsConfig, DnsHostOverride, DnsDomainOverride, KernelInterface } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
@@ -52,6 +53,7 @@ export default function DNS() {
   const [listenInput, setListenInput] = useState('')
   const [forwardersInput, setForwardersInput] = useState('')
   const [configSaving, setConfigSaving] = useState(false)
+  const [dnsInterfaces, setDnsInterfaces] = useState<KernelInterface[]>([])
 
   // Host overrides
   const [hostModalOpen, setHostModalOpen] = useState(false)
@@ -91,6 +93,9 @@ export default function DNS() {
       setListenInput('')
       setForwardersInput('')
     }
+    getInterfacesInventory()
+      .then((res) => setDnsInterfaces(res.data.kernel.filter((i) => i.name !== 'lo')))
+      .catch(() => {})
     setConfigModalOpen(true)
   }
 
@@ -348,14 +353,51 @@ export default function DNS() {
             </div>
 
             {/* Listen addresses */}
-            <FormField
-              id="dns-listen"
-              label="Listen Addresses"
-              className="col-span-2"
-              placeholder="e.g. 192.168.1.1, 127.0.0.1  (leave blank to listen on all interfaces)"
-              value={listenInput}
-              onChange={(e) => setListenInput(e.target.value)}
-            />
+            <div className="col-span-2 space-y-2">
+              <label className="block text-xs font-medium text-gray-700">
+                Listen Addresses
+              </label>
+              {dnsInterfaces.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {dnsInterfaces.flatMap((iface) =>
+                    (iface.addresses ?? []).map((cidr) => {
+                      const ip = cidr.split('/')[0]
+                      const current = listenInput.split(',').map((v) => v.trim()).filter(Boolean)
+                      const selected = current.includes(ip)
+                      return (
+                        <button
+                          key={`${iface.name}-${ip}`}
+                          type="button"
+                          onClick={() => {
+                            const entries = listenInput.split(',').map((v) => v.trim()).filter(Boolean)
+                            const next = selected
+                              ? entries.filter((e) => e !== ip)
+                              : [...entries, ip]
+                            setListenInput(next.join(', '))
+                          }}
+                          className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium border transition-colors ${
+                            selected
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:text-blue-600'
+                          }`}
+                        >
+                          <span className="font-mono">{ip}</span>
+                          <span className="opacity-60">{iface.name}</span>
+                        </button>
+                      )
+                    }),
+                  )}
+                </div>
+              )}
+              <input
+                id="dns-listen"
+                type="text"
+                className="block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="e.g. 192.168.1.1, 127.0.0.1  (leave blank to listen on all interfaces)"
+                value={listenInput}
+                onChange={(e) => setListenInput(e.target.value)}
+              />
+            </div>
 
             {/* Upstream forwarders */}
             <FormField
