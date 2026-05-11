@@ -15,6 +15,7 @@ import Button from '../../components/Button'
 import FormField from '../../components/FormField'
 import ErrorBoundary from '../../components/ErrorBoundary'
 import { useToast } from '../../context/ToastContext'
+import Modal from '../../components/Modal'
 
 const DEFAULT_INGRESS: CloudflaredIngressRule = {
   hostname: '',
@@ -53,6 +54,7 @@ function CloudflaredPageContent() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [restarting, setRestarting] = useState(false)
+  const [disableConfirmOpen, setDisableConfirmOpen] = useState(false)
   const { addToast } = useToast()
 
   const notifySuccess = useCallback((text: string) => addToast(text, 'success'), [addToast])
@@ -175,8 +177,8 @@ function CloudflaredPageContent() {
 
   const toggleEnabled = () => {
     if (config.enabled && status?.running) {
-      const proceed = window.confirm('Cloudflared tunnel is currently running. Disable it anyway?')
-      if (!proceed) return
+      setDisableConfirmOpen(true)
+      return
     }
 
     setConfig((current) => ({ ...current, enabled: !current.enabled }))
@@ -279,7 +281,7 @@ function CloudflaredPageContent() {
             aria-label="Cloudflared tunnel token"
             disabled={busy}
             onChange={(e) => setConfig((current) => ({ ...current, tunnelToken: e.target.value }))}
-            hint={`${config.tunnelTokenConfigured ? 'A tunnel token is already stored. Leave blank to keep the existing token. ' : ''}Token input is kept in browser memory until you save.`}
+            hint={`${config.tunnelTokenConfigured ? 'A tunnel token is already stored. Leave blank to keep the existing token. ' : ''}The token is masked on screen but still sensitive. Avoid entering secrets on untrusted/shared devices.`}
           />
           <FormField
             id="cloudflared-metrics"
@@ -391,6 +393,23 @@ function CloudflaredPageContent() {
         <a href="/live-logs" className="underline hover:text-gray-600">Live Logs</a> page
         — filter by source <span className="font-mono">cloudflared</span>.
       </p>
+
+      <Modal
+        open={disableConfirmOpen}
+        title="Disable running tunnel?"
+        onClose={() => setDisableConfirmOpen(false)}
+        onConfirm={() => {
+          setDisableConfirmOpen(false)
+          setConfig((current) => ({ ...current, enabled: false }))
+        }}
+        confirmLabel="Disable Tunnel"
+        confirmVariant="danger"
+      >
+        <p className="text-sm text-gray-700">
+          The Cloudflared tunnel is currently running. Disabling it will stop publishing your
+          ingress routes after saving this configuration.
+        </p>
+      </Modal>
     </div>
   )
 }

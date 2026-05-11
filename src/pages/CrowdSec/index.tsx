@@ -52,6 +52,7 @@ function CrowdSecContent() {
   const [success, setSuccess] = useState<string | null>(null)
 
   const [configModalOpen, setConfigModalOpen] = useState(false)
+  const [enableConfirmOpen, setEnableConfirmOpen] = useState(false)
   const [configForm, setConfigForm] = useState<Partial<CrowdSecStatus>>({})
   const [saving, setSaving] = useState(false)
   const { addToast } = useToast()
@@ -107,17 +108,7 @@ function CrowdSecContent() {
     }
   }, [configForm.ban_alias_name, configForm.lapi_url, configForm.update_interval])
 
-  const handleSaveConfig = () => {
-    if (!validation.isValid) {
-      setError(validation.errors[0] ?? 'Please fix the CrowdSec settings form errors.')
-      return
-    }
-
-    const enableRequested = Boolean(configForm.enabled)
-    if (enableRequested && !status?.enabled && !window.confirm('Enable CrowdSec now with this configuration?')) {
-      return
-    }
-
+  const saveConfig = () => {
     setSaving(true)
     updateCrowdSecConfig({
       enabled: !!configForm.enabled,
@@ -136,6 +127,21 @@ function CrowdSecContent() {
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setSaving(false))
+  }
+
+  const handleSaveConfig = () => {
+    if (!validation.isValid) {
+      setError(validation.errors[0] ?? 'Please fix the CrowdSec settings form errors.')
+      return
+    }
+
+    const enableRequested = Boolean(configForm.enabled)
+    if (enableRequested && !status?.enabled) {
+      setEnableConfirmOpen(true)
+      return
+    }
+
+    saveConfig()
   }
 
   if (loading) {
@@ -296,6 +302,23 @@ function CrowdSecContent() {
               />
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={enableConfirmOpen}
+        title="Enable CrowdSec integration?"
+        onClose={() => setEnableConfirmOpen(false)}
+        onConfirm={() => {
+          setEnableConfirmOpen(false)
+          saveConfig()
+        }}
+        confirmLabel="Enable and Save"
+        size="md"
+      >
+        <p className="text-sm text-gray-700">
+          Enabling CrowdSec starts decision synchronization with the configured LAPI endpoint.
+          Continue with the current configuration?
+        </p>
       </Modal>
     </div>
   )
