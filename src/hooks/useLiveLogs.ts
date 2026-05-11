@@ -69,6 +69,7 @@ function normalizeWsEvent(raw: unknown, seq: number): LogEntry | null {
   if (kind === 'firewall_event') {
     const timestamp = typeof event.timestamp === 'string' && event.timestamp ? event.timestamp : new Date().toISOString()
     const action = String(event.action ?? 'EVENT')
+    const actionUpper = action.toUpperCase()
     const src = String(event.src_ip ?? '')
     const dst = String(event.dest_ip ?? '')
     const sport = String(event.sport ?? '')
@@ -81,7 +82,7 @@ function normalizeWsEvent(raw: unknown, seq: number): LogEntry | null {
       id: `${timestamp}-firewall-${seq}`,
       timestamp,
       source: 'firewall',
-      level: action.toUpperCase().includes('DROP') ? 'warning' : 'info',
+      level: actionUpper.includes('DROP') || actionUpper.includes('BLOCK') ? 'warning' : 'info',
       message: `${action}${where}${endpoint || target ? ` ${endpoint} -> ${target}` : ''}`,
       raw: JSON.stringify(event),
       meta: event,
