@@ -22,6 +22,13 @@ export const getSuricataRulesets = (): Promise<ApiResponse<SuricataRuleset[]>> =
     .get<ApiResponse<SuricataRuleset[]>>('/suricata/rulesets')
     .then((r) => r.data)
 
+export const createSuricataRuleset = (
+  data: { name: string; url?: string; path?: string; enabled?: boolean },
+): Promise<ApiResponse<SuricataRuleset>> =>
+  apiClient
+    .post<ApiResponse<SuricataRuleset>>('/suricata/rulesets', data)
+    .then((r) => r.data)
+
 export const updateSuricataRuleset = (
   id: number,
   patch: Pick<SuricataRuleset, 'enabled'>,

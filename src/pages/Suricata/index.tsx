@@ -6,6 +6,7 @@ import {
   updateSuricataConfig,
   updateInterfaceSuricataConfig,
   getSuricataRulesets,
+  createSuricataRuleset,
   updateSuricataRuleset,
   getSuricataAlerts,
 } from '../../api/suricata'
@@ -66,6 +67,9 @@ export default function Suricata() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<number | null>(null)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [createFormData, setCreateFormData] = useState({ name: '', url: '', path: '', enabled: true })
+  const [creatingRuleset, setCreatingRuleset] = useState(false)
 
   const loadAll = () => {
     setLoading(true)
@@ -183,6 +187,38 @@ export default function Suricata() {
       .finally(() => setTogglingId(null))
   }
 
+  const handleCreateRuleset = () => {
+    if (!createFormData.name.trim() || (!createFormData.url.trim() && !createFormData.path.trim())) {
+      setError('Name and either URL or path are required')
+      return
+    }
+    if (createFormData.url.trim() && createFormData.path.trim()) {
+      setError('Provide either URL or path, not both')
+      return
+    }
+
+    setCreatingRuleset(true)
+    createSuricataRuleset({
+      name: createFormData.name,
+      url: createFormData.url.trim() || undefined,
+      path: createFormData.path.trim() || undefined,
+      enabled: createFormData.enabled,
+    })
+      .then((res) => {
+        setRulesets((prev) => [...prev, res.data as RulesetRow])
+        setCreateFormData({ name: '', url: '', path: '', enabled: true })
+        setShowCreateForm(false)
+        setError(null)
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setCreatingRuleset(false))
+  }
+
+  const interfaceLabel = (name: string): string => {
+    const iface = interfaces.find((i) => i.name === name)
+    return iface?.description?.trim() || name
+  }
+
   const rulesetColumns: Column<RulesetRow>[] = [
     { key: 'name', header: 'Ruleset' },
     { key: 'source', header: 'Source' },
@@ -227,7 +263,7 @@ export default function Suricata() {
     {
       key: 'interface',
       header: 'Interface',
-      render: (row) => (row.interface as string) || '—',
+      render: (row) => (row.interface as string) ? interfaceLabel(row.interface as string) : '—',
     },
     {
       key: 'action',
@@ -318,8 +354,14 @@ export default function Suricata() {
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
             <div>
               <dt className="text-gray-500">Status</dt>
-              <dd className={`font-medium ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
-                {config.enabled ? 'Running' : 'Stopped'}
+              <dd className={`font-medium ${selectedInterface && config.interfaces.includes(selectedInterface) ? 'text-green-600' : config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
+                {selectedInterface
+                  ? config.interfaces.includes(selectedInterface)
+                    ? 'Monitoring'
+                    : 'Not Monitored'
+                  : config.enabled
+                    ? 'Running'
+                    : 'Stopped'}
               </dd>
             </div>
             <div>
@@ -328,7 +370,7 @@ export default function Suricata() {
             </div>
             <div>
               <dt className="text-gray-500">Interfaces</dt>
-              <dd className="font-medium text-gray-800">{config.interfaces.join(', ') || '—'}</dd>
+              <dd className="font-medium text-gray-800">{config.interfaces.map(interfaceLabel).join(', ') || '—'}</dd>
             </div>
             <div>
               <dt className="text-gray-500">Home Networks</dt>
@@ -339,7 +381,7 @@ export default function Suricata() {
             {selectedInterface && (
               <div>
                 <dt className="text-gray-500">Selected Interface</dt>
-                <dd className="font-medium text-gray-800">{selectedInterface}</dd>
+                <dd className="font-medium text-gray-800">{interfaceLabel(selectedInterface)}</dd>
               </div>
             )}
             {selectedInterface && (
@@ -366,13 +408,69 @@ export default function Suricata() {
       <Card
         title="Rulesets"
         subtitle={selectedInterface ? `Rulesets applied when monitoring ${selectedInterfaceLabel}` : 'Enable or disable individual rule sources'}
+        actions={
+          <Button
+            variant={showCreateForm ? 'secondary' : 'primary'}
+            size="sm"
+            onClick={() => setShowCreateForm(!showCreateForm)}
+          >
+            {showCreateForm ? 'Cancel' : 'Add Ruleset'}
+          </Button>
+        }
       >
+        {showCreateForm && (
+          <div className="border-b border-gray-200 pb-4 mb-4 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <FormField
+                id="ruleset-name"
+                label="Ruleset Name"
+                type="text"
+                value={createFormData.name}
+                onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
+                placeholder="e.g., ET/Open, emerging-threats"
+              />
+              <FormField
+                id="ruleset-url"
+                label="URL (or use Path)"
+                type="text"
+                value={createFormData.url}
+                onChange={(e) => setCreateFormData({ ...createFormData, url: e.target.value })}
+                placeholder="https://..."
+              />
+              <FormField
+                id="ruleset-path"
+                label="Local Path (or use URL)"
+                type="text"
+                value={createFormData.path}
+                onChange={(e) => setCreateFormData({ ...createFormData, path: e.target.value })}
+                placeholder="/etc/suricata/rules/..."
+              />
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={createFormData.enabled}
+                  onChange={(e) => setCreateFormData({ ...createFormData, enabled: e.target.checked })}
+                  className="w-4 h-4 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Enable immediately</span>
+              </label>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              loading={creatingRuleset}
+              onClick={handleCreateRuleset}
+            >
+              Create Ruleset
+            </Button>
+          </div>
+        )}
         <Table
           columns={rulesetColumns}
           data={rulesets}
           keyField="id"
           loading={loading}
-          emptyMessage="No rulesets configured."
+          emptyMessage="No rulesets configured. Add one to get started."
         />
       </Card>
 
