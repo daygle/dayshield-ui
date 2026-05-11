@@ -226,14 +226,6 @@ export interface DhcpConfigPerInterface {
   domainName: string
 }
 
-export interface DhcpPool {
-  id: string
-  interface: string
-  rangeStart: string
-  rangeEnd: string
-  description: string
-}
-
 export interface DhcpStaticLease {
   id: string
   mac: string
@@ -383,12 +375,14 @@ export interface DashboardSystemStatus {
 
 export interface LanIface {
   name: string
+  description?: string
   ip?: string
   enabled: boolean
 }
 
 export interface NetworkStatus {
   wan_iface: string
+  wan_iface_description?: string
   wan_ip?: string
   gateway_status: 'up' | 'down' | 'unknown'
   wan_rx_bps: number       // bytes per second
@@ -405,10 +399,10 @@ export interface SecurityStatus {
 
 export interface AcmeStatus {
   domains: string[]
+  cert_exists: boolean
+  needs_renewal: boolean
   expires_in_days: number        // 0 when no cert exists
-  last_renewal?: string    // ISO timestamp
   next_renewal?: string    // ISO timestamp
-  last_renewal_result?: 'success' | 'failed' | null
 }
 
 // ── System ────────────────────────────────────────────────────────────────────

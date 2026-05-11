@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, DhcpConfig, DhcpConfigPerInterface, DhcpPool, DhcpStaticLease, DhcpLease } from '../types'
+import type { ApiResponse, DhcpConfig, DhcpConfigPerInterface, DhcpStaticLease, DhcpLease } from '../types'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -56,24 +56,6 @@ export const deleteInterfaceStaticLease = (
     .delete<ApiResponse<void>>(
       `/interfaces/${encodeURIComponent(interfaceName)}/dhcp/static-leases/${encodeURIComponent(leaseId)}`,
     )
-    .then((r) => r.data)
-// ── Pools ─────────────────────────────────────────────────────────────────────
-
-export const getDhcpPools = (): Promise<ApiResponse<DhcpPool[]>> =>
-  apiClient
-    .get<ApiResponse<DhcpPool[]>>('/dhcp/pools')
-    .then((r) => r.data)
-
-export const createDhcpPool = (
-  pool: Omit<DhcpPool, 'id'>,
-): Promise<ApiResponse<DhcpPool>> =>
-  apiClient
-    .post<ApiResponse<DhcpPool>>('/dhcp/pools', pool)
-    .then((r) => r.data)
-
-export const deleteDhcpPool = (id: string): Promise<ApiResponse<void>> =>
-  apiClient
-    .delete<ApiResponse<void>>(`/dhcp/pools/${encodeURIComponent(id)}`)
     .then((r) => r.data)
 
 // ── Static leases ─────────────────────────────────────────────────────────────

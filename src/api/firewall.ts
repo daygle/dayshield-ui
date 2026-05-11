@@ -37,56 +37,6 @@ export const deleteFirewallRule = (id: number | string): Promise<ApiResponse<voi
     .delete<ApiResponse<void>>(`/firewall/rules/${encodeURIComponent(String(id))}`)
     .then((r) => normalize<void>(r.data))
 
-// ── Per-interface firewall rules ──────────────────────────────────────────────
-
-export const getInterfaceFirewallRules = (interfaceName: string): Promise<ApiResponse<FirewallRule[]>> =>
-  apiClient
-    .get<ApiResponse<FirewallRule[]>>(`/interfaces/${encodeURIComponent(interfaceName)}/firewall/rules`)
-    .then((r) => normalize<FirewallRule[]>(r.data))
-
-export const createInterfaceFirewallRule = (
-  interfaceName: string,
-  rule: Omit<FirewallRule, 'id' | 'interface'>,
-): Promise<ApiResponse<FirewallRule>> =>
-  apiClient
-    .post<ApiResponse<FirewallRule>>(
-      `/interfaces/${encodeURIComponent(interfaceName)}/firewall/rules`,
-      rule,
-    )
-    .then((r) => normalize<FirewallRule>(r.data))
-
-export const deleteInterfaceFirewallRule = (interfaceName: string, ruleId: string): Promise<ApiResponse<void>> =>
-  apiClient
-    .delete<ApiResponse<void>>(
-      `/interfaces/${encodeURIComponent(interfaceName)}/firewall/rules/${encodeURIComponent(ruleId)}`,
-    )
-    .then((r) => normalize<void>(r.data))
-
-// ── Per-WireGuard-interface firewall rules ────────────────────────────────────
-
-export const getWireGuardFirewallRules = (vpnInterfaceName: string): Promise<ApiResponse<FirewallRule[]>> =>
-  apiClient
-    .get<ApiResponse<FirewallRule[]>>(`/wireguard/interfaces/${encodeURIComponent(vpnInterfaceName)}/firewall/rules`)
-    .then((r) => normalize<FirewallRule[]>(r.data))
-
-export const createWireGuardFirewallRule = (
-  vpnInterfaceName: string,
-  rule: Omit<FirewallRule, 'id' | 'interface'>,
-): Promise<ApiResponse<FirewallRule>> =>
-  apiClient
-    .post<ApiResponse<FirewallRule>>(
-      `/wireguard/interfaces/${encodeURIComponent(vpnInterfaceName)}/firewall/rules`,
-      rule,
-    )
-    .then((r) => normalize<FirewallRule>(r.data))
-
-export const deleteWireGuardFirewallRule = (vpnInterfaceName: string, ruleId: string): Promise<ApiResponse<void>> =>
-  apiClient
-    .delete<ApiResponse<void>>(
-      `/wireguard/interfaces/${encodeURIComponent(vpnInterfaceName)}/firewall/rules/${encodeURIComponent(ruleId)}`,
-    )
-    .then((r) => normalize<void>(r.data))
-
 export const getFirewallSettings = (): Promise<ApiResponse<FirewallSettings>> =>
   apiClient
     .get<ApiResponse<FirewallSettings>>('/firewall/settings')

@@ -46,9 +46,9 @@ export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsPr
     ? 'bg-green-100 text-green-700'
     : 'bg-gray-100 text-gray-600'
 
-  const formatCount = (value?: number) => (typeof value === 'number' ? value.toLocaleString() : '—')
+  const formatCount = (value?: number) => (typeof value === 'number' ? value.toLocaleString() : '-')
   const formatBytes = (value?: number) => {
-    if (typeof value !== 'number') return '—'
+    if (typeof value !== 'number') return '-'
     const units = ['B', 'KB', 'MB', 'GB', 'TB']
     let size = value
     let idx = 0
@@ -84,6 +84,46 @@ export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsPr
         </div>
       )}
 
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded border border-gray-200 bg-white p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Interface Name</p>
+          <p className="mt-1 font-mono text-sm text-gray-900">{iface.name}</p>
+        </div>
+        <div className="rounded border border-gray-200 bg-white p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv4 Configuration Type</p>
+          <p className="mt-1 text-sm font-medium text-gray-900">{ipv4ConfigurationType}</p>
+        </div>
+        <div className="rounded border border-gray-200 bg-white p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">MTU</p>
+          <p className="mt-1 text-sm font-medium text-gray-900">{iface.mtu ?? 'Default'}</p>
+        </div>
+        <div className="rounded border border-gray-200 bg-white p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv4 Address</p>
+          <p className="mt-1 font-mono text-sm text-gray-900">
+            {iface.ipv4Address ? `${iface.ipv4Address}/${iface.ipv4Prefix ?? '-'}` : '-'}
+          </p>
+        </div>
+        <div className="rounded border border-gray-200 bg-white p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Gateway</p>
+          <p className="mt-1 font-mono text-sm text-gray-900">{iface.gateway ?? '-'}</p>
+        </div>
+        <div className="rounded border border-gray-200 bg-white p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">MSS</p>
+          <p className="mt-1 text-sm font-medium text-gray-900">{iface.mss ?? '-'}</p>
+        </div>
+        <div className="rounded border border-gray-200 bg-white p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Description</p>
+          <p className="mt-1 text-sm font-medium text-gray-900">{iface.description || '-'}</p>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Button size="sm" variant="secondary" onClick={() => setEditOpen(true)}>
+          Edit Interface Settings
+        </Button>
+      </div>
+
       <div className="rounded border border-gray-200 bg-white p-4">
         <div className="mb-3 flex items-center justify-between">
           <h4 className="text-sm font-semibold text-gray-900">Overview</h4>
@@ -104,13 +144,13 @@ export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsPr
           </div>
           <div className="rounded border border-gray-100 bg-gray-50 p-3">
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Link</p>
-            <p className="mt-1 font-mono text-sm text-gray-900">{iface.mac ?? '—'}</p>
+            <p className="mt-1 font-mono text-sm text-gray-900">{iface.mac ?? '-'}</p>
             <p className="mt-1 text-xs text-gray-500">MTU: {iface.mtu ?? 'Default'}</p>
           </div>
           <div className="rounded border border-gray-100 bg-gray-50 p-3">
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv4</p>
             <p className="mt-1 font-mono text-sm text-gray-900">
-              {iface.ipv4Address ? `${iface.ipv4Address}/${iface.ipv4Prefix ?? '—'}` : '—'}
+              {iface.ipv4Address ? `${iface.ipv4Address}/${iface.ipv4Prefix ?? '-'}` : '-'}
             </p>
             {kernelIpv4.length > 0 && (
               <p className="mt-1 text-xs text-gray-500">Runtime: {kernelIpv4.join(', ')}</p>
@@ -119,13 +159,13 @@ export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsPr
           <div className="rounded border border-gray-100 bg-gray-50 p-3">
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv6</p>
             <p className="mt-1 font-mono text-sm text-gray-900">
-              {kernelIpv6.length > 0 ? kernelIpv6.join(', ') : '—'}
+              {kernelIpv6.length > 0 ? kernelIpv6.join(', ') : '-'}
             </p>
           </div>
           <div className="rounded border border-gray-100 bg-gray-50 p-3">
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Routing</p>
-            <p className="mt-1 font-mono text-sm text-gray-900">{iface.gateway ?? '—'}</p>
-            <p className="mt-1 text-xs text-gray-500">MSS: {iface.mss ?? '—'}</p>
+            <p className="mt-1 font-mono text-sm text-gray-900">{iface.gateway ?? '-'}</p>
+            <p className="mt-1 text-xs text-gray-500">MSS: {iface.mss ?? '-'}</p>
           </div>
           <div className="rounded border border-gray-100 bg-gray-50 p-3">
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Counters</p>
@@ -158,45 +198,6 @@ export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsPr
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Interface Name</p>
-          <p className="mt-1 font-mono text-sm text-gray-900">{iface.name}</p>
-        </div>
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv4 Configuration Type</p>
-          <p className="mt-1 text-sm font-medium text-gray-900">{ipv4ConfigurationType}</p>
-        </div>
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">MTU</p>
-          <p className="mt-1 text-sm font-medium text-gray-900">{iface.mtu ?? 'Default'}</p>
-        </div>
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv4 Address</p>
-          <p className="mt-1 font-mono text-sm text-gray-900">
-            {iface.ipv4Address ? `${iface.ipv4Address}/${iface.ipv4Prefix ?? '—'}` : '—'}
-          </p>
-        </div>
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Gateway</p>
-          <p className="mt-1 font-mono text-sm text-gray-900">{iface.gateway ?? '—'}</p>
-        </div>
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">MSS</p>
-          <p className="mt-1 text-sm font-medium text-gray-900">{iface.mss ?? '—'}</p>
-        </div>
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Description</p>
-          <p className="mt-1 text-sm font-medium text-gray-900">{iface.description || '—'}</p>
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <Button size="sm" variant="secondary" onClick={() => setEditOpen(true)}>
-          Edit Interface Settings
-        </Button>
       </div>
 
       <Modal

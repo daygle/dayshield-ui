@@ -138,8 +138,12 @@ export default function DNS() {
   const activeSection =
     sectionParam === 'overrides' || sectionParam === 'blocklists' ? sectionParam : 'settings'
 
-  const interfaceLabel = (iface: NetworkInterface): string =>
-    iface.description?.trim() || (iface.wanMode || iface.gateway ? 'WAN' : iface.name)
+  const interfaceLabel = (iface: NetworkInterface): string => {
+    const description = iface.description?.trim()
+    if (description) return description
+    if (iface.wanMode || iface.gateway) return `WAN (${iface.name})`
+    return iface.name
+  }
 
   const interfaceOptions = useMemo(() => interfaces.map((iface) => iface.name), [interfaces])
   const selectedInterface = searchParams.get('iface') ?? ''
@@ -182,8 +186,13 @@ export default function DNS() {
       setForwardersInput('')
     }
     getInterfacesInventory()
-      .then((res) => setDnsInterfaces(res.data.kernel.filter((i) => i.name !== 'lo')))
-      .catch(() => {})
+      .then((res) => {
+        const kernel = Array.isArray(res.data?.kernel) ? res.data.kernel : []
+        setDnsInterfaces(kernel.filter((i) => i.name !== 'lo'))
+      })
+      .catch(() => {
+        setDnsInterfaces([])
+      })
     setConfigModalOpen(true)
   }
 
@@ -212,10 +221,11 @@ export default function DNS() {
   const handleAddHost = () => {
     setHostSaving(true)
     createDnsHostOverride(hostForm.hostname, hostForm.address)
-      .then(() => {
+      .then(() => getDnsOverrides())
+      .then((r) => {
         setHostModalOpen(false)
         setHostForm({ hostname: '', address: '' })
-        getDnsOverrides().then((r) => setHostOverrides(r.data.host_overrides as HostRow[]))
+        setHostOverrides(r.data.host_overrides as HostRow[])
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setHostSaving(false))
@@ -225,9 +235,10 @@ export default function DNS() {
     if (!hostDeleteName) return
     setHostDeleting(true)
     deleteDnsHostOverride(hostDeleteName)
-      .then(() => {
+      .then(() => getDnsOverrides())
+      .then((r) => {
         setHostDeleteName(null)
-        getDnsOverrides().then((r) => setHostOverrides(r.data.host_overrides as HostRow[]))
+        setHostOverrides(r.data.host_overrides as HostRow[])
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setHostDeleting(false))
@@ -236,10 +247,11 @@ export default function DNS() {
   const handleAddDomain = () => {
     setDomainSaving(true)
     createDnsDomainOverride(domainForm.domain, domainForm.forward_to)
-      .then(() => {
+      .then(() => getDnsOverrides())
+      .then((r) => {
         setDomainModalOpen(false)
         setDomainForm({ domain: '', forward_to: '' })
-        getDnsOverrides().then((r) => setDomainOverrides(r.data.domain_overrides as DomainRow[]))
+        setDomainOverrides(r.data.domain_overrides as DomainRow[])
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setDomainSaving(false))
@@ -249,9 +261,10 @@ export default function DNS() {
     if (!domainDeleteName) return
     setDomainDeleting(true)
     deleteDnsDomainOverride(domainDeleteName)
-      .then(() => {
+      .then(() => getDnsOverrides())
+      .then((r) => {
         setDomainDeleteName(null)
-        getDnsOverrides().then((r) => setDomainOverrides(r.data.domain_overrides as DomainRow[]))
+        setDomainOverrides(r.data.domain_overrides as DomainRow[])
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setDomainDeleting(false))

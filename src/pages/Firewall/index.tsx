@@ -171,6 +171,12 @@ export default function Firewall() {
   const showAliasesSection = activeSection === 'aliases'
   const showSettingsSection = activeSection === 'settings'
 
+  const handleSelectSection = (section: string) => {
+    const next = new URLSearchParams(searchParams)
+    next.set('section', section)
+    setSearchParams(next)
+  }
+
   const updateRulesInterfaceFilter = (interfaceName: string) => {
     const next = new URLSearchParams(searchParams)
     next.set('section', 'rules')
@@ -522,6 +528,24 @@ export default function Firewall() {
 
   return (
     <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 pb-3">
+        {[
+          { value: 'settings', label: 'Settings' },
+          { value: 'rules', label: 'Rules' },
+          { value: 'aliases', label: 'Aliases' },
+        ].map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => handleSelectSection(tab.value)}
+            aria-current={activeSection === tab.value ? 'page' : undefined}
+            className={`sidebar-link flex-1 justify-center text-center ${activeSection === tab.value ? 'active' : ''}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {showSettingsSection && <div id="firewall-settings">
         <Card
           title="Firewall Settings"
@@ -637,113 +661,126 @@ export default function Firewall() {
         loading={settingsSaving}
         size="xl"
       >
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            id="fw-input-policy"
-            label="Input Policy"
-            as="select"
-            value={settings.input_policy}
-            onChange={(e) => setSettings({ ...settings, input_policy: e.target.value as FirewallSettings['input_policy'] })}
-          >
-            <option value="drop">Drop</option>
-            <option value="accept">Accept</option>
-          </FormField>
-          <FormField
-            id="fw-forward-policy"
-            label="Forward Policy"
-            as="select"
-            value={settings.forward_policy}
-            onChange={(e) => setSettings({ ...settings, forward_policy: e.target.value as FirewallSettings['forward_policy'] })}
-          >
-            <option value="drop">Drop</option>
-            <option value="accept">Accept</option>
-          </FormField>
-          <FormField
-            id="fw-output-policy"
-            label="Output Policy"
-            as="select"
-            value={settings.output_policy}
-            onChange={(e) => setSettings({ ...settings, output_policy: e.target.value as FirewallSettings['output_policy'] })}
-          >
-            <option value="accept">Accept</option>
-            <option value="drop">Drop</option>
-          </FormField>
+        <div className="space-y-4">
+          <details open className="overflow-hidden rounded border border-gray-200 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">Policies</summary>
+            <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+              <FormField
+                id="fw-input-policy"
+                label="Input Policy"
+                as="select"
+                value={settings.input_policy}
+                onChange={(e) => setSettings({ ...settings, input_policy: e.target.value as FirewallSettings['input_policy'] })}
+              >
+                <option value="drop">Drop</option>
+                <option value="accept">Accept</option>
+              </FormField>
+              <FormField
+                id="fw-forward-policy"
+                label="Forward Policy"
+                as="select"
+                value={settings.forward_policy}
+                onChange={(e) => setSettings({ ...settings, forward_policy: e.target.value as FirewallSettings['forward_policy'] })}
+              >
+                <option value="drop">Drop</option>
+                <option value="accept">Accept</option>
+              </FormField>
+              <FormField
+                id="fw-output-policy"
+                label="Output Policy"
+                as="select"
+                value={settings.output_policy}
+                onChange={(e) => setSettings({ ...settings, output_policy: e.target.value as FirewallSettings['output_policy'] })}
+              >
+                <option value="accept">Accept</option>
+                <option value="drop">Drop</option>
+              </FormField>
+            </div>
+          </details>
 
-          <label className="flex items-center gap-3 pt-7">
-            <input
-              type="checkbox"
-              checked={settings.drop_invalid_state}
-              onChange={(e) => setSettings({ ...settings, drop_invalid_state: e.target.checked })}
-            />
-            <span className="text-sm text-gray-700">Drop invalid conntrack state</span>
-          </label>
+          <details className="overflow-hidden rounded border border-gray-200 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">Protection</summary>
+            <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+              <label className="flex items-center gap-3 col-span-2">
+                <input
+                  type="checkbox"
+                  checked={settings.drop_invalid_state}
+                  onChange={(e) => setSettings({ ...settings, drop_invalid_state: e.target.checked })}
+                />
+                <span className="text-sm text-gray-700">Drop invalid conntrack state</span>
+              </label>
+              <label className="flex items-center gap-3 col-span-2">
+                <input
+                  type="checkbox"
+                  checked={settings.syn_flood_protection}
+                  onChange={(e) => setSettings({ ...settings, syn_flood_protection: e.target.checked })}
+                />
+                <span className="text-sm text-gray-700">Enable SYN flood protection</span>
+              </label>
+              <FormField
+                id="fw-syn-rate"
+                label="SYN Flood Rate (/sec)"
+                type="number"
+                min={1}
+                value={String(settings.syn_flood_rate)}
+                onChange={(e) => setSettings({ ...settings, syn_flood_rate: Number(e.target.value) || 1 })}
+              />
+              <FormField
+                id="fw-syn-burst"
+                label="SYN Burst"
+                type="number"
+                min={1}
+                value={String(settings.syn_flood_burst)}
+                onChange={(e) => setSettings({ ...settings, syn_flood_burst: Number(e.target.value) || 1 })}
+              />
+            </div>
+          </details>
 
-          <label className="flex items-center gap-3 pt-7">
-            <input
-              type="checkbox"
-              checked={settings.syn_flood_protection}
-              onChange={(e) => setSettings({ ...settings, syn_flood_protection: e.target.checked })}
-            />
-            <span className="text-sm text-gray-700">Enable SYN flood protection</span>
-          </label>
+          <details className="overflow-hidden rounded border border-gray-200 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">Management</summary>
+            <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+              <label className="flex items-center gap-3 col-span-2">
+                <input
+                  type="checkbox"
+                  checked={settings.management_anti_lockout}
+                  onChange={(e) => setSettings({ ...settings, management_anti_lockout: e.target.checked })}
+                />
+                <span className="text-sm text-gray-700">Enable management anti-lockout rule</span>
+              </label>
 
-          <FormField
-            id="fw-syn-rate"
-            label="SYN Flood Rate (/sec)"
-            type="number"
-            min={1}
-            value={String(settings.syn_flood_rate)}
-            onChange={(e) => setSettings({ ...settings, syn_flood_rate: Number(e.target.value) || 1 })}
-          />
-          <FormField
-            id="fw-syn-burst"
-            label="SYN Burst"
-            type="number"
-            min={1}
-            value={String(settings.syn_flood_burst)}
-            onChange={(e) => setSettings({ ...settings, syn_flood_burst: Number(e.target.value) || 1 })}
-          />
-
-          <label className="flex items-center gap-3 pt-2 col-span-2">
-            <input
-              type="checkbox"
-              checked={settings.management_anti_lockout}
-              onChange={(e) => setSettings({ ...settings, management_anti_lockout: e.target.checked })}
-            />
-            <span className="text-sm text-gray-700">Enable management anti-lockout rule</span>
-          </label>
-
-          <FormField
-            id="fw-mgmt-iface"
-            className="col-span-2"
-            label="Management Interface (optional)"
-            as="select"
-            value={settings.management_interface ?? ''}
-            onChange={(e) => setSettings({ ...settings, management_interface: e.target.value || null })}
-          >
-            <option value="">Any interface</option>
-            {interfaces.map((iface) => (
-              <option key={iface.name} value={iface.name}>
-                {interfaceLabel(iface)}
-              </option>
-            ))}
-          </FormField>
-          <FormField
-            id="fw-mgmt-src"
-            className="col-span-2"
-            label="Management Allowed Sources (comma-separated CIDRs)"
-            placeholder="e.g. 192.168.1.0/24, 10.0.0.0/8"
-            value={allowedSourcesInput}
-            onChange={(e) => setAllowedSourcesInput(e.target.value)}
-          />
-          <FormField
-            id="fw-mgmt-ports"
-            className="col-span-2"
-            label="Management Ports (comma-separated)"
-            placeholder="e.g. 22, 443, 8443"
-            value={managementPortsInput}
-            onChange={(e) => setManagementPortsInput(e.target.value)}
-          />
+              <FormField
+                id="fw-mgmt-iface"
+                className="col-span-2"
+                label="Management Interface (optional)"
+                as="select"
+                value={settings.management_interface ?? ''}
+                onChange={(e) => setSettings({ ...settings, management_interface: e.target.value || null })}
+              >
+                <option value="">Any interface</option>
+                {interfaces.map((iface) => (
+                  <option key={iface.name} value={iface.name}>
+                    {interfaceLabel(iface)}
+                  </option>
+                ))}
+              </FormField>
+              <FormField
+                id="fw-mgmt-src"
+                className="col-span-2"
+                label="Management Allowed Sources (comma-separated CIDRs)"
+                placeholder="e.g. 192.168.1.0/24, 10.0.0.0/8"
+                value={allowedSourcesInput}
+                onChange={(e) => setAllowedSourcesInput(e.target.value)}
+              />
+              <FormField
+                id="fw-mgmt-ports"
+                className="col-span-2"
+                label="Management Ports (comma-separated)"
+                placeholder="e.g. 22, 443, 8443"
+                value={managementPortsInput}
+                onChange={(e) => setManagementPortsInput(e.target.value)}
+              />
+            </div>
+          </details>
         </div>
       </Modal>
 
@@ -811,56 +848,63 @@ export default function Firewall() {
               </option>
             ))}
           </FormField>
-          <FormField
-            id="rule-src-preset"
-            label="Source Preset"
-            as="select"
-            value={(ruleForm.source ?? '')}
-            onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
-          >
-            {addressPresetOptions.map((opt) => (
-              <option key={`src-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
-            ))}
-          </FormField>
-          <FormField
-            id="rule-src"
-            label="Source (custom CIDR/IP/Alias)"
-            placeholder="Optional override"
-            value={ruleForm.source ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
-          />
-          <FormField
-            id="rule-src-port"
-            label="Source Port"
-            type="number"
-            value={ruleForm.source_port != null ? String(ruleForm.source_port) : ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
-          />
-          <FormField
-            id="rule-dst-preset"
-            label="Destination Preset"
-            as="select"
-            value={(ruleForm.destination ?? '')}
-            onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
-          >
-            {addressPresetOptions.map((opt) => (
-              <option key={`dst-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
-            ))}
-          </FormField>
-          <FormField
-            id="rule-dst"
-            label="Destination (custom CIDR/IP/Alias)"
-            placeholder="Optional override"
-            value={ruleForm.destination ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
-          />
-          <FormField
-            id="rule-dst-port"
-            label="Destination Port"
-            type="number"
-            value={ruleForm.destination_port != null ? String(ruleForm.destination_port) : ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
-          />
+          <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
+              Advanced Match
+            </summary>
+            <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+              <FormField
+                id="rule-src-preset"
+                label="Source Preset"
+                as="select"
+                value={(ruleForm.source ?? '')}
+                onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
+              >
+                {addressPresetOptions.map((opt) => (
+                  <option key={`src-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
+                ))}
+              </FormField>
+              <FormField
+                id="rule-src"
+                label="Source (custom CIDR/IP/Alias)"
+                placeholder="Optional override"
+                value={ruleForm.source ?? ''}
+                onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
+              />
+              <FormField
+                id="rule-src-port"
+                label="Source Port"
+                type="number"
+                value={ruleForm.source_port != null ? String(ruleForm.source_port) : ''}
+                onChange={(e) => setRuleForm({ ...ruleForm, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+              />
+              <FormField
+                id="rule-dst-preset"
+                label="Destination Preset"
+                as="select"
+                value={(ruleForm.destination ?? '')}
+                onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
+              >
+                {addressPresetOptions.map((opt) => (
+                  <option key={`dst-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
+                ))}
+              </FormField>
+              <FormField
+                id="rule-dst"
+                label="Destination (custom CIDR/IP/Alias)"
+                placeholder="Optional override"
+                value={ruleForm.destination ?? ''}
+                onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
+              />
+              <FormField
+                id="rule-dst-port"
+                label="Destination Port"
+                type="number"
+                value={ruleForm.destination_port != null ? String(ruleForm.destination_port) : ''}
+                onChange={(e) => setRuleForm({ ...ruleForm, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+              />
+            </div>
+          </details>
 
           {/* Enabled toggle */}
           <label className="flex items-center gap-3 col-span-2">
@@ -872,45 +916,52 @@ export default function Firewall() {
             <span className="text-sm text-gray-700">Rule enabled</span>
           </label>
 
-          {/* Schedule */}
-          <div className="col-span-2 border rounded-lg p-3 space-y-3">
-            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Schedule (optional)</p>
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Days active (leave all unchecked = every day)</p>
-              <div className="flex gap-3 flex-wrap">
-                {DAY_NAMES.map((name, idx) => (
-                  <label key={idx} className="flex items-center gap-1 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={(ruleForm.schedule?.days ?? []).includes(idx)}
-                      onChange={(e) => {
-                        const days = [...(ruleForm.schedule?.days ?? [])]
-                        if (e.target.checked) { if (!days.includes(idx)) days.push(idx) }
-                        else { days.splice(days.indexOf(idx), 1) }
-                        days.sort()
-                        setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), days } })
-                      }}
-                    />
-                    {name}
-                  </label>
-                ))}
+          <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
+              Schedule (optional)
+            </summary>
+            <div className="border-t border-gray-200 px-4 py-4 space-y-3">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Days active (leave all unchecked = every day)</p>
+                <div className="flex gap-3 flex-wrap">
+                  {DAY_NAMES.map((name, idx) => (
+                    <label key={idx} className="flex items-center gap-1 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={(ruleForm.schedule?.days ?? []).includes(idx)}
+                        onChange={(e) => {
+                          const days = [...(ruleForm.schedule?.days ?? [])]
+                          if (e.target.checked) {
+                            if (!days.includes(idx)) days.push(idx)
+                          } else {
+                            const index = days.indexOf(idx)
+                            if (index !== -1) days.splice(index, 1)
+                          }
+                          days.sort()
+                          setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), days } })
+                        }}
+                      />
+                      {name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField id="rule-sched-ts" label="Time start (HH:MM)" placeholder="e.g. 08:00"
+                  value={ruleForm.schedule?.time_start ?? ''}
+                  onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_start: e.target.value || null } })} />
+                <FormField id="rule-sched-te" label="Time end (HH:MM)" placeholder="e.g. 17:00"
+                  value={ruleForm.schedule?.time_end ?? ''}
+                  onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_end: e.target.value || null } })} />
+                <FormField id="rule-sched-ds" label="Date start (YYYY-MM-DD)" placeholder="e.g. 2026-01-01"
+                  value={ruleForm.schedule?.date_start ?? ''}
+                  onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_start: e.target.value || null } })} />
+                <FormField id="rule-sched-de" label="Date end (YYYY-MM-DD)" placeholder="e.g. 2026-12-31"
+                  value={ruleForm.schedule?.date_end ?? ''}
+                  onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_end: e.target.value || null } })} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField id="rule-sched-ts" label="Time start (HH:MM)" placeholder="e.g. 08:00"
-                value={ruleForm.schedule?.time_start ?? ''}
-                onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_start: e.target.value || null } })} />
-              <FormField id="rule-sched-te" label="Time end (HH:MM)" placeholder="e.g. 17:00"
-                value={ruleForm.schedule?.time_end ?? ''}
-                onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_end: e.target.value || null } })} />
-              <FormField id="rule-sched-ds" label="Date start (YYYY-MM-DD)" placeholder="e.g. 2026-01-01"
-                value={ruleForm.schedule?.date_start ?? ''}
-                onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_start: e.target.value || null } })} />
-              <FormField id="rule-sched-de" label="Date end (YYYY-MM-DD)" placeholder="e.g. 2026-12-31"
-                value={ruleForm.schedule?.date_end ?? ''}
-                onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_end: e.target.value || null } })} />
-            </div>
-          </div>
+          </details>
         </div>
       </Modal>
 
@@ -978,54 +1029,61 @@ export default function Firewall() {
                 </option>
               ))}
             </FormField>
-            <FormField
-              id="edit-rule-src-preset"
-              label="Source Preset"
-              as="select"
-              value={(editRule.source ?? '')}
-              onChange={(e) => setEditRule({ ...editRule, source: e.target.value || null })}
-            >
-              {addressPresetOptions.map((opt) => (
-                <option key={`edit-src-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
-              ))}
-            </FormField>
-            <FormField
-              id="edit-rule-src"
-              label="Source (custom CIDR/IP/Alias)"
-              value={editRule.source ?? ''}
-              onChange={(e) => setEditRule({ ...editRule, source: e.target.value || null })}
-            />
-            <FormField
-              id="edit-rule-src-port"
-              label="Source Port"
-              type="number"
-              value={editRule.source_port != null ? String(editRule.source_port) : ''}
-              onChange={(e) => setEditRule({ ...editRule, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
-            />
-            <FormField
-              id="edit-rule-dst-preset"
-              label="Destination Preset"
-              as="select"
-              value={(editRule.destination ?? '')}
-              onChange={(e) => setEditRule({ ...editRule, destination: e.target.value || null })}
-            >
-              {addressPresetOptions.map((opt) => (
-                <option key={`edit-dst-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
-              ))}
-            </FormField>
-            <FormField
-              id="edit-rule-dst"
-              label="Destination (custom CIDR/IP/Alias)"
-              value={editRule.destination ?? ''}
-              onChange={(e) => setEditRule({ ...editRule, destination: e.target.value || null })}
-            />
-            <FormField
-              id="edit-rule-dst-port"
-              label="Destination Port"
-              type="number"
-              value={editRule.destination_port != null ? String(editRule.destination_port) : ''}
-              onChange={(e) => setEditRule({ ...editRule, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
-            />
+            <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
+              <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
+                Advanced Match
+              </summary>
+              <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+                <FormField
+                  id="edit-rule-src-preset"
+                  label="Source Preset"
+                  as="select"
+                  value={(editRule.source ?? '')}
+                  onChange={(e) => setEditRule({ ...editRule, source: e.target.value || null })}
+                >
+                  {addressPresetOptions.map((opt) => (
+                    <option key={`edit-src-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
+                  ))}
+                </FormField>
+                <FormField
+                  id="edit-rule-src"
+                  label="Source (custom CIDR/IP/Alias)"
+                  value={editRule.source ?? ''}
+                  onChange={(e) => setEditRule({ ...editRule, source: e.target.value || null })}
+                />
+                <FormField
+                  id="edit-rule-src-port"
+                  label="Source Port"
+                  type="number"
+                  value={editRule.source_port != null ? String(editRule.source_port) : ''}
+                  onChange={(e) => setEditRule({ ...editRule, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+                />
+                <FormField
+                  id="edit-rule-dst-preset"
+                  label="Destination Preset"
+                  as="select"
+                  value={(editRule.destination ?? '')}
+                  onChange={(e) => setEditRule({ ...editRule, destination: e.target.value || null })}
+                >
+                  {addressPresetOptions.map((opt) => (
+                    <option key={`edit-dst-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
+                  ))}
+                </FormField>
+                <FormField
+                  id="edit-rule-dst"
+                  label="Destination (custom CIDR/IP/Alias)"
+                  value={editRule.destination ?? ''}
+                  onChange={(e) => setEditRule({ ...editRule, destination: e.target.value || null })}
+                />
+                <FormField
+                  id="edit-rule-dst-port"
+                  label="Destination Port"
+                  type="number"
+                  value={editRule.destination_port != null ? String(editRule.destination_port) : ''}
+                  onChange={(e) => setEditRule({ ...editRule, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+                />
+              </div>
+            </details>
 
             {/* Enabled toggle */}
             <label className="flex items-center gap-3 col-span-2">
@@ -1037,45 +1095,52 @@ export default function Firewall() {
               <span className="text-sm text-gray-700">Rule enabled</span>
             </label>
 
-            {/* Schedule */}
-            <div className="col-span-2 border rounded-lg p-3 space-y-3">
-              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Schedule (optional)</p>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Days active (leave all unchecked = every day)</p>
-                <div className="flex gap-3 flex-wrap">
-                  {DAY_NAMES.map((name, idx) => (
-                    <label key={idx} className="flex items-center gap-1 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={(editRule.schedule?.days ?? []).includes(idx)}
-                        onChange={(e) => {
-                          const days = [...(editRule.schedule?.days ?? [])]
-                          if (e.target.checked) { if (!days.includes(idx)) days.push(idx) }
-                          else { days.splice(days.indexOf(idx), 1) }
-                          days.sort()
-                          setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), days } })
-                        }}
-                      />
-                      {name}
-                    </label>
-                  ))}
+            <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
+              <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
+                Schedule (optional)
+              </summary>
+              <div className="border-t border-gray-200 px-4 py-4 space-y-3">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Days active (leave all unchecked = every day)</p>
+                  <div className="flex gap-3 flex-wrap">
+                    {DAY_NAMES.map((name, idx) => (
+                      <label key={idx} className="flex items-center gap-1 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={(editRule.schedule?.days ?? []).includes(idx)}
+                          onChange={(e) => {
+                            const days = [...(editRule.schedule?.days ?? [])]
+                            if (e.target.checked) {
+                              if (!days.includes(idx)) days.push(idx)
+                            } else {
+                              const index = days.indexOf(idx)
+                              if (index !== -1) days.splice(index, 1)
+                            }
+                            days.sort()
+                            setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), days } })
+                          }}
+                        />
+                        {name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField id="edit-sched-ts" label="Time start (HH:MM)" placeholder="e.g. 08:00"
+                    value={editRule.schedule?.time_start ?? ''}
+                    onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_start: e.target.value || null } })} />
+                  <FormField id="edit-sched-te" label="Time end (HH:MM)" placeholder="e.g. 17:00"
+                    value={editRule.schedule?.time_end ?? ''}
+                    onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_end: e.target.value || null } })} />
+                  <FormField id="edit-sched-ds" label="Date start (YYYY-MM-DD)" placeholder="e.g. 2026-01-01"
+                    value={editRule.schedule?.date_start ?? ''}
+                    onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_start: e.target.value || null } })} />
+                  <FormField id="edit-sched-de" label="Date end (YYYY-MM-DD)" placeholder="e.g. 2026-12-31"
+                    value={editRule.schedule?.date_end ?? ''}
+                    onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_end: e.target.value || null } })} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <FormField id="edit-sched-ts" label="Time start (HH:MM)" placeholder="e.g. 08:00"
-                  value={editRule.schedule?.time_start ?? ''}
-                  onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_start: e.target.value || null } })} />
-                <FormField id="edit-sched-te" label="Time end (HH:MM)" placeholder="e.g. 17:00"
-                  value={editRule.schedule?.time_end ?? ''}
-                  onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_end: e.target.value || null } })} />
-                <FormField id="edit-sched-ds" label="Date start (YYYY-MM-DD)" placeholder="e.g. 2026-01-01"
-                  value={editRule.schedule?.date_start ?? ''}
-                  onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_start: e.target.value || null } })} />
-                <FormField id="edit-sched-de" label="Date end (YYYY-MM-DD)" placeholder="e.g. 2026-12-31"
-                  value={editRule.schedule?.date_end ?? ''}
-                  onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_end: e.target.value || null } })} />
-              </div>
-            </div>
+            </details>
           </div>
         )}
       </Modal>
@@ -1103,45 +1168,56 @@ export default function Firewall() {
         size="lg"
       >
         <div className="space-y-4">
-          <FormField
-            id="alias-name"
-            label="Name"
-            required
-            placeholder="e.g. RFC1918_NETWORKS"
-            value={aliasForm.name}
-            onChange={(e) => setAliasForm({ ...aliasForm, name: e.target.value })}
-          />
-          <FormField
-            id="alias-type"
-            label="Type"
-            as="select"
-            value={aliasForm.alias_type}
-            onChange={(e) => setAliasForm({ ...aliasForm, alias_type: e.target.value as AliasType })}
-          >
-            <option value="host">Host</option>
-            <option value="network">Network</option>
-            <option value="port">Port</option>
-            <option value="urltable">URL Table</option>
-          </FormField>
-          <FormField
-            id="alias-desc"
-            label="Description"
-            placeholder="Optional description"
-            value={aliasForm.description ?? ''}
-            onChange={(e) => setAliasForm({ ...aliasForm, description: e.target.value || null })}
-          />
-          <FormField
-            id="alias-values"
-            label="Entries"
-            as="textarea"
-            rows={4}
-            hint="One entry per line"
-            value={aliasForm.values.join('\n')}
-            onChange={(e) => setAliasForm({
-              ...aliasForm,
-              values: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
-            })}
-          />
+          <details open className="overflow-hidden rounded border border-gray-200 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">Alias Details</summary>
+            <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+              <FormField
+                id="alias-name"
+                label="Name"
+                required
+                placeholder="e.g. RFC1918_NETWORKS"
+                value={aliasForm.name}
+                onChange={(e) => setAliasForm({ ...aliasForm, name: e.target.value })}
+              />
+              <FormField
+                id="alias-type"
+                label="Type"
+                as="select"
+                value={aliasForm.alias_type}
+                onChange={(e) => setAliasForm({ ...aliasForm, alias_type: e.target.value as AliasType })}
+              >
+                <option value="host">Host</option>
+                <option value="network">Network</option>
+                <option value="port">Port</option>
+                <option value="urltable">URL Table</option>
+              </FormField>
+              <FormField
+                id="alias-desc"
+                label="Description"
+                placeholder="Optional description"
+                value={aliasForm.description ?? ''}
+                onChange={(e) => setAliasForm({ ...aliasForm, description: e.target.value || null })}
+              />
+            </div>
+          </details>
+
+          <details open className="overflow-hidden rounded border border-gray-200 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">Entries</summary>
+            <div className="border-t border-gray-200 px-4 py-4">
+              <FormField
+                id="alias-values"
+                label="Entries"
+                as="textarea"
+                rows={6}
+                hint="One entry per line"
+                value={aliasForm.values.join('\n')}
+                onChange={(e) => setAliasForm({
+                  ...aliasForm,
+                  values: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
+                })}
+              />
+            </div>
+          </details>
         </div>
       </Modal>
 

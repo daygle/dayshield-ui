@@ -154,7 +154,7 @@ export default function Interfaces() {
                           ? `${iface.ipv4Address}/${iface.ipv4Prefix ?? ''}`
                           : iface.mac
                             ? iface.mac
-                            : '—'}
+                            : '-'}
                       </span>
                     </div>
                   </div>
@@ -196,7 +196,12 @@ export default function Interfaces() {
       <Modal
         open={modalOpen}
         title="Add Interface"
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false)
+          setForm(defaultForm)
+          setUseCustomName(false)
+          setError(null)
+        }}
         onConfirm={handleSave}
         confirmLabel="Create"
         loading={saving}
@@ -251,20 +256,8 @@ export default function Interfaces() {
             value={form.description ?? ''}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
-          <FormField
-            id="iface-type"
-            label="Type"
-            as="select"
-            value={form.type ?? 'ethernet'}
-            onChange={(e) => setForm({ ...form, type: e.target.value as NetworkInterface['type'] })}
-          >
-            <option value="ethernet">Ethernet</option>
-            <option value="vlan">VLAN</option>
-            <option value="bridge">Bridge</option>
-            <option value="wireless">Wireless</option>
-            <option value="loopback">Loopback</option>
-          </FormField>
           <div className="col-span-2 flex items-center gap-3">
+
             <input
               id="iface-dhcp4"
               type="checkbox"
@@ -285,7 +278,7 @@ export default function Interfaces() {
             </label>
           </div>
 
-          {/* WAN mode — only shown when DHCP is not ticked */}
+          {/* WAN mode - only shown when DHCP is not ticked */}
           {!form.dhcp4 && (
             <FormField
               id="iface-wan-mode"
@@ -297,13 +290,13 @@ export default function Interfaces() {
                 setForm({ ...form, wanMode: v || undefined, pppoeUsername: '', pppoePassword: '' })
               }}
             >
-              <option value="">— Not a WAN interface —</option>
+              <option value="">- Not a WAN interface -</option>
               <option value="dhcp">DHCP (automatic from ISP)</option>
-              <option value="pppoe">PPPoE (DSL / fibre — username &amp; password)</option>
+              <option value="pppoe">PPPoE (DSL / fibre - username &amp; password)</option>
             </FormField>
           )}
 
-          {/* PPPoE credentials — only when wan_mode == pppoe */}
+          {/* PPPoE credentials - only when wan_mode == pppoe */}
           {form.wanMode === 'pppoe' && (
             <>
               <FormField

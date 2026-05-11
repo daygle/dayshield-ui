@@ -45,12 +45,6 @@ export const deleteDnsOverride = (name: string): Promise<ApiResponse<void>> =>
 
 // ── Convenience wrappers ──────────────────────────────────────────────────────
 
-export const getDnsHostOverrides = (): Promise<ApiResponse<DnsHostOverride[]>> =>
-  getDnsOverrides().then((r) => ({ ...r, data: r.data.host_overrides }))
-
-export const getDnsDomainOverrides = (): Promise<ApiResponse<DnsDomainOverride[]>> =>
-  getDnsOverrides().then((r) => ({ ...r, data: r.data.domain_overrides }))
-
 export const createDnsHostOverride = (
   hostname: string,
   address: string,

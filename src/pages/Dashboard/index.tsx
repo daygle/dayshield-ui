@@ -119,8 +119,9 @@ export default function Dashboard() {
     net.data?.wan_tx_bps,
   )
 
-  const hasCriticalAlerts =
-    (sec.data?.suricata_alert_rate ?? 0) > 10
+  const alertRate = toFiniteNumber(sec.data?.suricata_alert_rate)
+  const hasWarningAlerts = alertRate >= 1 && alertRate < 5
+  const hasCriticalAlerts = alertRate >= 5
 
   return (
     <div className="space-y-6">
@@ -172,11 +173,14 @@ export default function Dashboard() {
           {net.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
           {net.data && (
             <div className="space-y-3">
-              <MetricRow label="WAN Interface" value={net.data.wan_iface} />
+              <MetricRow
+                label="WAN Interface"
+                value={net.data.wan_iface_description ?? net.data.wan_iface}
+              />
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500">WAN IPv4</span>
                 <span className="font-medium text-gray-800">
-                  {net.data.wan_ip ?? '—'}
+                  {net.data.wan_ip ?? '-'}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm">
@@ -208,8 +212,10 @@ export default function Dashboard() {
                   <div className="space-y-1">
                     {net.data.lan_ifaces.map((iface) => (
                       <div key={iface.name} className="flex justify-between text-xs">
-                        <span className="font-medium text-gray-700">{iface.name}</span>
-                        <span className="text-gray-500">{iface.ip ?? '—'}</span>
+                        <span className="font-medium text-gray-700">
+                          {iface.description?.trim() || iface.name}
+                        </span>
+                        <span className="text-gray-500">{iface.ip ?? '-'}</span>
                         {iface.enabled ? (
                           <Badge variant="green">Up</Badge>
                         ) : (
@@ -246,39 +252,39 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">Expires in</span>
-                {acme.data.expires_in_days < 7 ? (
-                  <Badge variant="red">⚠ {acme.data.expires_in_days}d</Badge>
-                ) : acme.data.expires_in_days < 30 ? (
-                  <Badge variant="yellow">{acme.data.expires_in_days}d</Badge>
-                ) : (
-                  <Badge variant="green">{acme.data.expires_in_days}d</Badge>
-                )}
-              </div>
-
-              {acme.data.last_renewal && (
-                <MetricRow
-                  label="Last Renewed"
-                  value={new Date(acme.data.last_renewal).toLocaleDateString()}
-                />
-              )}
-              {acme.data.next_renewal && (
-                <MetricRow
-                  label="Next Renewal"
-                  value={new Date(acme.data.next_renewal).toLocaleDateString()}
-                />
-              )}
-              {acme.data.last_renewal_result !== undefined && acme.data.last_renewal_result !== null && (
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-500">Last Result</span>
-                  {acme.data.last_renewal_result === 'success' ? (
-                    <Badge variant="green">Success</Badge>
+              {acme.data.cert_exists ? (
+                <div className="space-y-3">
+                  <MetricRow
+                    label="Expires in"
+                    value={`${acme.data.expires_in_days} days`}
+                  />
+                  {acme.data.next_renewal && (
+                    <MetricRow
+                      label="Next Renewal"
+                      value={new Date(acme.data.next_renewal).toLocaleDateString()}
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2 text-sm text-gray-500">
+                  <p>No certificate file exists for the primary domain.</p>
+                  {acme.data.domains.length === 0 ? (
+                    <p>Configure ACME to issue certificates.</p>
                   ) : (
-                    <Badge variant="red">Failed</Badge>
+                    <p>Run certificate issuance to create the certificate.</p>
                   )}
                 </div>
               )}
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">Renewal Status</span>
+                {acme.data.needs_renewal ? (
+                  <Badge variant="red">Due</Badge>
+                ) : acme.data.cert_exists ? (
+                  <Badge variant="green">OK</Badge>
+                ) : (
+                  <Badge variant="gray">Unknown</Badge>
+                )}
+              </div>
             </div>
           )}
         </Card>
@@ -290,10 +296,12 @@ export default function Dashboard() {
         {/* Suricata Alerts */}
         <Card
           title="Suricata Alerts"
-          className={hasCriticalAlerts ? 'border-red-300' : ''}
+          className={hasCriticalAlerts ? 'border-red-300' : hasWarningAlerts ? 'border-yellow-300' : ''}
           actions={
             hasCriticalAlerts ? (
               <Badge variant="red">Critical</Badge>
+            ) : hasWarningAlerts ? (
+              <Badge variant="yellow">High</Badge>
             ) : undefined
           }
         >
@@ -302,8 +310,14 @@ export default function Dashboard() {
           {sec.data && (
             <div className="space-y-3">
               <div className="text-sm text-gray-500">Suricata alert rate</div>
-              <div className="text-2xl font-semibold text-gray-900">{toFiniteNumber(sec.data.suricata_alert_rate).toFixed(1)} alerts/sec</div>
+              <div className="text-2xl font-semibold text-gray-900">{alertRate.toFixed(1)} alerts/sec</div>
               <p className="text-sm text-gray-500">Detailed alert data is unavailable in this version.</p>
+              {hasWarningAlerts && !hasCriticalAlerts && (
+                <p className="text-xs text-yellow-700">High alert rate detected; investigate Suricata alerts page.</p>
+              )}
+              {hasCriticalAlerts && (
+                <p className="text-xs text-red-700">Critical alert flood detected; check Suricata immediately.</p>
+              )}
             </div>
           )}
         </Card>
@@ -333,11 +347,11 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-100">
                 <p className="text-3xl font-bold text-gray-900">{sec.data.firewall_rule_count}</p>
-                <p className="text-sm text-gray-500 mt-1">Rules</p>
+                <p className="text-sm text-gray-500 mt-1">Configured firewall rules</p>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-100">
                 <p className="text-3xl font-bold text-blue-600">{sec.data.firewall_state_count}</p>
-                <p className="text-sm text-gray-500 mt-1">Active States</p>
+                <p className="text-sm text-gray-500 mt-1">Active connection tracking states</p>
               </div>
             </div>
           )}
@@ -352,8 +366,10 @@ export default function Dashboard() {
               {/* WAN row */}
               <div className="flex items-center justify-between py-2 border-b border-gray-100">
                 <div>
-                  <p className="text-sm font-medium text-gray-800">{net.data.wan_iface}</p>
-                  <p className="text-xs text-gray-500">{net.data.wan_ip ?? '—'}</p>
+                  <p className="text-sm font-medium text-gray-800">
+                    {net.data.wan_iface_description ?? net.data.wan_iface}
+                  </p>
+                  <p className="text-xs text-gray-500">{net.data.wan_ip ?? '-'}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">WAN</span>
@@ -369,7 +385,7 @@ export default function Dashboard() {
                 <div key={iface.name} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                   <div>
                     <p className="text-sm font-medium text-gray-800">{iface.name}</p>
-                    <p className="text-xs text-gray-500">{iface.ip ?? '—'}</p>
+                    <p className="text-xs text-gray-500">{iface.ip ?? '-'}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-500">LAN</span>

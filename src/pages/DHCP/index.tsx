@@ -34,7 +34,7 @@ const staticColumns: Column<StaticLeaseRow>[] = [
 const activeColumns: Column<ActiveLeaseRow>[] = [
   { key: 'mac', header: 'MAC Address' },
   { key: 'ipAddress', header: 'IP Address' },
-  { key: 'hostname', header: 'Hostname', render: (row) => (row.hostname as string) || '—' },
+  { key: 'hostname', header: 'Hostname', render: (row) => (row.hostname as string) || '-' },
   {
     key: 'state',
     header: 'State',
@@ -59,7 +59,7 @@ const activeColumns: Column<ActiveLeaseRow>[] = [
     header: 'Expires',
     render: (row) => {
       const raw = row.ends as string
-      if (!raw) return '—'
+      if (!raw) return '-'
       const asNum = Number(raw)
       const d = Number.isFinite(asNum) && asNum > 1e9
         ? new Date(asNum * 1000)
@@ -110,10 +110,17 @@ export default function DHCP() {
   const [dnsInput, setDnsInput] = useState('')
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
 
+  const interfaceLabel = (iface: NetworkInterface): string =>
+    iface.description?.trim() ? `${iface.description} (${iface.name})` : iface.name
+
   const selectedInterfaceMeta = useMemo(
     () => interfaces.find((iface) => iface.name === selectedInterface) ?? null,
     [interfaces, selectedInterface],
   )
+
+  const selectedInterfaceLabel = selectedInterfaceMeta
+    ? interfaceLabel(selectedInterfaceMeta)
+    : selectedInterface || ''
 
   const loadAll = () => {
     setLoading(true)
@@ -186,8 +193,6 @@ export default function DHCP() {
       return ip != null && (ip & mask) === (networkInt & mask)
     })
   }, [activeLeases, selectedInterface, interfaceConfig?.subnet])
-
-  const selectedInterfaceLabel = selectedInterfaceMeta?.description || selectedInterface || ''
 
   const handleSelectInterface = (interfaceName: string) => {
     setSearchParams((prev) => {
@@ -269,7 +274,9 @@ export default function DHCP() {
         const reloadLeases = selectedInterface
           ? getInterfaceStaticLeases(selectedInterface)
           : getDhcpStaticLeases()
-        reloadLeases.then((r) => setStaticLeases(r.data as StaticLeaseRow[]))
+        reloadLeases
+          .then((r) => setStaticLeases(r.data as StaticLeaseRow[]))
+          .catch((err: Error) => setError(err.message))
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLeaseSaving(false))
@@ -288,7 +295,9 @@ export default function DHCP() {
         const reloadLeases = selectedInterface
           ? getInterfaceStaticLeases(selectedInterface)
           : getDhcpStaticLeases()
-        reloadLeases.then((r) => setStaticLeases(r.data as StaticLeaseRow[]))
+        reloadLeases
+          .then((r) => setStaticLeases(r.data as StaticLeaseRow[]))
+          .catch((err: Error) => setError(err.message))
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setDeleting(false))
@@ -338,7 +347,7 @@ export default function DHCP() {
             <option value="">Select interface</option>
             {interfaces.map((iface) => (
               <option key={iface.name} value={iface.name}>
-                {iface.description?.trim() ? `${iface.description} (${iface.name})` : iface.name}
+                {interfaceLabel(iface)}
               </option>
             ))}
           </FormField>
@@ -362,7 +371,7 @@ export default function DHCP() {
             {!selectedInterface && (
               <div>
                 <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Interface</dt>
-                <dd className="mt-1 font-medium text-gray-800 font-mono">{config?.interface || '—'}</dd>
+                <dd className="mt-1 font-medium text-gray-800 font-mono">{config?.interface || '-'}</dd>
               </div>
             )}
             <div>
@@ -373,26 +382,26 @@ export default function DHCP() {
             </div>
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Subnet</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.subnet : config?.subnet) || '—'}</dd>
+              <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.subnet : config?.subnet) || '-'}</dd>
             </div>
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Pool Range</dt>
               <dd className="mt-1 font-medium text-gray-800 font-mono">
                 {(selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart) && (selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd)
                   ? `${selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart} – ${selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd}`
-                  : '—'}
+                  : '-'}
               </dd>
             </div>
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Default Gateway</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.gateway : config?.gateway) || '—'}</dd>
+              <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.gateway : config?.gateway) || '-'}</dd>
             </div>
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNS Servers</dt>
               <dd className="mt-1 font-medium text-gray-800 font-mono">
                 {(selectedInterface ? interfaceConfig?.dnsServers : config?.dnsServers)?.length
                   ? (selectedInterface ? interfaceConfig?.dnsServers : config?.dnsServers)?.join(', ')
-                  : '—'}
+                  : '-'}
               </dd>
             </div>
             <div>
@@ -407,7 +416,7 @@ export default function DHCP() {
             )}
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Subnet Mask</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.subnetMask : config?.subnetMask) || '—'}</dd>
+              <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.subnetMask : config?.subnetMask) || '-'}</dd>
             </div>
           </dl>
         ) : (
@@ -469,95 +478,98 @@ export default function DHCP() {
             <span className="text-sm font-medium text-gray-700">Enable DHCP server</span>
           </label>
 
-          <div className="grid grid-cols-2 gap-4">
-            {/* Interface */}
-            {!selectedInterface && (
+          <details open className="overflow-hidden rounded border border-gray-200 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
+              Scope & Network
+            </summary>
+            <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+              {!selectedInterface && (
+                <FormField
+                  id="cfg-iface"
+                  label="LAN Interface"
+                  as="select"
+                  required
+                  value={(configForm as Partial<DhcpConfig>).interface ?? ''}
+                  onChange={(e) => setConfigForm((f) => ({ ...f, interface: e.target.value }))}
+                >
+                  <option value="">Select interface</option>
+                  {interfaces.map((iface) => (
+                    <option key={iface.name} value={iface.name}>{interfaceLabel(iface)}</option>
+                  ))}
+                </FormField>
+              )}
+
               <FormField
-                id="cfg-iface"
-                label="LAN Interface"
-                as="select"
+                id="cfg-subnet"
+                label="Subnet (CIDR)"
                 required
-                value={(configForm as Partial<DhcpConfig>).interface ?? ''}
-                onChange={(e) => setConfigForm((f) => ({ ...f, interface: e.target.value }))}
-              >
-                <option value="">Select interface</option>
-                {interfaces.map((iface) => (
-                  <option key={iface.name} value={iface.name}>{iface.description || iface.name}</option>
-                ))}
-              </FormField>
-            )}
+                placeholder="e.g. 192.168.1.0/24"
+                value={configForm.subnet ?? ''}
+                onChange={(e) => setConfigForm((f) => ({ ...f, subnet: e.target.value }))}
+              />
 
-            {/* Subnet CIDR */}
-            <FormField
-              id="cfg-subnet"
-              label="Subnet (CIDR)"
-              required
-              placeholder="e.g. 192.168.1.0/24"
-              value={configForm.subnet ?? ''}
-              onChange={(e) => setConfigForm((f) => ({ ...f, subnet: e.target.value }))}
-            />
+              <FormField
+                id="cfg-gw"
+                label="Default Gateway"
+                placeholder="e.g. 192.168.1.1"
+                value={configForm.gateway ?? ''}
+                onChange={(e) => setConfigForm((f) => ({ ...f, gateway: e.target.value }))}
+              />
 
-            {/* Gateway */}
-            <FormField
-              id="cfg-gw"
-              label="Default Gateway"
-              placeholder="e.g. 192.168.1.1"
-              value={configForm.gateway ?? ''}
-              onChange={(e) => setConfigForm((f) => ({ ...f, gateway: e.target.value }))}
-            />
+              <FormField
+                id="cfg-lease"
+                label="Lease Time (seconds)"
+                type="number"
+                placeholder="86400"
+                value={String(configForm.leaseTime ?? 86400)}
+                onChange={(e) =>
+                  setConfigForm((f) => ({ ...f, leaseTime: parseInt(e.target.value, 10) || 86400 }))
+                }
+              />
 
-            {/* Lease time */}
-            <FormField
-              id="cfg-lease"
-              label="Lease Time (seconds)"
-              type="number"
-              placeholder="86400"
-              value={String(configForm.leaseTime ?? 86400)}
-              onChange={(e) =>
-                setConfigForm((f) => ({ ...f, leaseTime: parseInt(e.target.value, 10) || 86400 }))
-              }
-            />
+              <FormField
+                id="cfg-start"
+                label="Pool Start"
+                required
+                placeholder="e.g. 192.168.1.100"
+                value={configForm.rangeStart ?? ''}
+                onChange={(e) => setConfigForm((f) => ({ ...f, rangeStart: e.target.value }))}
+              />
 
-            {/* Pool start */}
-            <FormField
-              id="cfg-start"
-              label="Pool Start"
-              required
-              placeholder="e.g. 192.168.1.100"
-              value={configForm.rangeStart ?? ''}
-              onChange={(e) => setConfigForm((f) => ({ ...f, rangeStart: e.target.value }))}
-            />
+              <FormField
+                id="cfg-end"
+                label="Pool End"
+                required
+                placeholder="e.g. 192.168.1.199"
+                value={configForm.rangeEnd ?? ''}
+                onChange={(e) => setConfigForm((f) => ({ ...f, rangeEnd: e.target.value }))}
+              />
+            </div>
+          </details>
 
-            {/* Pool end */}
-            <FormField
-              id="cfg-end"
-              label="Pool End"
-              required
-              placeholder="e.g. 192.168.1.199"
-              value={configForm.rangeEnd ?? ''}
-              onChange={(e) => setConfigForm((f) => ({ ...f, rangeEnd: e.target.value }))}
-            />
-
-            {/* DNS servers — comma-separated */}
-            <FormField
-              id="cfg-dns"
-              label="DNS Servers"
-              className="col-span-2"
-              placeholder="e.g. 192.168.1.1, 1.1.1.1"
-              value={dnsInput}
-              onChange={(e) => setDnsInput(e.target.value)}
-            />
-
-            {/* Domain name */}
-            <FormField
-              id="cfg-domain"
-              label="Domain Name (optional)"
-              className="col-span-2"
-              placeholder="e.g. home.lan"
-              value={configForm.domainName ?? ''}
-              onChange={(e) => setConfigForm((f) => ({ ...f, domainName: e.target.value }))}
-            />
-          </div>
+          <details className="overflow-hidden rounded border border-gray-200 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
+              DNS & Domain
+            </summary>
+            <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+              <FormField
+                id="cfg-dns"
+                label="DNS Servers"
+                className="col-span-2"
+                placeholder="e.g. 192.168.1.1, 1.1.1.1"
+                value={dnsInput}
+                onChange={(e) => setDnsInput(e.target.value)}
+              />
+              <FormField
+                id="cfg-domain"
+                label="Domain Name (optional)"
+                className="col-span-2"
+                placeholder="e.g. home.lan"
+                value={configForm.domainName ?? ''}
+                onChange={(e) => setConfigForm((f) => ({ ...f, domainName: e.target.value }))}
+              />
+            </div>
+          </details>
 
           <p className="text-xs text-gray-500">
             <strong>Subnet</strong> must match the interface network. Configure per-interface scopes from the DHCP submenu for each interface.
