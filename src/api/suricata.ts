@@ -1,13 +1,13 @@
 import apiClient from './client'
 import type { ApiResponse, SuricataConfig, SuricataRuleset, SuricataAlert } from '../types'
 
-// ── Config ────────────────────────────────────────────────────────────────────
-
+/** Get global Suricata configuration. */
 export const getSuricataConfig = (): Promise<ApiResponse<SuricataConfig>> =>
   apiClient
     .get<ApiResponse<SuricataConfig>>('/suricata/config')
     .then((r) => r.data)
 
+/** Update global Suricata configuration. */
 export const updateSuricataConfig = (
   config: Partial<SuricataConfig>,
 ): Promise<ApiResponse<SuricataConfig>> =>
@@ -15,13 +15,13 @@ export const updateSuricataConfig = (
     .post<ApiResponse<SuricataConfig>>('/suricata/config', config)
     .then((r) => r.data)
 
-// ── Rulesets ──────────────────────────────────────────────────────────────────
-
+/** List all Suricata rulesets. */
 export const getSuricataRulesets = (): Promise<ApiResponse<SuricataRuleset[]>> =>
   apiClient
     .get<ApiResponse<SuricataRuleset[]>>('/suricata/rulesets')
     .then((r) => r.data)
 
+/** Create a new Suricata ruleset from URL or local path. */
 export const createSuricataRuleset = (
   data: { name: string; url?: string; path?: string; enabled?: boolean },
 ): Promise<ApiResponse<SuricataRuleset>> =>
@@ -29,6 +29,7 @@ export const createSuricataRuleset = (
     .post<ApiResponse<SuricataRuleset>>('/suricata/rulesets', data)
     .then((r) => r.data)
 
+/** Update a Suricata ruleset. */
 export const updateSuricataRuleset = (
   id: number,
   patch: Pick<SuricataRuleset, 'enabled'>,
@@ -37,16 +38,13 @@ export const updateSuricataRuleset = (
     .put<ApiResponse<SuricataRuleset>>(`/suricata/rulesets/${id}`, patch)
     .then((r) => r.data)
 
-// ── Alerts ────────────────────────────────────────────────────────────────────
-
+/** Fetch recent Suricata alerts. */
 export const getSuricataAlerts = (limit = 100): Promise<ApiResponse<SuricataAlert[]>> =>
   apiClient
     .get<ApiResponse<SuricataAlert[]>>('/suricata/alerts', { params: { limit } })
     .then((r) => r.data)
 
-// ── Per-interface Suricata ────────────────────────────────────────────────────
-
-interface InterfaceSuricataConfig {
+export interface InterfaceSuricataConfig {
   interface: string
   monitored: boolean
   enabled: boolean
@@ -54,6 +52,7 @@ interface InterfaceSuricataConfig {
   interfaces: string[]
 }
 
+/** Read Suricata config for one interface. */
 export const getInterfaceSuricataConfig = (
   interfaceName: string,
 ): Promise<ApiResponse<InterfaceSuricataConfig>> =>
@@ -63,6 +62,7 @@ export const getInterfaceSuricataConfig = (
     )
     .then((r) => r.data)
 
+/** Enable or disable Suricata monitoring for one interface. */
 export const updateInterfaceSuricataConfig = (
   interfaceName: string,
   monitored: boolean,
