@@ -31,6 +31,8 @@ const DEFAULT_CONFIG: CloudflaredConfig = {
   ingress: [],
 }
 
+const HOSTNAME_PATTERN = /^(?=.{1,253}$)(?!-)[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/
+
 function statusBadge(status: CloudflaredStatus | null) {
   if (!status) return null
 
@@ -81,7 +83,7 @@ function CloudflaredPageContent() {
 
         if (!hostname) {
           hostnameError = 'Hostname is required.'
-        } else if (!/^(?=.{1,253}$)(?!-)[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/.test(hostname)) {
+        } else if (!HOSTNAME_PATTERN.test(hostname)) {
           hostnameError = 'Hostname must be a valid domain name (example: app.example.com).'
         }
 
@@ -277,7 +279,7 @@ function CloudflaredPageContent() {
             aria-label="Cloudflared tunnel token"
             disabled={busy}
             onChange={(e) => setConfig((current) => ({ ...current, tunnelToken: e.target.value }))}
-            hint={config.tunnelTokenConfigured ? 'A tunnel token is already stored. Leave blank to keep the existing token. Token input is kept in browser memory until you save.' : 'Token input is kept in browser memory until you save.'}
+            hint={`${config.tunnelTokenConfigured ? 'A tunnel token is already stored. Leave blank to keep the existing token. ' : ''}Token input is kept in browser memory until you save.`}
           />
           <FormField
             id="cloudflared-metrics"
