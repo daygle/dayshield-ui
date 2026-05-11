@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   getSuricataConfig,
@@ -255,7 +255,7 @@ function SuricataContent() {
     [interfaces],
   )
 
-  const interfaceLabel = (name: string): string => interfaceLabels.get(name) ?? name
+  const interfaceLabel = useCallback((name: string): string => interfaceLabels.get(name) ?? name, [interfaceLabels])
 
   const rulesetColumns: Column<RulesetRow>[] = [
     { key: 'name', header: 'Ruleset' },

@@ -109,6 +109,7 @@ function CloudflaredPageContent() {
   )
 
   const hasIngressErrors = ingressValidation.some((entry) => entry.hostnameError || entry.serviceError)
+  const tunnelTokenHint = `${config.tunnelTokenConfigured ? 'A tunnel token is already stored. Leave blank to keep the existing token. ' : ''}The token is masked on screen but still sensitive. Avoid entering secrets on untrusted/shared devices.`
 
   const moveIngress = (index: number, direction: -1 | 1) => {
     setConfig((current) => {
@@ -282,7 +283,7 @@ function CloudflaredPageContent() {
             aria-label="Cloudflared tunnel token"
             disabled={busy}
             onChange={(e) => setConfig((current) => ({ ...current, tunnelToken: e.target.value }))}
-            hint={`${config.tunnelTokenConfigured ? 'A tunnel token is already stored. Leave blank to keep the existing token. ' : ''}The token is masked on screen but still sensitive. Avoid entering secrets on untrusted/shared devices.`}
+            hint={tunnelTokenHint}
           />
           <FormField
             id="cloudflared-metrics"
@@ -311,6 +312,9 @@ function CloudflaredPageContent() {
               One or more ingress rules are invalid. Fix the highlighted fields before saving.
             </p>
           )}
+          <p className="text-xs text-gray-500">
+            Keyboard tip: focus a rule and use Alt+↑ / Alt+↓ to reorder it.
+          </p>
           {config.ingress.length === 0 ? (
             <p className="text-sm text-gray-400">No public hostnames defined yet.</p>
           ) : (

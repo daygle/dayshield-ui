@@ -76,34 +76,38 @@ function CrowdSecContent() {
     const lapiUrl = (configForm.lapi_url ?? '').trim()
     const updateInterval = Number(configForm.update_interval)
     const banAlias = (configForm.ban_alias_name ?? '').trim()
-    const errors: string[] = []
+    let lapiUrlError = ''
+    let updateIntervalError = ''
+    let banAliasError = ''
 
     if (!lapiUrl) {
-      errors.push('LAPI URL is required.')
+      lapiUrlError = 'LAPI URL is required.'
     } else {
       try {
         const parsed = new URL(lapiUrl)
         if (!['http:', 'https:'].includes(parsed.protocol)) {
-          errors.push('LAPI URL must use http:// or https://.')
+          lapiUrlError = 'LAPI URL must use http:// or https://.'
         }
       } catch {
-        errors.push('LAPI URL must be a valid URL.')
+        lapiUrlError = 'LAPI URL must be a valid URL.'
       }
     }
 
     if (!Number.isFinite(updateInterval) || updateInterval < 1) {
-      errors.push('Update interval must be at least 1 second.')
+      updateIntervalError = 'Update interval must be at least 1 second.'
     }
 
     if (!banAlias) {
-      errors.push('Ban alias name is required.')
+      banAliasError = 'Ban alias name is required.'
     }
+
+    const errors = [lapiUrlError, updateIntervalError, banAliasError].filter(Boolean)
 
     return {
       errors,
-      lapiUrlError: errors.find((entry) => entry.startsWith('LAPI URL')) ?? '',
-      updateIntervalError: errors.find((entry) => entry.startsWith('Update interval')) ?? '',
-      banAliasError: errors.find((entry) => entry.startsWith('Ban alias')) ?? '',
+      lapiUrlError,
+      updateIntervalError,
+      banAliasError,
       isValid: errors.length === 0,
     }
   }, [configForm.ban_alias_name, configForm.lapi_url, configForm.update_interval])
