@@ -460,7 +460,7 @@ export default function System() {
       {activeSection === 'updates' && updates && (
         <Card
           title="Software Updates"
-          subtitle="Artifact registry and git-based updates for DayShield core, UI, and rootfs"
+          subtitle="Prebuilt artifact registry updates for DayShield core, UI, and rootfs"
           actions={
             <Button
               size="sm"
