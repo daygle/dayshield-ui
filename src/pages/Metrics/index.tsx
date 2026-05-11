@@ -4,7 +4,8 @@ import { useMetricsHistory } from '../../hooks/useMetricsHistory'
 import { useMetricsStream } from '../../hooks/useMetricsStream'
 import Card from '../../components/Card'
 import ErrorBanner from '../../components/ErrorBanner'
-import type { MetricsSnapshot, MetricsHistoryPoint, LanIfaceMetrics, FirewallRuleHit } from '../../types'
+import type { MetricsSnapshot, MetricsHistoryPoint, LanIfaceMetrics, FirewallRuleHit, NetworkInterface } from '../../types'
+import { getInterfaces } from '../../api/interfaces'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -47,7 +48,6 @@ function drawSparkline(
   canvas.height = height * dpr
   const ctx = canvas.getContext('2d')
   if (!ctx || data.length < 2) return
-
   ctx.scale(dpr, dpr)
   ctx.clearRect(0, 0, width, height)
 
@@ -389,7 +389,7 @@ function UptimeDisplay({ seconds }: { seconds: number }) {
   )
 }
 
-function InterfaceTable({ ifaces }: { ifaces: LanIfaceMetrics[] }) {
+function InterfaceTable({ ifaces, labelFor }: { ifaces: LanIfaceMetrics[]; labelFor?: (name: string) => string }) {
   if (ifaces.length === 0) {
     return <p className="text-sm text-gray-400">No LAN interfaces</p>
   }
@@ -408,7 +408,7 @@ function InterfaceTable({ ifaces }: { ifaces: LanIfaceMetrics[] }) {
         <tbody className="divide-y divide-gray-50">
           {ifaces.map((iface) => (
             <tr key={iface.name} className="hover:bg-gray-50">
-              <td className="px-2 py-2 font-medium text-gray-800">{iface.name}</td>
+              <td className="px-2 py-2 font-medium text-gray-800">{labelFor ? labelFor(iface.name) : iface.name}</td>
               <td className="px-2 py-2 font-mono text-gray-500">{iface.ip ?? '—'}</td>
               <td className="px-2 py-2 text-right text-green-600 font-mono">{formatBps(iface.rx_bps)}</td>
               <td className="px-2 py-2 text-right text-blue-600 font-mono">{formatBps(iface.tx_bps)}</td>
@@ -447,6 +447,15 @@ export default function Metrics() {
   const poll = useMetrics()
   const history = useMetricsHistory(300)
   const stream = useMetricsStream()
+
+  const [configuredInterfaces, setConfiguredInterfaces] = useState<NetworkInterface[]>([])
+  useEffect(() => {
+    getInterfaces().then((r) => setConfiguredInterfaces(r.data ?? [])).catch(() => {})
+  }, [])
+  const labelFor = (name: string): string => {
+    const iface = configuredInterfaces.find((i) => i.name === name)
+    return iface?.description?.trim() || name
+  }
 
   // Prefer live WebSocket data, fall back to polled data
   const snap: MetricsSnapshot | null = stream.data ?? poll.data ?? null
@@ -578,7 +587,7 @@ export default function Metrics() {
 
         <Card title="LAN Interfaces">
           {snap ? (
-            <InterfaceTable ifaces={snap.lan_ifaces} />
+            <InterfaceTable ifaces={snap.lan_ifaces} labelFor={labelFor} />
           ) : (
             <p className="text-sm text-gray-400">No data</p>
           )}

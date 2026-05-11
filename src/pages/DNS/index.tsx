@@ -138,6 +138,9 @@ export default function DNS() {
   const activeSection =
     sectionParam === 'overrides' || sectionParam === 'blocklists' ? sectionParam : 'settings'
 
+  const interfaceLabel = (iface: NetworkInterface): string =>
+    iface.description?.trim() || (iface.wanMode || iface.gateway ? 'WAN' : iface.name)
+
   const interfaceOptions = useMemo(() => interfaces.map((iface) => iface.name), [interfaces])
   const selectedInterface = searchParams.get('iface') ?? ''
   const effectiveInterface = selectedInterface || interfaceOptions[0] || ''
@@ -485,16 +488,16 @@ export default function DNS() {
                   onChange={(e) => handleChangeBlocklistInterface(e.target.value)}
                 >
                   {interfaceOptions.length === 0 && <option value="">No interfaces available</option>}
-                  {interfaceOptions.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
+                  {interfaces.map((iface) => (
+                    <option key={iface.name} value={iface.name}>
+                      {interfaceLabel(iface)}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="rounded border border-gray-200 p-3 bg-gray-50">
                 <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">Active Interface</p>
-                <p className="mt-1 font-medium text-gray-900 font-mono">{effectiveInterface || '—'}</p>
+                <p className="mt-1 font-medium text-gray-900">{effectiveInterface ? interfaceLabel(interfaces.find((i) => i.name === effectiveInterface) ?? { name: effectiveInterface, description: '', type: 'ethernet' as const, enabled: true }) : '—'}</p>
               </div>
             </div>
 

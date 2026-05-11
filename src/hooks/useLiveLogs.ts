@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getAuthToken } from '../api/client'
+import { searchLogs } from '../api/logs'
 import type { LiveLogsFilter, LogEntry, LogLevel, LogSource, WsStatus } from '../types/logs'
 
 const MAX_BUFFER = 2000
@@ -193,6 +194,23 @@ export function useLiveLogs() {
 
   const clearLogs = useCallback(() => setLogs([]), [])
 
+  const loadHistoricalRange = useCallback(async (from: string, to: string) => {
+    const res = await searchLogs({ from, to, limit: MAX_BUFFER })
+    const raw = Array.isArray(res.data) ? res.data : []
+    const normalized: LogEntry[] = []
+    let localSeq = 0
+    for (const item of raw) {
+      localSeq += 1
+      const entry = normalizeWsEvent(item, localSeq)
+      if (entry) normalized.push(entry)
+    }
+
+    setLogs(normalized)
+    setPaused(true)
+    setAutoScroll(true)
+    return normalized.length
+  }, [])
+
   const filteredLogs = logs.filter((entry) => {    if (filter.source !== 'all' && entry.source !== filter.source) return false
     if (filter.level !== 'all' && entry.level !== filter.level) return false
     if (filter.search) {
@@ -217,5 +235,6 @@ export function useLiveLogs() {
     setAutoScroll,
     clearLogs,
     reconnect: connect,
+    loadHistoricalRange,
   }
 }

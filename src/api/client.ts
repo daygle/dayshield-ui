@@ -108,10 +108,17 @@ apiClient.interceptors.response.use(
       return Promise.reject(new Error('Network error: could not reach DayShield API'))
     }
 
-    const responseData = error.response?.data as Record<string, unknown> | undefined
+    const rawData = error.response?.data
+    const responseData =
+      rawData !== null && typeof rawData === 'object'
+        ? (rawData as Record<string, unknown>)
+        : undefined
     const message =
       (responseData?.error as string | undefined) ??
-      (responseData?.message as string | undefined) ?? error.message ?? 'Unknown error'
+      (responseData?.message as string | undefined) ??
+      (typeof rawData === 'string' && rawData.trim().length > 0 ? rawData.trim() : undefined) ??
+      error.message ??
+      'Unknown error'
     return Promise.reject(new Error(message))
   },
 )

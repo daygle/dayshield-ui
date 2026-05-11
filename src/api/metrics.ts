@@ -27,6 +27,7 @@ interface BackendMetricsSnapshot {
     rule_hit_counts?: Array<{
       handle?: number
       packets?: number
+        comment?: string
     }>
   }
   suricata?: {
@@ -106,7 +107,7 @@ export function normalizeMetricsSnapshot(raw: unknown): MetricsSnapshot {
     firewall_rule_hits: Array.isArray(backend.firewall?.rule_hit_counts)
       ? backend.firewall!.rule_hit_counts!.map((r) => ({
           rule_id: r.handle ?? 0,
-          description: `Rule ${r.handle ?? 0}`,
+            description: r.comment?.trim() || `Rule ${r.handle ?? 0}`,
           hits: r.packets ?? 0,
         }))
       : [],

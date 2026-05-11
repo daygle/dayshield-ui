@@ -7,7 +7,7 @@ import type {
   NotifyTestResult,
 } from '../types'
 
-type BackendNotifyCategory = 'suricata' | 'crowdsec' | 'acme' | 'system'
+type BackendNotifyCategory = 'suricata' | 'crowd_sec' | 'crowdsec' | 'acme' | 'system'
 
 interface BackendNotifyConfig {
   enabled?: boolean
@@ -24,14 +24,14 @@ interface BackendNotifyConfig {
 
 function mapBackendCategoryToUi(cat: BackendNotifyCategory): NotifyCategory {
   if (cat === 'suricata') return 'ids'
-  if (cat === 'crowdsec') return 'crowdsec'
+  if (cat === 'crowd_sec' || cat === 'crowdsec') return 'crowdsec'
   if (cat === 'acme') return 'acme'
   return 'system'
 }
 
 function mapUiCategoryToBackend(cat: NotifyCategory): BackendNotifyCategory {
   if (cat === 'ids') return 'suricata'
-  if (cat === 'crowdsec') return 'crowdsec'
+  if (cat === 'crowdsec') return 'crowd_sec'
   if (cat === 'acme') return 'acme'
   return 'system'
 }

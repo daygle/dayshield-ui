@@ -165,8 +165,8 @@ function updateActionMessageClasses(message: string): string {
     return 'rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700'
   }
 
-  if (normalized.includes('warning')) {
-    return 'rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800'
+  if (normalized.includes('note')) {
+    return 'rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800'
   }
 
   if (normalized.includes('applied successfully') || normalized.includes('passed')) {
@@ -174,6 +174,19 @@ function updateActionMessageClasses(message: string): string {
   }
 
   return 'rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700'
+}
+
+function formatUpdateInterval(minutes: number): string {
+  if (!Number.isFinite(minutes) || minutes <= 0) return 'Disabled'
+  if (minutes % 1440 === 0) {
+    const days = minutes / 1440
+    return days === 1 ? 'Every 24 hours' : `Every ${days} days`
+  }
+  if (minutes % 60 === 0) {
+    const hours = minutes / 60
+    return hours === 1 ? 'Every 1 hour' : `Every ${hours} hours`
+  }
+  return `Every ${minutes} minutes`
 }
 
 function normalizeRegistryUrl(input?: string): string {
@@ -215,15 +228,15 @@ function detectRegistry404Hint(components: UpdatesStatus['components']): string 
 }
 
 /**
- * Parse validation message to extract structured warning/error information.
- * Format: "validation passed with N warning(s): component: message | component: message"
+ * Parse validation message to extract structured note/error information.
+ * Format: "validation passed with N note(s): component: message | component: message"
  * Or: "validation failed: error message"
  * Or: "update preflight failed" / "update action failed"
  */
 function parseValidationMessage(message: string): {
   status: 'passed' | 'failed' | 'error'
-  warningCount?: number
-  warnings?: Array<{ component: string; message: string }>
+  noteCount?: number
+  notes?: Array<{ component: string; message: string }>
   error?: string
 } {
   // Handle preflight/general update failures
@@ -243,18 +256,18 @@ function parseValidationMessage(message: string): {
   }
 
   if (message.includes('validation passed')) {
-    const countMatch = message.match(/validation passed with (\d+) warning\(s\)/)
-    const warningCount = countMatch ? parseInt(countMatch[1], 10) : 0
+    const countMatch = message.match(/validation passed with (\d+) note\(s\)/)
+    const noteCount = countMatch ? parseInt(countMatch[1], 10) : 0
 
-    const warningPart = message.split(': ', 2)[1] || ''
-    const warnings: Array<{ component: string; message: string }> = []
+    const notePart = message.split(': ', 2)[1] || ''
+    const notes: Array<{ component: string; message: string }> = []
 
-    // Split by pipe and parse each warning
-    const items = warningPart.split(' | ').filter(Boolean)
+    // Split by pipe and parse each note
+    const items = notePart.split(' | ').filter(Boolean)
     for (const item of items) {
       const match = item.match(/^([^:]+):\s*(.+)$/)
       if (match) {
-        warnings.push({
+        notes.push({
           component: match[1].trim().toUpperCase(),
           message: match[2].trim(),
         })
@@ -263,8 +276,8 @@ function parseValidationMessage(message: string): {
 
     return {
       status: 'passed',
-      warningCount,
-      warnings,
+      noteCount,
+      notes,
     }
   }
 
@@ -584,7 +597,7 @@ export default function System() {
               <p className="text-gray-500 text-sm">Auto Check</p>
               <p className="font-medium text-gray-900">
                 {updates.settings.autoCheckEnabled
-                  ? `Every ${updates.settings.checkIntervalMinutes} minutes`
+                  ? formatUpdateInterval(updates.settings.checkIntervalMinutes)
                   : 'Disabled'}
               </p>
             </div>
@@ -790,21 +803,21 @@ export default function System() {
                 )
               }
 
-              if (parsed.status === 'passed' && parsed.warningCount && parsed.warnings && parsed.warnings.length > 0) {
+              if (parsed.status === 'passed' && parsed.noteCount && parsed.notes && parsed.notes.length > 0) {
                 return (
                   <div className={containerClasses}>
                     <div className="space-y-3">
                       <div className="font-medium">
-                        Validation Passed with {parsed.warningCount} Warning{parsed.warningCount !== 1 ? 's' : ''}
+                        Validation OK with {parsed.noteCount} Note{parsed.noteCount !== 1 ? 's' : ''}
                       </div>
                       <div className="space-y-2">
-                        {/* Group warnings by component */}
+                        {/* Group notes by component */}
                         {Array.from(new Map(
-                          parsed.warnings.map(w => [w.component, w])
-                        ).entries()).map(([component, warning]) => (
+                          parsed.notes.map(n => [n.component, n])
+                        ).entries()).map(([component, note]) => (
                           <div key={component} className="border-l-2 border-current pl-3">
                             <div className="font-medium text-sm">{component}</div>
-                            <div className="text-xs mt-1">{warning.message}</div>
+                            <div className="text-xs mt-1">{note.message}</div>
                           </div>
                         ))}
                       </div>
