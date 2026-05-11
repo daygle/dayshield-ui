@@ -53,6 +53,7 @@ export default function Gateways() {
   const [deleteName, setDeleteName] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [interfaces, setInterfaces] = useState<string[]>([])
+  const [editingActiveIp, setEditingActiveIp] = useState<string | undefined>()
 
   const interfaceLabel = (name: string) => (defaultIface && name === defaultIface ? 'WAN' : name)
 
@@ -82,20 +83,23 @@ export default function Gateways() {
   const openAdd = () => {
     setForm(defaultForm)
     setIsEditing(false)
+    setEditingActiveIp(undefined)
     setModalOpen(true)
   }
 
   const openEdit = (row: GatewayRow) => {
+    const isAutoGateway = String(row.name).endsWith('_AUTO')
     setForm({
-      name: row.name,
+      name: isAutoGateway ? `${row.interface}_AUTO` : row.name,
       description: row.description,
       interface: row.interface,
-      gateway_ip: row.gateway_ip,
+      gateway_ip: isAutoGateway ? '' : row.gateway_ip,
       monitor_ip: row.monitor_ip,
       weight: row.weight,
       enabled: row.enabled,
     })
     setIsEditing(true)
+    setEditingActiveIp((row.active_ip as string) ?? undefined)
     setModalOpen(true)
   }
 
@@ -286,8 +290,21 @@ export default function Gateways() {
               placeholder="e.g. 203.0.113.1"
               value={form.gateway_ip ?? ''}
               onChange={(e) => setForm((f) => ({ ...f, gateway_ip: e.target.value }))}
+              disabled={isEditing && String(form.name).endsWith('_AUTO')}
             />
           </FormField>
+          {isEditing && String(form.name).endsWith('_AUTO') && (
+            <FormField
+              label="Active Gateway IP"
+              hint="Current default-route gateway learned from the running kernel."
+            >
+              <input
+                className="input"
+                value={editingActiveIp ?? '—'}
+                readOnly
+              />
+            </FormField>
+          )}
           <FormField
             label="Monitor IP"
             hint="IP to ping for health checks. Defaults to gateway IP when blank."

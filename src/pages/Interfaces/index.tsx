@@ -150,7 +150,7 @@ export default function Interfaces() {
                         {iface.enabled ? 'Up' : 'Down'}
                       </span>
                       <span className="text-gray-400 text-sm">
-                        {iface.ipv4Address && !iface.dhcp4
+                        {iface.ipv4Address
                           ? `${iface.ipv4Address}/${iface.ipv4Prefix ?? ''}`
                           : iface.mac
                             ? iface.mac

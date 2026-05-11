@@ -27,6 +27,13 @@ export interface NetworkInterface {
   duplex?: 'full' | 'half' | 'auto'
   gateway?: string  // static WAN gateway IP
   mss?: number
+  kernelState?: string
+  kernelAddresses?: string[]
+  kernelFlags?: string[]
+  kernelRxPackets?: number
+  kernelRxBytes?: number
+  kernelTxPackets?: number
+  kernelTxBytes?: number
 }
 
 export interface KernelInterface {
@@ -34,7 +41,12 @@ export interface KernelInterface {
   mac?: string
   mtu?: number
   state?: string
+  flags?: string[]
   addresses?: string[]
+  rx_packets?: number
+  rx_bytes?: number
+  tx_packets?: number
+  tx_bytes?: number
 }
 
 export interface InterfacesInventory {
