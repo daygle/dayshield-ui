@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   getCrowdSecConfig,
   updateCrowdSecConfig,
@@ -10,6 +10,8 @@ import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
+import ErrorBoundary from '../../components/ErrorBoundary'
+import { useToast } from '../../context/ToastContext'
 
 type DecisionRow = CrowdSecDecision & Record<string, unknown>
 
@@ -26,6 +28,14 @@ const decisionTypeBadge = (type: CrowdSecDecision['type']) => {
   )
 }
 
+export default function CrowdSec() {
+  return (
+    <ErrorBoundary fallbackMessage="The CrowdSec page failed to render. Please refresh and try again.">
+      <CrowdSecContent />
+    </ErrorBoundary>
+  )
+}
+
 const decisionColumns: Column<DecisionRow>[] = [
   { key: 'value', header: 'IP / Range', render: (row) => <span className="font-mono text-xs">{row.value as string}</span> },
   { key: 'type', header: 'Type', render: (row) => decisionTypeBadge(row.type as CrowdSecDecision['type']) },
@@ -34,15 +44,17 @@ const decisionColumns: Column<DecisionRow>[] = [
   { key: 'createdAt', header: 'Created', render: (row) => new Date(row.createdAt as string).toLocaleString() },
 ]
 
-export default function CrowdSec() {
+function CrowdSecContent() {
   const [status, setStatus] = useState<CrowdSecStatus | null>(null)
   const [decisions, setDecisions] = useState<DecisionRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   const [configModalOpen, setConfigModalOpen] = useState(false)
   const [configForm, setConfigForm] = useState<Partial<CrowdSecStatus>>({})
   const [saving, setSaving] = useState(false)
+  const { addToast } = useToast()
 
   const loadAll = () => {
     setLoading(true)
@@ -51,6 +63,7 @@ export default function CrowdSec() {
         setStatus(st.data)
         setConfigForm(st.data)
         setDecisions(dec.data as DecisionRow[])
+        setError(null)
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))
@@ -58,24 +71,68 @@ export default function CrowdSec() {
 
   useEffect(loadAll, [])
 
+  const validation = React.useMemo(() => {
+    const lapiUrl = (configForm.lapi_url ?? '').trim()
+    const updateInterval = Number(configForm.update_interval)
+    const banAlias = (configForm.ban_alias_name ?? '').trim()
+    const errors: string[] = []
+
+    if (!lapiUrl) {
+      errors.push('LAPI URL is required.')
+    } else {
+      try {
+        const parsed = new URL(lapiUrl)
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          errors.push('LAPI URL must use http:// or https://.')
+        }
+      } catch {
+        errors.push('LAPI URL must be a valid URL.')
+      }
+    }
+
+    if (!Number.isFinite(updateInterval) || updateInterval < 1) {
+      errors.push('Update interval must be at least 1 second.')
+    }
+
+    if (!banAlias) {
+      errors.push('Ban alias name is required.')
+    }
+
+    return {
+      errors,
+      lapiUrlError: errors.find((entry) => entry.startsWith('LAPI URL')) ?? '',
+      updateIntervalError: errors.find((entry) => entry.startsWith('Update interval')) ?? '',
+      banAliasError: errors.find((entry) => entry.startsWith('Ban alias')) ?? '',
+      isValid: errors.length === 0,
+    }
+  }, [configForm.ban_alias_name, configForm.lapi_url, configForm.update_interval])
+
   const handleSaveConfig = () => {
-    if (!configForm.lapi_url || !configForm.update_interval || !configForm.ban_alias_name) {
-      setError('LAPI URL, update interval, and alias name are required.')
+    if (!validation.isValid) {
+      setError(validation.errors[0] ?? 'Please fix the CrowdSec settings form errors.')
+      return
+    }
+
+    const enableRequested = Boolean(configForm.enabled)
+    if (enableRequested && !status?.enabled && !window.confirm('Enable CrowdSec now with this configuration?')) {
       return
     }
 
     setSaving(true)
     updateCrowdSecConfig({
       enabled: !!configForm.enabled,
-      lapi_url: configForm.lapi_url,
+      lapi_url: (configForm.lapi_url ?? '').trim(),
       api_key: configForm.api_key ?? '',
-      update_interval: Number(configForm.update_interval) || 60,
-      ban_alias_name: configForm.ban_alias_name,
+      update_interval: Number(configForm.update_interval),
+      ban_alias_name: (configForm.ban_alias_name ?? '').trim(),
     })
       .then((res) => {
         setStatus(res.data)
         setConfigForm(res.data)
         setConfigModalOpen(false)
+        setError(null)
+        setSuccess('CrowdSec configuration saved successfully.')
+        addToast('CrowdSec configuration saved successfully.', 'success')
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setSaving(false))
@@ -83,8 +140,9 @@ export default function CrowdSec() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-40 text-gray-400">
-        Loading CrowdSec data…
+      <div className="space-y-4" role="status" aria-live="polite">
+        <div className="h-24 animate-pulse rounded-lg border border-gray-200 bg-gray-100" />
+        <div className="h-56 animate-pulse rounded-lg border border-gray-200 bg-gray-100" />
       </div>
     )
   }
@@ -92,8 +150,13 @@ export default function CrowdSec() {
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700" role="alert" aria-live="assertive">
           {error}
+        </div>
+      )}
+      {success && (
+        <div className="rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700" role="status" aria-live="polite">
+          {success}
         </div>
       )}
 
@@ -174,6 +237,7 @@ export default function CrowdSec() {
         <div className="space-y-4">
           <label className="flex items-center gap-3 cursor-pointer select-none">
             <input
+              aria-label="Enable CrowdSec integration"
               type="checkbox"
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               checked={!!configForm.enabled}
@@ -187,6 +251,8 @@ export default function CrowdSec() {
             label="LAPI URL"
             required
             placeholder="http://127.0.0.1:8080"
+            aria-label="CrowdSec local API URL"
+            error={validation.lapiUrlError || undefined}
             value={configForm.lapi_url ?? ''}
             onChange={(e) => setConfigForm((f) => ({ ...f, lapi_url: e.target.value }))}
           />
@@ -195,6 +261,7 @@ export default function CrowdSec() {
             id="crowdsec-api-key"
             label="API Key"
             placeholder="Paste CrowdSec API key"
+            aria-label="CrowdSec API key"
             value={configForm.api_key ?? ''}
             onChange={(e) => setConfigForm((f) => ({ ...f, api_key: e.target.value }))}
           />
@@ -202,13 +269,15 @@ export default function CrowdSec() {
           <div className="grid grid-cols-2 gap-4">
             <FormField
               id="crowdsec-update-interval"
-              label="Update Interval (seconds)"
-              type="number"
-              min={1}
-              required
-              value={String(configForm.update_interval ?? 60)}
-              onChange={(e) =>
-                setConfigForm((f) => ({
+                label="Update Interval (seconds)"
+                type="number"
+                min={1}
+                required
+                aria-label="CrowdSec decision update interval seconds"
+                error={validation.updateIntervalError || undefined}
+                value={String(configForm.update_interval ?? 60)}
+                onChange={(e) =>
+                  setConfigForm((f) => ({
                   ...f,
                   update_interval: Math.max(1, Number(e.target.value) || 60),
                 }))
@@ -218,11 +287,13 @@ export default function CrowdSec() {
             <FormField
               id="crowdsec-ban-alias-name"
               label="Ban Alias Name"
-              required
-              placeholder="crowdsec_bans"
-              value={configForm.ban_alias_name ?? ''}
-              onChange={(e) => setConfigForm((f) => ({ ...f, ban_alias_name: e.target.value }))}
-            />
+                required
+                placeholder="crowdsec_bans"
+                aria-label="CrowdSec ban alias name"
+                error={validation.banAliasError || undefined}
+                value={configForm.ban_alias_name ?? ''}
+                onChange={(e) => setConfigForm((f) => ({ ...f, ban_alias_name: e.target.value }))}
+              />
           </div>
         </div>
       </Modal>

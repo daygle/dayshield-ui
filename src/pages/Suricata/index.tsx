@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   getSuricataConfig,
   getInterfaceSuricataConfig,
+  type InterfaceSuricataConfig,
   updateSuricataConfig,
   updateInterfaceSuricataConfig,
   getSuricataRulesets,
@@ -22,6 +23,7 @@ import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import FormField from '../../components/FormField'
+import ErrorBoundary from '../../components/ErrorBoundary'
 
 type RulesetRow = SuricataRuleset & Record<string, unknown>
 type AlertRow = SuricataAlert & Record<string, unknown>
@@ -50,17 +52,11 @@ const actionBadge = (action: 'alert' | 'drop') => (
   </span>
 )
 
-export default function Suricata() {
+function SuricataContent() {
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedInterface = searchParams.get('iface')
   const [config, setConfig] = useState<SuricataConfig | null>(null)
-  const [interfaceConfig, setInterfaceConfig] = useState<{
-    interface: string
-    monitored: boolean
-    enabled: boolean
-    mode: string
-    interfaces: string[]
-  } | null>(null)
+  const [interfaceConfig, setInterfaceConfig] = useState<InterfaceSuricataConfig | null>(null)
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
   const [rulesets, setRulesets] = useState<RulesetRow[]>([])
   const [alerts, setAlerts] = useState<AlertRow[]>([])
@@ -70,6 +66,7 @@ export default function Suricata() {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [createFormData, setCreateFormData] = useState({ name: '', url: '', path: '', enabled: true })
   const [creatingRuleset, setCreatingRuleset] = useState(false)
+  const [createFormAttempted, setCreateFormAttempted] = useState(false)
 
   const loadAll = () => {
     setLoading(true)
@@ -87,7 +84,7 @@ export default function Suricata() {
         if (selectedInterface) {
           const [cfg, ifaceCfg, rs, al] = results as [
             { data: SuricataConfig },
-            { data: { interface: string; monitored: boolean; enabled: boolean; mode: string; interfaces: string[] } },
+            { data: InterfaceSuricataConfig },
             { data: SuricataRuleset[] },
             { data: SuricataAlert[] },
           ]
@@ -95,6 +92,7 @@ export default function Suricata() {
           setInterfaceConfig(ifaceCfg.data)
           setRulesets(rs.data as RulesetRow[])
           setAlerts(al.data as AlertRow[])
+          setError(null)
           return
         }
 
@@ -107,6 +105,7 @@ export default function Suricata() {
         setInterfaceConfig(null)
         setRulesets(rs.data as RulesetRow[])
         setAlerts(al.data as AlertRow[])
+        setError(null)
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))
@@ -154,14 +153,20 @@ export default function Suricata() {
   const handleToggleEnabled = () => {
     if (!config) return
     updateSuricataConfig({ enabled: !config.enabled })
-      .then((res) => setConfig(res.data))
+      .then((res) => {
+        setConfig(res.data)
+        setError(null)
+      })
       .catch((err: Error) => setError(err.message))
   }
 
   const handleToggleMode = () => {
     if (!config) return
     updateSuricataConfig({ mode: config.mode === 'ids' ? 'ips' : 'ids' })
-      .then((res) => setConfig(res.data))
+      .then((res) => {
+        setConfig(res.data)
+        setError(null)
+      })
       .catch((err: Error) => setError(err.message))
   }
 
@@ -171,6 +176,7 @@ export default function Suricata() {
       .then((res) => {
         setInterfaceConfig(res.data)
         setConfig((prev) => (prev ? { ...prev, interfaces: res.data.interfaces } : prev))
+        setError(null)
       })
       .catch((err: Error) => setError(err.message))
   }
@@ -182,18 +188,46 @@ export default function Suricata() {
         setRulesets((prev) =>
           prev.map((r) => (r.id === id ? ({ ...r, ...res.data } as RulesetRow) : r)),
         )
+        setError(null)
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setTogglingId(null))
   }
 
-  const handleCreateRuleset = () => {
-    if (!createFormData.name.trim() || (!createFormData.url.trim() && !createFormData.path.trim())) {
-      setError('Name and either URL or path are required')
-      return
+  const createFormValidation = React.useMemo(() => {
+    const name = createFormData.name.trim()
+    const url = createFormData.url.trim()
+    const path = createFormData.path.trim()
+    let formError = ''
+    let urlError = ''
+    let pathError = ''
+
+    if (!name) {
+      formError = 'Ruleset name is required.'
+    } else if (!url && !path) {
+      formError = 'Provide either a URL or local path.'
+    } else if (url && path) {
+      formError = 'Provide either URL or path, not both.'
+    } else if (url) {
+      try {
+        const parsed = new URL(url)
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          urlError = 'Ruleset URL must start with http:// or https://.'
+        }
+      } catch {
+        urlError = 'Ruleset URL must be a valid URL.'
+      }
+    } else if (!path.startsWith('/')) {
+      pathError = 'Local path should start with /.'
     }
-    if (createFormData.url.trim() && createFormData.path.trim()) {
-      setError('Provide either URL or path, not both')
+
+    return { formError, urlError, pathError }
+  }, [createFormData])
+
+  const handleCreateRuleset = () => {
+    setCreateFormAttempted(true)
+    if (createFormValidation.formError || createFormValidation.urlError || createFormValidation.pathError) {
+      setError(createFormValidation.formError || createFormValidation.urlError || createFormValidation.pathError)
       return
     }
 
@@ -208,16 +242,20 @@ export default function Suricata() {
         setRulesets((prev) => [...prev, res.data as RulesetRow])
         setCreateFormData({ name: '', url: '', path: '', enabled: true })
         setShowCreateForm(false)
+        setCreateFormAttempted(false)
         setError(null)
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setCreatingRuleset(false))
   }
 
-  const interfaceLabel = (name: string): string => {
-    const iface = interfaces.find((i) => i.name === name)
-    return iface?.description?.trim() || name
-  }
+  const interfaceLabels = React.useMemo(
+    () =>
+      new Map(interfaces.map((iface) => [iface.name, iface.description?.trim() || iface.name])),
+    [interfaces],
+  )
+
+  const interfaceLabel = (name: string): string => interfaceLabels.get(name) ?? name
 
   const rulesetColumns: Column<RulesetRow>[] = [
     { key: 'name', header: 'Ruleset' },
@@ -233,6 +271,7 @@ export default function Suricata() {
       header: 'Enabled',
       render: (row) => (
         <Button
+          aria-label={`Toggle ruleset ${String(row.name)}`}
           variant={row.enabled ? 'primary' : 'secondary'}
           size="sm"
           loading={togglingId === (row.id as number)}
@@ -272,7 +311,7 @@ export default function Suricata() {
     },
   ]
 
-  const selectedInterfaceMeta = useMemo(
+  const selectedInterfaceMeta = React.useMemo(
     () => interfaces.find((iface) => iface.name === selectedInterface) ?? null,
     [interfaces, selectedInterface],
   )
@@ -280,7 +319,7 @@ export default function Suricata() {
   const selectedInterfaceLabel = selectedInterfaceMeta?.description || selectedInterface || ''
   const alertsIncludeInterface = alerts.some((alert) => Boolean(alert.interface))
 
-  const filteredAlerts = useMemo(() => {
+  const filteredAlerts = React.useMemo(() => {
     if (!selectedInterface) return alerts
     if (alertsIncludeInterface) {
       return alerts.filter((alert) => String(alert.interface ?? '') === selectedInterface)
@@ -290,8 +329,13 @@ export default function Suricata() {
 
   return (
     <div className="space-y-6">
+      {loading && (
+        <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600" role="status" aria-live="polite">
+          Loading Suricata configuration, rulesets, and alerts…
+        </div>
+      )}
       {error && (
-        <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700" role="alert" aria-live="assertive">
           {error}
         </div>
       )}
@@ -305,6 +349,7 @@ export default function Suricata() {
             id="suricata-interface-selector"
             label="Interface"
             as="select"
+            aria-label="Select Suricata interface"
             value={selectedInterface ?? ''}
             onChange={(e) => handleSelectInterface(e.target.value)}
           >
@@ -329,6 +374,7 @@ export default function Suricata() {
                 <Button
                   variant={interfaceConfig.monitored ? 'secondary' : 'primary'}
                   size="sm"
+                  aria-label={interfaceConfig.monitored ? 'Disable Suricata on selected interface' : 'Enable Suricata on selected interface'}
                   onClick={handleToggleSelectedInterface}
                 >
                   {interfaceConfig.monitored ? 'Disable on Interface' : 'Enable on Interface'}
@@ -337,6 +383,7 @@ export default function Suricata() {
               <Button
                 variant={config.mode === 'ips' ? 'danger' : 'secondary'}
                 size="sm"
+                aria-label="Toggle Suricata mode between IDS and IPS"
                 onClick={handleToggleMode}
               >
                 Mode: {config.mode.toUpperCase()}
@@ -344,6 +391,7 @@ export default function Suricata() {
               <Button
                 variant={config.enabled ? 'danger' : 'primary'}
                 size="sm"
+                aria-label={config.enabled ? 'Stop Suricata' : 'Start Suricata'}
                 onClick={handleToggleEnabled}
               >
                 {config.enabled ? 'Stop' : 'Start'}
@@ -397,13 +445,17 @@ export default function Suricata() {
         title="Rulesets"
         subtitle={selectedInterface ? `Rulesets applied when monitoring ${selectedInterfaceLabel}` : 'Enable or disable individual rule sources'}
         actions={
-          <Button
-            variant={showCreateForm ? 'secondary' : 'primary'}
-            size="sm"
-            onClick={() => setShowCreateForm(!showCreateForm)}
-          >
-            {showCreateForm ? 'Cancel' : 'Add Ruleset'}
-          </Button>
+            <Button
+              variant={showCreateForm ? 'secondary' : 'primary'}
+              size="sm"
+              aria-label={showCreateForm ? 'Cancel ruleset creation' : 'Add a new ruleset'}
+              onClick={() => {
+                setShowCreateForm(!showCreateForm)
+                if (!showCreateForm) setCreateFormAttempted(false)
+              }}
+            >
+              {showCreateForm ? 'Cancel' : 'Add Ruleset'}
+            </Button>
         }
       >
         {showCreateForm && (
@@ -413,6 +465,8 @@ export default function Suricata() {
                 id="ruleset-name"
                 label="Ruleset Name"
                 type="text"
+                aria-label="Ruleset name"
+                error={createFormAttempted && !createFormData.name.trim() ? 'Ruleset name is required.' : undefined}
                 value={createFormData.name}
                 onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
                 placeholder="e.g., ET/Open, emerging-threats"
@@ -421,6 +475,8 @@ export default function Suricata() {
                 id="ruleset-url"
                 label="URL (or use Path)"
                 type="text"
+                aria-label="Ruleset source URL"
+                error={createFormAttempted ? createFormValidation.urlError : undefined}
                 value={createFormData.url}
                 onChange={(e) => setCreateFormData({ ...createFormData, url: e.target.value })}
                 placeholder="https://..."
@@ -429,14 +485,18 @@ export default function Suricata() {
                 id="ruleset-path"
                 label="Local Path (or use URL)"
                 type="text"
+                aria-label="Ruleset local path"
+                error={createFormAttempted ? createFormValidation.pathError : undefined}
                 value={createFormData.path}
                 onChange={(e) => setCreateFormData({ ...createFormData, path: e.target.value })}
                 placeholder="/etc/suricata/rules/..."
               />
               <label className="flex items-center gap-2">
                 <input
+                  id="ruleset-enabled"
                   type="checkbox"
                   checked={createFormData.enabled}
+                  aria-label="Enable ruleset immediately"
                   onChange={(e) => setCreateFormData({ ...createFormData, enabled: e.target.checked })}
                   className="w-4 h-4 rounded"
                 />
@@ -446,6 +506,7 @@ export default function Suricata() {
             <Button
               variant="primary"
               size="sm"
+              aria-label="Create Suricata ruleset"
               loading={creatingRuleset}
               onClick={handleCreateRuleset}
             >
@@ -486,5 +547,13 @@ export default function Suricata() {
         )}
       </Card>
     </div>
+  )
+}
+
+export default function Suricata() {
+  return (
+    <ErrorBoundary fallbackMessage="The Suricata page failed to render. Please refresh and try again.">
+      <SuricataContent />
+    </ErrorBoundary>
   )
 }

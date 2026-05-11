@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   getCloudflaredConfig,
   getCloudflaredStatus,
@@ -13,35 +13,8 @@ import type {
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import FormField from '../../components/FormField'
-
-type ToastKind = 'success' | 'error'
-
-interface ToastMessage {
-  id: number
-  kind: ToastKind
-  text: string
-}
-
-let toastSeq = 0
-
-function Toast({ messages }: { messages: ToastMessage[] }) {
-  if (messages.length === 0) return null
-  return (
-    <div className="fixed bottom-5 right-5 z-50 flex w-80 flex-col gap-2">
-      {messages.map((message) => (
-        <div
-          key={message.id}
-          role="alert"
-          className={`rounded-lg px-4 py-3 text-sm text-white shadow-lg ${
-            message.kind === 'success' ? 'bg-green-600' : 'bg-red-600'
-          }`}
-        >
-          {message.text}
-        </div>
-      ))}
-    </div>
-  )
-}
+import ErrorBoundary from '../../components/ErrorBoundary'
+import { useToast } from '../../context/ToastContext'
 
 const DEFAULT_INGRESS: CloudflaredIngressRule = {
   hostname: '',
@@ -72,19 +45,16 @@ function statusBadge(status: CloudflaredStatus | null) {
   return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${tone}`}>{label}</span>
 }
 
-export default function CloudflaredPage() {
+function CloudflaredPageContent() {
   const [config, setConfig] = useState<CloudflaredConfig>(DEFAULT_CONFIG)
   const [status, setStatus] = useState<CloudflaredStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [restarting, setRestarting] = useState(false)
-  const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const { addToast } = useToast()
 
-  const addToast = useCallback((kind: ToastKind, text: string) => {
-    const id = toastSeq++
-    setToasts((prev) => [...prev, { id, kind, text }])
-    setTimeout(() => setToasts((prev) => prev.filter((item) => item.id !== id)), 4000)
-  }, [])
+  const notifySuccess = useCallback((text: string) => addToast(text, 'success'), [addToast])
+  const notifyError = useCallback((text: string) => addToast(text, 'error'), [addToast])
 
   const loadAll = useCallback(() => {
     setLoading(true)
@@ -93,15 +63,65 @@ export default function CloudflaredPage() {
         setConfig(cfg.data)
         setStatus(stat.data)
       })
-      .catch((err: Error) => addToast('error', `Failed to load Cloudflared data: ${err.message}`))
+      .catch((err: Error) => notifyError(`Failed to load Cloudflared data: ${err.message}`))
       .finally(() => setLoading(false))
-  }, [addToast])
+  }, [notifyError])
 
   useEffect(() => {
     loadAll()
   }, [loadAll])
 
+  const ingressValidation = React.useMemo(
+    () =>
+      config.ingress.map((rule) => {
+        const hostname = rule.hostname.trim()
+        const service = rule.service.trim()
+        let hostnameError = ''
+        let serviceError = ''
+
+        if (!hostname) {
+          hostnameError = 'Hostname is required.'
+        } else if (!/^(?=.{1,253}$)(?!-)[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/.test(hostname)) {
+          hostnameError = 'Hostname must be a valid domain name (example: app.example.com).'
+        }
+
+        if (!service) {
+          serviceError = 'Service URL is required.'
+        } else {
+          try {
+            const parsed = new URL(service)
+            if (!['http:', 'https:'].includes(parsed.protocol)) {
+              serviceError = 'Service URL must start with http:// or https://.'
+            }
+          } catch {
+            serviceError = 'Service URL must be a valid URL.'
+          }
+        }
+
+        return { hostnameError, serviceError }
+      }),
+    [config.ingress],
+  )
+
+  const hasIngressErrors = ingressValidation.some((entry) => entry.hostnameError || entry.serviceError)
+
+  const moveIngress = (index: number, direction: -1 | 1) => {
+    setConfig((current) => {
+      const nextIndex = index + direction
+      if (nextIndex < 0 || nextIndex >= current.ingress.length) return current
+      const nextIngress = [...current.ingress]
+      const [rule] = nextIngress.splice(index, 1)
+      nextIngress.splice(nextIndex, 0, rule)
+      return { ...current, ingress: nextIngress }
+    })
+  }
+
   const handleSave = () => {
+    if (hasIngressErrors) {
+      notifyError('Fix invalid ingress hostname/service values before saving.')
+      return
+    }
+
     setSaving(true)
     updateCloudflaredConfig(config)
       .then((res) => {
@@ -109,13 +129,13 @@ export default function CloudflaredPage() {
           ...res.data,
           tunnelToken: current.tunnelToken,
         }))
-        addToast('success', 'Cloudflared configuration saved.')
+        notifySuccess('Cloudflared configuration saved.')
         return getCloudflaredStatus()
       })
       .then((stat) => {
         setStatus(stat.data)
       })
-      .catch((err: Error) => addToast('error', `Save failed: ${err.message}`))
+      .catch((err: Error) => notifyError(`Save failed: ${err.message}`))
       .finally(() => setSaving(false))
   }
 
@@ -123,13 +143,13 @@ export default function CloudflaredPage() {
     setRestarting(true)
     restartCloudflared()
       .then(() => {
-        addToast('success', 'Cloudflared service restarted.')
+        notifySuccess('Cloudflared service restarted.')
         return getCloudflaredStatus()
       })
       .then((stat) => {
         setStatus(stat.data)
       })
-      .catch((err: Error) => addToast('error', `Restart failed: ${err.message}`))
+      .catch((err: Error) => notifyError(`Restart failed: ${err.message}`))
       .finally(() => setRestarting(false))
   }
 
@@ -151,6 +171,15 @@ export default function CloudflaredPage() {
     }))
   }
 
+  const toggleEnabled = () => {
+    if (config.enabled && status?.running) {
+      const proceed = window.confirm('Cloudflared tunnel is currently running. Disable it anyway?')
+      if (!proceed) return
+    }
+
+    setConfig((current) => ({ ...current, enabled: !current.enabled }))
+  }
+
   const busy = loading || saving
 
   return (
@@ -161,7 +190,11 @@ export default function CloudflaredPage() {
         actions={statusBadge(status)}
       >
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <div className="space-y-3" role="status" aria-live="polite">
+            <div className="h-4 w-1/3 animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-2/3 animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-1/2 animate-pulse rounded bg-gray-200" />
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
@@ -201,7 +234,12 @@ export default function CloudflaredPage() {
         title="Configuration"
         subtitle="Store the tunnel token and define which hostnames should map to which internal services."
         actions={
-          <Button variant={config.enabled ? 'danger' : 'primary'} disabled={busy} onClick={() => setConfig((current) => ({ ...current, enabled: !current.enabled }))}>
+          <Button
+            variant={config.enabled ? 'danger' : 'primary'}
+            aria-label={config.enabled ? 'Disable Cloudflared tunnel' : 'Enable Cloudflared tunnel'}
+            disabled={busy}
+            onClick={toggleEnabled}
+          >
             {config.enabled ? 'Disable tunnel' : 'Enable tunnel'}
           </Button>
         }
@@ -210,6 +248,7 @@ export default function CloudflaredPage() {
           <FormField
             id="cloudflared-name"
             label="Tunnel Name"
+            aria-label="Cloudflared tunnel name"
             value={config.tunnelName}
             disabled={busy}
             onChange={(e) => setConfig((current) => ({ ...current, tunnelName: e.target.value }))}
@@ -218,6 +257,7 @@ export default function CloudflaredPage() {
             id="cloudflared-log-level"
             label="Log Level"
             as="select"
+            aria-label="Cloudflared log level"
             value={config.logLevel}
             disabled={busy}
             onChange={(e) => setConfig((current) => ({ ...current, logLevel: e.target.value }))}
@@ -234,13 +274,15 @@ export default function CloudflaredPage() {
             type="password"
             placeholder={config.tunnelTokenConfigured ? 'Stored token present. Enter a new token to replace it.' : 'Paste the Cloudflare tunnel token'}
             value={config.tunnelToken}
+            aria-label="Cloudflared tunnel token"
             disabled={busy}
             onChange={(e) => setConfig((current) => ({ ...current, tunnelToken: e.target.value }))}
-            hint={config.tunnelTokenConfigured ? 'A tunnel token is already stored. Leave blank to keep the existing token.' : undefined}
+            hint={config.tunnelTokenConfigured ? 'A tunnel token is already stored. Leave blank to keep the existing token. Token input is kept in browser memory until you save.' : 'Token input is kept in browser memory until you save.'}
           />
           <FormField
             id="cloudflared-metrics"
             label="Metrics Address"
+            aria-label="Cloudflared metrics address"
             value={config.metricsAddress}
             disabled={busy}
             onChange={(e) => setConfig((current) => ({ ...current, metricsAddress: e.target.value }))}
@@ -259,15 +301,37 @@ export default function CloudflaredPage() {
         }
       >
         <div className="space-y-4">
+          {hasIngressErrors && (
+            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+              One or more ingress rules are invalid. Fix the highlighted fields before saving.
+            </p>
+          )}
           {config.ingress.length === 0 ? (
             <p className="text-sm text-gray-400">No public hostnames defined yet.</p>
           ) : (
             config.ingress.map((rule, index) => (
-              <div key={`${rule.hostname}-${index}`} className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 p-4 md:grid-cols-[1fr_1fr_auto]">
+              <div
+                key={`${rule.hostname}-${index}`}
+                className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 p-4 md:grid-cols-[1fr_1fr_auto]"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.altKey && e.key === 'ArrowUp') {
+                    e.preventDefault()
+                    moveIngress(index, -1)
+                  }
+                  if (e.altKey && e.key === 'ArrowDown') {
+                    e.preventDefault()
+                    moveIngress(index, 1)
+                  }
+                }}
+                aria-label={`Ingress rule ${index + 1}`}
+              >
                 <FormField
                   id={`cloudflared-host-${index}`}
                   label="Hostname"
                   placeholder="app.example.com"
+                  aria-label={`Ingress rule ${index + 1} hostname`}
+                  error={ingressValidation[index]?.hostnameError || undefined}
                   value={rule.hostname}
                   disabled={busy}
                   onChange={(e) => updateIngress(index, { ...rule, hostname: e.target.value })}
@@ -276,12 +340,32 @@ export default function CloudflaredPage() {
                   id={`cloudflared-service-${index}`}
                   label="Service URL"
                   placeholder="http://127.0.0.1:8443"
+                  aria-label={`Ingress rule ${index + 1} service URL`}
+                  error={ingressValidation[index]?.serviceError || undefined}
                   value={rule.service}
                   disabled={busy}
                   onChange={(e) => updateIngress(index, { ...rule, service: e.target.value })}
                 />
-                <div className="flex items-end">
-                  <Button variant="danger" size="sm" disabled={busy} onClick={() => removeIngress(index)}>
+                <div className="flex items-end gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    aria-label={`Move ingress rule ${index + 1} up`}
+                    disabled={busy || index === 0}
+                    onClick={() => moveIngress(index, -1)}
+                  >
+                    ↑
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    aria-label={`Move ingress rule ${index + 1} down`}
+                    disabled={busy || index === config.ingress.length - 1}
+                    onClick={() => moveIngress(index, 1)}
+                  >
+                    ↓
+                  </Button>
+                  <Button variant="danger" size="sm" aria-label={`Remove ingress rule ${index + 1}`} disabled={busy} onClick={() => removeIngress(index)}>
                     Remove
                   </Button>
                 </div>
@@ -295,7 +379,7 @@ export default function CloudflaredPage() {
         <Button variant="secondary" loading={restarting} onClick={handleRestart}>
           Restart Service
         </Button>
-        <Button loading={saving} disabled={busy} onClick={handleSave}>
+        <Button aria-label="Save Cloudflared configuration" loading={saving} disabled={busy} onClick={handleSave}>
           Save Configuration
         </Button>
       </div>
@@ -305,8 +389,14 @@ export default function CloudflaredPage() {
         <a href="/live-logs" className="underline hover:text-gray-600">Live Logs</a> page
         — filter by source <span className="font-mono">cloudflared</span>.
       </p>
-
-      <Toast messages={toasts} />
     </div>
+  )
+}
+
+export default function CloudflaredPage() {
+  return (
+    <ErrorBoundary fallbackMessage="The Cloudflared page failed to render. Please refresh and try again.">
+      <CloudflaredPageContent />
+    </ErrorBoundary>
   )
 }
