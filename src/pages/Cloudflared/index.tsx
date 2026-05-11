@@ -32,7 +32,8 @@ const DEFAULT_CONFIG: CloudflaredConfig = {
   ingress: [],
 }
 
-const HOSTNAME_PATTERN = /^(?=.{1,253}$)(?!-)[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/
+const HOSTNAME_PATTERN =
+  /^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(?:\.(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*$/
 
 function statusBadge(status: CloudflaredStatus | null) {
   if (!status) return null
