@@ -115,7 +115,8 @@ export default function NtpPage() {
 
   const handleSave = () => {
     setSaving(true)
-    updateNtpConfig(config)
+    const payload = { ...config, serveLan: config.listenInterfaces.length > 0 }
+    updateNtpConfig(payload)
       .then((res) => {
         setConfig(res.data)
         addToast('success', 'NTP configuration saved.')
@@ -164,7 +165,7 @@ export default function NtpPage() {
       const selected = c.listenInterfaces.includes(name)
         ? c.listenInterfaces.filter((i) => i !== name)
         : [...c.listenInterfaces, name]
-      return { ...c, listenInterfaces: selected }
+      return { ...c, listenInterfaces: selected, serveLan: selected.length > 0 }
     })
   }
 
@@ -307,43 +308,10 @@ export default function NtpPage() {
         </div>
       </Card>
 
-      {/* Serve LAN Clients */}
+      {/* NTP Server Interfaces */}
       <Card
-        title="LAN NTP Server"
-        subtitle="Enable chrony to serve time to LAN clients. The interface list below controls where it listens."
-      >
-        <label className="flex cursor-pointer items-center gap-3">
-          <div className="relative">
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={config.serveLan}
-              disabled={busy}
-              onChange={(e) => setConfig((c) => ({ ...c, serveLan: e.target.checked }))}
-            />
-            <div
-              className={`h-6 w-11 rounded-full transition-colors duration-200 ${
-                config.serveLan ? 'bg-blue-600' : 'bg-gray-300'
-              } ${busy ? 'opacity-50' : ''}`}
-            />
-            <div
-              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
-                config.serveLan ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </div>
-          <span className="text-sm font-medium text-gray-700">
-            {config.serveLan
-              ? 'Enabled — the firewall serves time to LAN clients'
-              : 'Disabled — the firewall only syncs its own clock'}
-          </span>
-        </label>
-      </Card>
-
-      {/* Listen Interfaces */}
-      <Card
-        title="Listen Interfaces"
-        subtitle="Select which network interfaces NTP should bind to. This narrows the server-side listener set."
+        title="NTP Server Interfaces"
+        subtitle="Select which network interfaces should serve NTP to clients. If none are selected, the device will not serve NTP."
       >
         {loading ? (
           <p className="text-sm text-gray-400">Loading interfaces…</p>
