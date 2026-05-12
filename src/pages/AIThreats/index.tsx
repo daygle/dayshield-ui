@@ -5,10 +5,13 @@ import {
   getAiBlockedEntries,
   unblockAiIp,
   submitAiFeedback,
+  getAiEngineConfig,
+  updateAiEngineConfig,
 } from '../../api/ai'
-import type { ThreatEvent, BlockedEntry } from '../../types'
+import type { ThreatEvent, BlockedEntry, AiEngineConfig } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
+import FormField from '../../components/FormField'
 import Table, { type Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import ErrorBoundary from '../../components/ErrorBoundary'
@@ -68,6 +71,19 @@ function formatRelativeFromMs(timestampMs: number | null): string {
   return formatRelativeFromUnix(Math.floor(timestampMs / 1000))
 }
 
+const DEFAULT_AI_SETTINGS: AiEngineConfig = {
+  enabled: false,
+  automatic_blocking: false,
+  risk_score_block_threshold: 0.9,
+  escalation_window_seconds: 300,
+  block_duration_seconds: 3600,
+  model_type: 'local',
+  training_enabled: true,
+  model_learning_rate: 0.25,
+  remote_inference_url: '',
+  remote_api_key: '',
+}
+
 function riskBadge(score: number) {
   const pct = Math.round(score * 100)
   const color =
@@ -115,6 +131,88 @@ function AIThreatsContent() {
   const [selectedThreat, setSelectedThreat] = useState<ThreatEvent | null>(null)
   const [unblockingIp, setUnblockingIp] = useState<string | null>(null)
   const [feedbackInProgress, setFeedbackInProgress] = useState<string | null>(null)
+  const [aiSettings, setAiSettings] = useState<AiEngineConfig>(DEFAULT_AI_SETTINGS)
+  const [aiForm, setAiForm] = useState<AiEngineConfig>(DEFAULT_AI_SETTINGS)
+  const [aiLoading, setAiLoading] = useState(true)
+  const [aiSaving, setAiSaving] = useState(false)
+
+  const aiValidation = useMemo(() => {
+    const threshold = Number(aiForm.risk_score_block_threshold)
+    const windowSeconds = Number(aiForm.escalation_window_seconds)
+    const durationSeconds = Number(aiForm.block_duration_seconds)
+    const learningRate = Number(aiForm.model_learning_rate)
+
+    const errors = {
+      automatic_blocking: !aiForm.enabled && aiForm.automatic_blocking
+        ? 'Automatic blocking requires AI engine to be enabled.'
+        : '',
+      risk_score_block_threshold:
+        !Number.isFinite(threshold) || threshold < 0 || threshold > 1
+          ? 'Risk score threshold must be between 0.00 and 1.00.'
+          : '',
+      escalation_window_seconds:
+        !Number.isFinite(windowSeconds) || windowSeconds <= 0
+          ? 'Escalation window must be greater than 0 seconds.'
+          : '',
+      block_duration_seconds:
+        !Number.isFinite(durationSeconds) || durationSeconds < 0
+          ? 'Block duration must be 0 or greater.'
+          : '',
+      model_learning_rate:
+        !Number.isFinite(learningRate) || learningRate <= 0
+          ? 'Model learning rate must be greater than 0.'
+          : '',
+      remote_inference_url:
+        aiForm.model_type === 'remote' && !aiForm.remote_inference_url?.trim()
+          ? 'Remote inference URL is required when using remote model type.'
+          : '',
+    }
+
+    return {
+      ...errors,
+      isValid: Object.values(errors).every((e) => !e),
+    }
+  }, [aiForm])
+
+  const loadAiSettings = useCallback(async () => {
+    setAiLoading(true)
+    try {
+      const res = await getAiEngineConfig()
+      setAiSettings(res.data)
+      setAiForm(res.data)
+    } catch {
+      addToast('error', 'Failed to load AI Threat Engine settings')
+    } finally {
+      setAiLoading(false)
+    }
+  }, [addToast])
+
+  const handleSaveAiSettings = async () => {
+    if (!aiValidation.isValid) {
+      const firstError = [
+        aiValidation.automatic_blocking,
+        aiValidation.risk_score_block_threshold,
+        aiValidation.escalation_window_seconds,
+        aiValidation.block_duration_seconds,
+        aiValidation.model_learning_rate,
+        aiValidation.remote_inference_url,
+      ].find(Boolean)
+      addToast('error', firstError || 'Please correct AI Threat Engine settings.')
+      return
+    }
+
+    setAiSaving(true)
+    try {
+      const res = await updateAiEngineConfig(aiForm)
+      setAiSettings(res.data)
+      setAiForm(res.data)
+      addToast('success', 'AI Threat Engine settings updated')
+    } catch {
+      addToast('error', 'Failed to save AI Threat Engine settings')
+    } finally {
+      setAiSaving(false)
+    }
+  }
 
   const loadAll = useCallback(() => {
     setLoading(true)
@@ -134,6 +232,10 @@ function AIThreatsContent() {
     const timer = window.setInterval(loadAll, 30_000)
     return () => window.clearInterval(timer)
   }, [loadAll])
+
+  useEffect(() => {
+    void loadAiSettings()
+  }, [loadAiSettings])
 
   const handleOpenThreat = (row: ThreatRow) => {
     const id = String(row.id)
@@ -301,6 +403,162 @@ function AIThreatsContent() {
           </p>
         </div>
       </div>
+
+      <Card title="AI Threat Engine Settings" subtitle="Configure AI-driven threat detection and automatic blocking">
+        {aiLoading ? (
+          <p className="text-sm text-slate-500">Loading AI settings…</p>
+        ) : (
+          <div className="space-y-4">
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={aiForm.enabled}
+                onChange={(e) =>
+                  setAiForm((prev) => ({
+                    ...prev,
+                    enabled: e.target.checked,
+                    automatic_blocking: e.target.checked ? prev.automatic_blocking : false,
+                  }))
+                }
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              Enable AI Threat Engine
+            </label>
+
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={aiForm.automatic_blocking}
+                disabled={!aiForm.enabled}
+                onChange={(e) => setAiForm((prev) => ({ ...prev, automatic_blocking: e.target.checked }))}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+              />
+              Enable Automatic Blocking
+            </label>
+            {aiValidation.automatic_blocking && (
+              <p className="text-xs text-red-600">{aiValidation.automatic_blocking}</p>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                id="ai-risk-threshold"
+                label="Risk Score Block Threshold"
+                type="number"
+                min={0}
+                max={1}
+                step={0.01}
+                value={aiForm.risk_score_block_threshold}
+                error={aiValidation.risk_score_block_threshold || undefined}
+                onChange={(e) => {
+                  const parsed = Number(e.target.value)
+                  setAiForm((prev) => ({
+                    ...prev,
+                    risk_score_block_threshold: Number.isFinite(parsed) ? parsed : prev.risk_score_block_threshold,
+                  }))
+                }}
+              />
+              <FormField
+                id="ai-escalation-window"
+                label="Escalation Window (seconds)"
+                type="number"
+                min={1}
+                value={aiForm.escalation_window_seconds}
+                hint="e.g. 300 = 5 min"
+                error={aiValidation.escalation_window_seconds || undefined}
+                onChange={(e) => {
+                  const parsed = Number(e.target.value)
+                  setAiForm((prev) => ({
+                    ...prev,
+                    escalation_window_seconds: Number.isFinite(parsed) ? parsed : prev.escalation_window_seconds,
+                  }))
+                }}
+              />
+              <FormField
+                id="ai-block-duration"
+                label="Block Duration (seconds)"
+                type="number"
+                min={0}
+                value={aiForm.block_duration_seconds}
+                hint="0 = permanent block"
+                error={aiValidation.block_duration_seconds || undefined}
+                onChange={(e) => {
+                  const parsed = Number(e.target.value)
+                  setAiForm((prev) => ({
+                    ...prev,
+                    block_duration_seconds: Number.isFinite(parsed) ? parsed : prev.block_duration_seconds,
+                  }))
+                }}
+              />
+              <FormField label="AI Model Runtime" hint="Choose local scoring or remote inference endpoint.">
+                <select
+                  id="ai-model-type"
+                  value={aiForm.model_type}
+                  onChange={(e) => setAiForm((prev) => ({ ...prev, model_type: e.target.value as 'local' | 'remote' }))}
+                  className="block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="local">Local model</option>
+                  <option value="remote">Remote inference</option>
+                </select>
+              </FormField>
+              <FormField
+                id="ai-learning-rate"
+                label="Model Learning Rate"
+                type="number"
+                min={0.01}
+                step={0.01}
+                value={aiForm.model_learning_rate}
+                hint="Only used by the local AI model training path."
+                error={aiValidation.model_learning_rate || undefined}
+                onChange={(e) => {
+                  const parsed = Number(e.target.value)
+                  setAiForm((prev) => ({
+                    ...prev,
+                    model_learning_rate: Number.isFinite(parsed) ? parsed : prev.model_learning_rate,
+                  }))
+                }}
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <FormField
+                id="ai-remote-url"
+                label="Remote Inference URL"
+                hint="HTTP endpoint that receives AI feature payloads."
+                error={aiValidation.remote_inference_url || undefined}
+              >
+                <input
+                  type="url"
+                  value={aiForm.remote_inference_url ?? ''}
+                  onChange={(e) => setAiForm((prev) => ({ ...prev, remote_inference_url: e.target.value }))}
+                  disabled={aiForm.model_type !== 'remote'}
+                  className="block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed"
+                />
+              </FormField>
+              <FormField
+                id="ai-remote-api-key"
+                label="Remote Inference API Key"
+                hint="Optional bearer token for remote inference requests."
+              >
+                <input
+                  type="text"
+                  value={aiForm.remote_api_key ?? ''}
+                  onChange={(e) => setAiForm((prev) => ({ ...prev, remote_api_key: e.target.value }))}
+                  disabled={aiForm.model_type !== 'remote'}
+                  className="block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed"
+                />
+              </FormField>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-xs text-slate-500">
+                Current: {aiSettings.enabled ? 'Enabled' : 'Disabled'} · Threshold {Math.round(aiSettings.risk_score_block_threshold * 100)}%
+              </p>
+              <Button variant="primary" onClick={handleSaveAiSettings} loading={aiSaving}>
+                Save AI Settings
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
 
       <Card
         title="AI Threats"

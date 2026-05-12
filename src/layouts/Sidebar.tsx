@@ -305,7 +305,7 @@ export default function Sidebar() {
                 <div className="mt-1 space-y-0.5">
                   <QueryNavLink to="/suricata" label="Suricata" level={1} />
                   <QueryNavLink to="/crowdsec" label="CrowdSec" level={1} />
-                  <QueryNavLink to="/ai-threats" label="AI Threats" level={1} />
+                  <QueryNavLink to="/ai-threats" label="AI Threat Engine" level={1} />
                 </div>
               )}
             </div>
