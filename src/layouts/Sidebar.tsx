@@ -203,7 +203,10 @@ export default function Sidebar() {
   const [isDnsMenuOpen, setIsDnsMenuOpen] = useState(false)
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false)
   const [isSecurityMenuOpen, setIsSecurityMenuOpen] = useState(false)
-  const isSecurityRoute = location.pathname.startsWith('/suricata') || location.pathname.startsWith('/crowdsec')
+  const isSecurityRoute =
+    location.pathname.startsWith('/suricata') ||
+    location.pathname.startsWith('/crowdsec') ||
+    location.pathname.startsWith('/ai-threats')
   const shouldShowSecurityMenu = isSecurityMenuOpen || isSecurityRoute
 
   return (
@@ -302,6 +305,7 @@ export default function Sidebar() {
                 <div className="mt-1 space-y-0.5">
                   <QueryNavLink to="/suricata" label="Suricata" level={1} />
                   <QueryNavLink to="/crowdsec" label="CrowdSec" level={1} />
+                  <QueryNavLink to="/ai-threats" label="AI Threats" level={1} />
                 </div>
               )}
             </div>

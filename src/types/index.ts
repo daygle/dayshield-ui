@@ -338,6 +338,40 @@ export interface CrowdSecAlert {
   decisions: number
 }
 
+// ── AI Threat Engine ──────────────────────────────────────────────────────────
+
+export interface ThreatEvent {
+  id: string
+  timestamp: number
+  src_ip: string
+  dst_ip: string
+  src_port: number | null
+  dst_port: number | null
+  protocol: string
+  risk_score: number
+  reasons: string[]
+  blocked: boolean
+  block_expires_at: number | null
+  escalated: boolean
+  quarantine: boolean
+  manually_unblocked: boolean
+}
+
+export interface BlockedEntry {
+  ip: string
+  added_at: number
+  expires_at: number | null
+  quarantine: boolean
+}
+
+export interface AiEngineConfig {
+  enabled: boolean
+  automatic_blocking: boolean
+  risk_score_block_threshold: number
+  escalation_window_seconds: number
+  block_duration_seconds: number
+}
+
 // ── ACME / Certificates ───────────────────────────────────────────────────────
 
 export type AcmeCertificateStatus = 'valid' | 'pending' | 'expired' | 'error'
