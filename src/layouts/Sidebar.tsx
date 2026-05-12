@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 
 interface NavItem {
@@ -203,13 +203,7 @@ export default function Sidebar() {
   const [isDnsMenuOpen, setIsDnsMenuOpen] = useState(false)
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false)
   const isSecurityRoute = location.pathname.startsWith('/suricata') || location.pathname.startsWith('/crowdsec')
-  const [isSecurityMenuOpen, setIsSecurityMenuOpen] = useState(isSecurityRoute)
-
-  useEffect(() => {
-    if (isSecurityRoute) {
-      setIsSecurityMenuOpen(true)
-    }
-  }, [isSecurityRoute])
+  const [isSecurityMenuOpen, setIsSecurityMenuOpen] = useState(false)
 
   return (
     <aside className="flex flex-col h-full w-60 bg-[#0f172a] shrink-0">
