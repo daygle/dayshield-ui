@@ -202,8 +202,9 @@ export default function Sidebar() {
   const [isFirewallMenuOpen, setIsFirewallMenuOpen] = useState(false)
   const [isDnsMenuOpen, setIsDnsMenuOpen] = useState(false)
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false)
-  const isSecurityRoute = location.pathname.startsWith('/suricata') || location.pathname.startsWith('/crowdsec')
   const [isSecurityMenuOpen, setIsSecurityMenuOpen] = useState(false)
+  const isSecurityRoute = location.pathname.startsWith('/suricata') || location.pathname.startsWith('/crowdsec')
+  const shouldShowSecurityMenu = isSecurityMenuOpen || isSecurityRoute
 
   return (
     <aside className="flex flex-col h-full w-60 bg-[#0f172a] shrink-0">
@@ -297,7 +298,7 @@ export default function Sidebar() {
                 </div>
               )}
 
-              {item.to === '/security' && (isSecurityMenuOpen || isSecurityRoute) && (
+              {item.to === '/security' && shouldShowSecurityMenu && (
                 <div className="mt-1 space-y-0.5">
                   <QueryNavLink to="/suricata" label="Suricata" level={1} />
                   <QueryNavLink to="/crowdsec" label="CrowdSec" level={1} />
