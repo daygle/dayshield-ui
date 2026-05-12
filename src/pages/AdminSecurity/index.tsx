@@ -136,17 +136,19 @@ export default function AdminSecurity() {
 
   const handleSaveAiSettings = async () => {
     if (!aiValidation.isValid) {
-      const firstError = Object.values(aiValidation).find((value) => typeof value === 'string' && value)
-      pushToast('error', (firstError as string) || 'Please correct AI Threat Engine settings.')
+      const firstError = [
+        aiValidation.automatic_blocking,
+        aiValidation.risk_score_block_threshold,
+        aiValidation.escalation_window_seconds,
+        aiValidation.block_duration_seconds,
+      ].find(Boolean)
+      pushToast('error', firstError || 'Please correct AI Threat Engine settings.')
       return
     }
 
     setAiSaving(true)
     try {
-      const res = await updateAiEngineConfig({
-        ...aiForm,
-        automatic_blocking: aiForm.enabled ? aiForm.automatic_blocking : false,
-      })
+      const res = await updateAiEngineConfig(aiForm)
       setAiSettings(res.data)
       setAiForm(res.data)
       pushToast('success', 'AI Threat Engine settings updated')

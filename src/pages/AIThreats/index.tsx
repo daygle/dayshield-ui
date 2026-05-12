@@ -16,9 +16,13 @@ import { useToast } from '../../context/ToastContext'
 type ThreatRow = ThreatEvent & Record<string, unknown>
 type BlockedRow = BlockedEntry & Record<string, unknown>
 
+function unixSecondsToMs(unixSeconds: number): number {
+  return unixSeconds * 1000
+}
+
 function formatLocalDateTime(unixSeconds: number | null): string {
   if (unixSeconds === null || !Number.isFinite(unixSeconds)) return '—'
-  const date = new Date(unixSeconds * 1000)
+  const date = new Date(unixSecondsToMs(unixSeconds))
   if (Number.isNaN(date.getTime())) return '—'
   const y = date.getFullYear()
   const m = String(date.getMonth() + 1).padStart(2, '0')
@@ -144,7 +148,7 @@ function AIThreatsContent() {
       if (res.data.unblocked) {
         addToast(`Unblocked ${res.data.ip}`, 'success')
       } else {
-        addToast(`${res.data.ip} was not blocked`, 'warning')
+        addToast(`No active block found for ${res.data.ip}`, 'warning')
       }
       loadAll()
     } catch (err) {
@@ -160,7 +164,7 @@ function AIThreatsContent() {
         key: 'timestamp',
         header: 'Timestamp',
         render: (row) => (
-          <span title={new Date((row.timestamp as number) * 1000).toLocaleString()}>
+          <span title={new Date(unixSecondsToMs(row.timestamp as number)).toLocaleString()}>
             {formatLocalDateTime(row.timestamp as number)}
           </span>
         ),
@@ -293,7 +297,11 @@ function AIThreatsContent() {
       >
         {!loading && threats.length === 0 && (
           <div className="mb-4 rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-center text-sm text-gray-500">
-            <div className="text-2xl mb-1" aria-hidden="true">🛡️</div>
+            <div className="mb-1 flex justify-center">
+              <svg className="h-8 w-8 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l8 3v5c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V6l8-3z" />
+              </svg>
+            </div>
             No AI threat events detected yet.
           </div>
         )}
@@ -310,7 +318,11 @@ function AIThreatsContent() {
       <Card title="Active Blocks" subtitle="IPs currently blocked by the AI threat engine">
         {!loading && blockedEntries.length === 0 && (
           <div className="mb-4 rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-center text-sm text-gray-500">
-            <div className="text-2xl mb-1" aria-hidden="true">✅</div>
+            <div className="mb-1 flex justify-center">
+              <svg className="h-8 w-8 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a10 10 0 11-20 0 10 10 0 0120 0z" />
+              </svg>
+            </div>
             No active AI blocks right now.
           </div>
         )}
