@@ -162,6 +162,16 @@ export interface DnsConfig {
   /** Upstream forwarder IPs. Empty = full recursion mode. */
   forwarders: string[]
   dnssec: boolean
+  /** Optional DNS-over-TLS listener. */
+  dot_enabled?: boolean
+  /** DNS-over-TLS listen port. Defaults to 853. */
+  dot_port?: number
+  /** Restrict DNS-over-TLS service exposure to LAN clients only. */
+  dot_lan_only?: boolean
+  /** PEM-encoded TLS certificate for the DoT listener. */
+  dot_certificate?: string
+  /** PEM-encoded TLS private key for the DoT listener. */
+  dot_private_key?: string
   /** Static local records embedded in the DNS config (managed separately via /dns/overrides). */
   local_records: DnsLocalRecord[]
   /** Optional per-interface blocklist sources. */
