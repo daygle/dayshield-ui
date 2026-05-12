@@ -137,7 +137,7 @@ function AIThreatsContent() {
       .catch(() => undefined)
   }
 
-  const handleUnblock = async (ip: string) => {
+  const handleUnblock = useCallback(async (ip: string) => {
     setUnblockingIp(ip)
     try {
       const res = await unblockAiIp(ip)
@@ -152,7 +152,7 @@ function AIThreatsContent() {
     } finally {
       setUnblockingIp(null)
     }
-  }
+  }, [addToast, loadAll])
 
   const threatColumns: Column<ThreatRow>[] = useMemo(
     () => [
@@ -205,7 +205,7 @@ function AIThreatsContent() {
           ),
       },
     ],
-    [unblockingIp],
+    [handleUnblock, unblockingIp],
   )
 
   const blockedColumns: Column<BlockedRow>[] = useMemo(
@@ -255,7 +255,7 @@ function AIThreatsContent() {
         ),
       },
     ],
-    [unblockingIp],
+    [handleUnblock, unblockingIp],
   )
 
   return (
