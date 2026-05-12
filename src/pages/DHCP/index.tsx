@@ -170,7 +170,7 @@ export default function DHCP() {
   const activeLeasesForSelectedInterface = useMemo(() => {
     if (!selectedInterface) return activeLeases
     const subnet = interfaceConfig?.subnet
-    if (!subnet) return []
+    if (!subnet) return activeLeases
 
     const [network, prefixText] = subnet.split('/')
     const prefix = Number(prefixText)
@@ -637,4 +637,3 @@ export default function DHCP() {
     </div>
   )
 }
-

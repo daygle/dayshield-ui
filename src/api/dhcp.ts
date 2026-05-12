@@ -1,6 +1,55 @@
 import apiClient from './client'
 import type { ApiResponse, DhcpConfig, DhcpConfigPerInterface, DhcpStaticLease, DhcpLease } from '../types'
 
+const LEASE_STATES: ReadonlySet<DhcpLease['state']> = new Set([
+  'active',
+  'expired',
+  'reserved',
+  'declined',
+  'reclaimed',
+])
+
+function normalizeLeaseState(raw: unknown): DhcpLease['state'] {
+  const value = typeof raw === 'string' ? raw.toLowerCase() : ''
+  if (LEASE_STATES.has(value as DhcpLease['state'])) return value as DhcpLease['state']
+  if (value) {
+    console.warn(`Unknown DHCP lease state "${value}" returned by API; defaulting to "active".`)
+  }
+  return 'active'
+}
+
+function readString(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
+function normalizeDhcpLease(raw: unknown): DhcpLease | null {
+  const value = (raw ?? {}) as Record<string, unknown>
+  const mac = readString(value.mac ?? value.mac_address).trim()
+  const ipAddress = readString(value.ipAddress ?? value.ip_address ?? value.address).trim()
+  if (!mac || !ipAddress) return null
+
+  return {
+    mac,
+    ipAddress,
+    hostname: readString(value.hostname ?? value.client_hostname),
+    starts: readString(value.starts ?? value.start ?? value.cltt),
+    ends: readString(value.ends ?? value.end ?? value.expire ?? value.expires_at),
+    state: normalizeLeaseState(value.state),
+  }
+}
+
+function normalizeDhcpLeases(raw: unknown): DhcpLease[] {
+  const mapLeases = (leases: unknown[]): DhcpLease[] =>
+    leases
+      .map(normalizeDhcpLease)
+      .filter((lease): lease is DhcpLease => lease !== null)
+
+  if (Array.isArray(raw)) return mapLeases(raw)
+  const value = (raw ?? {}) as Record<string, unknown>
+  const leases = value.leases ?? value.active_leases ?? value.items
+  return Array.isArray(leases) ? mapLeases(leases) : []
+}
+
 // ── Config ────────────────────────────────────────────────────────────────────
 
 export const getDhcpConfig = (): Promise<ApiResponse<DhcpConfig>> =>
@@ -81,5 +130,5 @@ export const deleteDhcpStaticLease = (id: string): Promise<ApiResponse<void>> =>
 
 export const getDhcpLeases = (): Promise<ApiResponse<DhcpLease[]>> =>
   apiClient
-    .get<ApiResponse<DhcpLease[]>>('/dhcp/leases')
-    .then((r) => r.data)
+    .get<ApiResponse<unknown>>('/dhcp/leases')
+    .then((r) => ({ ...r.data, data: normalizeDhcpLeases(r.data.data) }))

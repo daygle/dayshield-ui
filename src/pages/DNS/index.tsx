@@ -58,6 +58,16 @@ const defaultConfigForm = (): Partial<DnsConfig> => ({
   local_records: [],
 })
 
+function isHttpUrl(value: string): boolean {
+  if (!/^https?:\/\//i.test(value)) return false
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 export default function DNS() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [config, setConfig] = useState<DnsConfig | null>(null)
@@ -279,6 +289,10 @@ export default function DNS() {
   const handleAddBlocklist = () => {
     if (!effectiveInterface || !blocklistForm.url.trim()) {
       setError('Please select an interface and enter a valid blocklist URL.')
+      return
+    }
+    if (!isHttpUrl(blocklistForm.url.trim())) {
+      setError('Blocklist URL must be a valid HTTP or HTTPS URL.')
       return
     }
     setBlocklistSaving(true)
@@ -835,4 +849,3 @@ export default function DNS() {
     </div>
   )
 }
-
