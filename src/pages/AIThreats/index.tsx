@@ -181,7 +181,7 @@ function AIThreatsContent() {
       setAiSettings(res.data)
       setAiForm(res.data)
     } catch {
-      addToast('error', 'Failed to load AI Threat Engine settings')
+      addToast('Failed to load AI Threat Engine settings', 'error')
     } finally {
       setAiLoading(false)
     }
@@ -197,7 +197,7 @@ function AIThreatsContent() {
         aiValidation.model_learning_rate,
         aiValidation.remote_inference_url,
       ].find(Boolean)
-      addToast('error', firstError || 'Please correct AI Threat Engine settings.')
+      addToast(firstError || 'Please correct AI Threat Engine settings.', 'error')
       return
     }
 
@@ -206,9 +206,9 @@ function AIThreatsContent() {
       const res = await updateAiEngineConfig(aiForm)
       setAiSettings(res.data)
       setAiForm(res.data)
-      addToast('success', 'AI Threat Engine settings updated')
+      addToast('AI Threat Engine settings updated', 'success')
     } catch {
-      addToast('error', 'Failed to save AI Threat Engine settings')
+      addToast('Failed to save AI Threat Engine settings', 'error')
     } finally {
       setAiSaving(false)
     }

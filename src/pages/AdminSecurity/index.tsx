@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getAdminSecurity, updateAdminSecurity } from '../../api/admin'
 import type { AdminSecuritySettings } from '../../types'
 import Card from '../../components/Card'
