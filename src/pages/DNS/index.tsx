@@ -239,7 +239,7 @@ export default function DNS() {
       forwarders: parseList(forwardersInput),
       dnssec: configForm.dnssec ?? false,
       dot_enabled: configForm.dot_enabled ?? false,
-      dot_port: 853,
+      dot_port: configForm.dot_port ?? 853,
       dot_lan_only: configForm.dot_lan_only ?? true,
       dot_certificate: dotCertificate,
       dot_private_key: dotPrivateKey,
@@ -500,7 +500,7 @@ export default function DNS() {
 
           <Card
             title="Private DNS over TLS (DoT)"
-            subtitle="Encrypted private DNS listener on port 853"
+            subtitle="Encrypted private DNS listener on the configured DoT port"
             actions={
               <Button size="sm" variant="secondary" onClick={openConfigModal}>
                 Edit Settings
@@ -742,7 +742,7 @@ export default function DNS() {
               <div>
                 <h3 className="text-sm font-semibold text-gray-900">DNS-over-TLS (DoT)</h3>
                 <p className="text-xs text-gray-500">
-                  Exposes an encrypted private DNS listener on TCP port 853 with optional external access.
+                  Exposes an encrypted private DNS listener on the configured DoT port with optional external access.
                 </p>
               </div>
               <label className="flex items-center gap-3 cursor-pointer select-none">
@@ -828,7 +828,7 @@ export default function DNS() {
             otherwise it performs full recursive resolution.
             Use <strong>Host Overrides</strong> and <strong>Domain Overrides</strong> to add
             local DNS entries and per-domain forwarding. When DoT is enabled, DayShield
-            will present the configured certificate/key on port 853 to the clients allowed by the access setting above.
+            will present the configured certificate/key on TCP/{configForm.dot_port ?? 853} to the clients allowed by the access setting above.
           </p>
         </div>
       </Modal>
