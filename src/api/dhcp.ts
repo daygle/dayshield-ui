@@ -11,14 +11,22 @@ const LEASE_STATES: ReadonlySet<DhcpLease['state']> = new Set([
 
 function normalizeLeaseState(raw: unknown): DhcpLease['state'] {
   const value = typeof raw === 'string' ? raw.toLowerCase() : ''
-  return LEASE_STATES.has(value as DhcpLease['state']) ? (value as DhcpLease['state']) : 'active'
+  if (LEASE_STATES.has(value as DhcpLease['state'])) return value as DhcpLease['state']
+  if (value) {
+    console.warn(`Unknown DHCP lease state "${value}" returned by API; defaulting to "active".`)
+  }
+  return 'active'
 }
 
-function normalizeDhcpLease(raw: unknown): DhcpLease {
+function normalizeDhcpLease(raw: unknown): DhcpLease | null {
   const value = (raw ?? {}) as Record<string, unknown>
+  const mac = String(value.mac ?? value.mac_address ?? '').trim()
+  const ipAddress = String(value.ipAddress ?? value.ip_address ?? value.address ?? '').trim()
+  if (!mac || !ipAddress) return null
+
   return {
-    mac: String(value.mac ?? value.mac_address ?? ''),
-    ipAddress: String(value.ipAddress ?? value.ip_address ?? value.address ?? ''),
+    mac,
+    ipAddress,
     hostname: String(value.hostname ?? value.client_hostname ?? ''),
     starts: String(value.starts ?? value.start ?? value.cltt ?? ''),
     ends: String(value.ends ?? value.end ?? value.expire ?? value.expires_at ?? ''),
@@ -27,10 +35,15 @@ function normalizeDhcpLease(raw: unknown): DhcpLease {
 }
 
 function normalizeDhcpLeases(raw: unknown): DhcpLease[] {
-  if (Array.isArray(raw)) return raw.map(normalizeDhcpLease)
+  const mapLeases = (leases: unknown[]): DhcpLease[] =>
+    leases
+      .map(normalizeDhcpLease)
+      .filter((lease): lease is DhcpLease => lease !== null)
+
+  if (Array.isArray(raw)) return mapLeases(raw)
   const value = (raw ?? {}) as Record<string, unknown>
   const leases = value.leases ?? value.active_leases ?? value.items
-  return Array.isArray(leases) ? leases.map(normalizeDhcpLease) : []
+  return Array.isArray(leases) ? mapLeases(leases) : []
 }
 
 // ── Config ────────────────────────────────────────────────────────────────────

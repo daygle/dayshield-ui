@@ -59,6 +59,7 @@ const defaultConfigForm = (): Partial<DnsConfig> => ({
 })
 
 function isHttpUrl(value: string): boolean {
+  if (!/^https?:\/\//i.test(value)) return false
   try {
     const parsed = new URL(value)
     return parsed.protocol === 'http:' || parsed.protocol === 'https:'
