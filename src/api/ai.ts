@@ -36,3 +36,13 @@ export const updateAiEngineConfig = (
   apiClient
     .post<ApiResponse<AiEngineConfig>>('/api/ai/config', config)
     .then((r) => r.data)
+
+export const submitAiFeedback = (
+  id: string,
+  feedback: 'false_positive' | 'confirmed_malicious',
+): Promise<ApiResponse<ThreatEvent>> =>
+  apiClient
+    .post<ApiResponse<ThreatEvent>>(`/api/ai/feedback/${encodeURIComponent(id)}`, {
+      feedback,
+    })
+    .then((r) => r.data)

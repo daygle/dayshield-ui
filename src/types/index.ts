@@ -348,6 +348,10 @@ export interface ThreatEvent {
   src_port: number | null
   dst_port: number | null
   protocol: string
+  event_source: string
+  action?: string
+  signature?: string
+  alert_severity?: number
   risk_score: number
   reasons: string[]
   blocked: boolean
@@ -355,6 +359,9 @@ export interface ThreatEvent {
   escalated: boolean
   quarantine: boolean
   manually_unblocked: boolean
+  label?: number
+  feedback?: string
+  feedback_at?: number
 }
 
 export interface BlockedEntry {
@@ -364,12 +371,19 @@ export interface BlockedEntry {
   quarantine: boolean
 }
 
+export type AiModelType = 'local' | 'remote'
+
 export interface AiEngineConfig {
   enabled: boolean
   automatic_blocking: boolean
   risk_score_block_threshold: number
   escalation_window_seconds: number
   block_duration_seconds: number
+  model_type: AiModelType
+  training_enabled: boolean
+  model_learning_rate: number
+  remote_inference_url?: string
+  remote_api_key?: string
 }
 
 // ── ACME / Certificates ───────────────────────────────────────────────────────

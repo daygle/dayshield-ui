@@ -44,6 +44,11 @@ const DEFAULT_AI_SETTINGS: AiEngineConfig = {
   risk_score_block_threshold: 0.9,
   escalation_window_seconds: 300,
   block_duration_seconds: 3600,
+  model_type: 'local',
+  training_enabled: true,
+  model_learning_rate: 0.25,
+  remote_inference_url: '',
+  remote_api_key: '',
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -109,6 +114,7 @@ export default function AdminSecurity() {
     const threshold = Number(aiForm.risk_score_block_threshold)
     const windowSeconds = Number(aiForm.escalation_window_seconds)
     const durationSeconds = Number(aiForm.block_duration_seconds)
+    const learningRate = Number(aiForm.model_learning_rate)
 
     const errors = {
       automatic_blocking: !aiForm.enabled && aiForm.automatic_blocking
@@ -125,6 +131,14 @@ export default function AdminSecurity() {
       block_duration_seconds:
         !Number.isFinite(durationSeconds) || durationSeconds < 0
           ? 'Block duration must be 0 or greater.'
+          : '',
+      model_learning_rate:
+        !Number.isFinite(learningRate) || learningRate <= 0
+          ? 'Model learning rate must be greater than 0.'
+          : '',
+      remote_inference_url:
+        aiForm.model_type === 'remote' && !aiForm.remote_inference_url?.trim()
+          ? 'Remote inference URL is required when using remote model type.'
           : '',
     }
 
@@ -301,6 +315,63 @@ export default function AdminSecurity() {
                   }))
                 }}
               />
+              <FormField label="AI Model Runtime" hint="Choose local scoring or remote inference endpoint.">
+                <select
+                  id="ai-model-type"
+                  value={aiForm.model_type}
+                  onChange={(e) => setAiForm((prev) => ({ ...prev, model_type: e.target.value as 'local' | 'remote' }))}
+                  className="block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                >
+                  <option value="local">Local model</option>
+                  <option value="remote">Remote inference</option>
+                </select>
+              </FormField>
+              <FormField
+                id="ai-learning-rate"
+                label="Model Learning Rate"
+                type="number"
+                min={0.01}
+                step={0.01}
+                value={aiForm.model_learning_rate}
+                hint="Only used by the local AI model training path."
+                error={aiValidation.model_learning_rate || undefined}
+                onChange={(e) => {
+                  const parsed = Number(e.target.value)
+                  setAiForm((prev) => ({
+                    ...prev,
+                    model_learning_rate: Number.isFinite(parsed) ? parsed : prev.model_learning_rate,
+                  }))
+                }}
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <FormField
+                id="ai-remote-url"
+                label="Remote Inference URL"
+                hint="HTTP endpoint that receives AI feature payloads."
+                error={aiValidation.remote_inference_url || undefined}
+              >
+                <input
+                  type="url"
+                  value={aiForm.remote_inference_url ?? ''}
+                  onChange={(e) => setAiForm((prev) => ({ ...prev, remote_inference_url: e.target.value }))}
+                  disabled={aiForm.model_type !== 'remote'}
+                  className="block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                />
+              </FormField>
+              <FormField
+                id="ai-remote-api-key"
+                label="Remote Inference API Key"
+                hint="Optional bearer token for remote inference requests."
+              >
+                <input
+                  type="text"
+                  value={aiForm.remote_api_key ?? ''}
+                  onChange={(e) => setAiForm((prev) => ({ ...prev, remote_api_key: e.target.value }))}
+                  disabled={aiForm.model_type !== 'remote'}
+                  className="block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                />
+              </FormField>
             </div>
 
             <div className="flex items-center justify-between pt-2">
