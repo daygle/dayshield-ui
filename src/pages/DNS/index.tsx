@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { type ChangeEvent, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   createInterfaceDnsBlocklist,
@@ -55,6 +55,11 @@ const defaultConfigForm = (): Partial<DnsConfig> => ({
   port: 53,
   forwarders: [],
   dnssec: false,
+  dot_enabled: false,
+  dot_port: 853,
+  dot_lan_only: true,
+  dot_certificate: '',
+  dot_private_key: '',
   local_records: [],
 })
 
@@ -66,6 +71,10 @@ function isHttpUrl(value: string): boolean {
   } catch {
     return false
   }
+}
+
+function hasText(value: string | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0
 }
 
 export default function DNS() {
@@ -187,7 +196,14 @@ export default function DNS() {
 
   const openConfigModal = () => {
     if (config) {
-      setConfigForm({ ...config })
+      setConfigForm({
+        ...config,
+        dot_enabled: config.dot_enabled ?? false,
+        dot_port: config.dot_port ?? 853,
+        dot_lan_only: config.dot_lan_only ?? true,
+        dot_certificate: config.dot_certificate ?? '',
+        dot_private_key: config.dot_private_key ?? '',
+      })
       setListenInput((config.listen_addresses ?? []).join(', '))
       setForwardersInput((config.forwarders ?? []).join(', '))
     } else {
@@ -208,12 +224,25 @@ export default function DNS() {
 
   const handleSaveConfig = () => {
     const parseList = (s: string) => s.split(',').map((v) => v.trim()).filter(Boolean)
-    const payload: DnsConfig = {
+    const dotCertificate = configForm.dot_certificate?.trim() ?? ''
+    const dotPrivateKey = configForm.dot_private_key?.trim() ?? ''
+
+    if (configForm.dot_enabled && (!dotCertificate || !dotPrivateKey)) {
+      setError('DNS-over-TLS requires both a TLS certificate and private key.')
+      return
+    }
+
+    const payload: Partial<DnsConfig> = {
       enabled: configForm.enabled ?? true,
       listen_addresses: parseList(listenInput),
       port: configForm.port ?? 53,
       forwarders: parseList(forwardersInput),
       dnssec: configForm.dnssec ?? false,
+      dot_enabled: configForm.dot_enabled ?? false,
+      dot_port: configForm.dot_port ?? 853,
+      dot_lan_only: configForm.dot_lan_only ?? true,
+      dot_certificate: dotCertificate,
+      dot_private_key: dotPrivateKey,
       // Preserve existing local_records — they're managed via the overrides API
       local_records: config?.local_records ?? [],
       interface_blocklists: config?.interface_blocklists ?? [],
@@ -226,6 +255,22 @@ export default function DNS() {
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setConfigSaving(false))
+  }
+
+  const handleLoadPemFile = async (
+    event: ChangeEvent<HTMLInputElement>,
+    field: 'dot_certificate' | 'dot_private_key',
+  ) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    try {
+      const text = await file.text()
+      setConfigForm((current) => ({ ...current, [field]: text }))
+    } catch {
+      setError(`Failed to read ${field === 'dot_certificate' ? 'certificate' : 'private key'} file.`)
+    }
   }
 
   const handleAddHost = () => {
@@ -399,58 +444,103 @@ export default function DNS() {
       )}
 
       {activeSection === 'settings' && (
-        <Card
-          title="DNS Resolver (Unbound)"
-          subtitle="Recursive resolver / forwarder configuration"
-          actions={
-            <Button size="sm" variant="secondary" onClick={openConfigModal}>
-              Edit Settings
-            </Button>
-          }
-        >
-          {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
-          ) : config ? (
-            <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
-              <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
-                <dd className={`mt-1 font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
-                  {config.enabled ? 'Enabled' : 'Disabled'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Mode</dt>
-                <dd className="mt-1 font-medium text-gray-800">
-                  {config.forwarders?.length ? 'Forwarder' : 'Full Recursion'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Port</dt>
-                <dd className="mt-1 font-medium text-gray-800 font-mono">{config.port ?? 53}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listen Addresses</dt>
-                <dd className="mt-1 font-medium text-gray-800 font-mono">
-                  {config.listen_addresses?.length ? config.listen_addresses.join(', ') : 'All interfaces'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Upstream Forwarders</dt>
-                <dd className="mt-1 font-medium text-gray-800 font-mono">
-                  {config.forwarders?.length ? config.forwarders.join(', ') : '— (recursive)'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNSSEC</dt>
-                <dd className={`mt-1 font-semibold ${config.dnssec ? 'text-green-600' : 'text-gray-400'}`}>
-                  {config.dnssec ? 'Enabled' : 'Disabled'}
-                </dd>
-              </div>
-            </dl>
-          ) : (
-            <p className="text-sm text-gray-400">No DNS configuration found.</p>
-          )}
-        </Card>
+        <>
+          <Card
+            title="DNS Resolver (Unbound)"
+            subtitle="Recursive resolver / forwarder configuration"
+            actions={
+              <Button size="sm" variant="secondary" onClick={openConfigModal}>
+                Edit Settings
+              </Button>
+            }
+          >
+            {loading ? (
+              <p className="text-sm text-gray-400">Loading…</p>
+            ) : config ? (
+              <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
+                  <dd className={`mt-1 font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
+                    {config.enabled ? 'Enabled' : 'Disabled'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Mode</dt>
+                  <dd className="mt-1 font-medium text-gray-800">
+                    {config.forwarders?.length ? 'Forwarder' : 'Full Recursion'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Port</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">{config.port ?? 53}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listen Addresses</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">
+                    {config.listen_addresses?.length ? config.listen_addresses.join(', ') : 'All interfaces'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Upstream Forwarders</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">
+                    {config.forwarders?.length ? config.forwarders.join(', ') : '— (recursive)'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNSSEC</dt>
+                  <dd className={`mt-1 font-semibold ${config.dnssec ? 'text-green-600' : 'text-gray-400'}`}>
+                    {config.dnssec ? 'Enabled' : 'Disabled'}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="text-sm text-gray-400">No DNS configuration found.</p>
+            )}
+          </Card>
+
+          <Card
+            title="Private DNS over TLS (DoT)"
+            subtitle="Encrypted private DNS listener on the configured DoT port"
+            actions={
+              <Button size="sm" variant="secondary" onClick={openConfigModal}>
+                Edit Settings
+              </Button>
+            }
+          >
+            {loading ? (
+              <p className="text-sm text-gray-400">Loading…</p>
+            ) : config ? (
+              <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm">
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
+                  <dd className={`mt-1 font-semibold ${config.dot_enabled ? 'text-green-600' : 'text-gray-400'}`}>
+                    {config.dot_enabled ? 'Enabled' : 'Disabled'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listener</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">TCP/{config.dot_port ?? 853}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Access</dt>
+                  <dd className="mt-1 font-medium text-gray-800">
+                    {config.dot_lan_only === false ? 'LAN + external clients' : 'LAN clients only'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">TLS Materials</dt>
+                  <dd className="mt-1 font-medium text-gray-800">
+                    {hasText(config.dot_certificate) && hasText(config.dot_private_key)
+                      ? 'Certificate + key configured'
+                      : 'Certificate/key required'}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="text-sm text-gray-400">No DNS-over-TLS configuration found.</p>
+            )}
+          </Card>
+        </>
       )}
 
       {activeSection === 'overrides' && (
@@ -647,12 +737,98 @@ export default function DNS() {
             />
           </div>
 
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">DNS-over-TLS (DoT)</h3>
+                <p className="text-xs text-gray-500">
+                  Exposes an encrypted private DNS listener on the configured DoT port with optional external access.
+                </p>
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  id="dns-dot-enabled"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked={!!configForm.dot_enabled}
+                  onChange={(e) => setConfigForm((f) => ({ ...f, dot_enabled: e.target.checked }))}
+                />
+                <span className="text-sm font-medium text-gray-700">Enable DoT server</span>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="rounded border border-gray-200 bg-white px-3 py-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Listener</p>
+                <p className="mt-1 font-mono text-gray-900">TCP/{configForm.dot_port ?? 853}</p>
+              </div>
+              <div className="rounded border border-gray-200 bg-white px-3 py-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Exposure</p>
+                <p className="mt-1 text-gray-900">
+                  {configForm.dot_lan_only === false ? 'LAN + external clients' : 'LAN clients only'}
+                </p>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                id="dns-dot-wan-access"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                checked={configForm.dot_lan_only === false}
+                onChange={(e) => setConfigForm((f) => ({ ...f, dot_lan_only: !e.target.checked }))}
+              />
+              <span className="text-sm font-medium text-gray-700">Allow external / WAN clients to connect</span>
+            </label>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <FormField
+                  id="dns-dot-certificate"
+                  as="textarea"
+                  rows={8}
+                  label="TLS Certificate (PEM)"
+                  placeholder="-----BEGIN CERTIFICATE-----"
+                  value={configForm.dot_certificate ?? ''}
+                  onChange={(e) => setConfigForm((f) => ({ ...f, dot_certificate: e.target.value }))}
+                />
+                <input
+                  id="dns-dot-certificate-file"
+                  type="file"
+                  accept=".pem,.crt,.cer,text/plain"
+                  className="block w-full text-xs text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-100"
+                  onChange={(e) => void handleLoadPemFile(e, 'dot_certificate')}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <FormField
+                  id="dns-dot-private-key"
+                  as="textarea"
+                  rows={8}
+                  label="TLS Private Key (PEM)"
+                  placeholder="-----BEGIN PRIVATE KEY-----"
+                  value={configForm.dot_private_key ?? ''}
+                  onChange={(e) => setConfigForm((f) => ({ ...f, dot_private_key: e.target.value }))}
+                />
+                <input
+                  id="dns-dot-private-key-file"
+                  type="file"
+                  accept=".pem,.key,text/plain"
+                  className="block w-full text-xs text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-100"
+                  onChange={(e) => void handleLoadPemFile(e, 'dot_private_key')}
+                />
+              </div>
+            </div>
+          </div>
+
           <p className="text-xs text-gray-500">
             Enter multiple addresses as comma-separated values.
             When <strong>upstream forwarders</strong> are set Unbound operates in forwarder mode;
             otherwise it performs full recursive resolution.
             Use <strong>Host Overrides</strong> and <strong>Domain Overrides</strong> to add
-            local DNS entries and per-domain forwarding.
+            local DNS entries and per-domain forwarding. When DoT is enabled, DayShield
+            will present the configured certificate/key on TCP/{configForm.dot_port ?? 853} to the clients allowed by the access setting above.
           </p>
         </div>
       </Modal>
