@@ -18,18 +18,22 @@ function normalizeLeaseState(raw: unknown): DhcpLease['state'] {
   return 'active'
 }
 
+function readString(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
 function normalizeDhcpLease(raw: unknown): DhcpLease | null {
   const value = (raw ?? {}) as Record<string, unknown>
-  const mac = String(value.mac ?? value.mac_address ?? '').trim()
-  const ipAddress = String(value.ipAddress ?? value.ip_address ?? value.address ?? '').trim()
+  const mac = readString(value.mac ?? value.mac_address).trim()
+  const ipAddress = readString(value.ipAddress ?? value.ip_address ?? value.address).trim()
   if (!mac || !ipAddress) return null
 
   return {
     mac,
     ipAddress,
-    hostname: String(value.hostname ?? value.client_hostname ?? ''),
-    starts: String(value.starts ?? value.start ?? value.cltt ?? ''),
-    ends: String(value.ends ?? value.end ?? value.expire ?? value.expires_at ?? ''),
+    hostname: readString(value.hostname ?? value.client_hostname),
+    starts: readString(value.starts ?? value.start ?? value.cltt),
+    ends: readString(value.ends ?? value.end ?? value.expire ?? value.expires_at),
     state: normalizeLeaseState(value.state),
   }
 }

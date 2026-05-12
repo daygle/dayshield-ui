@@ -94,8 +94,7 @@ export default function AdminSecurity() {
         value={form[key] as number}
         onChange={(e) => {
           const parsed = Number(e.target.value)
-          if (!Number.isFinite(parsed)) return
-          setForm({ ...form, [key]: Math.max(min, parsed) })
+          setForm({ ...form, [key]: Number.isFinite(parsed) ? Math.max(min, parsed) : min })
         }}
         className="block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
       />
