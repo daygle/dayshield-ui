@@ -141,20 +141,11 @@ const navEntries: NavEntry[] = [
     ),
   },
   {
-    to: '/suricata',
-    label: 'Suricata',
+    to: '/security',
+    label: 'Security',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-      </svg>
-    ),
-  },
-  {
-    to: '/crowdsec',
-    label: 'CrowdSec',
-    icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5-2.5c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V6l8-3 8 3v1.5z" />
       </svg>
     ),
   },
@@ -211,6 +202,9 @@ export default function Sidebar() {
   const [isFirewallMenuOpen, setIsFirewallMenuOpen] = useState(false)
   const [isDnsMenuOpen, setIsDnsMenuOpen] = useState(false)
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false)
+  const [isSecurityMenuOpen, setIsSecurityMenuOpen] = useState(false)
+  const isSecurityRoute = location.pathname.startsWith('/suricata') || location.pathname.startsWith('/crowdsec')
+  const shouldShowSecurityMenu = isSecurityMenuOpen || isSecurityRoute
 
   return (
     <aside className="flex flex-col h-full w-60 bg-[#0f172a] shrink-0">
@@ -241,7 +235,16 @@ export default function Sidebar() {
           const itemClassName = level === 0 ? 'sidebar-link' : level === 2 ? 'sidebar-sub-link-nested' : 'sidebar-sub-link'
           return (
             <div key={item.to}>
-              {item.to.includes('?') ? (
+              {item.to === '/security' ? (
+                <button
+                  type="button"
+                  onClick={() => setIsSecurityMenuOpen((open) => !open)}
+                  className={[itemClassName, isSecurityRoute ? 'active' : ''].join(' ')}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              ) : item.to.includes('?') ? (
                 <QueryNavLink
                   to={item.to}
                   label={item.label}
@@ -292,6 +295,13 @@ export default function Sidebar() {
                   <QueryNavLink to="/system?section=reboot" label="Reboot" level={1} />
                   <QueryNavLink to="/admin-security" label="Security" level={1} />
                   <QueryNavLink to="/change-password" label="Change Password" level={1} />
+                </div>
+              )}
+
+              {item.to === '/security' && shouldShowSecurityMenu && (
+                <div className="mt-1 space-y-0.5">
+                  <QueryNavLink to="/suricata" label="Suricata" level={1} />
+                  <QueryNavLink to="/crowdsec" label="CrowdSec" level={1} />
                 </div>
               )}
             </div>
