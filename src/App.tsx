@@ -12,6 +12,7 @@ import DNS from './pages/DNS'
 import DHCP from './pages/DHCP'
 import Suricata from './pages/Suricata'
 import CrowdSec from './pages/CrowdSec'
+import AIThreats from './pages/AIThreats'
 import ACME from './pages/ACME'
 import System from './pages/System'
 import LiveLogs from './pages/LiveLogs'
@@ -51,6 +52,7 @@ function App() {
           <Route path="dhcp" element={<DHCP />} />
           <Route path="suricata" element={<Suricata />} />
           <Route path="crowdsec" element={<CrowdSec />} />
+          <Route path="ai-threats" element={<AIThreats />} />
           <Route path="acme" element={<ACME />} />
           <Route path="system" element={<System />} />
           <Route path="live-logs" element={<LiveLogs />} />

@@ -14,6 +14,7 @@ interface TableProps<T> {
   loading?: boolean
   emptyMessage?: string
   className?: string
+  onRowClick?: (row: T) => void
 }
 
 export default function Table<T extends Record<string, unknown>>({
@@ -23,6 +24,7 @@ export default function Table<T extends Record<string, unknown>>({
   loading = false,
   emptyMessage = 'No records found.',
   className = '',
+  onRowClick,
 }: TableProps<T>) {
   return (
     <div className={`overflow-x-auto ${className}`}>
@@ -86,7 +88,8 @@ export default function Table<T extends Record<string, unknown>>({
             data.map((row) => (
               <tr
                 key={String(row[keyField])}
-                className="hover:bg-gray-50 transition-colors"
+                className={`hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
               >
                 {columns.map((col) => (
                   <td
