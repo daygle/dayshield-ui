@@ -145,7 +145,7 @@ const navEntries: NavEntry[] = [
     label: 'Security',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5-2.5c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V6l8-3 8 3v1.5z" />
       </svg>
     ),
   },
@@ -202,7 +202,7 @@ export default function Sidebar() {
   const [isFirewallMenuOpen, setIsFirewallMenuOpen] = useState(false)
   const [isDnsMenuOpen, setIsDnsMenuOpen] = useState(false)
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false)
-  const isSecurityRoute = location.pathname === '/suricata' || location.pathname === '/crowdsec'
+  const isSecurityRoute = location.pathname.startsWith('/suricata') || location.pathname.startsWith('/crowdsec')
   const [isSecurityMenuOpen, setIsSecurityMenuOpen] = useState(isSecurityRoute)
 
   useEffect(() => {
