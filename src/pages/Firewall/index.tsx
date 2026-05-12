@@ -112,6 +112,72 @@ function toIpv4NetworkCidr(address?: string, prefix?: number): string | null {
   return `${octets.join('.')}/${prefix}`
 }
 
+function toNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  if (value === undefined || value === null) return null
+  const parsed = Number(String(value).trim())
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function isPort(value: unknown): boolean {
+  const port = toNumber(value)
+  return port !== null && Number.isInteger(port) && port > 0 && port <= 65535
+}
+
+function validateFirewallRuleForm(rule: Partial<FirewallRule>): string | null {
+  if (rule.priority == null || !Number.isInteger(rule.priority) || rule.priority < 1) {
+    return 'Priority must be a positive integer.'
+  }
+
+  if (rule.source_port != null && !isPort(rule.source_port)) {
+    return 'Source port must be a valid port number between 1 and 65535.'
+  }
+
+  if (rule.destination_port != null && !isPort(rule.destination_port)) {
+    return 'Destination port must be a valid port number between 1 and 65535.'
+  }
+
+  if (rule.schedule) {
+    const { time_start, time_end, date_start, date_end } = rule.schedule
+    const timePattern = /^\d{2}:\d{2}$/
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/
+    if ((time_start && !timePattern.test(time_start)) || (time_end && !timePattern.test(time_end))) {
+      return 'Schedule time must be in HH:MM format.'
+    }
+    if ((date_start && !datePattern.test(date_start)) || (date_end && !datePattern.test(date_end))) {
+      return 'Schedule date must be in YYYY-MM-DD format.'
+    }
+  }
+
+  return null
+}
+
+function validateAliasForm(alias: Alias): string | null {
+  if (!alias.name?.trim()) {
+    return 'Alias name is required.'
+  }
+
+  const entries = (alias.values ?? []).map((value) => String(value).trim()).filter(Boolean)
+  if (entries.length === 0) {
+    return 'At least one alias entry is required.'
+  }
+
+  if (alias.alias_type === 'port') {
+    if (entries.some((value) => !isPort(value))) {
+      return 'All port alias entries must be valid port numbers.'
+    }
+  }
+
+  return null
+}
+
+function parseCommaSeparatedNumbers(value: string): number[] {
+  return value
+    .split(',')
+    .map((item) => Number(item.trim()))
+    .filter((n) => Number.isInteger(n) && n > 0 && n <= 65535)
+}
+
 export default function Firewall() {
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedSection = searchParams.get('section')
@@ -143,10 +209,13 @@ export default function Firewall() {
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [settingsError, setSettingsError] = useState<string | null>(null)
+  const [settingsFormError, setSettingsFormError] = useState<string | null>(null)
   const [allowedSourcesInput, setAllowedSourcesInput] = useState('')
   const [managementPortsInput, setManagementPortsInput] = useState('22, 443, 8443')
 
   const [stats, setStats] = useState<FirewallRuleStats[]>([])
+  const [ruleFormError, setRuleFormError] = useState<string | null>(null)
+  const [aliasFormError, setAliasFormError] = useState<string | null>(null)
 
   const interfaceLabel = (iface: NetworkInterface): string => {
     const prefix = vpnInterfaceNames.includes(iface.name) ? 'VPN • ' : ''
@@ -190,6 +259,8 @@ export default function Firewall() {
       ...defaultRuleForm,
       interface: selectedInterface || null,
     })
+    setRuleFormError(null)
+    setEditRule(null)
     setRuleModalOpen(true)
   }
 
@@ -309,15 +380,17 @@ export default function Firewall() {
   }
 
   const handleSaveSettings = () => {
+    setSettingsFormError(null)
     const allowedSources = allowedSourcesInput
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean)
 
-    const managementPorts = managementPortsInput
-      .split(',')
-      .map((s) => Number(s.trim()))
-      .filter((n) => Number.isInteger(n) && n > 0 && n <= 65535)
+    const managementPorts = parseCommaSeparatedNumbers(managementPortsInput)
+    if (managementPortsInput.trim() && managementPorts.length === 0) {
+      setSettingsFormError('Enter valid management ports as comma-separated numbers.')
+      return
+    }
 
     const payload: FirewallSettings = {
       ...settings,
@@ -339,11 +412,19 @@ export default function Firewall() {
   }
 
   const handleSaveRule = () => {
+    const validationError = validateFirewallRuleForm(ruleForm)
+    if (validationError) {
+      setRuleFormError(validationError)
+      return
+    }
+
+    setRuleFormError(null)
     setRuleSaving(true)
     createFirewallRule(ruleForm as Omit<FirewallRule, 'id'>)
       .then(() => {
         setRuleModalOpen(false)
         setRuleForm(defaultRuleForm)
+        setRuleFormError(null)
         loadRules()
         loadStats()
       })
@@ -353,6 +434,13 @@ export default function Firewall() {
 
   const handleUpdateRule = () => {
     if (!editRule) return
+    const validationError = validateFirewallRuleForm(editRule)
+    if (validationError) {
+      setRuleFormError(validationError)
+      return
+    }
+
+    setRuleFormError(null)
     setEditSaving(true)
     updateFirewallRule(editRule.id, editRule)
       .then(() => {
@@ -383,6 +471,13 @@ export default function Firewall() {
   }
 
   const handleSaveAlias = () => {
+    const validationError = validateAliasForm(aliasForm)
+    if (validationError) {
+      setAliasFormError(validationError)
+      return
+    }
+
+    setAliasFormError(null)
     setAliasSaving(true)
     createAlias(aliasForm)
       .then(() => {
@@ -642,7 +737,10 @@ export default function Firewall() {
           title="Aliases"
           subtitle="Named sets of hosts, networks, or ports reusable in firewall rules"
           actions={
-            <Button size="sm" onClick={() => setAliasModalOpen(true)}>
+            <Button size="sm" onClick={() => {
+              setAliasFormError(null)
+              setAliasModalOpen(true)
+            }}>
               + Add Alias
             </Button>
           }
@@ -655,13 +753,21 @@ export default function Firewall() {
       <Modal
         open={settingsModalOpen}
         title="Firewall Settings"
-        onClose={() => setSettingsModalOpen(false)}
+        onClose={() => {
+          setSettingsModalOpen(false)
+          setSettingsFormError(null)
+        }}
         onConfirm={handleSaveSettings}
         confirmLabel="Save"
         loading={settingsSaving}
         size="xl"
       >
         <div className="space-y-4">
+          {settingsFormError && (
+            <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {settingsFormError}
+            </div>
+          )}
           <details open className="overflow-hidden rounded border border-gray-200 bg-white">
             <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">Policies</summary>
             <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
@@ -787,195 +893,214 @@ export default function Firewall() {
       <Modal
         open={ruleModalOpen}
         title="Add Firewall Rule"
-        onClose={() => setRuleModalOpen(false)}
+        onClose={() => {
+          setRuleModalOpen(false)
+          setRuleFormError(null)
+        }}
         onConfirm={handleSaveRule}
         confirmLabel="Create Rule"
         loading={ruleSaving}
         size="xl"
       >
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            id="rule-desc"
-            label="Description"
-            className="col-span-2"
-            placeholder="Brief rule description"
-            value={ruleForm.description ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value || null })}
-          />
-          <FormField
-            id="rule-priority"
-            label="Priority"
-            type="number"
-            value={String(ruleForm.priority ?? 100)}
-            onChange={(e) => setRuleForm({ ...ruleForm, priority: parseInt(e.target.value, 10) || 100 })}
-          />
-          <FormField
-            id="rule-action"
-            label="Action"
-            as="select"
-            value={ruleForm.action ?? 'accept'}
-            onChange={(e) => setRuleForm({ ...ruleForm, action: e.target.value as FirewallRule['action'] })}
-          >
-            <option value="accept">Accept</option>
-            <option value="drop">Drop</option>
-            <option value="reject">Reject</option>
-            <option value="log">Log</option>
-          </FormField>
-          <FormField
-            id="rule-protocol"
-            label="Protocol"
-            as="select"
-            value={ruleForm.protocol ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, protocol: (e.target.value || null) as FirewallRule['protocol'] | null })}
-          >
-            <option value="">Any</option>
-            <option value="tcp">TCP</option>
-            <option value="udp">UDP</option>
-            <option value="icmp">ICMP</option>
-            <option value="icmpv6">ICMPv6</option>
-          </FormField>
-          <FormField
-            id="rule-iface"
-            label="Interface"
-            as="select"
-            value={ruleForm.interface ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, interface: e.target.value || null })}
-          >
-            <option value="">Any</option>
-            {interfaces.map((iface) => (
-              <option key={iface.name} value={iface.name}>
-                {interfaceLabel(iface)}
-              </option>
-            ))}
-          </FormField>
-          <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
-            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
-              Advanced Match
-            </summary>
-            <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
-              <FormField
-                id="rule-src-preset"
-                label="Source Preset"
-                as="select"
-                value={(ruleForm.source ?? '')}
-                onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
-              >
-                {addressPresetOptions.map((opt) => (
-                  <option key={`src-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
-                ))}
-              </FormField>
-              <FormField
-                id="rule-src"
-                label="Source (custom CIDR/IP/Alias)"
-                placeholder="Optional override"
-                value={ruleForm.source ?? ''}
-                onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
-              />
-              <FormField
-                id="rule-src-port"
-                label="Source Port"
-                type="number"
-                value={ruleForm.source_port != null ? String(ruleForm.source_port) : ''}
-                onChange={(e) => setRuleForm({ ...ruleForm, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
-              />
-              <FormField
-                id="rule-dst-preset"
-                label="Destination Preset"
-                as="select"
-                value={(ruleForm.destination ?? '')}
-                onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
-              >
-                {addressPresetOptions.map((opt) => (
-                  <option key={`dst-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
-                ))}
-              </FormField>
-              <FormField
-                id="rule-dst"
-                label="Destination (custom CIDR/IP/Alias)"
-                placeholder="Optional override"
-                value={ruleForm.destination ?? ''}
-                onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
-              />
-              <FormField
-                id="rule-dst-port"
-                label="Destination Port"
-                type="number"
-                value={ruleForm.destination_port != null ? String(ruleForm.destination_port) : ''}
-                onChange={(e) => setRuleForm({ ...ruleForm, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
-              />
+        <div className="space-y-3">
+          {ruleFormError && (
+            <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {ruleFormError}
             </div>
-          </details>
+          )}
 
-          {/* Enabled toggle */}
-          <label className="flex items-center gap-3 col-span-2">
-            <input
-              type="checkbox"
-              checked={ruleForm.enabled ?? true}
-              onChange={(e) => setRuleForm({ ...ruleForm, enabled: e.target.checked })}
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              id="rule-desc"
+              label="Description"
+              className="col-span-2"
+              placeholder="Brief rule description"
+              value={ruleForm.description ?? ''}
+              onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value || null })}
             />
-            <span className="text-sm text-gray-700">Rule enabled</span>
-          </label>
-
-          <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
-            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
-              Schedule (optional)
-            </summary>
-            <div className="border-t border-gray-200 px-4 py-4 space-y-3">
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Days active (leave all unchecked = every day)</p>
-                <div className="flex gap-3 flex-wrap">
-                  {DAY_NAMES.map((name, idx) => (
-                    <label key={idx} className="flex items-center gap-1 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={(ruleForm.schedule?.days ?? []).includes(idx)}
-                        onChange={(e) => {
-                          const days = [...(ruleForm.schedule?.days ?? [])]
-                          if (e.target.checked) {
-                            if (!days.includes(idx)) days.push(idx)
-                          } else {
-                            const index = days.indexOf(idx)
-                            if (index !== -1) days.splice(index, 1)
-                          }
-                          days.sort()
-                          setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), days } })
-                        }}
-                      />
-                      {name}
-                    </label>
+            <FormField
+              id="rule-priority"
+              label="Priority"
+              type="number"
+              value={String(ruleForm.priority ?? 100)}
+              onChange={(e) => setRuleForm({ ...ruleForm, priority: parseInt(e.target.value, 10) || 100 })}
+            />
+            <FormField
+              id="rule-action"
+              label="Action"
+              as="select"
+              value={ruleForm.action ?? 'accept'}
+              onChange={(e) => setRuleForm({ ...ruleForm, action: e.target.value as FirewallRule['action'] })}
+            >
+              <option value="accept">Accept</option>
+              <option value="drop">Drop</option>
+              <option value="reject">Reject</option>
+              <option value="log">Log</option>
+            </FormField>
+            <FormField
+              id="rule-protocol"
+              label="Protocol"
+              as="select"
+              value={ruleForm.protocol ?? ''}
+              onChange={(e) => setRuleForm({ ...ruleForm, protocol: (e.target.value || null) as FirewallRule['protocol'] | null })}
+            >
+              <option value="">Any</option>
+              <option value="tcp">TCP</option>
+              <option value="udp">UDP</option>
+              <option value="icmp">ICMP</option>
+              <option value="icmpv6">ICMPv6</option>
+            </FormField>
+            <FormField
+              id="rule-iface"
+              label="Interface"
+              as="select"
+              value={ruleForm.interface ?? ''}
+              onChange={(e) => setRuleForm({ ...ruleForm, interface: e.target.value || null })}
+            >
+              <option value="">Any</option>
+              {interfaces.map((iface) => (
+                <option key={iface.name} value={iface.name}>
+                  {interfaceLabel(iface)}
+                </option>
+              ))}
+            </FormField>
+            <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
+              <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
+                Advanced Match
+              </summary>
+              <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+                <FormField
+                  id="rule-src-preset"
+                  label="Source Preset"
+                  as="select"
+                  value={ruleForm.source ?? ''}
+                  onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
+                >
+                  {addressPresetOptions.map((opt) => (
+                    <option key={`src-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
                   ))}
+                </FormField>
+                <FormField
+                  id="rule-src"
+                  label="Source (custom CIDR/IP/Alias)"
+                  placeholder="Optional override"
+                  value={ruleForm.source ?? ''}
+                  onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
+                />
+                <FormField
+                  id="rule-src-port"
+                  label="Source Port"
+                  type="number"
+                  value={ruleForm.source_port != null ? String(ruleForm.source_port) : ''}
+                  onChange={(e) => setRuleForm({ ...ruleForm, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+                />
+                <FormField
+                  id="rule-dst-preset"
+                  label="Destination Preset"
+                  as="select"
+                  value={ruleForm.destination ?? ''}
+                  onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
+                >
+                  {addressPresetOptions.map((opt) => (
+                    <option key={`dst-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
+                  ))}
+                </FormField>
+                <FormField
+                  id="rule-dst"
+                  label="Destination (custom CIDR/IP/Alias)"
+                  placeholder="Optional override"
+                  value={ruleForm.destination ?? ''}
+                  onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
+                />
+                <FormField
+                  id="rule-dst-port"
+                  label="Destination Port"
+                  type="number"
+                  value={ruleForm.destination_port != null ? String(ruleForm.destination_port) : ''}
+                  onChange={(e) => setRuleForm({ ...ruleForm, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+                />
+              </div>
+            </details>
+
+            <label className="flex items-center gap-3 col-span-2">
+              <input
+                type="checkbox"
+                checked={ruleForm.enabled ?? true}
+                onChange={(e) => setRuleForm({ ...ruleForm, enabled: e.target.checked })}
+              />
+              <span className="text-sm text-gray-700">Rule enabled</span>
+            </label>
+
+            <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
+              <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
+                Schedule (optional)
+              </summary>
+              <div className="border-t border-gray-200 px-4 py-4 space-y-3">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Days active (leave all unchecked = every day)</p>
+                  <div className="flex gap-3 flex-wrap">
+                    {DAY_NAMES.map((name, idx) => (
+                      <label key={idx} className="flex items-center gap-1 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={(ruleForm.schedule?.days ?? []).includes(idx)}
+                          onChange={(e) => {
+                            const days = [...(ruleForm.schedule?.days ?? [])]
+                            if (e.target.checked) {
+                              if (!days.includes(idx)) days.push(idx)
+                            } else {
+                              const index = days.indexOf(idx)
+                              if (index !== -1) days.splice(index, 1)
+                            }
+                            days.sort()
+                            setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), days } })
+                          }}
+                        />
+                        {name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField id="rule-sched-ts" label="Time start (HH:MM)" placeholder="e.g. 08:00"
+                    value={ruleForm.schedule?.time_start ?? ''}
+                    onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_start: e.target.value || null } })} />
+                  <FormField id="rule-sched-te" label="Time end (HH:MM)" placeholder="e.g. 17:00"
+                    value={ruleForm.schedule?.time_end ?? ''}
+                    onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_end: e.target.value || null } })} />
+                  <FormField id="rule-sched-ds" label="Date start (YYYY-MM-DD)" placeholder="e.g. 2026-01-01"
+                    value={ruleForm.schedule?.date_start ?? ''}
+                    onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_start: e.target.value || null } })} />
+                  <FormField id="rule-sched-de" label="Date end (YYYY-MM-DD)" placeholder="e.g. 2026-12-31"
+                    value={ruleForm.schedule?.date_end ?? ''}
+                    onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_end: e.target.value || null } })} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <FormField id="rule-sched-ts" label="Time start (HH:MM)" placeholder="e.g. 08:00"
-                  value={ruleForm.schedule?.time_start ?? ''}
-                  onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_start: e.target.value || null } })} />
-                <FormField id="rule-sched-te" label="Time end (HH:MM)" placeholder="e.g. 17:00"
-                  value={ruleForm.schedule?.time_end ?? ''}
-                  onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_end: e.target.value || null } })} />
-                <FormField id="rule-sched-ds" label="Date start (YYYY-MM-DD)" placeholder="e.g. 2026-01-01"
-                  value={ruleForm.schedule?.date_start ?? ''}
-                  onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_start: e.target.value || null } })} />
-                <FormField id="rule-sched-de" label="Date end (YYYY-MM-DD)" placeholder="e.g. 2026-12-31"
-                  value={ruleForm.schedule?.date_end ?? ''}
-                  onChange={(e) => setRuleForm({ ...ruleForm, schedule: { ...(ruleForm.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_end: e.target.value || null } })} />
-              </div>
-            </div>
-          </details>
+            </details>
+          </div>
         </div>
       </Modal>
 
       <Modal
         open={editRule !== null}
         title="Edit Firewall Rule"
-        onClose={() => setEditRule(null)}
+        onClose={() => {
+          setEditRule(null)
+          setRuleFormError(null)
+        }}
         onConfirm={handleUpdateRule}
         confirmLabel="Save Changes"
         loading={editSaving}
         size="xl"
       >
         {editRule && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3">
+            {ruleFormError && (
+              <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                {ruleFormError}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
             <FormField
               id="edit-rule-desc"
               label="Description"
@@ -1142,9 +1267,9 @@ export default function Firewall() {
               </div>
             </details>
           </div>
+          </div>
         )}
       </Modal>
-
       <Modal
         open={deleteRuleId !== null}
         title="Delete Firewall Rule"
@@ -1161,13 +1286,21 @@ export default function Firewall() {
       <Modal
         open={aliasModalOpen}
         title="Add Alias"
-        onClose={() => setAliasModalOpen(false)}
+        onClose={() => {
+          setAliasModalOpen(false)
+          setAliasFormError(null)
+        }}
         onConfirm={handleSaveAlias}
         confirmLabel="Create Alias"
         loading={aliasSaving}
         size="lg"
       >
         <div className="space-y-4">
+          {aliasFormError && (
+            <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {aliasFormError}
+            </div>
+          )}
           <details open className="overflow-hidden rounded border border-gray-200 bg-white">
             <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">Alias Details</summary>
             <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
