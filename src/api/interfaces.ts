@@ -176,7 +176,7 @@ export const getInterfacesInventory = (): Promise<ApiResponse<InterfacesInventor
       data: buildInterfaceInventory(r.data.data),
     }))
 
-// Core upserts by name via POST — use this for both create and update.
+// Core upserts by name via POST - use this for both create and update.
 export const createInterface = (
   iface: Omit<NetworkInterface, 'name'> & { name: string },
 ): Promise<ApiResponse<NetworkInterface>> =>

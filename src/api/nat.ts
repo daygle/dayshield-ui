@@ -39,7 +39,7 @@ export const deleteNatRule = (id: string): Promise<ApiResponse<void>> =>
     .delete<ApiResponse<void>>(`/nat/rules/${encodeURIComponent(id)}`)
     .then((r) => r.data)
 
-// Port forwards are DNAT NAT rules — these wrappers filter by rule_type so
+// Port forwards are DNAT NAT rules - these wrappers filter by rule_type so
 // the Port Forwards tab always shows only the relevant subset.
 
 export const getPortForwards = (): Promise<ApiResponse<NatRule[]>> =>

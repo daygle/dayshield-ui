@@ -25,9 +25,9 @@ function unixSecondsToMs(unixSeconds: number): number {
 }
 
 function formatLocalDateTime(unixSeconds: number | null): string {
-  if (unixSeconds === null || !Number.isFinite(unixSeconds)) return '—'
+  if (unixSeconds === null || !Number.isFinite(unixSeconds)) return '-'
   const date = new Date(unixSecondsToMs(unixSeconds))
-  if (Number.isNaN(date.getTime())) return '—'
+  if (Number.isNaN(date.getTime())) return '-'
   const y = date.getFullYear()
   const m = String(date.getMonth() + 1).padStart(2, '0')
   const d = String(date.getDate()).padStart(2, '0')
@@ -67,7 +67,7 @@ function formatRelativeFromUnix(unixSeconds: number | null): string {
 }
 
 function formatRelativeFromMs(timestampMs: number | null): string {
-  if (timestampMs === null || !Number.isFinite(timestampMs)) return '—'
+  if (timestampMs === null || !Number.isFinite(timestampMs)) return '-'
   return formatRelativeFromUnix(Math.floor(timestampMs / 1000))
 }
 
@@ -260,7 +260,7 @@ function AIThreatsContent() {
     try {
       const res = await submitAiFeedback(id, feedback)
       setSelectedThreat(res.data)
-      addToast('Thank you — AI model feedback recorded.', 'success')
+      addToast('Thank you - AI model feedback recorded.', 'success')
       loadAll()
     } catch (err) {
       addToast(err instanceof Error ? err.message : 'Failed to submit feedback', 'error')
@@ -316,7 +316,7 @@ function AIThreatsContent() {
               Unblock
             </Button>
           ) : (
-            <span className="text-xs text-gray-400">—</span>
+            <span className="text-xs text-gray-400">-</span>
           ),
       },
     ],
@@ -385,7 +385,7 @@ function AIThreatsContent() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">AI Threat Engine</h1>
           <p className="mt-1 text-sm text-slate-500">
-            On-device, self-reliant AI threat detection — no third-party services required.
+            On-device, self-reliant AI threat detection - no third-party services required.
           </p>
         </div>
         <div className="text-right">
@@ -575,14 +575,14 @@ function AIThreatsContent() {
               <Detail label="Timestamp" value={formatLocalDateTime(selectedThreat.timestamp)} />
               <Detail label="Source IP" value={<span className="font-mono">{selectedThreat.src_ip}</span>} />
               <Detail label="Destination IP" value={<span className="font-mono">{selectedThreat.dst_ip}</span>} />
-              <Detail label="Source Port" value={selectedThreat.src_port === null ? '—' : String(selectedThreat.src_port)} />
-              <Detail label="Destination Port" value={selectedThreat.dst_port === null ? '—' : String(selectedThreat.dst_port)} />
+              <Detail label="Source Port" value={selectedThreat.src_port === null ? '-' : String(selectedThreat.src_port)} />
+              <Detail label="Destination Port" value={selectedThreat.dst_port === null ? '-' : String(selectedThreat.dst_port)} />
               <Detail label="Protocol" value={selectedThreat.protocol} />
               <Detail label="Source" value={selectedThreat.event_source} />
-              <Detail label="Action" value={selectedThreat.action ?? '—'} />
-              <Detail label="Signature" value={selectedThreat.signature ?? '—'} />
-              <Detail label="Alert Severity" value={selectedThreat.alert_severity === undefined ? '—' : String(selectedThreat.alert_severity)} />
-              <Detail label="Model Label" value={selectedThreat.label === undefined ? '—' : String(selectedThreat.label)} />
+              <Detail label="Action" value={selectedThreat.action ?? '-'} />
+              <Detail label="Signature" value={selectedThreat.signature ?? '-'} />
+              <Detail label="Alert Severity" value={selectedThreat.alert_severity === undefined ? '-' : String(selectedThreat.alert_severity)} />
+              <Detail label="Model Label" value={selectedThreat.label === undefined ? '-' : String(selectedThreat.label)} />
               <Detail label="Risk Score" value={`${Math.round(selectedThreat.risk_score * 100)}%`} />
               <Detail label="Blocked" value={selectedThreat.blocked ? 'Yes' : 'No'} />
               <Detail label="Block Expires" value={selectedThreat.block_expires_at === null ? 'Permanent' : formatLocalDateTime(selectedThreat.block_expires_at)} />

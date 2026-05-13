@@ -219,7 +219,7 @@ export interface DnsDomainOverride {
 export interface DhcpConfig {
   enabled: boolean
   interface: string
-  subnet: string      // CIDR e.g. "192.168.1.0/24" — must match the LAN network
+  subnet: string      // CIDR e.g. "192.168.1.0/24" - must match the LAN network
   rangeStart: string
   rangeEnd: string
   subnetMask: string  // derived dotted-decimal, read-only from API
@@ -232,7 +232,7 @@ export interface DhcpConfig {
 /** Per-interface DHCP configuration. Used by /interfaces/{name}/dhcp endpoints. */
 export interface DhcpConfigPerInterface {
   enabled: boolean
-  subnet: string      // CIDR e.g. "192.168.1.0/24" — must match the interface network
+  subnet: string      // CIDR e.g. "192.168.1.0/24" - must match the interface network
   rangeStart: string
   rangeEnd: string
   subnetMask: string  // derived dotted-decimal, read-only from API
