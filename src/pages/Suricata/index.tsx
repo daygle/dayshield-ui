@@ -274,7 +274,7 @@ function SuricataContent() {
       .catch((err: Error) => {
         if (isLikelyEndpointMissing(err.message)) {
           return updateSuricataRuleset(row.id, { enabled: !row.enabled }).catch((legacyErr: Error) => {
-            throw new Error(`${err.message}; legacy toggle failed: ${legacyErr.message}`)
+            throw new Error(`Managed toggle is unavailable and legacy toggle failed: ${legacyErr.message}`)
           })
         }
         throw err
@@ -408,8 +408,10 @@ function SuricataContent() {
               size="sm"
               variant="danger"
               loading={rulesetAction(row, 'remove')}
-              onClick={() =>
-                applyRulesetAction(row.id, 'remove', () => removeSuricataRuleset(row.id), `Removed ${String(row.name)}.`)}
+              onClick={() => {
+                if (!window.confirm(`Remove ruleset "${String(row.name)}"?`)) return
+                applyRulesetAction(row.id, 'remove', () => removeSuricataRuleset(row.id), `Removed ${String(row.name)}.`)
+              }}
             >
               Remove
             </Button>
