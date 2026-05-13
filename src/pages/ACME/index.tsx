@@ -165,7 +165,7 @@ export default function ACME() {
             </div>
             <div>
               <dt className="text-gray-500">ACME Server</dt>
-              <dd className="font-medium text-gray-800 break-all">{account.server || '—'}</dd>
+              <dd className="font-medium text-gray-800 break-all">{account.directory_url || '—'}</dd>
             </div>
             <div>
               <dt className="text-gray-500">Registered</dt>
@@ -225,8 +225,8 @@ export default function ACME() {
             id="acme-server"
             label="ACME Directory URL"
             placeholder="https://acme-v02.api.letsencrypt.org/directory"
-            value={accountForm.server ?? ''}
-            onChange={(e) => setAccountForm({ ...accountForm, server: e.target.value })}
+            value={accountForm.directory_url ?? ''}
+            onChange={(e) => setAccountForm({ ...accountForm, directory_url: e.target.value })}
           />
           <p className="text-xs text-gray-500">
             Use <code className="font-mono">https://acme-staging-v02.api.letsencrypt.org/directory</code> for

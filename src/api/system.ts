@@ -125,7 +125,7 @@ function toBackendSystemConfig(config: Partial<SystemConfig>): Partial<BackendSy
     ssh_enabled: config.sshEnabled,
     ssh_port: config.sshPort,
     web_port: config.webPort,
-    management_tls_acme_domain: config.managementTlsAcmeDomain,
+    management_tls_acme_domain: config.managementTlsAcmeDomain ?? undefined,
   }
 }
 
