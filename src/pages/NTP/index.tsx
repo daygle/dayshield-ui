@@ -73,6 +73,9 @@ export default function NtpPage() {
   const [config, setConfig] = useState<NtpConfig>(DEFAULT_CONFIG)
   const [status, setStatus] = useState<NtpStatus | null>(null)
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
+
+  const interfaceLabel = (iface: NetworkInterface): string =>
+    iface.description?.trim() ? `${iface.description} (${iface.name})` : iface.name
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [resyncing, setResyncing] = useState(false)
@@ -112,6 +115,18 @@ export default function NtpPage() {
       .catch((err: Error) => addToast('error', `Failed to load NTP data: ${err.message}`))
       .finally(() => setLoading(false))
   }, [addToast])
+
+  useEffect(() => {
+    if (
+      !loading &&
+      interfaces.length > 0 &&
+      config.enabled &&
+      config.listenInterfaces.length === 0 &&
+      config.servers.length === 0
+    ) {
+      setConfig((prev) => ({ ...prev, listenInterfaces: interfaces.map((iface) => iface.name) }))
+    }
+  }, [loading, interfaces, config])
 
   const handleSave = () => {
     setSaving(true)
@@ -338,7 +353,7 @@ export default function NtpPage() {
                     onChange={() => handleToggleInterface(iface.name)}
                   />
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{iface.name}</p>
+                    <p className="font-medium truncate">{interfaceLabel(iface)}</p>
                     {iface.ipv4Address && (
                       <p className="text-xs text-gray-500 font-mono truncate">
                         {iface.ipv4Address}/{iface.ipv4Prefix}

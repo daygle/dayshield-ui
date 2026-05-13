@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   getDhcpConfig,
@@ -29,44 +29,6 @@ const staticColumns: Column<StaticLeaseRow>[] = [
   { key: 'ipAddress', header: 'IP Address' },
   { key: 'hostname', header: 'Hostname' },
   { key: 'description', header: 'Description' },
-]
-
-const activeColumns: Column<ActiveLeaseRow>[] = [
-  { key: 'mac', header: 'MAC Address' },
-  { key: 'ipAddress', header: 'IP Address' },
-  { key: 'hostname', header: 'Hostname', render: (row) => (row.hostname as string) || '-' },
-  {
-    key: 'state',
-    header: 'State',
-    render: (row) => {
-      const state = row.state as DhcpLease['state']
-      const map: Record<string, string> = {
-        active:    'bg-green-100 text-green-700',
-        expired:   'bg-red-100 text-red-700',
-        reserved:  'bg-blue-100 text-blue-700',
-        declined:  'bg-orange-100 text-orange-700',
-        reclaimed: 'bg-gray-100 text-gray-500',
-      }
-      return (
-        <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold capitalize ${map[state] ?? 'bg-gray-100 text-gray-500'}`}>
-          {state}
-        </span>
-      )
-    },
-  },
-  {
-    key: 'ends',
-    header: 'Expires',
-    render: (row) => {
-      const raw = row.ends as string
-      if (!raw) return '-'
-      const asNum = Number(raw)
-      const d = Number.isFinite(asNum) && asNum > 1e9
-        ? new Date(asNum * 1000)
-        : new Date(raw)
-      return isNaN(d.getTime()) ? raw : d.toLocaleString()
-    },
-  },
 ]
 
 const defaultLeaseForm: Omit<DhcpStaticLease, 'id'> = {
@@ -121,6 +83,69 @@ export default function DHCP() {
   const selectedInterfaceLabel = selectedInterfaceMeta
     ? interfaceLabel(selectedInterfaceMeta)
     : selectedInterface || ''
+
+  const openStaticReservationFromLease = (lease: ActiveLeaseRow) => {
+    setLeaseForm({
+      mac: lease.mac ?? '',
+      ipAddress: lease.ipAddress ?? '',
+      hostname: lease.hostname ?? '',
+      description: '',
+    })
+    setLeaseModalOpen(true)
+  }
+
+  const activeColumns: Column<ActiveLeaseRow>[] = [
+    { key: 'mac', header: 'MAC Address' },
+    { key: 'ipAddress', header: 'IP Address' },
+    { key: 'hostname', header: 'Hostname', render: (row) => (row.hostname as string) || '-' },
+    {
+      key: 'state',
+      header: 'State',
+      render: (row) => {
+        const state = row.state as DhcpLease['state']
+        const map: Record<string, string> = {
+          active:    'bg-green-100 text-green-700',
+          expired:   'bg-red-100 text-red-700',
+          reserved:  'bg-blue-100 text-blue-700',
+          declined:  'bg-orange-100 text-orange-700',
+          reclaimed: 'bg-gray-100 text-gray-500',
+        }
+        return (
+          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold capitalize ${map[state] ?? 'bg-gray-100 text-gray-500'}`}>
+            {state}
+          </span>
+        )
+      },
+    },
+    {
+      key: 'ends',
+      header: 'Expires',
+      render: (row) => {
+        const raw = row.ends as string
+        if (!raw) return '-'
+        const asNum = Number(raw)
+        const d = Number.isFinite(asNum) && asNum > 1e9
+          ? new Date(asNum * 1000)
+          : new Date(raw)
+        return isNaN(d.getTime()) ? raw : d.toLocaleString()
+      },
+    },
+    {
+      key: 'actions',
+      header: '',
+      className: 'w-28 text-right',
+      render: (row) => (
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => openStaticReservationFromLease(row)}
+          disabled={!row.mac || !row.ipAddress}
+        >
+          Reserve
+        </Button>
+      ),
+    },
+  ]
 
   const loadAll = () => {
     setLoading(true)
@@ -365,7 +390,7 @@ export default function DHCP() {
         }
       >
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">LoadingÔÇª</p>
         ) : (selectedInterface ? interfaceConfig : config) ? (
           <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
             {!selectedInterface && (
@@ -388,7 +413,7 @@ export default function DHCP() {
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Pool Range</dt>
               <dd className="mt-1 font-medium text-gray-800 font-mono">
                 {(selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart) && (selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd)
-                  ? `${selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart} – ${selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd}`
+                  ? `${selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart} ÔÇô ${selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd}`
                   : '-'}
               </dd>
             </div>
@@ -427,7 +452,7 @@ export default function DHCP() {
       {/* Static Leases */}
       <Card
         title={selectedInterface ? 'Static IP Reservations' : 'Static Leases'}
-        subtitle={selectedInterface ? `Reservations for ${selectedInterfaceLabel}` : 'MAC → IP address reservations (always assigned the same IP)'}
+        subtitle={selectedInterface ? `Reservations for ${selectedInterfaceLabel}` : 'MAC ÔåÆ IP address reservations (always assigned the same IP)'}
         actions={
           <Button size="sm" onClick={() => setLeaseModalOpen(true)}>
             + Add Lease

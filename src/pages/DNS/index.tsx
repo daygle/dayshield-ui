@@ -90,6 +90,7 @@ export default function DNS() {
 
   // Config edit
   const [configModalOpen, setConfigModalOpen] = useState(false)
+  const [dotModalOpen, setDotModalOpen] = useState(false)
   const [configForm, setConfigForm] = useState<Partial<DnsConfig>>(defaultConfigForm())
   const [listenInput, setListenInput] = useState('')
   const [forwardersInput, setForwardersInput] = useState('')
@@ -227,6 +228,23 @@ export default function DNS() {
         setDnsInterfaces([])
       })
     setConfigModalOpen(true)
+  }
+
+  const openDotModal = () => {
+    if (config) {
+      setConfigForm({
+        ...config,
+        dot_enabled: config.dot_enabled ?? false,
+        dot_port: config.dot_port ?? 853,
+        dot_lan_only: config.dot_lan_only ?? true,
+        dot_certificate: config.dot_certificate ?? '',
+        dot_private_key: config.dot_private_key ?? '',
+        dot_acme_domain: config.dot_acme_domain ?? '',
+      })
+    } else {
+      setConfigForm(defaultConfigForm())
+    }
+    setDotModalOpen(true)
   }
 
   const handleSaveConfig = () => {
@@ -461,7 +479,7 @@ export default function DNS() {
             subtitle="Recursive resolver / forwarder configuration"
             actions={
               <Button size="sm" variant="secondary" onClick={openConfigModal}>
-                Edit Settings
+                Edit Resolver
               </Button>
             }
           >
@@ -516,8 +534,8 @@ export default function DNS() {
           title="DoT"
           subtitle="Encrypted private DNS listener on the configured DoT port"
           actions={
-            <Button size="sm" variant="secondary" onClick={openConfigModal}>
-              Edit Settings
+            <Button size="sm" variant="secondary" onClick={openDotModal}>
+              Edit DoT
             </Button>
           }
         >
@@ -645,7 +663,7 @@ export default function DNS() {
       {/* Edit DNS Settings Modal */}
       <Modal
         open={configModalOpen}
-        title="Edit DNS Settings"
+        title="Edit DNS Resolver Settings"
         onClose={() => setConfigModalOpen(false)}
         onConfirm={handleSaveConfig}
         confirmLabel="Save"
@@ -653,18 +671,19 @@ export default function DNS() {
         size="lg"
       >
         <div className="space-y-5">
-          {/* Enable toggle */}
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              checked={!!configForm.enabled}
-              onChange={(e) => setConfigForm((f) => ({ ...f, enabled: e.target.checked }))}
-            />
-            <span className="text-sm font-medium text-gray-700">Enable DNS resolver</span>
-          </label>
+          <>
+              {/* Enable toggle */}
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked={!!configForm.enabled}
+                  onChange={(e) => setConfigForm((f) => ({ ...f, enabled: e.target.checked }))}
+                />
+                <span className="text-sm font-medium text-gray-700">Enable DNS resolver</span>
+              </label>
 
-          <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
             {/* Port */}
             <FormField
               id="dns-port"
@@ -750,124 +769,140 @@ export default function DNS() {
             />
           </div>
 
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-4">
-            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">DNS-over-TLS (DoT)</h3>
-                <p className="text-xs text-gray-500">
-                  Exposes an encrypted private DNS listener on the configured DoT port with optional external access.
-                </p>
-              </div>
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <input
-                  id="dns-dot-enabled"
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  checked={!!configForm.dot_enabled}
-                  onChange={(e) => setConfigForm((f) => ({ ...f, dot_enabled: e.target.checked }))}
-                />
-                <span className="text-sm font-medium text-gray-700">Enable DoT server</span>
-              </label>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="rounded border border-gray-200 bg-white px-3 py-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Listener</p>
-                <p className="mt-1 font-mono text-gray-900">TCP/{configForm.dot_port ?? 853}</p>
-              </div>
-              <div className="rounded border border-gray-200 bg-white px-3 py-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Exposure</p>
-                <p className="mt-1 text-gray-900">
-                  {configForm.dot_lan_only === false ? 'LAN + external clients' : 'LAN clients only'}
-                </p>
-              </div>
-            </div>
-
-            <label className="flex items-center gap-3 cursor-pointer select-none">
-              <input
-                id="dns-dot-wan-access"
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                checked={configForm.dot_lan_only === false}
-                onChange={(e) => setConfigForm((f) => ({ ...f, dot_lan_only: !e.target.checked }))}
-              />
-              <span className="text-sm font-medium text-gray-700">Allow external / WAN clients to connect</span>
-            </label>
-
-            <div className="space-y-2">
-              <label htmlFor="dns-dot-acme-domain" className="block text-sm font-medium text-gray-700">
-                DoT Certificate Source
-              </label>
-              <select
-                id="dns-dot-acme-domain"
-                value={configForm.dot_acme_domain ?? ''}
-                onChange={(e) => setConfigForm((f) => ({ ...f, dot_acme_domain: e.target.value }))}
-                className="mt-1 block w-full rounded-md border-gray-300 bg-white py-2 px-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-              >
-                <option value="">Use raw PEM certificate/key</option>
-                {acmeDomains.map((domain) => (
-                  <option key={domain} value={domain}>
-                    {domain}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500">
-                Select an issued ACME certificate for DoT. When selected, the raw PEM fields are optional and the backend will use the ACME-generated certificate.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <FormField
-                  id="dns-dot-certificate"
-                  as="textarea"
-                  rows={8}
-                  label="TLS Certificate (PEM)"
-                  placeholder="-----BEGIN CERTIFICATE-----"
-                  value={configForm.dot_certificate ?? ''}
-                  onChange={(e) => setConfigForm((f) => ({ ...f, dot_certificate: e.target.value }))}
-                  disabled={useAcmeDoTCert}
-                />
-                <input
-                  id="dns-dot-certificate-file"
-                  type="file"
-                  accept=".pem,.crt,.cer,text/plain"
-                  className="block w-full text-xs text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-100"
-                  disabled={useAcmeDoTCert}
-                  onChange={(e) => void handleLoadPemFile(e, 'dot_certificate')}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <FormField
-                  id="dns-dot-private-key"
-                  as="textarea"
-                  rows={8}
-                  label="TLS Private Key (PEM)"
-                  placeholder="-----BEGIN PRIVATE KEY-----"
-                  value={configForm.dot_private_key ?? ''}
-                  onChange={(e) => setConfigForm((f) => ({ ...f, dot_private_key: e.target.value }))}
-                  disabled={useAcmeDoTCert}
-                />
-                <input
-                  id="dns-dot-private-key-file"
-                  type="file"
-                  accept=".pem,.key,text/plain"
-                  className="block w-full text-xs text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-100"
-                  disabled={useAcmeDoTCert}
-                  onChange={(e) => void handleLoadPemFile(e, 'dot_private_key')}
-                />
-              </div>
-            </div>
-          </div>
-
           <p className="text-xs text-gray-500">
             Enter multiple addresses as comma-separated values.
             When <strong>upstream forwarders</strong> are set Unbound operates in forwarder mode;
             otherwise it performs full recursive resolution.
             Use <strong>Host Overrides</strong> and <strong>Domain Overrides</strong> to add
-            local DNS entries and per-domain forwarding. When DoT is enabled, DayShield
-            will present the configured certificate/key on TCP/{configForm.dot_port ?? 853} to the clients allowed by the access setting above.
+            local DNS entries and per-domain forwarding.
+          </p>
+          </>
+        </div>
+      </Modal>
+
+      {/* Edit DNS-over-TLS Modal */}
+      <Modal
+        open={dotModalOpen}
+        title="Edit DoT Settings"
+        onClose={() => setDotModalOpen(false)}
+        onConfirm={handleSaveConfig}
+        confirmLabel="Save"
+        loading={configSaving}
+        size="lg"
+      >
+        <div className="space-y-5">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">DNS-over-TLS (DoT)</h3>
+              <p className="text-xs text-gray-500">
+                Configure the encrypted DNS listener and its certificate selection.
+              </p>
+            </div>
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                id="dns-dot-enabled"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                checked={!!configForm.dot_enabled}
+                onChange={(e) => setConfigForm((f) => ({ ...f, dot_enabled: e.target.checked }))}
+              />
+              <span className="text-sm font-medium text-gray-700">Enable DoT server</span>
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="rounded border border-gray-200 bg-white px-3 py-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Listener</p>
+              <p className="mt-1 font-mono text-gray-900">TCP/{configForm.dot_port ?? 853}</p>
+            </div>
+            <div className="rounded border border-gray-200 bg-white px-3 py-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Exposure</p>
+              <p className="mt-1 text-gray-900">
+                {configForm.dot_lan_only === false ? 'LAN + external clients' : 'LAN clients only'}
+              </p>
+            </div>
+          </div>
+
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              id="dns-dot-wan-access"
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              checked={configForm.dot_lan_only === false}
+              onChange={(e) => setConfigForm((f) => ({ ...f, dot_lan_only: !e.target.checked }))}
+            />
+            <span className="text-sm font-medium text-gray-700">Allow external / WAN clients to connect</span>
+          </label>
+
+          <div className="space-y-2">
+            <label htmlFor="dns-dot-acme-domain" className="block text-sm font-medium text-gray-700">
+              DoT Certificate Source
+            </label>
+            <select
+              id="dns-dot-acme-domain"
+              value={configForm.dot_acme_domain ?? ''}
+              onChange={(e) => setConfigForm((f) => ({ ...f, dot_acme_domain: e.target.value }))}
+              className="mt-1 block w-full rounded-md border-gray-300 bg-white py-2 px-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+            >
+              <option value="">Use raw PEM certificate/key</option>
+              {acmeDomains.map((domain) => (
+                <option key={domain} value={domain}>
+                  {domain}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500">
+              Select an issued ACME certificate for DoT. When selected, the raw PEM fields are optional and the backend will use the ACME-generated certificate.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <FormField
+                id="dns-dot-certificate"
+                as="textarea"
+                rows={8}
+                label="TLS Certificate (PEM)"
+                placeholder="-----BEGIN CERTIFICATE-----"
+                value={configForm.dot_certificate ?? ''}
+                onChange={(e) => setConfigForm((f) => ({ ...f, dot_certificate: e.target.value }))}
+                disabled={useAcmeDoTCert}
+              />
+              <input
+                id="dns-dot-certificate-file"
+                type="file"
+                accept=".pem,.crt,.cer,text/plain"
+                className="block w-full text-xs text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-100"
+                disabled={useAcmeDoTCert}
+                onChange={(e) => void handleLoadPemFile(e, 'dot_certificate')}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <FormField
+                id="dns-dot-private-key"
+                as="textarea"
+                rows={8}
+                label="TLS Private Key (PEM)"
+                placeholder="-----BEGIN PRIVATE KEY-----"
+                value={configForm.dot_private_key ?? ''}
+                onChange={(e) => setConfigForm((f) => ({ ...f, dot_private_key: e.target.value }))}
+                disabled={useAcmeDoTCert}
+              />
+              <input
+                id="dns-dot-private-key-file"
+                type="file"
+                accept=".pem,.key,text/plain"
+                className="block w-full text-xs text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-100"
+                disabled={useAcmeDoTCert}
+                onChange={(e) => void handleLoadPemFile(e, 'dot_private_key')}
+              />
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-500">
+            Configure DoT certificate selection and access policy. When enabled,
+            DayShield will present the configured certificate/key on TCP/{configForm.dot_port ?? 853} to the allowed clients.
           </p>
         </div>
       </Modal>

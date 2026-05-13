@@ -17,6 +17,7 @@ function levelFromSystemMessage(message: string): LogLevel {
 function sourceFromSystemEvent(unit: string, message: string): LogSource {
   const hay = `${unit} ${message}`.toLowerCase()
   if (hay.includes('suricata')) return 'suricata'
+  if (hay.includes('ai threat engine') || hay.includes('ai engine') || hay.includes('ai-threat') || hay.includes('ai threat')) return 'ai'
   if (hay.includes('nft') || hay.includes('firewall')) return 'firewall'
   if (hay.includes('kea') || hay.includes('dhcp') || hay.includes('dnsmasq')) return 'dhcp'
   if (hay.includes('wireguard') || hay.includes('wg-') || hay.includes('vpn')) return 'vpn'

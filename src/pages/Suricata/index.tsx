@@ -8,13 +8,7 @@ import {
   updateInterfaceSuricataConfig,
   getSuricataRulesets,
   updateSuricataRuleset,
-  checkSuricataRulesetUpdates,
-  checkSuricataRulesetUpdate,
   installSuricataRuleset,
-  updateManagedSuricataRuleset,
-  enableManagedSuricataRuleset,
-  disableManagedSuricataRuleset,
-  removeSuricataRuleset,
   getSuricataAlerts,
 } from '../../api/suricata'
 import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
@@ -93,7 +87,6 @@ function SuricataContent() {
   const [rulesetsError, setRulesetsError] = useState<string | null>(null)
   const [rulesetsSuccess, setRulesetsSuccess] = useState<string | null>(null)
   const [rulesetActionLoading, setRulesetActionLoading] = useState<Record<string, RulesetAction>>({})
-  const [checkingAllUpdates, setCheckingAllUpdates] = useState(false)
 
   const loadRulesets = useCallback(() => {
     setRulesetsLoading(true)
@@ -254,35 +247,8 @@ function SuricataContent() {
       })
   }
 
-  const handleCheckAllRulesetUpdates = () => {
-    setCheckingAllUpdates(true)
-    setRulesetsSuccess(null)
-    setRulesetsError(null)
-    checkSuricataRulesetUpdates()
-      .then((res) => {
-        setRulesets((res.data ?? []).map((ruleset) => toRulesetRow(ruleset)))
-        setRulesetsSuccess('Ruleset update check completed.')
-      })
-      .catch((err: Error) => {
-        if (isLikelyEndpointMissing(err.message)) {
-          setRulesetsError('Bulk update check is not supported by this backend. Use per-ruleset check.')
-          return
-        }
-        setRulesetsError(err.message)
-      })
-      .finally(() => setCheckingAllUpdates(false))
-  }
-
   const toggleRuleset = (row: RulesetRow) => {
-    return (row.enabled ? disableManagedSuricataRuleset(row.id) : enableManagedSuricataRuleset(row.id))
-      .catch((err: Error) => {
-        if (isLikelyEndpointMissing(err.message)) {
-          return updateSuricataRuleset(row.id, { enabled: !row.enabled }).catch((legacyErr: Error) => {
-            throw new Error(`Unable to toggle ruleset with this backend: ${legacyErr.message}`)
-          })
-        }
-        throw err
-      })
+    return updateSuricataRuleset(row.id, { enabled: !row.enabled })
   }
 
   const interfaceLabels = React.useMemo(
@@ -373,24 +339,6 @@ function SuricataContent() {
               Install
             </Button>
           )}
-          <Button
-            size="sm"
-            variant="secondary"
-            loading={rulesetAction(row, 'check')}
-            onClick={() => applyRulesetAction(row.id, 'check', () => checkSuricataRulesetUpdate(row.id), `Checked updates for ${String(row.name)}.`)}
-          >
-            Check
-          </Button>
-          {row.installed && row.updateAvailable && (
-            <Button
-              size="sm"
-              variant="primary"
-              loading={rulesetAction(row, 'update')}
-              onClick={() => applyRulesetAction(row.id, 'update', () => updateManagedSuricataRuleset(row.id), `Updated ${String(row.name)}.`)}
-            >
-              Update
-            </Button>
-          )}
           {row.installed && (
             <Button
               size="sm"
@@ -405,19 +353,6 @@ function SuricataContent() {
                 )}
             >
               {row.enabled ? 'Disable' : 'Enable'}
-            </Button>
-          )}
-          {row.installed && row.canRemove && (
-            <Button
-              size="sm"
-              variant="danger"
-              loading={rulesetAction(row, 'remove')}
-              onClick={() => {
-                if (!window.confirm(`Remove ruleset "${String(row.name)}"?`)) return
-                applyRulesetAction(row.id, 'remove', () => removeSuricataRuleset(row.id), `Removed ${String(row.name)}.`)
-              }}
-            >
-              Remove
             </Button>
           )}
         </div>
@@ -595,14 +530,6 @@ function SuricataContent() {
               onClick={loadRulesets}
             >
               Refresh
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              loading={checkingAllUpdates}
-              onClick={handleCheckAllRulesetUpdates}
-            >
-              Check for Updates
             </Button>
           </div>
         }

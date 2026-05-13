@@ -31,6 +31,7 @@ function buildCounts(logs: LogEntry[]): Record<LogSource | 'all', number> {
   const counts: Record<LogSource | 'all', number> = {
     all: logs.length,
     suricata: 0,
+    ai: 0,
     firewall: 0,
     system: 0,
     dhcp: 0,

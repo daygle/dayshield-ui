@@ -3,6 +3,7 @@ import type { LogSource } from '../types/logs'
 const TABS: { value: LogSource | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'suricata', label: 'Suricata' },
+  { value: 'ai', label: 'AI Threat Engine' },
   { value: 'firewall', label: 'Firewall' },
   { value: 'system', label: 'System' },
   { value: 'dhcp', label: 'DHCP' },
