@@ -29,6 +29,7 @@ interface BackendSystemConfig {
   ssh_enabled?: boolean
   ssh_port?: number
   web_port?: number
+  management_tls_acme_domain?: string
 }
 
 function normalizeSystemStatus(raw: unknown): SystemStatus {
@@ -111,6 +112,7 @@ function normalizeSystemConfig(raw: unknown): SystemConfig {
     sshEnabled: Boolean(cfg.ssh_enabled),
     sshPort: typeof cfg.ssh_port === 'number' ? cfg.ssh_port : 22,
     webPort: typeof cfg.web_port === 'number' ? cfg.web_port : 8443,
+    managementTlsAcmeDomain: typeof cfg.management_tls_acme_domain === 'string' ? cfg.management_tls_acme_domain : null,
   }
 }
 
@@ -123,6 +125,7 @@ function toBackendSystemConfig(config: Partial<SystemConfig>): Partial<BackendSy
     ssh_enabled: config.sshEnabled,
     ssh_port: config.sshPort,
     web_port: config.webPort,
+    management_tls_acme_domain: config.managementTlsAcmeDomain,
   }
 }
 

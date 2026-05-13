@@ -15,6 +15,7 @@ import {
   markApplianceRebuildComplete,
   rollbackRootfsLiveUpdate,
 } from '../../api/system'
+import { getAcmeConfig } from '../../api/acme'
 import type { SystemStatus, SystemConfig, UpdatesStatus, UpdateSettings } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -290,6 +291,7 @@ export default function System() {
   const [config, setConfig] = useState<SystemConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [acmeDomains, setAcmeDomains] = useState<string[]>([])
 
   const [editConfig, setEditConfig] = useState<Partial<SystemConfig>>({})
   const [editOpen, setEditOpen] = useState(false)
@@ -316,13 +318,14 @@ export default function System() {
 
   const loadAll = () => {
     setLoading(true)
-    Promise.all([getSystemStatus(), getSystemConfig(), getUpdatesStatus(), getUpdateSettings()])
-      .then(([st, cfg, upd, updSettings]) => {
+    Promise.all([getSystemStatus(), getSystemConfig(), getUpdatesStatus(), getUpdateSettings(), getAcmeConfig()])
+      .then(([st, cfg, upd, updSettings, acme]) => {
         setStatus(st.data)
         setConfig(cfg.data)
         setEditConfig(cfg.data)
         setUpdates(upd.data)
         setUpdateSettings(updSettings.data)
+        setAcmeDomains(acme.data.domains ?? [])
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))
@@ -993,6 +996,27 @@ export default function System() {
             value={String(editConfig.webPort ?? 8080)}
             onChange={(e) => setEditConfig({ ...editConfig, webPort: Number(e.target.value) })}
           />
+          <div className="col-span-2">
+            <label htmlFor="cfg-management-tls-domain" className="block text-sm font-medium text-gray-700">
+              Management TLS Certificate (ACME Domain)
+            </label>
+            <select
+              id="cfg-management-tls-domain"
+              className="mt-1 block w-full rounded-md border-gray-300 bg-white py-2 px-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+              value={editConfig.managementTlsAcmeDomain ?? ''}
+              onChange={(e) => setEditConfig({ ...editConfig, managementTlsAcmeDomain: e.target.value || null })}
+            >
+              <option value="">Use default management certificate</option>
+              {acmeDomains.map((domain) => (
+                <option key={domain} value={domain}>
+                  {domain}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500">
+              Select an issued ACME certificate to use for the DayShield management UI.
+            </p>
+          </div>
         </div>
       </Modal>
 

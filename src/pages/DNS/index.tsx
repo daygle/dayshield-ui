@@ -12,6 +12,7 @@ import {
   createDnsDomainOverride,
   deleteDnsDomainOverride,
 } from '../../api/dns'
+import { getAcmeConfig } from '../../api/acme'
 import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
 import type {
   DnsBlocklistEntry,
@@ -60,6 +61,7 @@ const defaultConfigForm = (): Partial<DnsConfig> => ({
   dot_lan_only: true,
   dot_certificate: '',
   dot_private_key: '',
+  dot_acme_domain: '',
   local_records: [],
 })
 
@@ -94,6 +96,7 @@ export default function DNS() {
   const [configSaving, setConfigSaving] = useState(false)
   const [dnsInterfaces, setDnsInterfaces] = useState<KernelInterface[]>([])
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
+  const [acmeDomains, setAcmeDomains] = useState<string[]>([])
 
   // Host overrides
   const [hostModalOpen, setHostModalOpen] = useState(false)
@@ -120,9 +123,10 @@ export default function DNS() {
 
   const loadAll = () => {
     setLoading(true)
-    Promise.all([getDnsConfig(), getDnsOverrides()])
-      .then(([cfg, overrides]) => {
+    Promise.all([getDnsConfig(), getAcmeConfig(), getDnsOverrides()])
+      .then(([cfg, acmeCfg, overrides]) => {
         setConfig(cfg.data)
+        setAcmeDomains(acmeCfg.data.domains ?? [])
         setHostOverrides(overrides.data.host_overrides as HostRow[])
         setDomainOverrides(overrides.data.domain_overrides as DomainRow[])
       })
@@ -205,6 +209,7 @@ export default function DNS() {
         dot_lan_only: config.dot_lan_only ?? true,
         dot_certificate: config.dot_certificate ?? '',
         dot_private_key: config.dot_private_key ?? '',
+        dot_acme_domain: config.dot_acme_domain ?? '',
       })
       setListenInput((config.listen_addresses ?? []).join(', '))
       setForwardersInput((config.forwarders ?? []).join(', '))
@@ -228,9 +233,10 @@ export default function DNS() {
     const parseList = (s: string) => s.split(',').map((v) => v.trim()).filter(Boolean)
     const dotCertificate = configForm.dot_certificate?.trim() ?? ''
     const dotPrivateKey = configForm.dot_private_key?.trim() ?? ''
+    const acmeDomain = configForm.dot_acme_domain?.trim() ?? ''
 
-    if (configForm.dot_enabled && (!dotCertificate || !dotPrivateKey)) {
-      setError('DNS-over-TLS requires both a TLS certificate and private key.')
+    if (configForm.dot_enabled && !acmeDomain && (!dotCertificate || !dotPrivateKey)) {
+      setError('DNS-over-TLS requires either a raw certificate/key pair or a selected ACME domain.')
       return
     }
 
@@ -245,6 +251,7 @@ export default function DNS() {
       dot_lan_only: configForm.dot_lan_only ?? true,
       dot_certificate: dotCertificate,
       dot_private_key: dotPrivateKey,
+      dot_acme_domain: configForm.dot_acme_domain?.trim() ? configForm.dot_acme_domain : undefined,
       // Preserve existing local_records — they're managed via the overrides API
       local_records: config?.local_records ?? [],
       interface_blocklists: config?.interface_blocklists ?? [],
@@ -258,6 +265,8 @@ export default function DNS() {
       .catch((err: Error) => setError(err.message))
       .finally(() => setConfigSaving(false))
   }
+
+  const useAcmeDoTCert = Boolean(configForm.dot_acme_domain?.trim())
 
   const handleLoadPemFile = async (
     event: ChangeEvent<HTMLInputElement>,
@@ -785,6 +794,28 @@ export default function DNS() {
               <span className="text-sm font-medium text-gray-700">Allow external / WAN clients to connect</span>
             </label>
 
+            <div className="space-y-2">
+              <label htmlFor="dns-dot-acme-domain" className="block text-sm font-medium text-gray-700">
+                DoT Certificate Source
+              </label>
+              <select
+                id="dns-dot-acme-domain"
+                value={configForm.dot_acme_domain ?? ''}
+                onChange={(e) => setConfigForm((f) => ({ ...f, dot_acme_domain: e.target.value }))}
+                className="mt-1 block w-full rounded-md border-gray-300 bg-white py-2 px-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+              >
+                <option value="">Use raw PEM certificate/key</option>
+                {acmeDomains.map((domain) => (
+                  <option key={domain} value={domain}>
+                    {domain}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500">
+                Select an issued ACME certificate for DoT. When selected, the raw PEM fields are optional and the backend will use the ACME-generated certificate.
+              </p>
+            </div>
+
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <FormField
@@ -795,12 +826,14 @@ export default function DNS() {
                   placeholder="-----BEGIN CERTIFICATE-----"
                   value={configForm.dot_certificate ?? ''}
                   onChange={(e) => setConfigForm((f) => ({ ...f, dot_certificate: e.target.value }))}
+                  disabled={useAcmeDoTCert}
                 />
                 <input
                   id="dns-dot-certificate-file"
                   type="file"
                   accept=".pem,.crt,.cer,text/plain"
                   className="block w-full text-xs text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-100"
+                  disabled={useAcmeDoTCert}
                   onChange={(e) => void handleLoadPemFile(e, 'dot_certificate')}
                 />
               </div>
@@ -814,12 +847,14 @@ export default function DNS() {
                   placeholder="-----BEGIN PRIVATE KEY-----"
                   value={configForm.dot_private_key ?? ''}
                   onChange={(e) => setConfigForm((f) => ({ ...f, dot_private_key: e.target.value }))}
+                  disabled={useAcmeDoTCert}
                 />
                 <input
                   id="dns-dot-private-key-file"
                   type="file"
                   accept=".pem,.key,text/plain"
                   className="block w-full text-xs text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-100"
+                  disabled={useAcmeDoTCert}
                   onChange={(e) => void handleLoadPemFile(e, 'dot_private_key')}
                 />
               </div>

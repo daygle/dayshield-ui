@@ -326,7 +326,9 @@ export default function Firewall() {
 
   const loadSettings = () => {
     getFirewallSettings()
-      .then((res) => setSettings({ ...defaultSettings, ...res.data }))
+      .then((res) => {
+        setSettings({ ...defaultSettings, ...res.data })
+      })
       .catch((err: Error) => setSettingsError(err.message))
   }
 

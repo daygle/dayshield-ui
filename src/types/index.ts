@@ -174,6 +174,10 @@ export interface DnsConfig {
   dot_certificate?: string
   /** PEM-encoded TLS private key for the DoT listener. */
   dot_private_key?: string
+  /** ACME domain selected for DoT certificate selection. */
+  dot_acme_domain?: string
+  /** Optional ACME storage path for the selected DoT certificate. */
+  dot_acme_cert_storage_path?: string
   /** Static local records embedded in the DNS config (managed separately via /dns/overrides). */
   local_records: DnsLocalRecord[]
   /** Optional per-interface blocklist sources. */
@@ -402,10 +406,18 @@ export interface AiEngineConfig {
 
 export type AcmeCertificateStatus = 'valid' | 'pending' | 'expired' | 'error'
 
+export type AcmeChallengeType = 'http01' | 'dns01'
+
 export interface AcmeAccount {
+  enabled: boolean
+  directory_url: string
   email: string
-  server: string      // ACME directory URL, e.g. Let's Encrypt production
-  registered: boolean
+  domains: string[]
+  challenge_type: AcmeChallengeType
+  renew_interval_hours: number
+  provider?: string
+  cert_storage_path: string
+  registered?: boolean
   keyId?: string
 }
 
@@ -490,6 +502,7 @@ export interface SystemConfig {
   sshEnabled: boolean
   sshPort: number
   webPort: number
+  managementTlsAcmeDomain?: string | null
 }
 
 export type UpdateComponent = 'core' | 'ui' | 'rootfs' | 'both'
