@@ -8,6 +8,7 @@ import Modal from '../../components/Modal'
 import ErrorBanner from '../../components/ErrorBanner'
 import type { MetricsSnapshot, MetricsHistoryPoint, LanIfaceMetrics, FirewallRuleHit, NetworkInterface } from '../../types'
 import { getInterfaces } from '../../api/interfaces'
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -460,7 +461,7 @@ function renderMetricsCardBody(
       return (
         <MetricCard
           title="CPU Usage"
-          value={snap ? formatPercent(snap.cpu_percent) : '—'}
+          value={snap ? formatPercent(snap.cpu_percent) : '-'}
           percent={snap ? toFiniteNumber(snap.cpu_percent) : undefined}
           warn={85}
           sparkData={cpuSparkData}
@@ -471,7 +472,7 @@ function renderMetricsCardBody(
       return (
         <MetricCard
           title="RAM Usage"
-          value={snap ? formatPercent(snap.ram_percent) : '—'}
+          value={snap ? formatPercent(snap.ram_percent) : '-'}
           sub={snap ? `${formatBytes(toFiniteNumber(snap.ram_used_bytes))} / ${formatBytes(toFiniteNumber(snap.ram_total_bytes))}` : undefined}
           percent={snap ? toFiniteNumber(snap.ram_percent) : undefined}
           warn={85}
@@ -497,7 +498,7 @@ function renderMetricsCardBody(
               })}
             </div>
           ) : (
-            <p className="text-2xl font-bold text-gray-300 mt-2">—</p>
+            <p className="text-2xl font-bold text-gray-300 mt-2">-</p>
           )}
         </Card>
       )
@@ -516,7 +517,7 @@ function renderMetricsCardBody(
                 {snap ? (
                   <UptimeDisplay seconds={snap.uptime} />
                 ) : (
-                  <p className="text-2xl font-bold text-gray-300">—</p>
+                  <p className="text-2xl font-bold text-gray-300">-</p>
                 )}
               </div>
             </>
@@ -571,6 +572,13 @@ function renderMetricsCardBody(
         </Card>
       )
     case 'firewall':
+      {
+        const allRuleHits = Array.isArray(snap?.firewall_rule_hits)
+          ? snap.firewall_rule_hits
+          : []
+        const activeRuleHits = allRuleHits
+          .filter((item) => toFiniteNumber(item.hits) > 0)
+          .sort((a, b) => toFiniteNumber(b.hits) - toFiniteNumber(a.hits))
       return (
         <Card title="Firewall">
           {snap ? (
@@ -579,11 +587,14 @@ function renderMetricsCardBody(
                 <span className="text-sm text-gray-500">Active States</span>
                 <span className="text-2xl font-bold text-blue-600">{toFiniteNumber(snap.firewall_state_count).toLocaleString()}</span>
               </div>
-              {snap.firewall_rule_hits && Array.isArray(snap.firewall_rule_hits) && snap.firewall_rule_hits.length > 0 && (
+              {activeRuleHits.length > 0 && (
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Rule Hit Counters</p>
-                  <FirewallRuleHitsChart items={snap.firewall_rule_hits} />
+                  <FirewallRuleHitsChart items={activeRuleHits} />
                 </div>
+              )}
+              {allRuleHits.length > 0 && activeRuleHits.length === 0 && (
+                <p className="text-xs text-gray-500">No firewall rule activity yet. Rule counters are being collected, but all current hits are 0.</p>
               )}
             </div>
           ) : (
@@ -591,6 +602,7 @@ function renderMetricsCardBody(
           )}
         </Card>
       )
+      }
     case 'suricata':
       return (
         <Card title="Suricata">
@@ -696,7 +708,7 @@ function InterfaceTable({ ifaces, labelFor }: { ifaces: LanIfaceMetrics[]; label
           {ifaces.map((iface) => (
             <tr key={iface.name} className="hover:bg-gray-50">
               <td className="px-2 py-2 font-medium text-gray-800">{labelFor ? labelFor(iface.name) : iface.name}</td>
-              <td className="px-2 py-2 font-mono text-gray-500">{iface.ip ?? '—'}</td>
+              <td className="px-2 py-2 font-mono text-gray-500">{iface.ip ?? '-'}</td>
               <td className="px-2 py-2 text-right text-green-600 font-mono">{formatBps(iface.rx_bps)}</td>
               <td className="px-2 py-2 text-right text-blue-600 font-mono">{formatBps(iface.tx_bps)}</td>
               <td className="px-2 py-2 text-center">
@@ -741,7 +753,7 @@ export default function Metrics() {
   }, [])
   const labelFor = (name: string): string => {
     const iface = configuredInterfaces.find((i) => i.name === name)
-    return iface?.description?.trim() || name
+    return formatInterfaceDisplayName(iface?.description, name)
   }
 
   const [customizeOpen, setCustomizeOpen] = useState(false)

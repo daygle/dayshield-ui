@@ -33,13 +33,13 @@ function formatUptime(seconds: number): string {
 }
 
 function formatIsoDate(value?: string): string {
-  if (!value) return '—'
+  if (!value) return '-'
   const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleString()
+  return Number.isNaN(parsed.getTime()) ? '-' : parsed.toLocaleString()
 }
 
 function shortCommit(value?: string): string {
-  return value ? value.slice(0, 8) : '—'
+  return value ? value.slice(0, 8) : '-'
 }
 
 function componentCurrentDisplay(
@@ -565,11 +565,11 @@ export default function System() {
             </div>
             <div>
               <dt className="text-gray-500">NTP Servers</dt>
-              <dd className="font-medium text-gray-800">{config.ntpServers.join(', ') || '—'}</dd>
+              <dd className="font-medium text-gray-800">{config.ntpServers.join(', ') || '-'}</dd>
             </div>
             <div>
               <dt className="text-gray-500">DNS Servers</dt>
-              <dd className="font-medium text-gray-800">{config.dnsServers.join(', ') || '—'}</dd>
+              <dd className="font-medium text-gray-800">{config.dnsServers.join(', ') || '-'}</dd>
             </div>
             <div>
               <dt className="text-gray-500">Web Port</dt>

@@ -175,7 +175,7 @@ function CrowdSecContent() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: 'Status', value: status.enabled ? 'Enabled' : 'Disabled', color: status.enabled ? 'text-green-600' : 'text-gray-500' },
-            { label: 'LAPI URL', value: status.lapi_url || '—', color: 'text-gray-900' },
+            { label: 'LAPI URL', value: status.lapi_url || '-', color: 'text-gray-900' },
             { label: 'Decision Poll Interval', value: `${status.update_interval || 0}s`, color: 'text-gray-900' },
             { label: 'Active Decisions', value: String(decisions.length), color: 'text-gray-900' },
           ].map(({ label, value, color }) => (
@@ -206,7 +206,7 @@ function CrowdSecContent() {
             </div>
             <div>
               <dt className="text-gray-500">LAPI URL</dt>
-              <dd className="font-medium text-gray-800 break-all">{status.lapi_url || '—'}</dd>
+              <dd className="font-medium text-gray-800 break-all">{status.lapi_url || '-'}</dd>
             </div>
             <div>
               <dt className="text-gray-500">Update Interval</dt>
@@ -214,7 +214,7 @@ function CrowdSecContent() {
             </div>
             <div>
               <dt className="text-gray-500">Ban Alias</dt>
-              <dd className="font-medium text-gray-800 font-mono">{status.ban_alias_name || '—'}</dd>
+              <dd className="font-medium text-gray-800 font-mono">{status.ban_alias_name || '-'}</dd>
             </div>
           </dl>
         </Card>

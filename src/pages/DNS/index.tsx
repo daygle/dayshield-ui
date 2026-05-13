@@ -270,7 +270,7 @@ export default function DNS() {
       dot_certificate: dotCertificate,
       dot_private_key: dotPrivateKey,
       dot_acme_domain: configForm.dot_acme_domain?.trim() ? configForm.dot_acme_domain : undefined,
-      // Preserve existing local_records — they're managed via the overrides API
+      // Preserve existing local_records - they're managed via the overrides API
       local_records: config?.local_records ?? [],
       interface_blocklists: config?.interface_blocklists ?? [],
     }
@@ -512,7 +512,7 @@ export default function DNS() {
                 <div>
                   <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Upstream Forwarders</dt>
                   <dd className="mt-1 font-medium text-gray-800 font-mono">
-                    {config.forwarders?.length ? config.forwarders.join(', ') : '— (recursive)'}
+                    {config.forwarders?.length ? config.forwarders.join(', ') : '- (recursive)'}
                   </dd>
                 </div>
                 <div>
@@ -645,7 +645,7 @@ export default function DNS() {
               </div>
               <div className="rounded border border-gray-200 p-3 bg-gray-50">
                 <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">Active Interface</p>
-                <p className="mt-1 font-medium text-gray-900">{effectiveInterface ? interfaceLabel(interfaces.find((i) => i.name === effectiveInterface) ?? { name: effectiveInterface, description: '', type: 'ethernet' as const, enabled: true }) : '—'}</p>
+                <p className="mt-1 font-medium text-gray-900">{effectiveInterface ? interfaceLabel(interfaces.find((i) => i.name === effectiveInterface) ?? { name: effectiveInterface, description: '', type: 'ethernet' as const, enabled: true }) : '-'}</p>
               </div>
             </div>
 
@@ -1016,7 +1016,7 @@ export default function DNS() {
         <div className="space-y-4">
           <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
             <p className="text-gray-500">Interface</p>
-            <p className="font-mono text-gray-800">{effectiveInterface || '—'}</p>
+            <p className="font-mono text-gray-800">{effectiveInterface || '-'}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

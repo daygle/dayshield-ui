@@ -214,7 +214,7 @@ export default function BackupRestorePage() {
     pendingPasswordResolve.current = null
     setRestoring(false)
     setRestoreEntry(null)
-    addToast('error', 'Restore cancelled — password not provided.')
+    addToast('error', 'Restore cancelled - password not provided.')
   }
 
   // ── Delete ─────────────────────────────────────────────────────────────────
@@ -266,7 +266,7 @@ export default function BackupRestorePage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
           </svg>
-          <span>Restore in progress — please do not close this page…</span>
+          <span>Restore in progress - please do not close this page…</span>
         </div>
       )}
 

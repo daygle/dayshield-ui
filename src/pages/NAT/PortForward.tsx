@@ -128,7 +128,7 @@ export default function PortForwardPage() {
       header: 'Enabled',
       render: (row) => (
         <span className={row.enabled ? 'text-green-600' : 'text-gray-400'}>
-          {row.enabled ? 'âœ“' : 'âœ—'}
+          {row.enabled ? 'âœ“' : 'âœ-'}
         </span>
       ),
     },

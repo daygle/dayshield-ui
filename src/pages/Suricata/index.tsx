@@ -283,17 +283,17 @@ function SuricataContent() {
     {
       key: 'source',
       header: 'Source',
-      render: (row) => <span className="break-all">{row.source || '—'}</span>,
+      render: (row) => <span className="break-all">{row.source || '-'}</span>,
     },
     {
       key: 'installedVersion',
       header: 'Installed',
-      render: (row) => (row.installedVersion ? String(row.installedVersion) : row.installed ? 'Installed' : '—'),
+      render: (row) => (row.installedVersion ? String(row.installedVersion) : row.installed ? 'Installed' : '-'),
     },
     {
       key: 'latestVersion',
       header: 'Latest',
-      render: (row) => (row.latestVersion ? String(row.latestVersion) : '—'),
+      render: (row) => (row.latestVersion ? String(row.latestVersion) : '-'),
     },
     {
       key: 'enabled',
@@ -302,7 +302,7 @@ function SuricataContent() {
         row.installed ? (
           <span className={`font-medium ${row.enabled ? 'text-green-700' : 'text-gray-500'}`}>{row.enabled ? 'Enabled' : 'Disabled'}</span>
         ) : (
-          '—'
+          '-'
         ),
     },
     {
@@ -320,7 +320,7 @@ function SuricataContent() {
       header: 'Last Check',
       render: (row) => {
         const timestamp = toRulesetTimestamp(row)
-        return timestamp ? new Date(timestamp).toLocaleString() : '—'
+        return timestamp ? new Date(timestamp).toLocaleString() : '-'
       },
     },
     {
@@ -379,7 +379,7 @@ function SuricataContent() {
     {
       key: 'interface',
       header: 'Interface',
-      render: (row) => (row.interface as string) ? interfaceLabel(row.interface as string) : '—',
+      render: (row) => (row.interface as string) ? interfaceLabel(row.interface as string) : '-',
     },
     {
       key: 'action',
@@ -489,12 +489,12 @@ function SuricataContent() {
             </div>
             <div>
               <dt className="text-gray-500">Interfaces</dt>
-              <dd className="font-medium text-gray-800">{config.interfaces.map(interfaceLabel).join(', ') || '—'}</dd>
+              <dd className="font-medium text-gray-800">{config.interfaces.map(interfaceLabel).join(', ') || '-'}</dd>
             </div>
             <div>
               <dt className="text-gray-500">Home Networks</dt>
               <dd className="font-medium text-gray-800 text-xs">
-                {config.homeNet.join(', ') || '—'}
+                {config.homeNet.join(', ') || '-'}
               </dd>
             </div>
             {selectedInterface && (

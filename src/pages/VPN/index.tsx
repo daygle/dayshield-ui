@@ -519,7 +519,7 @@ export default function VPN() {
 
       <Modal
         open={serverModalOpen}
-        title={server?.interface ? `Server Settings — ${server.interface}` : 'Create WireGuard Server'}
+        title={server?.interface ? `Server Settings - ${server.interface}` : 'Create WireGuard Server'}
         onClose={() => setServerModalOpen(false)}
         onConfirm={handleSaveServer}
         confirmLabel={server?.interface ? 'Save Server' : 'Create Server'}

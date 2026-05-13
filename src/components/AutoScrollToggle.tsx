@@ -8,7 +8,7 @@ export default function AutoScrollToggle({ enabled, onToggle }: AutoScrollToggle
     <button
       type="button"
       onClick={() => onToggle(!enabled)}
-      title={enabled ? 'Auto-scroll on — click to disable' : 'Auto-scroll off — click to enable'}
+      title={enabled ? 'Auto-scroll on - click to disable' : 'Auto-scroll off - click to enable'}
       className={[
         'flex items-center gap-1.5 h-7 rounded px-2 text-xs transition-colors border',
         enabled

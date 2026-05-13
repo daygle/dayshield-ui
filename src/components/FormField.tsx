@@ -62,7 +62,7 @@ export default function FormField(props: FormFieldProps) {
           {...(rest as TextareaHTMLAttributes<HTMLTextAreaElement>)}
         />
       ) : children ? (
-        <div className={baseInputClass}>{children}</div>
+        children
       ) : (
         <input
           id={id}
@@ -70,7 +70,6 @@ export default function FormField(props: FormFieldProps) {
           {...(rest as InputHTMLAttributes<HTMLInputElement>)}
         />
       )}
-
       {hint && !error && <p className="text-xs text-gray-500">{hint}</p>}
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>

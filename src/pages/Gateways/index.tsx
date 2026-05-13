@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { getGateways, upsertGateway, deleteGateway } from '../../api/gateways'
 import { getInterfacesInventory } from '../../api/interfaces'
+import { useInterfaceInventory } from './useInterfaceInventory'
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
+import { formatGatewayDisplayName } from '../../utils/gatewayLabel'
 import type { Gateway, GatewayStatus } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -52,10 +55,15 @@ export default function Gateways() {
   const [saving, setSaving] = useState(false)
   const [deleteName, setDeleteName] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [interfaces, setInterfaces] = useState<string[]>([])
+  // Removed unused interfaces state
+  const interfaceInventory = useInterfaceInventory();
   const [editingActiveIp, setEditingActiveIp] = useState<string | undefined>()
 
-  const interfaceLabel = (name: string) => (defaultIface && name === defaultIface ? 'WAN' : name)
+  const interfaceLabel = (name: string) => {
+    const iface = interfaceInventory.find((i) => i.name === name);
+    if (defaultIface && name === defaultIface) return 'WAN';
+    return formatInterfaceDisplayName(iface?.description, name);
+  }
 
   const load = () => {
     setLoading(true)
@@ -70,15 +78,7 @@ export default function Gateways() {
 
   useEffect(load, [])
 
-  useEffect(() => {
-    getInterfacesInventory()
-      .then((res) => {
-        const names = (res.data?.names ?? [])
-          .filter((name) => name !== 'lo')
-        setInterfaces(names)
-      })
-      .catch(() => setInterfaces([]))
-  }, [])
+
 
   const openAdd = () => {
     setForm(defaultForm)
@@ -147,7 +147,7 @@ export default function Gateways() {
         </span>
       ),
     },
-    { key: 'description', header: 'Description', render: (row) => (row.description as string) || '—' },
+    { key: 'description', header: 'Description', render: (row) => (row.description as string) || '-' },
     { key: 'interface', header: 'Interface', render: (row) => interfaceLabel(row.interface as string) },
     {
       key: 'active_ip',
@@ -160,7 +160,7 @@ export default function Gateways() {
     {
       key: 'monitor_ip',
       header: 'Monitor IP',
-      render: (row) => (row.monitor_ip as string) || <span className="text-gray-400 text-xs">—</span>,
+      render: (row) => (row.monitor_ip as string) || <span className="text-gray-400 text-xs">-</span>,
     },
     {
       key: 'state',
@@ -234,9 +234,10 @@ export default function Gateways() {
         open={modalOpen}
         title={
           isEditing
-            ? String(form.name).endsWith('_AUTO')
-              ? `Configure Auto-discovered Gateway — ${form.name}`
-              : `Edit Gateway — ${form.name}`
+            ? formatGatewayDisplayName(
+                interfaceInventory.find((i) => i.name === form.interface) || { name: form.interface },
+                String(form.name).endsWith('_AUTO')
+              )
             : 'Add Gateway'
         }
         onClose={() => setModalOpen(false)}
@@ -256,9 +257,11 @@ export default function Gateways() {
             <input
               className="input"
               placeholder="e.g. WAN_GW"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              disabled={isEditing}
+              value={formatGatewayDisplayName(
+                interfaceInventory.find((i) => i.name === form.interface) || { name: form.interface },
+                String(form.name).endsWith('_AUTO')
+              )}
+              disabled
             />
           </FormField>
           <FormField label="Description">
@@ -276,8 +279,10 @@ export default function Gateways() {
               onChange={(e) => setForm((f) => ({ ...f, interface: e.target.value }))}
             >
               <option value="">Select interface</option>
-              {interfaces.map((iface) => (
-                <option key={iface} value={iface}>{interfaceLabel(iface)}</option>
+              {interfaceInventory.map((iface) => (
+                <option key={iface.name} value={iface.name}>
+                  {formatInterfaceDisplayName(iface.description, iface.name)}
+                </option>
               ))}
             </select>
           </FormField>
@@ -300,7 +305,7 @@ export default function Gateways() {
             >
               <input
                 className="input"
-                value={editingActiveIp ?? '—'}
+                value={editingActiveIp ?? '-'}
                 readOnly
               />
             </FormField>

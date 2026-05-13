@@ -161,6 +161,13 @@ const cardWidthClass = (width: number) => {
   return 'md:col-span-1'
 }
 
+const formatInterfaceDisplayName = (friendlyName: string | undefined, nicName: string): string => {
+  const friendly = friendlyName?.trim()
+  if (!friendly) return nicName
+  if (friendly.toLowerCase() === nicName.trim().toLowerCase()) return friendly
+  return `${friendly} (${nicName})`
+}
+
 const loadDashboardCardConfig = (): DashboardCardConfig[] => {
   if (typeof window === 'undefined') return defaultDashboardCardConfigs
   try {
@@ -273,7 +280,7 @@ export default function Dashboard() {
               <div className="space-y-3">
                 <MetricRow
                   label="WAN Interface"
-                  value={net.data.wan_iface_description ?? net.data.wan_iface}
+                  value={formatInterfaceDisplayName(net.data.wan_iface_description, net.data.wan_iface)}
                 />
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500">WAN IPv4</span>
@@ -306,7 +313,7 @@ export default function Dashboard() {
                       {net.data.lan_ifaces.map((iface) => (
                         <div key={iface.name} className="flex justify-between text-xs">
                           <span className="font-medium text-gray-700">
-                            {iface.description?.trim() || iface.name}
+                            {formatInterfaceDisplayName(iface.description, iface.name)}
                           </span>
                           <span className="text-gray-500">{iface.ip ?? '-'}</span>
                           {iface.enabled ? (
@@ -443,7 +450,9 @@ export default function Dashboard() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between py-2 border-b border-gray-100">
                   <div>
-                    <p className="text-sm font-medium text-gray-800">{net.data.wan_iface_description ?? net.data.wan_iface}</p>
+                    <p className="text-sm font-medium text-gray-800">
+                      {formatInterfaceDisplayName(net.data.wan_iface_description, net.data.wan_iface)}
+                    </p>
                     <p className="text-xs text-gray-500">{net.data.wan_ip ?? '-'}</p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -458,7 +467,9 @@ export default function Dashboard() {
                 {net.data.lan_ifaces.map((iface) => (
                   <div key={iface.name} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{iface.name}</p>
+                      <p className="text-sm font-medium text-gray-800">
+                        {formatInterfaceDisplayName(iface.description, iface.name)}
+                      </p>
                       <p className="text-xs text-gray-500">{iface.ip ?? '-'}</p>
                     </div>
                     <div className="flex items-center gap-2">

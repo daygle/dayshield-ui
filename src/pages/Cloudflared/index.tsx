@@ -397,7 +397,7 @@ function CloudflaredPageContent() {
       <p className="text-xs text-gray-400">
         Cloudflared log output is streamed in real-time on the{' '}
         <a href="/live-logs" className="underline hover:text-gray-600">Live Logs</a> page
-        — filter by source <span className="font-mono">cloudflared</span>.
+        - filter by source <span className="font-mono">cloudflared</span>.
       </p>
 
       <Modal

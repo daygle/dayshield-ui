@@ -554,7 +554,7 @@ export default function Firewall() {
       header: 'Hits',
       render: (row) => {
         const s = stats.find((x) => x.id === row.id)
-        if (!s) return <span className="text-gray-400 text-xs">—</span>
+        if (!s) return <span className="text-gray-400 text-xs">-</span>
         return (
           <span className="text-xs text-gray-600">
             {s.packets.toLocaleString()} pkts<br />
