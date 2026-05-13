@@ -277,7 +277,6 @@ function SuricataContent() {
         }
         throw err
       })
-      .then(() => undefined)
   }
 
   const interfaceLabels = React.useMemo(
@@ -299,7 +298,7 @@ function SuricataContent() {
       return <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">Update Available</span>
     }
     if (row.status) {
-      return <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{String(row.status)}</span>
+      return <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{row.status}</span>
     }
     return <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">Installed</span>
   }
@@ -312,7 +311,7 @@ function SuricataContent() {
     {
       key: 'source',
       header: 'Source',
-      render: (row) => <span className="break-all">{String(row.source || '—')}</span>,
+      render: (row) => <span className="break-all">{row.source || '—'}</span>,
     },
     {
       key: 'installedVersion',
