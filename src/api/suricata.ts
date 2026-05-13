@@ -35,7 +35,7 @@ export const updateSuricataRuleset = (
   patch: Pick<SuricataRuleset, 'enabled'>,
 ): Promise<ApiResponse<SuricataRuleset>> =>
   apiClient
-    .put<ApiResponse<SuricataRuleset>>(`/suricata/rulesets/${encodeURIComponent(String(id))}`, patch)
+    .put<ApiResponse<SuricataRuleset>>(`/suricata/rulesets/${encodeRulesetId(id)}`, patch)
     .then((r) => r.data)
 
 /** Trigger a check for updates for all managed Suricata rulesets. */

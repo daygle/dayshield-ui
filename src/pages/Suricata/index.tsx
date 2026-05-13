@@ -261,7 +261,7 @@ function SuricataContent() {
       })
       .catch((err: Error) => {
         if (isLikelyEndpointMissing(err.message)) {
-          setRulesetsSuccess('Bulk update check is not supported by this backend. Use per-ruleset check.')
+          setRulesetsError('Bulk update check is not supported by this backend. Use per-ruleset check.')
           return
         }
         setRulesetsError(err.message)
@@ -273,7 +273,9 @@ function SuricataContent() {
     return (row.enabled ? disableManagedSuricataRuleset(row.id) : enableManagedSuricataRuleset(row.id))
       .catch((err: Error) => {
         if (isLikelyEndpointMissing(err.message)) {
-          return updateSuricataRuleset(row.id, { enabled: !row.enabled })
+          return updateSuricataRuleset(row.id, { enabled: !row.enabled }).catch((legacyErr: Error) => {
+            throw new Error(`${err.message}; legacy toggle failed: ${legacyErr.message}`)
+          })
         }
         throw err
       })
