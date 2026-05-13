@@ -3,6 +3,8 @@ import { useMetrics } from '../../hooks/useMetrics'
 import { useMetricsHistory } from '../../hooks/useMetricsHistory'
 import { useMetricsStream } from '../../hooks/useMetricsStream'
 import Card from '../../components/Card'
+import Button from '../../components/Button'
+import Modal from '../../components/Modal'
 import ErrorBanner from '../../components/ErrorBanner'
 import type { MetricsSnapshot, MetricsHistoryPoint, LanIfaceMetrics, FirewallRuleHit, NetworkInterface } from '../../types'
 import { getInterfaces } from '../../api/interfaces'
@@ -355,6 +357,291 @@ function MetricCard({
   )
 }
 
+type MetricsCardId =
+  | 'cpu'
+  | 'ram'
+  | 'load'
+  | 'temperature'
+  | 'throughput'
+  | 'lan'
+  | 'disk'
+  | 'firewall'
+  | 'suricata'
+  | 'crowdsec'
+
+type MetricsCardConfig = {
+  id: MetricsCardId
+  visible: boolean
+  width: 1 | 2 | 3
+}
+
+const defaultMetricsCardConfig: MetricsCardConfig[] = [
+  { id: 'cpu', visible: true, width: 1 },
+  { id: 'ram', visible: true, width: 1 },
+  { id: 'load', visible: true, width: 1 },
+  { id: 'temperature', visible: true, width: 1 },
+  { id: 'throughput', visible: true, width: 2 },
+  { id: 'lan', visible: true, width: 1 },
+  { id: 'disk', visible: true, width: 3 },
+  { id: 'firewall', visible: true, width: 1 },
+  { id: 'suricata', visible: true, width: 1 },
+  { id: 'crowdsec', visible: true, width: 1 },
+]
+
+const metricsCardTitles: Record<MetricsCardId, string> = {
+  cpu: 'CPU Usage',
+  ram: 'RAM Usage',
+  load: 'Load Average',
+  temperature: 'Temperature + Uptime',
+  throughput: 'WAN Throughput',
+  lan: 'LAN Interfaces',
+  disk: 'Disk Usage',
+  firewall: 'Firewall',
+  suricata: 'Suricata',
+  crowdsec: 'CrowdSec',
+}
+
+const metricsCardDescriptions: Record<MetricsCardId, string> = {
+  cpu: 'Current CPU usage and recent trend.',
+  ram: 'Current RAM usage and available memory.',
+  load: 'System load over 1/5/15 minutes.',
+  temperature: 'System temperature and uptime.',
+  throughput: 'Live WAN RX/TX throughput.',
+  lan: 'LAN interface throughput and status.',
+  disk: 'Current disk usage and free space.',
+  firewall: 'Firewall active state count and rule hits.',
+  suricata: 'Suricata alert rate history.',
+  crowdsec: 'CrowdSec decision rate history.',
+}
+
+const metricsCardWidthClass = (width: number) => {
+  if (width === 2) return 'md:col-span-2'
+  if (width === 3) return 'md:col-span-3'
+  return 'md:col-span-1'
+}
+
+const loadMetricsCardConfig = (): MetricsCardConfig[] => {
+  if (typeof window === 'undefined') return defaultMetricsCardConfig
+  try {
+    const raw = window.localStorage.getItem('metricsCardConfig')
+    if (!raw) return defaultMetricsCardConfig
+    const parsed = JSON.parse(raw) as MetricsCardConfig[]
+    if (!Array.isArray(parsed)) return defaultMetricsCardConfig
+
+    const validIds = new Set(defaultMetricsCardConfig.map((card) => card.id))
+    const loaded = parsed
+      .filter((card) => validIds.has(card.id))
+      .map((card) => ({
+        ...defaultMetricsCardConfig.find((d) => d.id === card.id)!,
+        visible: typeof card.visible === 'boolean' ? card.visible : true,
+        width: card.width === 1 || card.width === 2 || card.width === 3 ? card.width : 1,
+      }))
+
+    const missing = defaultMetricsCardConfig.filter((card) => !loaded.some((item) => item.id === card.id))
+    return [...loaded, ...missing]
+  } catch {
+    return defaultMetricsCardConfig
+  }
+}
+
+function renderMetricsCardBody(
+  id: MetricsCardId,
+  snap: MetricsSnapshot | null,
+  rxHistory: number[],
+  txHistory: number[],
+  cpuSparkData: number[],
+  ramSparkData: number[],
+  suricataSparkData: number[],
+  crowdsecSparkData: number[],
+  labelFor: (name: string) => string,
+) {
+  switch (id) {
+    case 'cpu':
+      return (
+        <MetricCard
+          title="CPU Usage"
+          value={snap ? formatPercent(snap.cpu_percent) : '—'}
+          percent={snap ? toFiniteNumber(snap.cpu_percent) : undefined}
+          warn={85}
+          sparkData={cpuSparkData}
+          sparkColor="#3b82f6"
+        />
+      )
+    case 'ram':
+      return (
+        <MetricCard
+          title="RAM Usage"
+          value={snap ? formatPercent(snap.ram_percent) : '—'}
+          sub={snap ? `${formatBytes(toFiniteNumber(snap.ram_used_bytes))} / ${formatBytes(toFiniteNumber(snap.ram_total_bytes))}` : undefined}
+          percent={snap ? toFiniteNumber(snap.ram_percent) : undefined}
+          warn={85}
+          sparkData={ramSparkData}
+          sparkColor="#8b5cf6"
+        />
+      )
+    case 'load':
+      return (
+        <Card title="Load Average">
+          {snap ? (
+            <div className="mt-2 space-y-1.5">
+              {([1, 5, 15] as const).map((min, idx) => {
+                const load = toFiniteNumber(snap.loadavg?.[idx])
+                return (
+                  <div key={min} className="flex justify-between items-center text-sm">
+                    <span className="text-gray-400 text-xs">{min}m</span>
+                    <span className={`font-bold ${load > 2 ? 'text-red-600' : load > 1 ? 'text-yellow-600' : 'text-gray-900'}`}>
+                      {load.toFixed(2)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-2xl font-bold text-gray-300 mt-2">—</p>
+          )}
+        </Card>
+      )
+    case 'temperature':
+      return (
+        <Card title="Temperature + Uptime">
+          {snap ? (
+            <>
+              {snap.temperature != null ? (
+                <TemperatureBadge celsius={toFiniteNumber(snap.temperature)} />
+              ) : (
+                <span className="text-gray-300 text-lg font-bold">N/A</span>
+              )}
+              <div className="mt-3">
+                <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Uptime</p>
+                {snap ? (
+                  <UptimeDisplay seconds={snap.uptime} />
+                ) : (
+                  <p className="text-2xl font-bold text-gray-300">—</p>
+                )}
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-gray-400">No data</p>
+          )}
+        </Card>
+      )
+    case 'throughput':
+      return (
+        <Card title="WAN Throughput">
+          <div className="space-y-2">
+            {snap && (
+              <div className="flex gap-6 text-xs">
+                <span className="text-green-600 font-medium">↓ RX {formatBps(snap.wan_rx_bps)}</span>
+                <span className="text-blue-600 font-medium">↑ TX {formatBps(snap.wan_tx_bps)}</span>
+              </div>
+            )}
+            <ThroughputGraph rxData={rxHistory} txData={txHistory} height={150} />
+          </div>
+        </Card>
+      )
+    case 'lan':
+      return (
+        <Card title="LAN Interfaces">
+          {snap ? (
+            <InterfaceTable ifaces={snap.lan_ifaces} labelFor={labelFor} />
+          ) : (
+            <p className="text-sm text-gray-400">No data</p>
+          )}
+        </Card>
+      )
+    case 'disk':
+      return (
+        <Card title="Disk Usage">
+          {snap ? (
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-500">Usage</span>
+                  <span className="font-medium text-gray-800">{formatPercent(snap.disk_percent)}</span>
+                </div>
+                <ProgressBar value={toFiniteNumber(snap.disk_percent)} warn={80} />
+                <p className="text-xs text-gray-400 mt-1">
+                  {formatBytes(toFiniteNumber(snap.disk_used_bytes))} used of {formatBytes(toFiniteNumber(snap.disk_total_bytes))}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">No data</p>
+          )}
+        </Card>
+      )
+    case 'firewall':
+      return (
+        <Card title="Firewall">
+          {snap ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Active States</span>
+                <span className="text-2xl font-bold text-blue-600">{toFiniteNumber(snap.firewall_state_count).toLocaleString()}</span>
+              </div>
+              {snap.firewall_rule_hits && Array.isArray(snap.firewall_rule_hits) && snap.firewall_rule_hits.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Rule Hit Counters</p>
+                  <FirewallRuleHitsChart items={snap.firewall_rule_hits} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">No data</p>
+          )}
+        </Card>
+      )
+    case 'suricata':
+      return (
+        <Card title="Suricata">
+          {snap ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Alert Rate</span>
+                <span className={`text-xl font-bold ${toFiniteNumber(snap.suricata_alert_rate) > 10 ? 'text-red-600' : toFiniteNumber(snap.suricata_alert_rate) > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
+                  {toFiniteNumber(snap.suricata_alert_rate).toFixed(1)}<span className="text-sm font-normal text-gray-400">/min</span>
+                </span>
+              </div>
+              {suricataSparkData.length > 1 && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">5-min history</p>
+                  <SparklineGraph data={suricataSparkData} color={toFiniteNumber(snap.suricata_alert_rate) > 0 ? '#f59e0b' : '#22c55e'} height={48} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">No data</p>
+          )}
+        </Card>
+      )
+    case 'crowdsec':
+      return (
+        <Card title="CrowdSec">
+          {snap ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Decision Rate</span>
+                <span className={`text-xl font-bold ${toFiniteNumber(snap.crowdsec_decision_rate) > 5 ? 'text-red-600' : toFiniteNumber(snap.crowdsec_decision_rate) > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
+                  {toFiniteNumber(snap.crowdsec_decision_rate).toFixed(1)}<span className="text-sm font-normal text-gray-400">/min</span>
+                </span>
+              </div>
+              {crowdsecSparkData.length > 1 && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">5-min history</p>
+                  <SparklineGraph data={crowdsecSparkData} color={toFiniteNumber(snap.crowdsec_decision_rate) > 0 ? '#ef4444' : '#22c55e'} height={48} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">No data</p>
+          )}
+        </Card>
+      )
+    default:
+      return null
+  }
+}
+
 function TemperatureBadge({ celsius }: { celsius: number }) {
   const temp = toFiniteNumber(celsius)
   const color =
@@ -457,6 +744,13 @@ export default function Metrics() {
     return iface?.description?.trim() || name
   }
 
+  const [customizeOpen, setCustomizeOpen] = useState(false)
+  const [cardConfig, setCardConfig] = useState<MetricsCardConfig[]>(loadMetricsCardConfig)
+
+  useEffect(() => {
+    window.localStorage.setItem('metricsCardConfig', JSON.stringify(cardConfig))
+  }, [cardConfig])
+
   // Prefer live WebSocket data, fall back to polled data
   const snap: MetricsSnapshot | null = stream.data ?? poll.data ?? null
 
@@ -494,10 +788,19 @@ export default function Metrics() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Metrics</h1>
-        <LiveDot connected={stream.connected} />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">Metrics</h1>
+          <p className="text-sm text-gray-500 max-w-2xl">
+            Rearrange, resize, and show or hide the cards that matter most for your metrics view.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <LiveDot connected={stream.connected} />
+          <Button size="sm" variant="secondary" onClick={() => setCustomizeOpen(true)}>
+            Customize Metrics
+          </Button>
+        </div>
       </div>
 
       {isError && (
@@ -507,186 +810,105 @@ export default function Metrics() {
         <p className="text-sm text-gray-400">Loading metrics…</p>
       )}
 
-      {/* ── TOP ROW: CPU · RAM · Loadavg · Temperature ───────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-
-        <MetricCard
-          title="CPU Usage"
-          value={snap ? formatPercent(snap.cpu_percent) : '—'}
-          percent={snap ? toFiniteNumber(snap.cpu_percent) : undefined}
-          warn={85}
-          sparkData={cpuSparkData}
-          sparkColor="#3b82f6"
-        />
-
-        <MetricCard
-          title="RAM Usage"
-          value={snap ? formatPercent(snap.ram_percent) : '—'}
-          sub={snap ? `${formatBytes(toFiniteNumber(snap.ram_used_bytes))} / ${formatBytes(toFiniteNumber(snap.ram_total_bytes))}` : undefined}
-          percent={snap ? toFiniteNumber(snap.ram_percent) : undefined}
-          warn={85}
-          sparkData={ramSparkData}
-          sparkColor="#8b5cf6"
-        />
-
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-          <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Load Average</p>
-          {snap ? (
-            <div className="mt-2 space-y-1.5">
-              {([1, 5, 15] as const).map((min, idx) => (
-                (() => {
-                  const load = toFiniteNumber(snap.loadavg?.[idx])
-                  return (
-                <div key={min} className="flex justify-between items-center text-sm">
-                  <span className="text-gray-400 text-xs">{min}m</span>
-                  <span className={`font-bold ${load > 2 ? 'text-red-600' : load > 1 ? 'text-yellow-600' : 'text-gray-900'}`}>
-                    {load.toFixed(2)}
-                  </span>
-                </div>
-                  )
-                })()
-              ))}
-            </div>
-          ) : (
-            <p className="text-2xl font-bold text-gray-300 mt-2">—</p>
-          )}
+      {cardConfig.every((card) => !card.visible) && (
+        <div className="rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-700">
+          No metric cards are visible. Open Customize Metrics to restore them.
         </div>
-
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-          <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-2">Temperature</p>
-          {snap?.temperature != null ? (
-            <TemperatureBadge celsius={toFiniteNumber(snap.temperature)} />
-          ) : (
-            <span className="text-gray-300 text-lg font-bold">N/A</span>
-          )}
-          <div className="mt-3">
-            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Uptime</p>
-            {snap ? (
-              <UptimeDisplay seconds={snap.uptime} />
-            ) : (
-              <p className="text-2xl font-bold text-gray-300">—</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── MIDDLE ROW: WAN Throughput · LAN Interfaces ──────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-        <Card title="WAN Throughput">
-          <div className="space-y-2">
-            {snap && (
-              <div className="flex gap-6 text-xs">
-                <span className="text-green-600 font-medium">↓ RX {formatBps(snap.wan_rx_bps)}</span>
-                <span className="text-blue-600 font-medium">↑ TX {formatBps(snap.wan_tx_bps)}</span>
-              </div>
-            )}
-            <ThroughputGraph rxData={rxHistory} txData={txHistory} height={150} />
-          </div>
-        </Card>
-
-        <Card title="LAN Interfaces">
-          {snap ? (
-            <InterfaceTable ifaces={snap.lan_ifaces} labelFor={labelFor} />
-          ) : (
-            <p className="text-sm text-gray-400">No data</p>
-          )}
-        </Card>
-      </div>
-
-      {/* ── MIDDLE ROW 2: Disk ───────────────────────────────────────── */}
-      {snap && (
-        <Card title="Disk Usage">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-500">Usage</span>
-                <span className="font-medium text-gray-800">{formatPercent(snap.disk_percent)}</span>
-              </div>
-              <ProgressBar value={toFiniteNumber(snap.disk_percent)} warn={80} />
-              <p className="text-xs text-gray-400 mt-1">
-                {formatBytes(toFiniteNumber(snap.disk_used_bytes))} used of {formatBytes(toFiniteNumber(snap.disk_total_bytes))}
-              </p>
-            </div>
-          </div>
-        </Card>
       )}
 
-      {/* ── BOTTOM ROW: Firewall · Suricata · CrowdSec ───────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-        {/* Firewall */}
-        <Card title="Firewall">
-          {snap ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Active States</span>
-                <span className="text-2xl font-bold text-blue-600">{toFiniteNumber(snap.firewall_state_count).toLocaleString()}</span>
-              </div>
-              {snap.firewall_rule_hits && Array.isArray(snap.firewall_rule_hits) && snap.firewall_rule_hits.length > 0 && (
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Rule Hit Counters</p>
-                  <FirewallRuleHitsChart items={snap.firewall_rule_hits} />
-                </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {cardConfig.map((card) => (
+          card.visible ? (
+            <div key={card.id} className={metricsCardWidthClass(card.width)}>
+              {renderMetricsCardBody(
+                card.id,
+                snap,
+                rxHistory,
+                txHistory,
+                cpuSparkData,
+                ramSparkData,
+                suricataSparkData,
+                crowdsecSparkData,
+                labelFor,
               )}
             </div>
-          ) : (
-            <p className="text-sm text-gray-400">No data</p>
-          )}
-        </Card>
-
-        {/* Suricata */}
-        <Card title="Suricata IDS">
-          {snap ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Alert Rate</span>
-                <span className={`text-xl font-bold ${toFiniteNumber(snap.suricata_alert_rate) > 10 ? 'text-red-600' : toFiniteNumber(snap.suricata_alert_rate) > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
-                  {toFiniteNumber(snap.suricata_alert_rate).toFixed(1)}<span className="text-sm font-normal text-gray-400">/min</span>
-                </span>
-              </div>
-              {suricataSparkData.length > 1 && (
-                <div>
-                  <p className="text-xs text-gray-400 mb-1">5-min history</p>
-                  <SparklineGraph
-                    data={suricataSparkData}
-                    color={toFiniteNumber(snap.suricata_alert_rate) > 0 ? '#f59e0b' : '#22c55e'}
-                    height={48}
-                  />
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400">No data</p>
-          )}
-        </Card>
-
-        {/* CrowdSec */}
-        <Card title="CrowdSec">
-          {snap ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Decision Rate</span>
-                <span className={`text-xl font-bold ${toFiniteNumber(snap.crowdsec_decision_rate) > 5 ? 'text-red-600' : toFiniteNumber(snap.crowdsec_decision_rate) > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
-                  {toFiniteNumber(snap.crowdsec_decision_rate).toFixed(1)}<span className="text-sm font-normal text-gray-400">/min</span>
-                </span>
-              </div>
-              {crowdsecSparkData.length > 1 && (
-                <div>
-                  <p className="text-xs text-gray-400 mb-1">5-min history</p>
-                  <SparklineGraph
-                    data={crowdsecSparkData}
-                    color={toFiniteNumber(snap.crowdsec_decision_rate) > 0 ? '#ef4444' : '#22c55e'}
-                    height={48}
-                  />
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400">No data</p>
-          )}
-        </Card>
+          ) : null
+        ))}
       </div>
+
+      <Modal
+        open={customizeOpen}
+        title="Customize Metrics"
+        onClose={() => setCustomizeOpen(false)}
+        onConfirm={() => setCustomizeOpen(false)}
+        confirmLabel="Done"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {cardConfig.map((card, index) => (
+            <div key={card.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="font-semibold text-gray-900">{metricsCardTitles[card.id]}</div>
+                  <p className="text-sm text-gray-500">{metricsCardDescriptions[card.id]}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => setCardConfig((current) => {
+                    const next = [...current]
+                    if (index === 0) return current
+                    const [item] = next.splice(index, 1)
+                    next.splice(index - 1, 0, item)
+                    return next
+                  })} disabled={index === 0}>
+                    Move Up
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => setCardConfig((current) => {
+                    const next = [...current]
+                    if (index === next.length - 1) return current
+                    const [item] = next.splice(index, 1)
+                    next.splice(index + 1, 0, item)
+                    return next
+                  })} disabled={index === cardConfig.length - 1}>
+                    Move Down
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={card.visible ? 'secondary' : 'primary'}
+                    onClick={() => setCardConfig((current) => current.map((item) =>
+                      item.id === card.id ? { ...item, visible: !item.visible } : item
+                    ))}
+                  >
+                    {card.visible ? 'Hide' : 'Show'}
+                  </Button>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  Size:
+                  <select
+                    className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
+                    value={card.width}
+                    onChange={(event) => setCardConfig((current) =>
+                      current.map((item) =>
+                        item.id === card.id
+                          ? { ...item, width: Number(event.target.value) as 1 | 2 | 3 }
+                          : item
+                      )
+                    )}
+                  >
+                    <option value={1}>Small</option>
+                    <option value={2}>Medium</option>
+                    <option value={3}>Large</option>
+                  </select>
+                </label>
+                <div className="text-xs text-gray-500">
+                  Small = 1 column, Medium = 2 columns, Large = full width on desktop.
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Modal>
     </div>
   )
 }
