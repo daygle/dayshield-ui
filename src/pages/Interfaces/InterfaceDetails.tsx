@@ -7,10 +7,11 @@ import Modal from '../../components/Modal'
 
 interface InterfaceDetailsProps {
   iface: NetworkInterface
+  parentInterfaceOptions?: string[]
   onUpdate?: () => void
 }
 
-export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsProps) {
+export default function InterfaceDetails({ iface, parentInterfaceOptions = [], onUpdate }: InterfaceDetailsProps) {
   const [editOpen, setEditOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -41,6 +42,11 @@ export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsPr
         : 'Static'
 
   const kernelAddresses = iface.kernelAddresses ?? []
+  const availableParentInterfaces = parentInterfaceOptions.filter((name) => name !== iface.name)
+  const resolvedParentInterfaceOptions = form.parentInterface
+    && !availableParentInterfaces.includes(form.parentInterface)
+    ? [...availableParentInterfaces, form.parentInterface]
+    : availableParentInterfaces
   const kernelIpv4 = kernelAddresses.filter((addr) => addr.includes('.'))
   const kernelIpv6 = kernelAddresses.filter((addr) => addr.includes(':'))
   const statusText = iface.enabled ? (iface.kernelState ?? 'UP') : 'DOWN'
@@ -255,9 +261,15 @@ export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsPr
                 id="iface-parent"
                 label="Parent Interface"
                 required
+                as="select"
                 value={form.parentInterface ?? ''}
                 onChange={(e) => setForm({ ...form, parentInterface: e.target.value })}
-              />
+              >
+                <option value="">Select parent interface</option>
+                {resolvedParentInterfaceOptions.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </FormField>
               <FormField
                 id="iface-vlan-id"
                 label="VLAN ID"

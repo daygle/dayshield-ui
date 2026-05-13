@@ -40,6 +40,7 @@ export default function Interfaces() {
   const [expandedInterface, setExpandedInterface] = useState<string | null>(searchParams.get('iface'))
   const [unusedKernelNames, setUnusedKernelNames] = useState<string[]>([])
   const [allInterfaceNames, setAllInterfaceNames] = useState<string[]>([])
+  const [configuredVlanNames, setConfiguredVlanNames] = useState<string[]>([])
   const [useCustomName, setUseCustomName] = useState(false)
 
   const requestedInterface = searchParams.get('iface')
@@ -53,6 +54,7 @@ export default function Interfaces() {
         const rows = isInterfaceRowArray(res.data?.configured) ? res.data.configured : []
         setUnusedKernelNames(Array.isArray(res.data?.unusedKernelNames) ? res.data.unusedKernelNames : [])
         setAllInterfaceNames(Array.isArray(res.data?.names) ? res.data.names : [])
+        setConfiguredVlanNames(rows.filter((iface) => iface.type === 'vlan').map((iface) => iface.name))
         setIfaces(rows)
         if (requestedInterface && rows.some((i) => i.name === requestedInterface)) {
           setExpandedInterface(requestedInterface)
@@ -65,7 +67,8 @@ export default function Interfaces() {
   useEffect(load, [requestedInterface])
 
   const isVlanForm = form.type === 'vlan'
-  const parentInterfaceOptions = allInterfaceNames.filter((name) => name !== 'lo' && name !== form.name)
+  const parentInterfaceOptions = allInterfaceNames
+    .filter((name) => name !== 'lo' && name !== form.name && !configuredVlanNames.includes(name))
 
   const handleSave = () => {
     if (!form.name?.trim()) {
@@ -210,6 +213,7 @@ export default function Interfaces() {
                     <InterfaceDetails
                       key={iface.name}
                       iface={iface}
+                      parentInterfaceOptions={parentInterfaceOptions}
                       onUpdate={load}
                     />
                   </div>
