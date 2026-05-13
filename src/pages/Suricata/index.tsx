@@ -35,11 +35,15 @@ type RulesetRow = SuricataRuleset & Record<string, unknown>
 type AlertRow = SuricataAlert & Record<string, unknown>
 type RulesetAction = 'install' | 'check' | 'update' | 'enable' | 'disable' | 'remove'
 
-const toRulesetRow = (ruleset: SuricataRuleset): RulesetRow => ({
-  ...ruleset,
-  installed: typeof ruleset.installed === 'boolean' ? ruleset.installed : true,
-  updateAvailable: Boolean(ruleset.updateAvailable),
-})
+const toRulesetRow = (ruleset: SuricataRuleset): RulesetRow => {
+  const status = String(ruleset.status ?? '').toLowerCase()
+  const installedFallback = !(status === 'available' || status === 'not_installed')
+  return {
+    ...ruleset,
+    installed: typeof ruleset.installed === 'boolean' ? ruleset.installed : installedFallback,
+    updateAvailable: Boolean(ruleset.updateAvailable),
+  }
+}
 
 const rulesetIdKey = (id: string | number): string => String(id)
 

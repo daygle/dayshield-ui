@@ -29,6 +29,8 @@ export const createSuricataRuleset = (
     .post<ApiResponse<SuricataRuleset>>('/suricata/rulesets', data)
     .then((r) => r.data)
 
+const encodeRulesetId = (id: string | number) => encodeURIComponent(String(id))
+
 /** Update a Suricata ruleset. */
 export const updateSuricataRuleset = (
   id: string | number,
@@ -43,8 +45,6 @@ export const checkSuricataRulesetUpdates = (): Promise<ApiResponse<SuricataRules
   apiClient
     .post<ApiResponse<SuricataRuleset[]>>('/suricata/rulesets/check-updates')
     .then((r) => r.data)
-
-const encodeRulesetId = (id: string | number) => encodeURIComponent(String(id))
 
 const postRulesetAction = (
   id: string | number,
