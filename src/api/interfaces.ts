@@ -12,6 +12,8 @@ type BackendInterface = {
   name: string
   description?: string
   type?: NetworkInterface['type']
+  parent_interface?: string
+  parent?: string
   enabled?: boolean
   dhcp4?: boolean
   wan_mode?: 'dhcp' | 'pppoe'
@@ -24,6 +26,8 @@ type BackendInterface = {
   mac?: string
   mtu?: number
   mss?: number
+  vlan_id?: number
+  vlan?: number
   gateway?: string
 }
 
@@ -43,7 +47,10 @@ type InterfaceUpsertPayload = {
   ipv4_prefix?: number
   mtu?: number
   mss?: number
+  vlan_id?: number
   vlan?: number
+  parent_interface?: string
+  parent?: string
   gateway?: string
 }
 
@@ -62,15 +69,22 @@ function toInterfaceUpsertPayload(iface: NetworkInterface): InterfaceUpsertPaylo
     ipv4_prefix: iface.ipv4Prefix,
     mtu: iface.mtu,
     mss: iface.mss,
+    vlan_id: iface.vlanId,
+    vlan: iface.vlanId,
+    parent_interface: iface.parentInterface || undefined,
+    parent: iface.parentInterface || undefined,
     gateway: iface.gateway || undefined,
   }
 }
 
 function toNetworkInterface(raw: BackendInterface): NetworkInterface {
+  const vlanId = raw.vlan ?? raw.vlan_id
   return {
     name: raw.name,
     description: raw.description ?? '',
-    type: raw.type ?? DEFAULT_TYPE,
+    type: raw.type ?? (typeof vlanId === 'number' ? 'vlan' : DEFAULT_TYPE),
+    parentInterface: raw.parent_interface ?? raw.parent,
+    vlanId,
     enabled: raw.enabled ?? true,
     dhcp4: raw.dhcp4,
     wanMode: raw.wan_mode,

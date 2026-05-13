@@ -15,6 +15,8 @@ const defaultForm: Partial<NetworkInterface> = {
   name: '',
   description: '',
   type: 'ethernet',
+  parentInterface: '',
+  vlanId: undefined,
   enabled: true,
   dhcp4: false,
   wanMode: undefined,
@@ -37,6 +39,7 @@ export default function Interfaces() {
   const [deleting, setDeleting] = useState(false)
   const [expandedInterface, setExpandedInterface] = useState<string | null>(searchParams.get('iface'))
   const [unusedKernelNames, setUnusedKernelNames] = useState<string[]>([])
+  const [allInterfaceNames, setAllInterfaceNames] = useState<string[]>([])
   const [useCustomName, setUseCustomName] = useState(false)
 
   const requestedInterface = searchParams.get('iface')
@@ -49,6 +52,7 @@ export default function Interfaces() {
       .then((res) => {
         const rows = isInterfaceRowArray(res.data?.configured) ? res.data.configured : []
         setUnusedKernelNames(Array.isArray(res.data?.unusedKernelNames) ? res.data.unusedKernelNames : [])
+        setAllInterfaceNames(Array.isArray(res.data?.names) ? res.data.names : [])
         setIfaces(rows)
         if (requestedInterface && rows.some((i) => i.name === requestedInterface)) {
           setExpandedInterface(requestedInterface)
@@ -60,7 +64,27 @@ export default function Interfaces() {
 
   useEffect(load, [requestedInterface])
 
+  const isVlanForm = form.type === 'vlan'
+  const parentInterfaceOptions = allInterfaceNames.filter((name) => name !== 'lo' && name !== form.name)
+
   const handleSave = () => {
+    setError(null)
+    if (!form.name?.trim()) {
+      setError('Interface name is required.')
+      return
+    }
+    if (isVlanForm) {
+      const vlanId = Number(form.vlanId)
+      if (!form.parentInterface?.trim()) {
+        setError('Parent interface is required for VLAN interfaces.')
+        return
+      }
+      if (!Number.isInteger(vlanId) || vlanId < 1 || vlanId > 4094) {
+        setError('VLAN ID must be a whole number between 1 and 4094.')
+        return
+      }
+    }
+
     setSaving(true)
     createInterface(form as NetworkInterface)
       .then(() => {
@@ -133,6 +157,11 @@ export default function Interfaces() {
                       {iface.wanMode === 'pppoe' && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
                           PPPoE
+                        </span>
+                      )}
+                      {iface.type === 'vlan' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                          VLAN {iface.vlanId ?? '?'}{iface.parentInterface ? ` • ${iface.parentInterface}` : ''}
                         </span>
                       )}
                       <span
@@ -209,15 +238,36 @@ export default function Interfaces() {
       >
         <div className="grid grid-cols-2 gap-4">
           <FormField
+            id="iface-type"
+            label="Interface Type"
+            as="select"
+            value={form.type ?? 'ethernet'}
+            onChange={(e) => {
+              const type = e.target.value as NetworkInterface['type']
+              setForm({
+                ...defaultForm,
+                ...form,
+                type,
+                name: '',
+                parentInterface: type === 'vlan' ? (form.parentInterface ?? '') : '',
+                vlanId: type === 'vlan' ? form.vlanId : undefined,
+              })
+              setUseCustomName(false)
+            }}
+          >
+            <option value="ethernet">Ethernet</option>
+            <option value="vlan">VLAN</option>
+          </FormField>
+          <FormField
             id="iface-name"
             label="Interface Name"
             required
-            as={useCustomName ? undefined : 'select'}
-            placeholder={useCustomName ? 'e.g. eth0' : undefined}
+            as={(!isVlanForm && !useCustomName) ? 'select' : undefined}
+            placeholder={isVlanForm ? 'e.g. eth0.100' : useCustomName ? 'e.g. eth0' : undefined}
             value={form.name ?? ''}
             onChange={(e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
               const value = e.target.value
-              if (value === '__custom__') {
+              if (!isVlanForm && value === '__custom__') {
                 setUseCustomName(true)
                 setForm({ ...form, name: '' })
                 return
@@ -225,7 +275,7 @@ export default function Interfaces() {
               setForm({ ...form, name: value })
             }}
           >
-            {!useCustomName && (
+            {!isVlanForm && !useCustomName && (
               <>
                 <option value="">Select unused NIC</option>
                 {unusedKernelNames.map((name) => (
@@ -235,7 +285,40 @@ export default function Interfaces() {
               </>
             )}
           </FormField>
-          {useCustomName && (
+          {isVlanForm && (
+            <>
+              <FormField
+                id="iface-parent"
+                label="Parent Interface"
+                required
+                as="select"
+                value={form.parentInterface ?? ''}
+                onChange={(e) => setForm({ ...form, parentInterface: e.target.value })}
+              >
+                <option value="">Select parent interface</option>
+                {parentInterfaceOptions.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </FormField>
+              <FormField
+                id="iface-vlan-id"
+                label="VLAN ID"
+                required
+                type="number"
+                min={1}
+                max={4094}
+                placeholder="1-4094"
+                value={form.vlanId != null ? String(form.vlanId) : ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    vlanId: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+              />
+            </>
+          )}
+          {!isVlanForm && useCustomName && (
             <div className="col-span-2 -mt-2">
               <button
                 type="button"
@@ -279,7 +362,7 @@ export default function Interfaces() {
           </div>
 
           {/* WAN mode - only shown when DHCP is not ticked */}
-          {!form.dhcp4 && (
+          {!isVlanForm && !form.dhcp4 && (
             <FormField
               id="iface-wan-mode"
               label="WAN Connection Type"
@@ -297,7 +380,7 @@ export default function Interfaces() {
           )}
 
           {/* PPPoE credentials - only when wan_mode == pppoe */}
-          {form.wanMode === 'pppoe' && (
+          {!isVlanForm && form.wanMode === 'pppoe' && (
             <>
               <FormField
                 id="iface-pppoe-user"

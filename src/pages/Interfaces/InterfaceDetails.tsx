@@ -25,6 +25,8 @@ export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsPr
     pppoePassword: iface.pppoePassword,
     ipv4Address: iface.ipv4Address,
     ipv4Prefix: iface.ipv4Prefix,
+    parentInterface: iface.parentInterface,
+    vlanId: iface.vlanId,
     gateway: iface.gateway,
     mtu: iface.mtu,
     mss: iface.mss,
@@ -60,6 +62,18 @@ export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsPr
   }
 
   const handleSave = () => {
+    if (form.type === 'vlan') {
+      const vlanId = Number(form.vlanId)
+      if (!form.parentInterface?.trim()) {
+        setError('Parent interface is required for VLAN interfaces.')
+        return
+      }
+      if (!Number.isInteger(vlanId) || vlanId < 1 || vlanId > 4094) {
+        setError('VLAN ID must be a whole number between 1 and 4094.')
+        return
+      }
+    }
+
     setSaving(true)
     setError(null)
     updateInterface({
@@ -98,6 +112,18 @@ export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsPr
           <p className="text-xs font-medium uppercase tracking-wide text-gray-500">MTU</p>
           <p className="mt-1 text-sm font-medium text-gray-900">{iface.mtu ?? 'Default'}</p>
         </div>
+        {iface.type === 'vlan' && (
+          <>
+            <div className="rounded border border-gray-200 bg-white p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Parent Interface</p>
+              <p className="mt-1 font-mono text-sm text-gray-900">{iface.parentInterface ?? '-'}</p>
+            </div>
+            <div className="rounded border border-gray-200 bg-white p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">VLAN ID</p>
+              <p className="mt-1 text-sm font-medium text-gray-900">{iface.vlanId ?? '-'}</p>
+            </div>
+          </>
+        )}
         <div className="rounded border border-gray-200 bg-white p-3">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv4 Address</p>
           <p className="mt-1 font-mono text-sm text-gray-900">
@@ -223,6 +249,32 @@ export default function InterfaceDetails({ iface, onUpdate }: InterfaceDetailsPr
             value={form.description ?? ''}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
+          {form.type === 'vlan' && (
+            <>
+              <FormField
+                id="iface-parent"
+                label="Parent Interface"
+                required
+                value={form.parentInterface ?? ''}
+                onChange={(e) => setForm({ ...form, parentInterface: e.target.value })}
+              />
+              <FormField
+                id="iface-vlan-id"
+                label="VLAN ID"
+                required
+                type="number"
+                min={1}
+                max={4094}
+                value={form.vlanId != null ? String(form.vlanId) : ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    vlanId: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+              />
+            </>
+          )}
           <div className="col-span-2 flex items-center gap-3">
             <input
               id="iface-enabled"

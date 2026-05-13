@@ -12,6 +12,8 @@ export interface NetworkInterface {
   name: string
   description: string
   type: 'ethernet' | 'vlan' | 'bridge' | 'loopback' | 'wireless'
+  parentInterface?: string
+  vlanId?: number
   enabled: boolean
   dhcp4?: boolean
   wanMode?: 'dhcp' | 'pppoe'       // only relevant for WAN-designated interfaces
