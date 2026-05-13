@@ -31,11 +31,47 @@ export const createSuricataRuleset = (
 
 /** Update a Suricata ruleset. */
 export const updateSuricataRuleset = (
-  id: number,
+  id: string | number,
   patch: Pick<SuricataRuleset, 'enabled'>,
 ): Promise<ApiResponse<SuricataRuleset>> =>
   apiClient
-    .put<ApiResponse<SuricataRuleset>>(`/suricata/rulesets/${id}`, patch)
+    .put<ApiResponse<SuricataRuleset>>(`/suricata/rulesets/${encodeURIComponent(String(id))}`, patch)
+    .then((r) => r.data)
+
+/** Trigger a check for updates for all managed Suricata rulesets. */
+export const checkSuricataRulesetUpdates = (): Promise<ApiResponse<SuricataRuleset[]>> =>
+  apiClient
+    .post<ApiResponse<SuricataRuleset[]>>('/suricata/rulesets/check-updates')
+    .then((r) => r.data)
+
+const encodeRulesetId = (id: string | number) => encodeURIComponent(String(id))
+
+const postRulesetAction = (
+  id: string | number,
+  action: 'install' | 'check-updates' | 'update' | 'enable' | 'disable',
+): Promise<ApiResponse<SuricataRuleset>> =>
+  apiClient
+    .post<ApiResponse<SuricataRuleset>>(`/suricata/rulesets/${encodeRulesetId(id)}/${action}`)
+    .then((r) => r.data)
+
+export const installSuricataRuleset = (id: string | number): Promise<ApiResponse<SuricataRuleset>> =>
+  postRulesetAction(id, 'install')
+
+export const checkSuricataRulesetUpdate = (id: string | number): Promise<ApiResponse<SuricataRuleset>> =>
+  postRulesetAction(id, 'check-updates')
+
+export const updateManagedSuricataRuleset = (id: string | number): Promise<ApiResponse<SuricataRuleset>> =>
+  postRulesetAction(id, 'update')
+
+export const enableManagedSuricataRuleset = (id: string | number): Promise<ApiResponse<SuricataRuleset>> =>
+  postRulesetAction(id, 'enable')
+
+export const disableManagedSuricataRuleset = (id: string | number): Promise<ApiResponse<SuricataRuleset>> =>
+  postRulesetAction(id, 'disable')
+
+export const removeSuricataRuleset = (id: string | number): Promise<ApiResponse<void>> =>
+  apiClient
+    .delete<ApiResponse<void>>(`/suricata/rulesets/${encodeRulesetId(id)}`)
     .then((r) => r.data)
 
 /** Fetch recent Suricata alerts. */

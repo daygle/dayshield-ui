@@ -300,11 +300,21 @@ export interface SuricataConfig {
 }
 
 export interface SuricataRuleset {
-  id: number
+  id: number | string
   name: string
   source: string
   enabled: boolean
+  installed?: boolean
+  installedVersion?: string | null
+  latestVersion?: string | null
+  updateAvailable?: boolean
+  status?: string | null
+  error?: string | null
+  lastChecked?: string | null
   lastUpdated?: string
+  canInstall?: boolean
+  canUpdate?: boolean
+  canRemove?: boolean
 }
 
 export type SuricataSeverity = 'high' | 'medium' | 'low' | 'informational'

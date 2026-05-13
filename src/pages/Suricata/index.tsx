@@ -7,8 +7,14 @@ import {
   updateSuricataConfig,
   updateInterfaceSuricataConfig,
   getSuricataRulesets,
-  createSuricataRuleset,
   updateSuricataRuleset,
+  checkSuricataRulesetUpdates,
+  checkSuricataRulesetUpdate,
+  installSuricataRuleset,
+  updateManagedSuricataRuleset,
+  enableManagedSuricataRuleset,
+  disableManagedSuricataRuleset,
+  removeSuricataRuleset,
   getSuricataAlerts,
 } from '../../api/suricata'
 import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
@@ -27,6 +33,23 @@ import ErrorBoundary from '../../components/ErrorBoundary'
 
 type RulesetRow = SuricataRuleset & Record<string, unknown>
 type AlertRow = SuricataAlert & Record<string, unknown>
+type RulesetAction = 'install' | 'check' | 'update' | 'enable' | 'disable' | 'remove'
+
+const toRulesetRow = (ruleset: SuricataRuleset): RulesetRow => ({
+  ...ruleset,
+  installed: typeof ruleset.installed === 'boolean' ? ruleset.installed : true,
+  updateAvailable: Boolean(ruleset.updateAvailable),
+})
+
+const rulesetIdKey = (id: string | number): string => String(id)
+
+const toRulesetTimestamp = (ruleset: RulesetRow): string | null =>
+  (ruleset.lastUpdated as string | undefined) ??
+  (ruleset.lastChecked as string | undefined) ??
+  null
+
+const isLikelyEndpointMissing = (message: string): boolean =>
+  /(404|not found|method not allowed|501|unsupported)/i.test(message)
 
 const severityBadge = (severity: SuricataSeverity) => {
   const map: Record<SuricataSeverity, string> = {
@@ -61,57 +84,72 @@ function SuricataContent() {
   const [rulesets, setRulesets] = useState<RulesetRow[]>([])
   const [alerts, setAlerts] = useState<AlertRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [rulesetsLoading, setRulesetsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [togglingId, setTogglingId] = useState<number | null>(null)
-  const [showCreateForm, setShowCreateForm] = useState(false)
-  const [createFormData, setCreateFormData] = useState({ name: '', url: '', path: '', enabled: true })
-  const [creatingRuleset, setCreatingRuleset] = useState(false)
-  const [createFormAttempted, setCreateFormAttempted] = useState(false)
+  const [rulesetsError, setRulesetsError] = useState<string | null>(null)
+  const [rulesetsSuccess, setRulesetsSuccess] = useState<string | null>(null)
+  const [rulesetActionLoading, setRulesetActionLoading] = useState<Record<string, RulesetAction>>({})
+  const [checkingAllUpdates, setCheckingAllUpdates] = useState(false)
 
-  const loadAll = () => {
+  const loadRulesets = useCallback(() => {
+    setRulesetsLoading(true)
+    return getSuricataRulesets()
+      .then((res) => {
+        setRulesets((res.data ?? []).map((ruleset) => toRulesetRow(ruleset)))
+        setRulesetsError(null)
+      })
+      .catch((err: Error) => {
+        setRulesetsError(err.message)
+        setRulesets([])
+      })
+      .finally(() => setRulesetsLoading(false))
+  }, [])
+
+  const loadAll = useCallback(() => {
     setLoading(true)
     const loadPromise = selectedInterface
       ? Promise.all([
           getSuricataConfig(),
           getInterfaceSuricataConfig(selectedInterface),
-          getSuricataRulesets(),
           getSuricataAlerts(),
         ])
-      : Promise.all([getSuricataConfig(), getSuricataRulesets(), getSuricataAlerts()])
+      : Promise.all([getSuricataConfig(), getSuricataAlerts()])
 
     loadPromise
       .then((results) => {
         if (selectedInterface) {
-          const [cfg, ifaceCfg, rs, al] = results as [
+          const [cfg, ifaceCfg, al] = results as [
             { data: SuricataConfig },
             { data: InterfaceSuricataConfig },
-            { data: SuricataRuleset[] },
             { data: SuricataAlert[] },
           ]
           setConfig(cfg.data)
           setInterfaceConfig(ifaceCfg.data)
-          setRulesets(rs.data as RulesetRow[])
           setAlerts(al.data as AlertRow[])
           setError(null)
           return
         }
 
-        const [cfg, rs, al] = results as [
+        const [cfg, al] = results as [
           { data: SuricataConfig },
-          { data: SuricataRuleset[] },
           { data: SuricataAlert[] },
         ]
         setConfig(cfg.data)
         setInterfaceConfig(null)
-        setRulesets(rs.data as RulesetRow[])
         setAlerts(al.data as AlertRow[])
         setError(null)
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))
-  }
+  }, [selectedInterface])
 
-  useEffect(loadAll, [selectedInterface])
+  useEffect(() => {
+    loadAll()
+  }, [loadAll])
+
+  useEffect(() => {
+    loadRulesets()
+  }, [loadRulesets])
 
   useEffect(() => {
     Promise.all([getInterfaces(), getInterfacesInventory()])
@@ -181,72 +219,65 @@ function SuricataContent() {
       .catch((err: Error) => setError(err.message))
   }
 
-  const handleToggleRuleset = (id: number, enabled: boolean) => {
-    setTogglingId(id)
-    updateSuricataRuleset(id, { enabled: !enabled })
-      .then((res) => {
-        setRulesets((prev) =>
-          prev.map((r) => (r.id === id ? ({ ...r, ...res.data } as RulesetRow) : r)),
-        )
-        setError(null)
+  const applyRulesetAction = (
+    id: string | number,
+    action: RulesetAction,
+    run: () => Promise<unknown>,
+    successMessage: string,
+  ) => {
+    const actionKey = rulesetIdKey(id)
+    setRulesetsSuccess(null)
+    setRulesetsError(null)
+    setRulesetActionLoading((prev) => ({ ...prev, [actionKey]: action }))
+    run()
+      .then(() => {
+        setRulesetsSuccess(successMessage)
+        return loadRulesets()
       })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setTogglingId(null))
+      .catch((err: Error) => {
+        if (isLikelyEndpointMissing(err.message)) {
+          setRulesetsError(`This backend does not currently support the "${action}" ruleset action.`)
+          return
+        }
+        setRulesetsError(err.message)
+      })
+      .finally(() => {
+        setRulesetActionLoading((prev) => {
+          const next = { ...prev }
+          delete next[actionKey]
+          return next
+        })
+      })
   }
 
-  const createFormValidation = React.useMemo(() => {
-    const name = createFormData.name.trim()
-    const url = createFormData.url.trim()
-    const path = createFormData.path.trim()
-    let formError = ''
-    let urlError = ''
-    let pathError = ''
-
-    if (!name) {
-      formError = 'Ruleset name is required.'
-    } else if (!url && !path) {
-      formError = 'Provide either a URL or local path.'
-    } else if (url && path) {
-      formError = 'Provide either URL or path, not both.'
-    } else if (url) {
-      try {
-        const parsed = new URL(url)
-        if (!['http:', 'https:'].includes(parsed.protocol)) {
-          urlError = 'Ruleset URL must start with http:// or https://.'
-        }
-      } catch {
-        urlError = 'Ruleset URL must be a valid URL.'
-      }
-    } else if (!path.startsWith('/')) {
-      pathError = 'Local path should start with /.'
-    }
-
-    return { formError, urlError, pathError }
-  }, [createFormData])
-
-  const handleCreateRuleset = () => {
-    setCreateFormAttempted(true)
-    if (createFormValidation.formError || createFormValidation.urlError || createFormValidation.pathError) {
-      setError(createFormValidation.formError || createFormValidation.urlError || createFormValidation.pathError)
-      return
-    }
-
-    setCreatingRuleset(true)
-    createSuricataRuleset({
-      name: createFormData.name,
-      url: createFormData.url.trim() || undefined,
-      path: createFormData.path.trim() || undefined,
-      enabled: createFormData.enabled,
-    })
+  const handleCheckAllRulesetUpdates = () => {
+    setCheckingAllUpdates(true)
+    setRulesetsSuccess(null)
+    setRulesetsError(null)
+    checkSuricataRulesetUpdates()
       .then((res) => {
-        setRulesets((prev) => [...prev, res.data as RulesetRow])
-        setCreateFormData({ name: '', url: '', path: '', enabled: true })
-        setShowCreateForm(false)
-        setCreateFormAttempted(false)
-        setError(null)
+        setRulesets((res.data ?? []).map((ruleset) => toRulesetRow(ruleset)))
+        setRulesetsSuccess('Ruleset update check completed.')
       })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setCreatingRuleset(false))
+      .catch((err: Error) => {
+        if (isLikelyEndpointMissing(err.message)) {
+          setRulesetsSuccess('Bulk update check is not supported by this backend. Use per-ruleset check.')
+          return
+        }
+        setRulesetsError(err.message)
+      })
+      .finally(() => setCheckingAllUpdates(false))
+  }
+
+  const toggleRuleset = (row: RulesetRow) => {
+    return (row.enabled ? disableManagedSuricataRuleset(row.id) : enableManagedSuricataRuleset(row.id))
+      .catch((err: Error) => {
+        if (isLikelyEndpointMissing(err.message)) {
+          return updateSuricataRuleset(row.id, { enabled: !row.enabled })
+        }
+        throw err
+      })
+      .then(() => undefined)
   }
 
   const interfaceLabels = React.useMemo(
@@ -257,28 +288,132 @@ function SuricataContent() {
 
   const interfaceLabel = useCallback((name: string): string => interfaceLabels.get(name) ?? name, [interfaceLabels])
 
+  const rulesetStateBadge = (row: RulesetRow) => {
+    if (row.error) {
+      return <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Error</span>
+    }
+    if (!row.installed) {
+      return <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">Available</span>
+    }
+    if (row.updateAvailable) {
+      return <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">Update Available</span>
+    }
+    if (row.status) {
+      return <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{String(row.status)}</span>
+    }
+    return <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">Installed</span>
+  }
+
+  const rulesetAction = (row: RulesetRow, action: RulesetAction) =>
+    rulesetActionLoading[rulesetIdKey(row.id)] === action
+
   const rulesetColumns: Column<RulesetRow>[] = [
-    { key: 'name', header: 'Ruleset' },
-    { key: 'source', header: 'Source' },
+    { key: 'name', header: 'Name' },
     {
-      key: 'lastUpdated',
-      header: 'Last Updated',
-      render: (row) =>
-        row.lastUpdated ? new Date(row.lastUpdated as string).toLocaleDateString() : '—',
+      key: 'source',
+      header: 'Source',
+      render: (row) => <span className="break-all">{String(row.source || '—')}</span>,
+    },
+    {
+      key: 'installedVersion',
+      header: 'Installed',
+      render: (row) => (row.installedVersion ? String(row.installedVersion) : row.installed ? 'Installed' : '—'),
+    },
+    {
+      key: 'latestVersion',
+      header: 'Latest',
+      render: (row) => (row.latestVersion ? String(row.latestVersion) : '—'),
     },
     {
       key: 'enabled',
       header: 'Enabled',
+      render: (row) =>
+        row.installed ? (
+          <span className={`font-medium ${row.enabled ? 'text-green-700' : 'text-gray-500'}`}>{row.enabled ? 'Enabled' : 'Disabled'}</span>
+        ) : (
+          '—'
+        ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
       render: (row) => (
-        <Button
-          aria-label={`Toggle ruleset ${String(row.name)}`}
-          variant={row.enabled ? 'primary' : 'secondary'}
-          size="sm"
-          loading={togglingId === (row.id as number)}
-          onClick={() => handleToggleRuleset(row.id as number, row.enabled as boolean)}
-        >
-          {row.enabled ? 'Enabled' : 'Disabled'}
-        </Button>
+        <div className="space-y-1">
+          {rulesetStateBadge(row)}
+          {row.error && <p className="max-w-xs text-xs text-red-700">{String(row.error)}</p>}
+        </div>
+      ),
+    },
+    {
+      key: 'lastUpdated',
+      header: 'Last Check',
+      render: (row) => {
+        const timestamp = toRulesetTimestamp(row)
+        return timestamp ? new Date(timestamp).toLocaleString() : '—'
+      },
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      className: 'whitespace-nowrap',
+      render: (row) => (
+        <div className="flex flex-wrap gap-1">
+          {!row.installed && (
+            <Button
+              size="sm"
+              variant="primary"
+              loading={rulesetAction(row, 'install')}
+              onClick={() => applyRulesetAction(row.id, 'install', () => installSuricataRuleset(row.id), `Installed ${String(row.name)}.`)}
+            >
+              Install
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="secondary"
+            loading={rulesetAction(row, 'check')}
+            onClick={() => applyRulesetAction(row.id, 'check', () => checkSuricataRulesetUpdate(row.id), `Checked updates for ${String(row.name)}.`)}
+          >
+            Check
+          </Button>
+          {row.installed && row.updateAvailable && (
+            <Button
+              size="sm"
+              variant="primary"
+              loading={rulesetAction(row, 'update')}
+              onClick={() => applyRulesetAction(row.id, 'update', () => updateManagedSuricataRuleset(row.id), `Updated ${String(row.name)}.`)}
+            >
+              Update
+            </Button>
+          )}
+          {row.installed && (
+            <Button
+              size="sm"
+              variant={row.enabled ? 'secondary' : 'primary'}
+              loading={rulesetAction(row, row.enabled ? 'disable' : 'enable')}
+              onClick={() =>
+                applyRulesetAction(
+                  row.id,
+                  row.enabled ? 'disable' : 'enable',
+                  () => toggleRuleset(row),
+                  `${row.enabled ? 'Disabled' : 'Enabled'} ${String(row.name)}.`,
+                )}
+            >
+              {row.enabled ? 'Disable' : 'Enable'}
+            </Button>
+          )}
+          {row.installed && row.canRemove && (
+            <Button
+              size="sm"
+              variant="danger"
+              loading={rulesetAction(row, 'remove')}
+              onClick={() =>
+                applyRulesetAction(row.id, 'remove', () => removeSuricataRuleset(row.id), `Removed ${String(row.name)}.`)}
+            >
+              Remove
+            </Button>
+          )}
+        </div>
       ),
     },
   ]
@@ -443,83 +578,44 @@ function SuricataContent() {
       {/* Rulesets */}
       <Card
         title="Rulesets"
-        subtitle={selectedInterface ? `Rulesets applied when monitoring ${selectedInterfaceLabel}` : 'Enable or disable individual rule sources'}
+        subtitle={selectedInterface ? `Managed rulesets applied when monitoring ${selectedInterfaceLabel}` : 'Install, update, and manage Suricata rule sources'}
         actions={
+          <div className="flex items-center gap-2">
             <Button
-              variant={showCreateForm ? 'secondary' : 'primary'}
+              variant="secondary"
               size="sm"
-              aria-label={showCreateForm ? 'Cancel ruleset creation' : 'Add a new ruleset'}
-              onClick={() => {
-                setShowCreateForm(!showCreateForm)
-                if (!showCreateForm) setCreateFormAttempted(false)
-              }}
+              loading={rulesetsLoading}
+              onClick={loadRulesets}
             >
-              {showCreateForm ? 'Cancel' : 'Add Ruleset'}
+              Refresh
             </Button>
-        }
-      >
-        {showCreateForm && (
-          <div className="border-b border-gray-200 pb-4 mb-4 space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <FormField
-                id="ruleset-name"
-                label="Ruleset Name"
-                type="text"
-                aria-label="Ruleset name"
-                error={createFormAttempted && !createFormData.name.trim() ? 'Ruleset name is required.' : undefined}
-                value={createFormData.name}
-                onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
-                placeholder="e.g., ET/Open, emerging-threats"
-              />
-              <FormField
-                id="ruleset-url"
-                label="URL (or use Path)"
-                type="text"
-                aria-label="Ruleset source URL"
-                error={createFormAttempted ? createFormValidation.urlError : undefined}
-                value={createFormData.url}
-                onChange={(e) => setCreateFormData({ ...createFormData, url: e.target.value })}
-                placeholder="https://..."
-              />
-              <FormField
-                id="ruleset-path"
-                label="Local Path (or use URL)"
-                type="text"
-                aria-label="Ruleset local path"
-                error={createFormAttempted ? createFormValidation.pathError : undefined}
-                value={createFormData.path}
-                onChange={(e) => setCreateFormData({ ...createFormData, path: e.target.value })}
-                placeholder="/etc/suricata/rules/..."
-              />
-              <label className="flex items-center gap-2">
-                <input
-                  id="ruleset-enabled"
-                  type="checkbox"
-                  checked={createFormData.enabled}
-                  aria-label="Enable ruleset immediately"
-                  onChange={(e) => setCreateFormData({ ...createFormData, enabled: e.target.checked })}
-                  className="w-4 h-4 rounded"
-                />
-                <span className="text-sm font-medium text-gray-700">Enable immediately</span>
-              </label>
-            </div>
             <Button
               variant="primary"
               size="sm"
-              aria-label="Create Suricata ruleset"
-              loading={creatingRuleset}
-              onClick={handleCreateRuleset}
+              loading={checkingAllUpdates}
+              onClick={handleCheckAllRulesetUpdates}
             >
-              Create Ruleset
+              Check for Updates
             </Button>
+          </div>
+        }
+      >
+        {rulesetsSuccess && (
+          <div className="mb-3 rounded-md border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700">
+            {rulesetsSuccess}
+          </div>
+        )}
+        {rulesetsError && (
+          <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+            {rulesetsError}
           </div>
         )}
         <Table
           columns={rulesetColumns}
           data={rulesets}
           keyField="id"
-          loading={loading}
-          emptyMessage="No rulesets configured. Add one to get started."
+          loading={rulesetsLoading}
+          emptyMessage="No managed rulesets are available."
         />
       </Card>
 
