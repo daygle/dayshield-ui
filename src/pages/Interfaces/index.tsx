@@ -68,7 +68,6 @@ export default function Interfaces() {
   const parentInterfaceOptions = allInterfaceNames.filter((name) => name !== 'lo' && name !== form.name)
 
   const handleSave = () => {
-    setError(null)
     if (!form.name?.trim()) {
       setError('Interface name is required.')
       return

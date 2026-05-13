@@ -47,10 +47,8 @@ type InterfaceUpsertPayload = {
   ipv4_prefix?: number
   mtu?: number
   mss?: number
-  vlan_id?: number
   vlan?: number
   parent_interface?: string
-  parent?: string
   gateway?: string
 }
 
@@ -69,10 +67,8 @@ function toInterfaceUpsertPayload(iface: NetworkInterface): InterfaceUpsertPaylo
     ipv4_prefix: iface.ipv4Prefix,
     mtu: iface.mtu,
     mss: iface.mss,
-    vlan_id: iface.vlanId,
     vlan: iface.vlanId,
     parent_interface: iface.parentInterface || undefined,
-    parent: iface.parentInterface || undefined,
     gateway: iface.gateway || undefined,
   }
 }
