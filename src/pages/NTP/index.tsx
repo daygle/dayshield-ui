@@ -5,6 +5,7 @@ import type { NtpConfig, NtpStatus, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import FormField from '../../components/FormField'
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
 // ── IPv4 validation ───────────────────────────────────────────────────────────
 
@@ -75,7 +76,7 @@ export default function NtpPage() {
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
 
   const interfaceLabel = (iface: NetworkInterface): string =>
-    iface.description?.trim() ? `${iface.description} (${iface.name})` : iface.name
+    formatInterfaceDisplayName(iface.description, iface.name)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [resyncing, setResyncing] = useState(false)

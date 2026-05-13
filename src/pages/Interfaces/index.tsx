@@ -8,6 +8,7 @@ import Button from '../../components/Button'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
 import InterfaceDetails from './InterfaceDetails'
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
 type InterfaceRow = NetworkInterface & Record<string, unknown>
 
@@ -46,6 +47,11 @@ export default function Interfaces() {
   const requestedInterface = searchParams.get('iface')
   const isInterfaceRowArray = (value: unknown): value is InterfaceRow[] =>
     Array.isArray(value)
+
+  const interfaceNameLabel = (name: string) => {
+    const iface = ifaces.find((item) => item.name === name)
+    return formatInterfaceDisplayName(iface?.description, name)
+  }
 
   const load = () => {
     setLoading(true)
@@ -149,7 +155,7 @@ export default function Interfaces() {
                   <div className="flex items-center gap-4 flex-1 text-left">
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900">
-                        {iface.description || iface.name}
+                        {formatInterfaceDisplayName(iface.description, iface.name)}
                       </h3>
                       <p className="text-sm text-gray-500">
                         {iface.name} • {iface.type}
@@ -163,7 +169,7 @@ export default function Interfaces() {
                       )}
                       {iface.type === 'vlan' && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                          VLAN {iface.vlanId ?? '?'}{iface.parentInterface ? ` • ${iface.parentInterface}` : ''}
+                          VLAN {iface.vlanId ?? '?'}{iface.parentInterface ? ` • ${interfaceNameLabel(iface.parentInterface)}` : ''}
                         </span>
                       )}
                       <span
@@ -214,6 +220,7 @@ export default function Interfaces() {
                       key={iface.name}
                       iface={iface}
                       parentInterfaceOptions={parentInterfaceOptions}
+                      parentInterfaceLabel={interfaceNameLabel}
                       onUpdate={load}
                     />
                   </div>
@@ -281,7 +288,7 @@ export default function Interfaces() {
               <>
                 <option value="">Select unused NIC</option>
                 {unusedKernelNames.map((name) => (
-                  <option key={name} value={name}>{name}</option>
+                  <option key={name} value={name}>{interfaceNameLabel(name)}</option>
                 ))}
                 <option value="__custom__">Custom name...</option>
               </>
@@ -299,7 +306,7 @@ export default function Interfaces() {
               >
                 <option value="">Select parent interface</option>
                 {parentInterfaceOptions.map((name) => (
-                  <option key={name} value={name}>{name}</option>
+                  <option key={name} value={name}>{interfaceNameLabel(name)}</option>
                 ))}
               </FormField>
               <FormField

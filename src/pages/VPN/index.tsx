@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
   getWgServer,
   getWgPeers,
@@ -12,6 +11,7 @@ import type { WgServer, WgPeer } from '../../types'
 import Button from '../../components/Button'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
 type PeerRow = WgPeer & Record<string, unknown>
 
@@ -27,6 +27,7 @@ const defaultPeerForm = {
 
 const defaultServerForm = {
   interface: 'wg0',
+  description: '',
   listenPort: 51820,
   addresses: '10.8.0.1/24',
   enabled: true,
@@ -80,6 +81,7 @@ export default function VPN() {
   const openServerModal = () => {
     setServerForm({
       interface: server?.interface || defaultServerForm.interface,
+      description: server?.description || defaultServerForm.description,
       listenPort: server?.listenPort || defaultServerForm.listenPort,
       addresses: server?.addresses?.join(', ') || defaultServerForm.addresses,
       enabled: server?.enabled ?? true,
@@ -106,6 +108,7 @@ export default function VPN() {
     setServerSaving(true)
     createWgInterface({
       interface: serverForm.interface.trim(),
+      description: serverForm.description.trim(),
       publicKey: serverForm.publicKey.trim(),
       privateKey: serverForm.privateKey.trim(),
       listenPort: Number(serverForm.listenPort) || defaultServerForm.listenPort,
@@ -160,6 +163,11 @@ export default function VPN() {
     return server.listenPort > 0 ? String(server.listenPort) : 'Not configured'
   }, [server])
 
+  const vpnDisplayName = useMemo(() => {
+    if (!server?.interface) return 'VPN'
+    return formatInterfaceDisplayName(server.description, server.interface)
+  }, [server])
+
   if (loading) {
     return <div className="text-center py-8 text-gray-500">Loading VPN configuration...</div>
   }
@@ -175,24 +183,32 @@ export default function VPN() {
 
         <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 text-center space-y-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">No WireGuard server configured</h3>
+            <h3 className="text-lg font-semibold text-gray-900">No VPN configured</h3>
             <p className="text-sm text-gray-500 mt-1">
-              Create the VPN interface first, then add peers and export client settings.
+              Create a VPN interface first, then add peers and export client settings.
             </p>
           </div>
-          <Button onClick={openServerModal}>Create VPN Server</Button>
+          <Button onClick={openServerModal}>Create VPN</Button>
         </div>
 
         <Modal
           open={serverModalOpen}
-          title="Create WireGuard Server"
+          title="Create VPN"
           onClose={() => setServerModalOpen(false)}
           onConfirm={handleSaveServer}
-          confirmLabel="Create Server"
+          confirmLabel="Create VPN"
           loading={serverSaving}
           size="lg"
         >
           <div className="grid grid-cols-2 gap-4">
+            <FormField
+              id="server-description"
+              label="Name"
+              className="col-span-2"
+              placeholder="Remote Access"
+              value={serverForm.description}
+              onChange={(e) => setServerForm({ ...serverForm, description: e.target.value })}
+            />
             <FormField
               id="server-interface"
               label="Interface"
@@ -267,30 +283,16 @@ export default function VPN() {
         </div>
       )}
 
-      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 flex items-center justify-between gap-3">
-        <span>
-          VPN firewall rules are managed from Firewall Rules.
-        </span>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="secondary" onClick={openServerModal}>
-            Server Settings
-          </Button>
-          <Link
-            to={`/firewall?section=rules&iface=${encodeURIComponent(server.interface)}`}
-            className="font-medium underline hover:text-blue-900"
-          >
-            Open Firewall Rules
-          </Link>
-        </div>
-      </div>
-
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="border-b border-gray-200 px-6 py-5 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">WireGuard VPN</h3>
-            <p className="text-sm text-gray-500 mt-1">Interface {server.interface}</p>
+            <h3 className="text-lg font-semibold text-gray-900">VPN</h3>
+            <p className="text-sm text-gray-500 mt-1">{vpnDisplayName}</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button size="sm" variant="secondary" onClick={openServerModal}>
+              Edit VPN
+            </Button>
             <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
               server.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
             }`}>
@@ -319,6 +321,10 @@ export default function VPN() {
             {expandedSection === 'config' && (
               <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
                 <dl className="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm">
+                  <div>
+                    <dt className="text-gray-500 mb-1">Name</dt>
+                    <dd className="text-gray-900">{server.description?.trim() || 'Not set'}</dd>
+                  </div>
                   <div>
                     <dt className="text-gray-500 mb-1">Interface</dt>
                     <dd className="font-mono text-gray-900">{server.interface}</dd>
@@ -428,7 +434,7 @@ export default function VPN() {
 
       <Modal
         open={peerModalOpen}
-        title="Add WireGuard Peer"
+        title="Add VPN Peer"
         onClose={() => {
           setPeerModalOpen(false)
           setPeerForm(defaultPeerForm)
@@ -514,19 +520,27 @@ export default function VPN() {
         loading={deleting}
         size="sm"
       >
-        <p className="text-sm text-gray-600">Remove this WireGuard peer?</p>
+        <p className="text-sm text-gray-600">Remove this VPN peer?</p>
       </Modal>
 
       <Modal
         open={serverModalOpen}
-        title={server?.interface ? `Server Settings - ${server.interface}` : 'Create WireGuard Server'}
+        title={server?.interface ? `Edit VPN - ${vpnDisplayName}` : 'Create VPN'}
         onClose={() => setServerModalOpen(false)}
         onConfirm={handleSaveServer}
-        confirmLabel={server?.interface ? 'Save Server' : 'Create Server'}
+        confirmLabel={server?.interface ? 'Save VPN' : 'Create VPN'}
         loading={serverSaving}
         size="lg"
       >
         <div className="grid grid-cols-2 gap-4">
+          <FormField
+            id="server-description"
+            label="Name"
+            className="col-span-2"
+            placeholder="Remote Access"
+            value={serverForm.description}
+            onChange={(e) => setServerForm({ ...serverForm, description: e.target.value })}
+          />
           <FormField
             id="server-interface"
             label="Interface"

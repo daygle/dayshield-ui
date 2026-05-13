@@ -23,6 +23,7 @@ import type {
   NetworkInterface,
 } from '../../types'
 import Card from '../../components/Card'
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
@@ -165,10 +166,7 @@ export default function DNS() {
       : 'settings'
 
   const interfaceLabel = (iface: NetworkInterface): string => {
-    const description = iface.description?.trim()
-    if (description) return description
-    if (iface.wanMode || iface.gateway) return `WAN (${iface.name})`
-    return iface.name
+    return formatInterfaceDisplayName(iface.description, iface.name)
   }
 
   const interfaceOptions = useMemo(() => interfaces.map((iface) => iface.name), [interfaces])
@@ -654,7 +652,7 @@ export default function DNS() {
               data={blocklists}
               keyField="id"
               loading={blocklistsLoading}
-              emptyMessage={effectiveInterface ? `No blocklists configured for ${effectiveInterface}.` : 'Select an interface to manage blocklists.'}
+              emptyMessage={effectiveInterface ? `No blocklists configured for ${interfaceLabel(interfaces.find((i) => i.name === effectiveInterface) ?? { name: effectiveInterface, description: '', type: 'ethernet' as const, enabled: true })}.` : 'Select an interface to manage blocklists.'}
             />
           </div>
         </Card>

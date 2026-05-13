@@ -263,6 +263,7 @@ export interface DhcpLease {
 
 export interface WgServer {
   interface: string
+  description?: string
   publicKey: string
   privateKey?: string
   listenPort: number

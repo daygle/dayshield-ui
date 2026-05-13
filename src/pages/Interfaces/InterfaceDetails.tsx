@@ -8,10 +8,11 @@ import Modal from '../../components/Modal'
 interface InterfaceDetailsProps {
   iface: NetworkInterface
   parentInterfaceOptions?: string[]
+  parentInterfaceLabel?: (name: string) => string
   onUpdate?: () => void
 }
 
-export default function InterfaceDetails({ iface, parentInterfaceOptions = [], onUpdate }: InterfaceDetailsProps) {
+export default function InterfaceDetails({ iface, parentInterfaceOptions = [], parentInterfaceLabel, onUpdate }: InterfaceDetailsProps) {
   const [editOpen, setEditOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -65,6 +66,11 @@ export default function InterfaceDetails({ iface, parentInterfaceOptions = [], o
       idx += 1
     }
     return `${size.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`
+  }
+
+  const labelParentInterface = (name?: string) => {
+    if (!name) return '-'
+    return parentInterfaceLabel ? parentInterfaceLabel(name) : name
   }
 
   const handleSave = () => {
@@ -122,7 +128,7 @@ export default function InterfaceDetails({ iface, parentInterfaceOptions = [], o
           <>
             <div className="rounded border border-gray-200 bg-white p-3">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Parent Interface</p>
-              <p className="mt-1 font-mono text-sm text-gray-900">{iface.parentInterface ?? '-'}</p>
+              <p className="mt-1 text-sm text-gray-900">{labelParentInterface(iface.parentInterface)}</p>
             </div>
             <div className="rounded border border-gray-200 bg-white p-3">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">VLAN ID</p>
@@ -267,7 +273,7 @@ export default function InterfaceDetails({ iface, parentInterfaceOptions = [], o
               >
                 <option value="">Select parent interface</option>
                 {resolvedParentInterfaceOptions.map((name) => (
-                  <option key={name} value={name}>{name}</option>
+                  <option key={name} value={name}>{labelParentInterface(name)}</option>
                 ))}
               </FormField>
               <FormField

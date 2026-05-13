@@ -23,6 +23,7 @@ import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import FormField from '../../components/FormField'
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 import ErrorBoundary from '../../components/ErrorBoundary'
 
 type RulesetRow = SuricataRuleset & Record<string, unknown>
@@ -253,7 +254,7 @@ function SuricataContent() {
 
   const interfaceLabels = React.useMemo(
     () =>
-      new Map(interfaces.map((iface) => [iface.name, iface.description?.trim() || iface.name])),
+      new Map(interfaces.map((iface) => [iface.name, formatInterfaceDisplayName(iface.description, iface.name)])),
     [interfaces],
   )
 
@@ -393,7 +394,9 @@ function SuricataContent() {
     [interfaces, selectedInterface],
   )
 
-  const selectedInterfaceLabel = selectedInterfaceMeta?.description || selectedInterface || ''
+  const selectedInterfaceLabel = selectedInterfaceMeta
+    ? interfaceLabel(selectedInterfaceMeta.name)
+    : selectedInterface || ''
   const alertsIncludeInterface = alerts.some((alert) => Boolean(alert.interface))
 
   const filteredAlerts = React.useMemo(() => {
@@ -433,7 +436,7 @@ function SuricataContent() {
             <option value="">Select interface</option>
             {interfaces.map((iface) => (
               <option key={iface.name} value={iface.name}>
-                {iface.description?.trim() ? `${iface.description} (${iface.name})` : iface.name}
+                {interfaceLabel(iface.name)}
               </option>
             ))}
           </FormField>

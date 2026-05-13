@@ -12,6 +12,7 @@ type BackendWgPeer = {
 
 type BackendWgInterface = {
   name?: string
+  description?: string
   private_key?: string
   public_key?: string
   listen_port?: number
@@ -37,6 +38,7 @@ function toUiInterface(raw: BackendWgInterface): WgServer {
   const peers = Array.isArray(raw.peers) ? raw.peers.map(toUiPeer) : []
   return {
     interface: raw.name ?? '',
+    description: raw.description ?? '',
     publicKey: raw.public_key ?? '',
     privateKey: raw.private_key ?? '',
     listenPort: raw.listen_port ?? 0,
@@ -49,6 +51,7 @@ function toUiInterface(raw: BackendWgInterface): WgServer {
 function toBackendInterface(iface: WgServer): BackendWgInterface {
   return {
     name: iface.interface,
+    description: iface.description || undefined,
     private_key: iface.privateKey,
     public_key: iface.publicKey,
     listen_port: iface.listenPort,
@@ -107,6 +110,7 @@ export const getWgServer = (): Promise<ApiResponse<WgServer>> =>
     ...r,
     data: r.data[0] ?? {
       interface: '',
+      description: '',
       publicKey: '',
       privateKey: '',
       listenPort: 0,

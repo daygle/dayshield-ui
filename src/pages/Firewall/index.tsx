@@ -18,6 +18,7 @@ import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
 type RuleRow = FirewallRule & Record<string, unknown>
 type AliasRow = Alias & Record<string, unknown>
@@ -219,9 +220,16 @@ export default function Firewall() {
 
   const interfaceLabel = (iface: NetworkInterface): string => {
     const prefix = vpnInterfaceNames.includes(iface.name) ? 'VPN • ' : ''
-    const base = iface.description?.trim() || (iface.wanMode || iface.gateway ? 'WAN' : iface.name)
+    const base = formatInterfaceDisplayName(iface.description, iface.name)
     return `${prefix}${base}`
   }
+
+  const selectedInterfaceDisplay = selectedInterface
+    ? (() => {
+        const iface = interfaces.find((item) => item.name === selectedInterface)
+        return iface ? interfaceLabel(iface) : selectedInterface
+      })()
+    : ''
 
   const visibleRules = useMemo(
     () => (selectedInterface ? rules.filter((rule) => (rule.interface as string | null) === selectedInterface) : rules),
@@ -229,7 +237,7 @@ export default function Firewall() {
   )
 
   const rulesEmptyMessage = selectedInterface
-    ? `No firewall rules defined for ${selectedInterface}.`
+    ? `No firewall rules defined for ${selectedInterfaceDisplay}.`
     : 'No firewall rules defined.'
 
   const activeSection =
@@ -302,12 +310,15 @@ export default function Firewall() {
         const knownAfterKernel = new Set([...known, ...extras.map((e) => e.name)])
         const vpnExtras = enabledVpn
           .filter((name) => !knownAfterKernel.has(name))
-          .map((name) => ({
-            name,
-            description: 'WireGuard VPN',
-            type: 'ethernet' as const,
-            enabled: true,
-          }))
+          .map((name) => {
+            const wg = (wgRes.data ?? []).find((item) => item.interface === name)
+            return {
+              name,
+              description: wg?.description?.trim() || 'VPN',
+              type: 'ethernet' as const,
+              enabled: true,
+            }
+          })
 
         setVpnInterfaceNames(enabledVpn)
         setInterfaces([...configured, ...extras, ...vpnExtras])
@@ -666,7 +677,7 @@ export default function Firewall() {
       {showRulesSection && <div id="firewall-rules">
         <Card
           title="Firewall Rules"
-          subtitle={selectedInterface ? `Rules for interface ${selectedInterface}` : 'Define allow/deny rules evaluated top-to-bottom'}
+          subtitle={selectedInterface ? `Rules for interface ${selectedInterfaceDisplay}` : 'Define allow/deny rules evaluated top-to-bottom'}
           actions={
             <div className="flex gap-2">
               <Button size="sm" variant="secondary" onClick={loadStats}>
@@ -702,7 +713,7 @@ export default function Firewall() {
 
           {selectedInterface && (
             <div className="mb-3 rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700">
-              Filtering rules for interface <span className="font-semibold">{selectedInterface}</span>
+              Filtering rules for interface <span className="font-semibold">{selectedInterfaceDisplay}</span>
             </div>
           )}
           {rulesError && <p className="text-sm text-red-600 mb-3">{rulesError}</p>}

@@ -20,6 +20,7 @@ import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
 type StaticLeaseRow = DhcpStaticLease & Record<string, unknown>
 type ActiveLeaseRow = DhcpLease & Record<string, unknown>
@@ -73,7 +74,7 @@ export default function DHCP() {
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
 
   const interfaceLabel = (iface: NetworkInterface): string =>
-    iface.description?.trim() ? `${iface.description} (${iface.name})` : iface.name
+    formatInterfaceDisplayName(iface.description, iface.name)
 
   const selectedInterfaceMeta = useMemo(
     () => interfaces.find((iface) => iface.name === selectedInterface) ?? null,
@@ -484,7 +485,7 @@ export default function DHCP() {
       {/* Edit DHCP Config Modal */}
       <Modal
         open={configModalOpen}
-        title={selectedInterface ? `Edit DHCP: ${selectedInterfaceMeta?.description || selectedInterface}` : 'Edit DHCP Server'}
+        title={selectedInterface ? `Edit DHCP: ${selectedInterfaceLabel}` : 'Edit DHCP Server'}
         onClose={() => setConfigModalOpen(false)}
         onConfirm={handleSaveConfig}
         confirmLabel="Save"
@@ -605,7 +606,7 @@ export default function DHCP() {
       {/* Add Static Lease Modal */}
       <Modal
         open={leaseModalOpen}
-        title={selectedInterface ? `Add Static IP Reservation: ${selectedInterfaceMeta?.description || selectedInterface}` : 'Add Static Lease'}
+        title={selectedInterface ? `Add Static IP Reservation: ${selectedInterfaceLabel}` : 'Add Static Lease'}
         onClose={() => setLeaseModalOpen(false)}
         onConfirm={handleAddLease}
         confirmLabel="Add"
