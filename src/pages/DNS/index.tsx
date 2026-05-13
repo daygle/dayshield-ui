@@ -155,7 +155,9 @@ export default function DNS() {
 
   const sectionParam = searchParams.get('section')
   const activeSection =
-    sectionParam === 'overrides' || sectionParam === 'blocklists' ? sectionParam : 'settings'
+    sectionParam === 'overrides' || sectionParam === 'blocklists' || sectionParam === 'dot'
+      ? sectionParam
+      : 'settings'
 
   const interfaceLabel = (iface: NetworkInterface): string => {
     const description = iface.description?.trim()
@@ -497,50 +499,52 @@ export default function DNS() {
               <p className="text-sm text-gray-400">No DNS configuration found.</p>
             )}
           </Card>
-
-          <Card
-            title="Private DNS over TLS (DoT)"
-            subtitle="Encrypted private DNS listener on the configured DoT port"
-            actions={
-              <Button size="sm" variant="secondary" onClick={openConfigModal}>
-                Edit Settings
-              </Button>
-            }
-          >
-            {loading ? (
-              <p className="text-sm text-gray-400">Loading…</p>
-            ) : config ? (
-              <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm">
-                <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
-                  <dd className={`mt-1 font-semibold ${config.dot_enabled ? 'text-green-600' : 'text-gray-400'}`}>
-                    {config.dot_enabled ? 'Enabled' : 'Disabled'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listener</dt>
-                  <dd className="mt-1 font-medium text-gray-800 font-mono">TCP/{config.dot_port ?? 853}</dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Access</dt>
-                  <dd className="mt-1 font-medium text-gray-800">
-                    {config.dot_lan_only === false ? 'LAN + external clients' : 'LAN clients only'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">TLS Materials</dt>
-                  <dd className="mt-1 font-medium text-gray-800">
-                    {hasText(config.dot_certificate) && hasText(config.dot_private_key)
-                      ? 'Certificate + key configured'
-                      : 'Certificate/key required'}
-                  </dd>
-                </div>
-              </dl>
-            ) : (
-              <p className="text-sm text-gray-400">No DNS-over-TLS configuration found.</p>
-            )}
-          </Card>
         </>
+      )}
+
+      {activeSection === 'dot' && (
+        <Card
+          title="DoT"
+          subtitle="Encrypted private DNS listener on the configured DoT port"
+          actions={
+            <Button size="sm" variant="secondary" onClick={openConfigModal}>
+              Edit Settings
+            </Button>
+          }
+        >
+          {loading ? (
+            <p className="text-sm text-gray-400">Loading…</p>
+          ) : config ? (
+            <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm">
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
+                <dd className={`mt-1 font-semibold ${config.dot_enabled ? 'text-green-600' : 'text-gray-400'}`}>
+                  {config.dot_enabled ? 'Enabled' : 'Disabled'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listener</dt>
+                <dd className="mt-1 font-medium text-gray-800 font-mono">TCP/{config.dot_port ?? 853}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Access</dt>
+                <dd className="mt-1 font-medium text-gray-800">
+                  {config.dot_lan_only === false ? 'LAN + external clients' : 'LAN clients only'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">TLS Materials</dt>
+                <dd className="mt-1 font-medium text-gray-800">
+                  {hasText(config.dot_certificate) && hasText(config.dot_private_key)
+                    ? 'Certificate + key configured'
+                    : 'Certificate/key required'}
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-sm text-gray-400">No DoT configuration found.</p>
+          )}
+        </Card>
       )}
 
       {activeSection === 'overrides' && (
