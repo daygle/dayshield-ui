@@ -24,6 +24,15 @@ import Modal from '../../components/Modal'
 
 const DEFAULT_GITHUB_REGISTRY_URL = 'https://api.github.com/repos/daygle/dayshield-core'
 const STATUS_REFRESH_INTERVAL_MS = 15000
+const UPDATE_INTERVAL_OPTIONS = [
+  15,
+  30,
+  60,
+  6 * 60,
+  12 * 60,
+  24 * 60,
+  7 * 24 * 60,
+]
 
 function formatUptime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0d 0h 0m'
@@ -63,6 +72,19 @@ function componentRemoteDisplay(
 ): string {
   if (comp.remoteVersion) return comp.remoteVersion
   return isRegistryMode ? 'Unknown' : shortCommit(comp.remoteCommit)
+}
+
+function formatUpdateComponentName(component: string): string {
+  switch (component.toLowerCase()) {
+    case 'core':
+      return 'Core'
+    case 'ui':
+      return 'Web UI'
+    case 'rootfs':
+      return 'Root Filesystem'
+    default:
+      return component.charAt(0).toUpperCase() + component.slice(1)
+  }
 }
 
 /**
@@ -191,6 +213,16 @@ function formatUpdateInterval(minutes: number): string {
   return `Every ${minutes} minutes`
 }
 
+function getUpdateIntervalOptions(selectedMinutes: number): number[] {
+  if (!Number.isFinite(selectedMinutes) || selectedMinutes <= 0) {
+    return UPDATE_INTERVAL_OPTIONS
+  }
+
+  return UPDATE_INTERVAL_OPTIONS.includes(selectedMinutes)
+    ? UPDATE_INTERVAL_OPTIONS
+    : [...UPDATE_INTERVAL_OPTIONS, selectedMinutes].sort((a, b) => a - b)
+}
+
 function normalizeRegistryUrl(input?: string): string {
   const raw = (input ?? '').trim()
   if (!raw) return raw
@@ -293,7 +325,6 @@ export default function System() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [acmeDomains, setAcmeDomains] = useState<string[]>([])
-
   const [editConfig, setEditConfig] = useState<Partial<SystemConfig>>({})
   const [editOpen, setEditOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -596,7 +627,7 @@ export default function System() {
       {activeSection === 'updates' && updates && (
         <Card
           title="Software Updates"
-          subtitle="Prebuilt artifact registry updates for DayShield core, UI, and rootfs"
+          subtitle="Manage prebuilt updates for DayShield core, UI, and rootfs"
           actions={
             <Button
               size="sm"
@@ -605,13 +636,13 @@ export default function System() {
                 setUpdateSettingsOpen(true)
               }}
             >
-              Settings
+              Update Settings
             </Button>
           }
         >
           <div className="space-y-4">
             <div className="rounded border border-gray-200 p-3 bg-gray-50">
-              <p className="text-gray-500 text-sm">Auto Check</p>
+              <p className="text-gray-500 text-sm">Automatic update checks</p>
               <p className="font-medium text-gray-900">
                 {updates.settings.autoCheckEnabled
                   ? formatUpdateInterval(updates.settings.checkIntervalMinutes)
@@ -632,7 +663,7 @@ export default function System() {
                     onClick={handleSetDefaultRegistry}
                     disabled={updateSaving || updateActionLoading}
                   >
-                    Use Default Registry
+                    Use default registry
                   </Button>
                 </div>
               </div>
@@ -651,7 +682,7 @@ export default function System() {
 
                     return (
                   <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-gray-900 uppercase">{comp.component}</h4>
+                    <h4 className="font-medium text-gray-900">{formatUpdateComponentName(comp.component)}</h4>
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusClass}`}
                     >
@@ -667,18 +698,18 @@ export default function System() {
                   <dl className="mt-2 space-y-1 text-xs text-gray-600">
                     {!isRegistryMode && (
                       <div>
-                        <dt className="inline text-gray-500">Branch: </dt>
+                        <dt className="inline text-gray-500">Update branch: </dt>
                         <dd className="inline font-medium text-gray-800">{comp.branch}</dd>
                       </div>
                     )}
                     <div>
-                      <dt className="inline text-gray-500">Installed: </dt>
+                      <dt className="inline text-gray-500">Current version: </dt>
                       <dd className="inline font-mono text-gray-800">
                         {componentCurrentDisplay(comp, isRegistryMode)}
                       </dd>
                     </div>
                     <div>
-                      <dt className="inline text-gray-500">Latest: </dt>
+                      <dt className="inline text-gray-500">Available version: </dt>
                       <dd className="inline font-mono text-gray-800">
                         {componentRemoteDisplay(comp, isRegistryMode)}
                       </dd>
@@ -686,14 +717,14 @@ export default function System() {
                     {/* Show last applied version if available */}
                     {comp.lastAppliedVersion && (
                       <div>
-                        <dt className="inline text-gray-500">Last Applied: </dt>
+                        <dt className="inline text-gray-500">Last installed: </dt>
                         <dd className="inline font-mono text-gray-800">{comp.lastAppliedVersion}</dd>
                       </div>
                     )}
                     {/* Show rollback commit if available */}
                     {comp.rollbackCommit && (
                       <div>
-                        <dt className="inline text-gray-500">Rollback: </dt>
+                        <dt className="inline text-gray-500">Rollback target: </dt>
                         <dd className="inline font-mono text-gray-800">{shortCommit(comp.rollbackCommit)}</dd>
                       </div>
                     )}
@@ -1037,7 +1068,7 @@ export default function System() {
       {/* Update Settings Modal */}
       <Modal
         open={updateSettingsOpen}
-        title="Update Check Settings"
+        title="Automatic Update Checks"
         onClose={() => setUpdateSettingsOpen(false)}
         onConfirm={handleSaveUpdateSettings}
         confirmLabel="Save"
@@ -1047,7 +1078,7 @@ export default function System() {
         {updateSettings && (
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              Configure how frequently the system checks for available updates.
+              Choose whether DayShield checks for updates automatically and how often it does so.
             </p>
             <div className="flex items-center gap-2">
               <input
@@ -1058,15 +1089,15 @@ export default function System() {
                 onChange={(e) => setUpdateSettings({ ...updateSettings, autoCheckEnabled: e.target.checked })}
               />
               <label htmlFor="upd-auto" className="text-sm font-medium text-gray-700">
-                Enable periodic update checks
+                Check for updates automatically
               </label>
             </div>
             {updateSettings.autoCheckEnabled && (
               <FormField
                 id="upd-interval"
-                label="Check Interval (minutes)"
-                type="number"
-                min={1}
+                as="select"
+                label="Check for updates"
+                hint="Choose how often DayShield checks for new updates automatically."
                 value={String(updateSettings.checkIntervalMinutes)}
                 onChange={(e) =>
                   setUpdateSettings({
@@ -1074,7 +1105,13 @@ export default function System() {
                     checkIntervalMinutes: Math.max(1, Number(e.target.value) || 1),
                   })
                 }
-              />
+              >
+                {getUpdateIntervalOptions(updateSettings.checkIntervalMinutes).map((minutes) => (
+                  <option key={minutes} value={minutes}>
+                    {formatUpdateInterval(minutes)}
+                  </option>
+                ))}
+              </FormField>
             )}
           </div>
         )}
