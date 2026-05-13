@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { getGateways, upsertGateway, deleteGateway } from '../../api/gateways'
-import { getInterfacesInventory } from '../../api/interfaces'
 import { useInterfaceInventory } from './useInterfaceInventory'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 import { formatGatewayDisplayName } from '../../utils/gatewayLabel'

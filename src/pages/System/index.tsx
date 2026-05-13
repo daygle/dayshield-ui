@@ -23,6 +23,7 @@ import FormField from '../../components/FormField'
 import Modal from '../../components/Modal'
 
 const DEFAULT_GITHUB_REGISTRY_URL = 'https://api.github.com/repos/daygle/dayshield-core'
+const STATUS_REFRESH_INTERVAL_MS = 15000
 
 function formatUptime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0d 0h 0m'
@@ -332,6 +333,19 @@ export default function System() {
   }
 
   useEffect(loadAll, [])
+
+  useEffect(() => {
+    if (activeSection !== 'overview') return
+
+    const refreshStatus = () => {
+      getSystemStatus()
+        .then((st) => setStatus(st.data))
+        .catch((err: Error) => setError(err.message))
+    }
+
+    const timer = window.setInterval(refreshStatus, STATUS_REFRESH_INTERVAL_MS)
+    return () => window.clearInterval(timer)
+  }, [activeSection])
 
   const handleSaveConfig = () => {
     setSaving(true)

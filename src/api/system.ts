@@ -32,6 +32,10 @@ interface BackendSystemConfig {
   management_tls_acme_domain?: string
 }
 
+function toFiniteNumber(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+}
+
 function normalizeSystemStatus(raw: unknown): SystemStatus {
   const value = (raw ?? {}) as Record<string, unknown>
 
@@ -129,10 +133,59 @@ function toBackendSystemConfig(config: Partial<SystemConfig>): Partial<BackendSy
   }
 }
 
-export const getSystemStatus = (): Promise<ApiResponse<SystemStatus>> =>
-  apiClient
-    .get<ApiResponse<unknown>>('/system/status')
-    .then((r) => ({ ...r.data, data: normalizeSystemStatus(r.data.data) }))
+export const getSystemStatus = async (): Promise<ApiResponse<SystemStatus>> => {
+  const baseResponse = await apiClient.get<ApiResponse<unknown>>('/system/status')
+  const base = normalizeSystemStatus(baseResponse.data.data)
+
+  const [dashboardSystemResult, dashboardNetworkResult, dashboardSecurityResult, metricsResult] = await Promise.allSettled([
+    apiClient.get<ApiResponse<DashboardSystemStatus>>('/dashboard/system'),
+    apiClient.get<ApiResponse<NetworkStatus>>('/dashboard/network'),
+    apiClient.get<ApiResponse<SecurityStatus>>('/dashboard/security'),
+    apiClient.get<ApiResponse<unknown>>('/metrics'),
+  ])
+
+  const next: SystemStatus = { ...base }
+
+  if (dashboardSystemResult.status === 'fulfilled') {
+    const dashboardSystem = dashboardSystemResult.value.data.data
+    next.hostname = dashboardSystem.hostname || next.hostname
+    next.uptime = toFiniteNumber(dashboardSystem.uptime, next.uptime)
+    next.cpuUsage = toFiniteNumber(dashboardSystem.cpu_percent, next.cpuUsage)
+  }
+
+  if (dashboardNetworkResult.status === 'fulfilled') {
+    const network = dashboardNetworkResult.value.data.data
+    const lanCount = Array.isArray(network.lan_ifaces) ? network.lan_ifaces.length : 0
+    next.interfaces = (network.wan_iface ? 1 : 0) + lanCount
+  }
+
+  if (dashboardSecurityResult.status === 'fulfilled') {
+    const security = dashboardSecurityResult.value.data.data
+    next.firewallRules = toFiniteNumber(security.firewall_rule_count, next.firewallRules)
+    next.activeConnections = toFiniteNumber(security.firewall_state_count, next.activeConnections)
+  }
+
+  if (metricsResult.status === 'fulfilled') {
+    const metrics = (metricsResult.value.data.data ?? {}) as Record<string, unknown>
+    const system = (metrics.system ?? {}) as Record<string, unknown>
+
+    next.lastUpdated =
+      typeof metrics.timestamp === 'number' && Number.isFinite(metrics.timestamp)
+        ? new Date(metrics.timestamp * 1000).toISOString()
+        : next.lastUpdated
+    next.uptime = toFiniteNumber(system.uptime_seconds, next.uptime)
+    next.cpuUsage = toFiniteNumber(system.cpu_percent, next.cpuUsage)
+    next.memoryUsed = toFiniteNumber(system.ram_used_bytes, next.memoryUsed)
+    next.memoryTotal = toFiniteNumber(system.ram_total_bytes, next.memoryTotal)
+    next.diskUsed = toFiniteNumber(system.disk_used_bytes, next.diskUsed)
+    next.diskTotal = toFiniteNumber(system.disk_total_bytes, next.diskTotal)
+  }
+
+  return {
+    ...baseResponse.data,
+    data: next,
+  }
+}
 
 export const getSystemConfig = (): Promise<ApiResponse<SystemConfig>> =>
   apiClient
