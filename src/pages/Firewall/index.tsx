@@ -240,12 +240,6 @@ export default function Firewall() {
   const showAliasesSection = activeSection === 'aliases'
   const showSettingsSection = activeSection === 'settings'
 
-  const handleSelectSection = (section: string) => {
-    const next = new URLSearchParams(searchParams)
-    next.set('section', section)
-    setSearchParams(next)
-  }
-
   const updateRulesInterfaceFilter = (interfaceName: string) => {
     const next = new URLSearchParams(searchParams)
     next.set('section', 'rules')
@@ -625,24 +619,6 @@ export default function Firewall() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 pb-3">
-        {[
-          { value: 'settings', label: 'Settings' },
-          { value: 'rules', label: 'Rules' },
-          { value: 'aliases', label: 'Aliases' },
-        ].map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            onClick={() => handleSelectSection(tab.value)}
-            aria-current={activeSection === tab.value ? 'page' : undefined}
-            className={`sidebar-link flex-1 justify-center text-center ${activeSection === tab.value ? 'active' : ''}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       {showSettingsSection && <div id="firewall-settings">
         <Card
           title="Firewall Settings"

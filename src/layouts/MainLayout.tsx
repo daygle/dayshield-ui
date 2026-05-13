@@ -9,7 +9,9 @@ export default function MainLayout() {
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar />
         <main className="flex-1 overflow-y-auto p-6 bg-gray-100">
-          <Outlet />
+          <div className="mx-auto w-full max-w-[90%]">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
