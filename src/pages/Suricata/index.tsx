@@ -236,7 +236,7 @@ function SuricataContent() {
       })
       .catch((err: Error) => {
         if (isLikelyEndpointMissing(err.message)) {
-          setRulesetsError(`This backend does not currently support the "${action}" ruleset action.`)
+          setRulesetsError(`This backend does not currently support the "${action}" action. Upgrade the backend or use supported actions.`)
           return
         }
         setRulesetsError(err.message)
@@ -274,7 +274,7 @@ function SuricataContent() {
       .catch((err: Error) => {
         if (isLikelyEndpointMissing(err.message)) {
           return updateSuricataRuleset(row.id, { enabled: !row.enabled }).catch((legacyErr: Error) => {
-            throw new Error(`Managed toggle is unavailable and legacy toggle failed: ${legacyErr.message}`)
+            throw new Error(`Unable to toggle ruleset with this backend: ${legacyErr.message}`)
           })
         }
         throw err
