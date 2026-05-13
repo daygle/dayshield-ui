@@ -387,7 +387,7 @@ export interface BlockedEntry {
   quarantine: boolean
 }
 
-export type AiModelType = 'local' | 'remote'
+export type AiModelType = 'local'
 
 export interface AiEngineConfig {
   enabled: boolean
@@ -398,8 +398,6 @@ export interface AiEngineConfig {
   model_type: AiModelType
   training_enabled: boolean
   model_learning_rate: number
-  remote_inference_url?: string
-  remote_api_key?: string
 }
 
 // ── ACME / Certificates ───────────────────────────────────────────────────────
