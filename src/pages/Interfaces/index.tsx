@@ -246,11 +246,10 @@ export default function Interfaces() {
               const type = e.target.value as NetworkInterface['type']
               setForm({
                 ...defaultForm,
-                ...form,
                 type,
                 name: '',
-                parentInterface: type === 'vlan' ? (form.parentInterface ?? '') : '',
-                vlanId: type === 'vlan' ? form.vlanId : undefined,
+                enabled: form.enabled ?? true,
+                description: form.description ?? '',
               })
               setUseCustomName(false)
             }}
