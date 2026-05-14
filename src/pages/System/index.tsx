@@ -25,6 +25,7 @@ import type { UpdateScheduleFrequency, UpdateScheduleWeekday } from '../../types
 
 const DEFAULT_GITHUB_REGISTRY_URL = 'https://api.github.com/repos/daygle/dayshield-core'
 const STATUS_REFRESH_INTERVAL_MS = 15000
+const UPDATES_REFRESH_INTERVAL_MS = 5000
 const UPDATE_SCHEDULE_FREQUENCY_OPTIONS: Array<{ value: UpdateScheduleFrequency; label: string }> = [
   { value: 'daily', label: 'Every Day' },
   { value: 'weekly', label: 'Every Week' },
@@ -394,6 +395,22 @@ export default function System() {
     return () => window.clearInterval(timer)
   }, [activeSection])
 
+  useEffect(() => {
+    if (activeSection !== 'updates') return
+
+    const refreshUpdates = () => {
+      getUpdatesStatus()
+        .then((res) => setUpdates(res.data))
+        .catch(() => {
+          // Keep current UI state on transient poll failures.
+        })
+    }
+
+    refreshUpdates()
+    const timer = window.setInterval(refreshUpdates, UPDATES_REFRESH_INTERVAL_MS)
+    return () => window.clearInterval(timer)
+  }, [activeSection])
+
   const handleSaveConfig = () => {
     setSaving(true)
     updateSystemConfig(editConfig)
@@ -433,7 +450,7 @@ export default function System() {
     applyUpdates('both')
       .then((res) => {
         setUpdates(res.data.status)
-        setUpdateActionMessage(res.data.message)
+        setUpdateActionMessage('Update process started. Progress will appear in Update Logs.')
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false))
@@ -445,7 +462,7 @@ export default function System() {
     rollbackUpdates('both')
       .then((res) => {
         setUpdates(res.data.status)
-        setUpdateActionMessage(res.data.message)
+        setUpdateActionMessage('Rollback process started. Progress will appear in Update Logs.')
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false))
