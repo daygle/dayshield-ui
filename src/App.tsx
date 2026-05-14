@@ -11,6 +11,7 @@ import VPN from './pages/VPN'
 import DNS from './pages/DNS'
 import DHCP from './pages/DHCP'
 import Suricata from './pages/Suricata'
+import SuricataRulesets from './pages/Suricata/RulesetsPage'
 import CrowdSec from './pages/CrowdSec'
 import AIThreats from './pages/AIThreats'
 import ACME from './pages/ACME'
@@ -51,6 +52,7 @@ function App() {
           <Route path="dns" element={<DNS />} />
           <Route path="dhcp" element={<DHCP />} />
           <Route path="suricata" element={<Suricata />} />
+          <Route path="suricata/rulesets" element={<SuricataRulesets />} />
           <Route path="crowdsec" element={<CrowdSec />} />
           <Route path="ai-threats" element={<AIThreats />} />
           <Route path="acme" element={<ACME />} />

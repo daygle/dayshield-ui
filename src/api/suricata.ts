@@ -5,6 +5,8 @@ interface ManagedInstalledRulesetApi {
   id: string
   displayName: string
   sourceUrl: string
+  vendor?: string | null
+  license?: string | null
   installedVersion?: string | null
   latestVersion?: string | null
   enabled: boolean
@@ -18,7 +20,10 @@ interface ManagedInstalledRulesetApi {
 interface ManagedAvailableRulesetApi {
   id: string
   displayName: string
+  description?: string | null
   url: string
+  vendor?: string | null
+  license?: string | null
   installed: boolean
 }
 
@@ -34,6 +39,8 @@ const normalizeManagedInstalledRuleset = (ruleset: ManagedInstalledRulesetApi): 
   id: ruleset.id,
   name: ruleset.displayName,
   source: ruleset.sourceUrl,
+  vendor: ruleset.vendor ?? null,
+  license: ruleset.license ?? null,
   enabled: ruleset.enabled,
   installed: true,
   installedVersion: ruleset.installedVersion ?? null,
@@ -62,13 +69,19 @@ const normalizeManagedAvailableRuleset = (
 ): SuricataRuleset => {
   const installed = installedById.get(ruleset.id)
   if (installed) {
-    return normalizeManagedInstalledRuleset(installed)
+    return {
+      ...normalizeManagedInstalledRuleset(installed),
+      vendor: installed.vendor ?? ruleset.vendor ?? null,
+      license: installed.license ?? ruleset.license ?? null,
+    }
   }
 
   return {
     id: ruleset.id,
     name: ruleset.displayName,
     source: ruleset.url,
+    vendor: ruleset.vendor ?? null,
+    license: ruleset.license ?? null,
     enabled: false,
     installed: false,
     status: 'available',

@@ -304,6 +304,8 @@ export interface SuricataRuleset {
   id: number | string
   name: string
   source: string
+  vendor?: string | null
+  license?: string | null
   enabled: boolean
   installed?: boolean
   installedVersion?: string | null

@@ -1,20 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   getSuricataConfig,
   getInterfaceSuricataConfig,
   type InterfaceSuricataConfig,
   updateSuricataConfig,
   updateInterfaceSuricataConfig,
-  getSuricataRulesets,
-  updateSuricataRuleset,
-  installSuricataRuleset,
   getSuricataAlerts,
 } from '../../api/suricata'
 import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
 import type {
   SuricataConfig,
-  SuricataRuleset,
   SuricataAlert,
   SuricataSeverity,
   NetworkInterface,
@@ -25,31 +21,8 @@ import Table, { Column } from '../../components/Table'
 import FormField from '../../components/FormField'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 import ErrorBoundary from '../../components/ErrorBoundary'
-import { ManageRulesModal } from './ManageRulesModal'
 
-type RulesetRow = SuricataRuleset & Record<string, unknown>
 type AlertRow = SuricataAlert & Record<string, unknown>
-type RulesetAction = 'install' | 'check' | 'update' | 'enable' | 'disable' | 'remove'
-
-const toRulesetRow = (ruleset: SuricataRuleset): RulesetRow => {
-  const status = String(ruleset.status ?? '').toLowerCase()
-  const installedFallback = !(status === 'available' || status === 'not_installed')
-  return {
-    ...ruleset,
-    installed: typeof ruleset.installed === 'boolean' ? ruleset.installed : installedFallback,
-    updateAvailable: Boolean(ruleset.updateAvailable),
-  }
-}
-
-const rulesetIdKey = (id: string | number): string => String(id)
-
-const toRulesetTimestamp = (ruleset: RulesetRow): string | null =>
-  (ruleset.lastUpdated as string | undefined) ??
-  (ruleset.lastChecked as string | undefined) ??
-  null
-
-const isLikelyEndpointMissing = (message: string): boolean =>
-  /(404|not found|method not allowed|501|unsupported)/i.test(message)
 
 const severityBadge = (severity: SuricataSeverity) => {
   const map: Record<SuricataSeverity, string> = {
@@ -81,30 +54,9 @@ function SuricataContent() {
   const [config, setConfig] = useState<SuricataConfig | null>(null)
   const [interfaceConfig, setInterfaceConfig] = useState<InterfaceSuricataConfig | null>(null)
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
-  const [rulesets, setRulesets] = useState<RulesetRow[]>([])
   const [alerts, setAlerts] = useState<AlertRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [rulesetsLoading, setRulesetsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [rulesetsError, setRulesetsError] = useState<string | null>(null)
-  const [rulesetsSuccess, setRulesetsSuccess] = useState<string | null>(null)
-  const [rulesetActionLoading, setRulesetActionLoading] = useState<Record<string, RulesetAction>>({})
-  const [manageRulesModalOpen, setManageRulesModalOpen] = useState(false)
-  const [manageRulesRulesetId, setManageRulesRulesetId] = useState<string | null>(null)
-
-  const loadRulesets = useCallback(() => {
-    setRulesetsLoading(true)
-    return getSuricataRulesets()
-      .then((res) => {
-        setRulesets((res.data ?? []).map((ruleset) => toRulesetRow(ruleset)))
-        setRulesetsError(null)
-      })
-      .catch((err: Error) => {
-        setRulesetsError(err.message)
-        setRulesets([])
-      })
-      .finally(() => setRulesetsLoading(false))
-  }, [])
 
   const loadAll = useCallback(() => {
     setLoading(true)
@@ -147,10 +99,6 @@ function SuricataContent() {
   useEffect(() => {
     loadAll()
   }, [loadAll])
-
-  useEffect(() => {
-    loadRulesets()
-  }, [loadRulesets])
 
   useEffect(() => {
     Promise.all([getInterfaces(), getInterfacesInventory()])
@@ -220,41 +168,6 @@ function SuricataContent() {
       .catch((err: Error) => setError(err.message))
   }
 
-  const applyRulesetAction = (
-    id: string | number,
-    action: RulesetAction,
-    run: () => Promise<unknown>,
-    successMessage: string,
-  ) => {
-    const actionKey = rulesetIdKey(id)
-    setRulesetsSuccess(null)
-    setRulesetsError(null)
-    setRulesetActionLoading((prev) => ({ ...prev, [actionKey]: action }))
-    run()
-      .then(() => {
-        setRulesetsSuccess(successMessage)
-        return loadRulesets()
-      })
-      .catch((err: Error) => {
-        if (isLikelyEndpointMissing(err.message)) {
-          setRulesetsError(`This backend does not currently support the "${action}" action. Upgrade the backend or use supported actions.`)
-          return
-        }
-        setRulesetsError(err.message)
-      })
-      .finally(() => {
-        setRulesetActionLoading((prev) => {
-          const next = { ...prev }
-          delete next[actionKey]
-          return next
-        })
-      })
-  }
-
-  const toggleRuleset = (row: RulesetRow) => {
-    return updateSuricataRuleset(row.id, { enabled: !row.enabled })
-  }
-
   const interfaceLabels = React.useMemo(
     () =>
       new Map(interfaces.map((iface) => [iface.name, formatInterfaceDisplayName(iface.description, iface.name)])),
@@ -262,119 +175,6 @@ function SuricataContent() {
   )
 
   const interfaceLabel = useCallback((name: string): string => interfaceLabels.get(name) ?? name, [interfaceLabels])
-
-  const rulesetStateBadge = (row: RulesetRow) => {
-    if (row.error) {
-      return <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Error</span>
-    }
-    if (!row.installed) {
-      return <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">Available</span>
-    }
-    if (row.updateAvailable) {
-      return <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">Update Available</span>
-    }
-    if (row.status) {
-      return <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{row.status}</span>
-    }
-    return <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">Installed</span>
-  }
-
-  const rulesetAction = (row: RulesetRow, action: RulesetAction) =>
-    rulesetActionLoading[rulesetIdKey(row.id)] === action
-
-  const rulesetColumns: Column<RulesetRow>[] = [
-    { key: 'name', header: 'Name' },
-    {
-      key: 'source',
-      header: 'Source',
-      render: (row) => <span className="break-all">{row.source || '-'}</span>,
-    },
-    {
-      key: 'installedVersion',
-      header: 'Installed',
-      render: (row) => (row.installedVersion ? String(row.installedVersion) : row.installed ? 'Installed' : '-'),
-    },
-    {
-      key: 'latestVersion',
-      header: 'Latest',
-      render: (row) => (row.latestVersion ? String(row.latestVersion) : '-'),
-    },
-    {
-      key: 'enabled',
-      header: 'Enabled',
-      render: (row) =>
-        row.installed ? (
-          <span className={`font-medium ${row.enabled ? 'text-green-700' : 'text-gray-500'}`}>{row.enabled ? 'Enabled' : 'Disabled'}</span>
-        ) : (
-          '-'
-        ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (row) => (
-        <div className="space-y-1">
-          {rulesetStateBadge(row)}
-          {row.error && <p className="max-w-xs text-xs text-red-700">{String(row.error)}</p>}
-        </div>
-      ),
-    },
-    {
-      key: 'lastUpdated',
-      header: 'Last Check',
-      render: (row) => {
-        const timestamp = toRulesetTimestamp(row)
-        return timestamp ? new Date(timestamp).toLocaleString() : '-'
-      },
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      className: 'whitespace-nowrap',
-      render: (row) => (
-        <div className="flex flex-wrap gap-1">
-          {!row.installed && (
-            <Button
-              size="sm"
-              variant="primary"
-              loading={rulesetAction(row, 'install')}
-              onClick={() => applyRulesetAction(row.id, 'install', () => installSuricataRuleset(row.id), `Installed ${String(row.name)}.`)}
-            >
-              Install
-            </Button>
-          )}
-          {row.installed && (
-            <Button
-              size="sm"
-              variant={row.enabled ? 'secondary' : 'primary'}
-              loading={rulesetAction(row, row.enabled ? 'disable' : 'enable')}
-              onClick={() =>
-                applyRulesetAction(
-                  row.id,
-                  row.enabled ? 'disable' : 'enable',
-                  () => toggleRuleset(row),
-                  `${row.enabled ? 'Disabled' : 'Enabled'} ${String(row.name)}.`,
-                )}
-            >
-              {row.enabled ? 'Disable' : 'Enable'}
-            </Button>
-          )}
-          {row.installed && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                setManageRulesRulesetId(String(row.id))
-                setManageRulesModalOpen(true)
-              }}
-            >
-              Rules
-            </Button>
-          )}
-        </div>
-      ),
-    },
-  ]
 
   const alertColumns: Column<AlertRow>[] = [
     {
@@ -535,40 +335,32 @@ function SuricataContent() {
         </Card>
       )}
 
-      {/* Rulesets */}
       <Card
         title="Rulesets"
-        subtitle={selectedInterface ? `Managed rulesets applied when monitoring ${selectedInterfaceLabel}` : 'Install, update, and manage Suricata rule sources'}
+        subtitle="Manage bundled rulesets on a dedicated page grouped by vendor/category"
         actions={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={rulesetsLoading}
-              onClick={loadRulesets}
-            >
-              Refresh
-            </Button>
-          </div>
+          <Link
+            to="/suricata/rulesets"
+            className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Open Rulesets
+          </Link>
         }
       >
-        {rulesetsSuccess && (
-          <div className="mb-3 rounded-md border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700">
-            {rulesetsSuccess}
+        <div className="grid gap-3 text-sm md:grid-cols-3">
+          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
+            <div className="text-gray-500">What changed</div>
+            <div className="font-medium text-gray-900">The old modal is replaced by a dedicated page.</div>
           </div>
-        )}
-        {rulesetsError && (
-          <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
-            {rulesetsError}
+          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
+            <div className="text-gray-500">Grouping</div>
+            <div className="font-medium text-gray-900">Rulesets are grouped by vendor/category.</div>
           </div>
-        )}
-        <Table
-          columns={rulesetColumns}
-          data={rulesets}
-          keyField="id"
-          loading={rulesetsLoading}
-          emptyMessage="No managed rulesets are available."
-        />
+          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
+            <div className="text-gray-500">Drill down</div>
+            <div className="font-medium text-gray-900">Pick a ruleset, then toggle individual rules.</div>
+          </div>
+        </div>
       </Card>
 
       {/* Alerts */}
@@ -595,18 +387,6 @@ function SuricataContent() {
         )}
       </Card>
 
-      {/* Manage Rules Modal */}
-      {manageRulesRulesetId && (
-        <ManageRulesModal
-          open={manageRulesModalOpen}
-          rulesetId={manageRulesRulesetId}
-          rulesetName={rulesets.find((r) => String(r.id) === manageRulesRulesetId)?.name || null}
-          onClose={() => setManageRulesModalOpen(false)}
-          onSaved={() => {
-            loadRulesets()
-          }}
-        />
-      )}
     </div>
   )
 }

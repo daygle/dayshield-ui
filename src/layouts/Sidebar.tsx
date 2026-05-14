@@ -304,6 +304,14 @@ export default function Sidebar() {
 
               {item.to === '/security' && shouldShowSecurityMenu && (
                 <div className="mt-1 space-y-0.5">
+                  <NavLink
+                    to="/suricata/rulesets"
+                    className={({ isActive }) =>
+                      ['sidebar-sub-link', isActive ? 'active' : ''].join(' ')
+                    }
+                  >
+                    Rulesets
+                  </NavLink>
                   <QueryNavLink to="/suricata" label="Suricata" level={1} />
                   <QueryNavLink to="/crowdsec" label="CrowdSec" level={1} />
                   <QueryNavLink to="/ai-threats" label="AI Threat Engine" level={1} />
