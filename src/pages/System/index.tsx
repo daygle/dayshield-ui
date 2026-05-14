@@ -710,7 +710,9 @@ export default function System() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {updates.components.map((comp) => (
+              {updates.components
+                .filter((comp) => comp.component !== 'rootfs')
+                .map((comp) => (
                 <div key={comp.component} className="rounded border border-gray-200 p-3">
                   {(() => {
                     const statusLabel = inferRegistryStatusLabel(comp.validRepo, comp.lastError)
@@ -971,7 +973,7 @@ export default function System() {
                   <p className="text-xs font-medium text-amber-700 mb-1">Components to update:</p>
                   <ul className="text-xs space-y-1 ml-2">
                     {updates.components
-                      .filter((c) => c.updateAvailable)
+                      .filter((c) => c.updateAvailable && c.component !== 'rootfs')
                       .map((c) => (
                         <li key={c.component} className="flex items-center gap-2">
                           <span className="text-amber-600">•</span>
