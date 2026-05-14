@@ -61,7 +61,11 @@ export default function Gateways() {
   const interfaceLabel = (name: string) => {
     const iface = interfaceInventory.find((i) => i.name === name);
     if (defaultIface && name === defaultIface) return 'WAN';
-    return formatInterfaceDisplayName(iface?.description, name);
+    return iface?.description || name;
+  }
+
+  const formatGatewayName = (name: string) => {
+    return name.replace(/_AUTO$/, '');
   }
 
   const load = () => {
@@ -87,18 +91,16 @@ export default function Gateways() {
   }
 
   const openEdit = (row: GatewayRow) => {
-    const isAutoGateway = String(row.name).endsWith('_AUTO')
     setForm({
-      name: isAutoGateway ? `${row.interface}_AUTO` : row.name,
+      name: formatGatewayName(row.name),
       description: row.description,
       interface: row.interface,
-      gateway_ip: isAutoGateway ? '' : row.gateway_ip,
+      gateway_ip: row.gateway_ip,
       monitor_ip: row.monitor_ip,
       weight: row.weight,
       enabled: row.enabled,
     })
     setIsEditing(true)
-    setEditingActiveIp((row.active_ip as string) ?? undefined)
     setModalOpen(true)
   }
 
@@ -137,7 +139,7 @@ export default function Gateways() {
       header: 'Name',
       render: (row) => (
         <span className="flex items-center gap-1.5">
-          {row.name as string}
+          {formatGatewayName(row.name as string)}
           {String(row.name).endsWith('_AUTO') && (
             <span className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-200">
               Auto

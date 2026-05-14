@@ -21,14 +21,47 @@ type RulesetGroup = {
 
 const rulesetKey = (id: string | number) => String(id)
 
-const groupLabelFor = (ruleset: SuricataRuleset): string => {
-  if (ruleset.installed) return ruleset.vendor ?? 'Installed'
-  return ruleset.vendor ?? 'Available'
+const labelFromSlug = (value: string): string => {
+  const trimmed = value.trim()
+  if (!trimmed) return trimmed
+  if (trimmed === 'et-open') return 'ET open'
+  return trimmed
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+const familyLabelFor = (ruleset: SuricataRuleset): string => {
+  const id = String(ruleset.id)
+  const vendor = ruleset.vendor?.trim() ?? ''
+
+  if (id.includes('/')) {
+    return labelFromSlug(id.split('/')[0] ?? id)
+  }
+
+  if (vendor.toLowerCase().includes('emerging threats') || id.startsWith('et-')) {
+    return 'ET open'
+  }
+
+  return vendor || 'Available'
+}
+
+const rulesetPathLabelFor = (ruleset: SuricataRuleset): string => {
+  const id = String(ruleset.id)
+  const parts = id.split('/').filter(Boolean)
+  if (parts.length > 1) {
+    return parts.map(labelFromSlug).join(' / ')
+  }
+
+  return ruleset.name
 }
 
 const groupSort = (a: string, b: string): number => {
   if (a === 'Installed') return -1
   if (b === 'Installed') return 1
+  if (a === 'ET open') return -1
+  if (b === 'ET open') return 1
   if (a === 'Available') return -1
   if (b === 'Available') return 1
   return a.localeCompare(b)
@@ -64,7 +97,7 @@ function RulesetsPageContent() {
 
         const groups = new Map<string, SuricataRuleset[]>()
         for (const ruleset of nextRulesets) {
-          const label = groupLabelFor(ruleset)
+          const label = familyLabelFor(ruleset)
           const current = groups.get(label) ?? []
           current.push(ruleset)
           groups.set(label, current)
@@ -91,7 +124,7 @@ function RulesetsPageContent() {
   const groupedRulesets = useMemo(() => {
     const groups = new Map<string, SuricataRuleset[]>()
     for (const ruleset of rulesets) {
-      const label = groupLabelFor(ruleset)
+      const label = familyLabelFor(ruleset)
       const current = groups.get(label) ?? []
       current.push(ruleset)
       groups.set(label, current)
@@ -150,7 +183,7 @@ function RulesetsPageContent() {
   }
 
   const handleSelectRuleset = (ruleset: SuricataRuleset) => {
-    setSelectedGroup(groupLabelFor(ruleset))
+    setSelectedGroup(familyLabelFor(ruleset))
     setSelectedRulesetId(rulesetKey(ruleset.id))
   }
 
@@ -196,7 +229,7 @@ function RulesetsPageContent() {
     <div className="space-y-6">
       <Card
         title="Suricata Rulesets"
-        subtitle="Browse bundled ruleset groups, drill into a ruleset, and enable or disable individual rules"
+        subtitle="Browse ruleset families first, then drill into packages and individual rules"
         actions={
           <Button variant="secondary" size="sm" onClick={loadRulesets} loading={loading}>
             Refresh
@@ -223,11 +256,11 @@ function RulesetsPageContent() {
       {success && <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{success}</div>}
 
       <div className="grid gap-6 lg:grid-cols-[280px_360px_1fr]">
-        <Card title="Categories" subtitle="Grouped by source vendor">
+        <Card title="Rule Families" subtitle="Top-level groupings like ET open or OISF">
           <FormField
-            label="Search categories"
+            label="Search families"
             type="text"
-            placeholder="Filter categories or rulesets"
+            placeholder="Filter families or packages"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -257,7 +290,7 @@ function RulesetsPageContent() {
           </div>
         </Card>
 
-        <Card title="Ruleset List" subtitle={selectedGroup || 'Select a category'}>
+        <Card title="Ruleset Packages" subtitle={selectedGroup || 'Select a family'}>
           <div className="space-y-2">
             {selectedGroupRulesets.map((ruleset) => (
               <button
@@ -272,7 +305,7 @@ function RulesetsPageContent() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="font-medium text-gray-900">{ruleset.name}</div>
+                    <div className="font-medium text-gray-900">{rulesetPathLabelFor(ruleset)}</div>
                     <div className="mt-1 text-xs text-gray-500 break-all">{ruleset.source}</div>
                   </div>
                   <div className="flex flex-col items-end gap-1 text-xs">
@@ -299,14 +332,14 @@ function RulesetsPageContent() {
             ))}
             {selectedGroupRulesets.length === 0 && (
               <div className="rounded border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500">
-                No rulesets in this category.
+                No rulesets in this family.
               </div>
             )}
           </div>
         </Card>
 
         <Card
-          title={selectedRuleset ? selectedRuleset.name : 'Rule Details'}
+          title={selectedRuleset ? rulesetPathLabelFor(selectedRuleset) : 'Rule Details'}
           subtitle={selectedRuleset ? `${rules.length} rules in this ruleset` : 'Select a ruleset to drill into its rules'}
           actions={selectedRuleset ? <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">{disabledCount} disabled</span> : undefined}
         >
@@ -316,8 +349,8 @@ function RulesetsPageContent() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                 <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
-                  <div className="text-gray-500">Category</div>
-                  <div className="font-medium text-gray-900">{groupLabelFor(selectedRuleset)}</div>
+                  <div className="text-gray-500">Family</div>
+                  <div className="font-medium text-gray-900">{familyLabelFor(selectedRuleset)}</div>
                 </div>
                 <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
                   <div className="text-gray-500">Status</div>

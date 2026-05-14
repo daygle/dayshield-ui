@@ -20,22 +20,6 @@ import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
-// Common IPv4 subnet masks for dropdown
-const CIDR_MASKS = [
-  32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8
-]
-
-function parseCidrParts(val: string | null): { ip: string, mask: string } {
-  if (!val) return { ip: '', mask: '32' }
-  const [ip, mask] = val.split('/')
-  return { ip: ip ?? '', mask: mask ?? '32' }
-}
-
-function joinCidr(ip: string, mask: string): string {
-  if (!ip) return ''
-  return mask ? `${ip}/${mask}` : ip
-}
-
 type RuleRow = FirewallRule & Record<string, unknown>
 type AliasRow = Alias & Record<string, unknown>
 
@@ -1067,34 +1051,10 @@ export default function Firewall() {
                 </FormField>
                 <FormField
                   id="rule-src"
-                  label="Source (IP/CIDR/Alias)"
-                  className="col-span-2"
-                >
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      placeholder="IP or Alias"
-                      value={parseCidrParts(ruleForm.source ?? '').ip}
-                      onChange={e => {
-                        const mask = parseCidrParts(ruleForm.source ?? '').mask
-                        setRuleForm({ ...ruleForm, source: joinCidr(e.target.value, mask) })
-                      }}
-                    />
-                    <select
-                      className="rounded-md border border-gray-300 px-2 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                      value={parseCidrParts(ruleForm.source ?? '').mask}
-                      onChange={e => {
-                        const ip = parseCidrParts(ruleForm.source ?? '').ip
-                        setRuleForm({ ...ruleForm, source: joinCidr(ip, e.target.value) })
-                      }}
-                    >
-                      {CIDR_MASKS.map(mask => (
-                        <option key={mask} value={mask}>{`/${mask}`}</option>
-                      ))}
-                    </select>
-                  </div>
-                </FormField>
+                  label="Source (custom CIDR/IP/Alias)"
+                  value={ruleForm.source ?? ''}
+                  onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
+                />
                 <FormField
                   id="rule-src-port"
                   label="Source Port"
@@ -1115,34 +1075,10 @@ export default function Firewall() {
                 </FormField>
                 <FormField
                   id="rule-dst"
-                  label="Destination (IP/CIDR/Alias)"
-                  className="col-span-2"
-                >
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      placeholder="IP or Alias"
-                      value={parseCidrParts(ruleForm.destination ?? '').ip}
-                      onChange={e => {
-                        const mask = parseCidrParts(ruleForm.destination ?? '').mask
-                        setRuleForm({ ...ruleForm, destination: joinCidr(e.target.value, mask) })
-                      }}
-                    />
-                    <select
-                      className="rounded-md border border-gray-300 px-2 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                      value={parseCidrParts(ruleForm.destination ?? '').mask}
-                      onChange={e => {
-                        const ip = parseCidrParts(ruleForm.destination ?? '').ip
-                        setRuleForm({ ...ruleForm, destination: joinCidr(ip, e.target.value) })
-                      }}
-                    >
-                      {CIDR_MASKS.map(mask => (
-                        <option key={mask} value={mask}>{`/${mask}`}</option>
-                      ))}
-                    </select>
-                  </div>
-                </FormField>
+                  label="Destination (custom CIDR/IP/Alias)"
+                  value={ruleForm.destination ?? ''}
+                  onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
+                />
                 <FormField
                   id="rule-dst-port"
                   label="Destination Port"

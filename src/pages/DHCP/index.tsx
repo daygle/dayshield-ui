@@ -531,8 +531,23 @@ export default function DHCP() {
                 required
                 placeholder="e.g. 192.168.1.0/24"
                 value={configForm.subnet ?? ''}
-                onChange={(e) => setConfigForm((f) => ({ ...f, subnet: e.target.value }))}
-              />
+                onChange={(e) => setConfigForm((f) => ({ ...f, subnet: e.target.value }))
+                }
+              >
+                <select
+                  className="input"
+                  value={configForm.subnet?.split('/')[1] || ''}
+                  onChange={(e) => {
+                    const prefix = e.target.value;
+                    const base = configForm.subnet?.split('/')[0] || '192.168.1.0';
+                    setConfigForm((f) => ({ ...f, subnet: `${base}/${prefix}` }));
+                  }}
+                >
+                  {[...Array(33).keys()].map((prefix) => (
+                    <option key={prefix} value={prefix}>{`/${prefix}`}</option>
+                  ))}
+                </select>
+              </FormField>
 
               <FormField
                 id="cfg-gw"

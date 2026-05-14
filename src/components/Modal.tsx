@@ -35,7 +35,6 @@ export default function Modal({
   footer,
   size = 'md',
 }: ModalProps) {
-  // Close on Escape key
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => {
@@ -54,18 +53,14 @@ export default function Modal({
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
-
-      {/* Panel */}
       <div
         className={`relative z-10 w-full ${sizeClass[size]} rounded-lg bg-white shadow-xl`}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 id="modal-title" className="text-base font-semibold text-gray-900">
             {title}
@@ -85,11 +80,7 @@ export default function Modal({
             </svg>
           </button>
         </div>
-
-        {/* Body */}
         <div className="px-6 py-4">{children}</div>
-
-        {/* Footer */}
         {footer ? (
           <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
             {footer}

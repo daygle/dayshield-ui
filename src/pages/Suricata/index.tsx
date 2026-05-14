@@ -337,7 +337,7 @@ function SuricataContent() {
 
       <Card
         title="Rulesets"
-        subtitle="Manage bundled rulesets on a dedicated page grouped by vendor/category"
+        subtitle="Manage bundled rulesets on a dedicated page grouped by family/package"
         actions={
           <Link
             to="/suricata/rulesets"
@@ -354,7 +354,7 @@ function SuricataContent() {
           </div>
           <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
             <div className="text-gray-500">Grouping</div>
-            <div className="font-medium text-gray-900">Rulesets are grouped by vendor/category.</div>
+            <div className="font-medium text-gray-900">Rulesets are grouped by family/package.</div>
           </div>
           <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
             <div className="text-gray-500">Drill down</div>

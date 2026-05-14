@@ -232,7 +232,21 @@ export default function VPN() {
               placeholder="10.8.0.1/24, fd10:8::1/64"
               value={serverForm.addresses}
               onChange={(e) => setServerForm({ ...serverForm, addresses: e.target.value })}
-            />
+            >
+              <select
+                className="input"
+                value={serverForm.addresses.split('/')[1] || ''}
+                onChange={(e) => {
+                  const prefix = e.target.value
+                  const base = serverForm.addresses.split('/')[0] || ''
+                  setServerForm({ ...serverForm, addresses: `${base}/${prefix}` })
+                }}
+              >
+                {[...Array(33).keys()].map((prefix) => (
+                  <option key={prefix} value={prefix}>{`/${prefix}`}</option>
+                ))}
+              </select>
+            </FormField>
             <FormField
               id="server-public-key"
               label="Public Key"
@@ -564,7 +578,21 @@ export default function VPN() {
             placeholder="10.8.0.1/24, fd10:8::1/64"
             value={serverForm.addresses}
             onChange={(e) => setServerForm({ ...serverForm, addresses: e.target.value })}
-          />
+          >
+            <select
+              className="input"
+              value={serverForm.addresses.split('/')[1] || ''}
+              onChange={(e) => {
+                const prefix = e.target.value
+                const base = serverForm.addresses.split('/')[0] || ''
+                setServerForm({ ...serverForm, addresses: `${base}/${prefix}` })
+              }}
+            >
+              {[...Array(33).keys()].map((prefix) => (
+                <option key={prefix} value={prefix}>{`/${prefix}`}</option>
+              ))}
+            </select>
+          </FormField>
           <FormField
             id="server-public-key"
             label="Public Key"

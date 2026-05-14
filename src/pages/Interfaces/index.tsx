@@ -425,7 +425,17 @@ export default function Interfaces() {
             value={String(form.ipv4Prefix ?? 24)}
             disabled={form.dhcp4 ?? false}
             onChange={(e) => setForm({ ...form, ipv4Prefix: Number(e.target.value) })}
-          />
+          >
+            <select
+              className="input"
+              value={form.ipv4Prefix || ''}
+              onChange={(e) => setForm({ ...form, ipv4Prefix: Number(e.target.value) })}
+            >
+              {[...Array(33).keys()].map((prefix) => (
+                <option key={prefix} value={prefix}>{`/${prefix}`}</option>
+              ))}
+            </select>
+          </FormField>
           <FormField
             id="iface-mss"
             label="MSS"
