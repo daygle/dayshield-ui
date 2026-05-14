@@ -9,6 +9,13 @@
 }
 
 @layer components {
+  .input {
+    @apply block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm;
+    @apply placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500;
+    @apply disabled:bg-gray-100 disabled:text-gray-500;
+    @apply bg-white;
+  }
+
   .sidebar-link {
     @apply flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-medium transition-colors duration-150;
     color: #94a3b8;
