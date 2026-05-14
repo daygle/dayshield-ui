@@ -35,6 +35,17 @@ const DEFAULT_CONFIG: CloudflaredConfig = {
 const HOSTNAME_PATTERN =
   /^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(?:\.(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*$/
 
+function formatServiceState(value: string | null | undefined): string {
+  const raw = value?.trim()
+  if (!raw) return 'Unknown'
+  return raw
+    .replace(/[_-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ')
+}
+
 function statusBadge(status: CloudflaredStatus | null) {
   if (!status) return null
 
@@ -206,10 +217,10 @@ function CloudflaredPageContent() {
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Service state</p>
               <p className="mt-1 text-sm text-gray-800">
-                Active state: <span className="font-medium">{status?.activeState ?? 'unknown'}</span>
+                Active state: <span className="font-medium">{formatServiceState(status?.activeState)}</span>
               </p>
               <p className="text-sm text-gray-800">
-                Sub-state: <span className="font-medium">{status?.subState ?? 'unknown'}</span>
+                Sub-state: <span className="font-medium">{formatServiceState(status?.subState)}</span>
               </p>
               <p className="text-sm text-gray-800">
                 Unit enabled: <span className="font-medium">{status?.unitEnabled ? 'Yes' : 'No'}</span>
@@ -393,12 +404,6 @@ function CloudflaredPageContent() {
           Save Configuration
         </Button>
       </div>
-
-      <p className="text-xs text-gray-400">
-        Cloudflared log output is streamed in real-time on the{' '}
-        <a href="/live-logs" className="underline hover:text-gray-600">Live Logs</a> page
-        - filter by source <span className="font-mono">cloudflared</span>.
-      </p>
 
       <Modal
         open={disableConfirmOpen}

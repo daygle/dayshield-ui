@@ -181,6 +181,28 @@ export const removeSuricataRuleset = (id: string | number): Promise<ApiResponse<
     .delete<ApiResponse<void>>(`/rulesets/${encodeRulesetId(id)}`)
     .then((r) => r.data)
 
+export interface RulesetRule {
+  id: string
+  action: string
+  signature: string
+  enabled: boolean
+}
+
+/** List all rules in a ruleset with their enabled/disabled state. */
+export const getSuricataRulesetRules = (id: string | number): Promise<ApiResponse<RulesetRule[]>> =>
+  apiClient
+    .get<ApiResponse<RulesetRule[]>>(`/rulesets/${encodeRulesetId(id)}/rules`)
+    .then((r) => r.data)
+
+/** Update the set of disabled rule IDs for a ruleset. */
+export const updateSuricataRulesetDisabledRules = (
+  id: string | number,
+  disabledIds: string[],
+): Promise<ApiResponse<{ message: string }>> =>
+  apiClient
+    .post<ApiResponse<{ message: string }>>(`/rulesets/${encodeRulesetId(id)}/disabled-rules`, { ids: disabledIds })
+    .then((r) => r.data)
+
 /** Fetch recent Suricata alerts. */
 export const getSuricataAlerts = (limit = 100): Promise<ApiResponse<SuricataAlert[]>> =>
   apiClient

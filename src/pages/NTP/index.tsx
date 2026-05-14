@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getNtpConfig, updateNtpConfig, getNtpStatus, postNtpResync } from '../../api/ntp'
-import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
+import { getInterfacesInventory } from '../../api/interfaces'
 import type { NtpConfig, NtpStatus, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -11,12 +11,30 @@ import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
 const IPV4_RE = /^(\d{1,3}\.){3}\d{1,3}$/
 
+const DEFAULT_NTP_SERVERS = ['0.pool.ntp.org', '1.pool.ntp.org']
+
 function isValidIPv4(val: string): boolean {
   if (!IPV4_RE.test(val)) return false
   return val.split('.').every((octet) => {
     const n = Number(octet)
     return n >= 0 && n <= 255
   })
+}
+
+function firstKernelIpv4Cidr(addresses: string[] | undefined): string | undefined {
+  return addresses?.find((addr) => addr.includes('.') && addr.includes('/'))
+}
+
+function isWanInterface(iface: NetworkInterface): boolean {
+  const desc = iface.description?.trim().toLowerCase() ?? ''
+  return Boolean(iface.wanMode) || desc.includes('wan') || iface.name.toLowerCase() === 'wan'
+}
+
+function hasDefaultNtpServers(servers: string[]): boolean {
+  if (servers.length !== DEFAULT_NTP_SERVERS.length) return false
+  const normalized = [...servers].map((s) => s.trim().toLowerCase()).sort()
+  const defaults = [...DEFAULT_NTP_SERVERS].sort()
+  return normalized.every((server, idx) => server === defaults[idx])
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -94,22 +112,30 @@ export default function NtpPage() {
 
   useEffect(() => {
     setLoading(true)
-    Promise.all([getNtpConfig(), getNtpStatus(), getInterfaces(), getInterfacesInventory()])
-      .then(([cfg, stat, ifaces, inventory]) => {
+    Promise.all([getNtpConfig(), getNtpStatus(), getInterfacesInventory()])
+      .then(([cfg, stat, inventory]) => {
         setConfig(cfg.data)
         setStatus(stat.data)
-        const configured = Array.isArray(ifaces.data)
-          ? ifaces.data.filter((i) => i.type !== 'loopback')
+        const configured = Array.isArray(inventory.data?.configured)
+          ? inventory.data.configured.filter((i) => i.type !== 'loopback')
           : []
+        const kernelByName = new Map((inventory.data?.kernel ?? []).map((iface) => [iface.name, iface]))
         const known = new Set(configured.map((i) => i.name))
         const extras = (inventory.data?.names ?? [])
           .filter((name) => name !== 'lo' && !known.has(name))
-          .map((name) => ({
-            name,
-            description: '',
-            type: 'ethernet' as const,
-            enabled: true,
-          }))
+          .map((name) => {
+            const kernelIface = kernelByName.get(name)
+            const ipv4Cidr = firstKernelIpv4Cidr(kernelIface?.addresses)
+            const [ipv4Address, ipv4Prefix] = ipv4Cidr ? ipv4Cidr.split('/') : [undefined, undefined]
+            return {
+              name,
+              description: '',
+              type: 'ethernet' as const,
+              enabled: true,
+              ipv4Address,
+              ipv4Prefix: ipv4Prefix ? Number(ipv4Prefix) : undefined,
+            }
+          })
 
         setInterfaces([...configured, ...extras])
       })
@@ -118,14 +144,27 @@ export default function NtpPage() {
   }, [addToast])
 
   useEffect(() => {
+    const defaultNonWan = interfaces
+      .filter((iface) => !isWanInterface(iface))
+      .map((iface) => iface.name)
+
+    const looksLikeCleanInstallDefaults =
+      config.enabled &&
+      !config.serveLan &&
+      hasDefaultNtpServers(config.servers)
+
     if (
       !loading &&
       interfaces.length > 0 &&
-      config.enabled &&
       config.listenInterfaces.length === 0 &&
-      config.servers.length === 0
+      defaultNonWan.length > 0 &&
+      looksLikeCleanInstallDefaults
     ) {
-      setConfig((prev) => ({ ...prev, listenInterfaces: interfaces.map((iface) => iface.name) }))
+      setConfig((prev) => ({
+        ...prev,
+        listenInterfaces: defaultNonWan,
+        serveLan: true,
+      }))
     }
   }, [loading, interfaces, config])
 
@@ -186,6 +225,25 @@ export default function NtpPage() {
   }
 
   const busy = loading || saving
+  const ntpIsSynchronizing =
+    config.enabled &&
+    Boolean(status?.upstream) &&
+    !status?.synced
+  const syncLabel = status?.synced
+    ? 'Synchronized'
+    : ntpIsSynchronizing
+      ? 'Synchronizing'
+      : 'Not synchronized'
+  const syncTextClass = status?.synced
+    ? 'text-green-600'
+    : ntpIsSynchronizing
+      ? 'text-amber-600'
+      : 'text-red-500'
+  const syncDotClass = status?.synced
+    ? 'bg-green-500'
+    : ntpIsSynchronizing
+      ? 'bg-amber-500'
+      : 'bg-red-500'
 
   return (
     <div className="space-y-6">
@@ -200,16 +258,10 @@ export default function NtpPage() {
               <dt className="text-gray-500">Sync</dt>
               <dd>
                 <span
-                  className={`inline-flex items-center gap-1.5 font-medium ${
-                    status.synced ? 'text-green-600' : 'text-red-500'
-                  }`}
+                  className={`inline-flex items-center gap-1.5 font-medium ${syncTextClass}`}
                 >
-                  <span
-                    className={`inline-block h-2 w-2 rounded-full ${
-                      status.synced ? 'bg-green-500' : 'bg-red-500'
-                    }`}
-                  />
-                  {status.synced ? 'Synchronized' : 'Not synchronized'}
+                  <span className={`inline-block h-2 w-2 rounded-full ${syncDotClass}`} />
+                  {syncLabel}
                 </span>
               </dd>
             </div>
@@ -355,7 +407,7 @@ export default function NtpPage() {
                   />
                   <div className="min-w-0">
                     <p className="font-medium truncate">{interfaceLabel(iface)}</p>
-                    {iface.ipv4Address && (
+                    {iface.ipv4Address && iface.ipv4Prefix !== undefined && (
                       <p className="text-xs text-gray-500 font-mono truncate">
                         {iface.ipv4Address}/{iface.ipv4Prefix}
                       </p>

@@ -172,6 +172,10 @@ export default function DNS() {
   const interfaceOptions = useMemo(() => interfaces.map((iface) => iface.name), [interfaces])
   const selectedInterface = searchParams.get('iface') ?? ''
   const effectiveInterface = selectedInterface || interfaceOptions[0] || ''
+  const effectiveInterfaceObj = interfaces.find((iface) => iface.name === effectiveInterface)
+  const effectiveInterfaceLabel = effectiveInterfaceObj
+    ? interfaceLabel(effectiveInterfaceObj)
+    : (effectiveInterface || '-')
 
   useEffect(() => {
     if (activeSection !== 'blocklists') return
@@ -643,7 +647,7 @@ export default function DNS() {
               </div>
               <div className="rounded border border-gray-200 p-3 bg-gray-50">
                 <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">Active Interface</p>
-                <p className="mt-1 font-medium text-gray-900">{effectiveInterface ? interfaceLabel(interfaces.find((i) => i.name === effectiveInterface) ?? { name: effectiveInterface, description: '', type: 'ethernet' as const, enabled: true }) : '-'}</p>
+                <p className="mt-1 font-medium text-gray-900">{effectiveInterfaceLabel}</p>
               </div>
             </div>
 
@@ -652,7 +656,7 @@ export default function DNS() {
               data={blocklists}
               keyField="id"
               loading={blocklistsLoading}
-              emptyMessage={effectiveInterface ? `No blocklists configured for ${interfaceLabel(interfaces.find((i) => i.name === effectiveInterface) ?? { name: effectiveInterface, description: '', type: 'ethernet' as const, enabled: true })}.` : 'Select an interface to manage blocklists.'}
+              emptyMessage={effectiveInterface ? `No blocklists configured for ${effectiveInterfaceLabel}.` : 'Select an interface to manage blocklists.'}
             />
           </div>
         </Card>
@@ -1014,7 +1018,7 @@ export default function DNS() {
         <div className="space-y-4">
           <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
             <p className="text-gray-500">Interface</p>
-            <p className="font-mono text-gray-800">{effectiveInterface || '-'}</p>
+            <p className="font-medium text-gray-800">{effectiveInterfaceLabel}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -1091,7 +1095,7 @@ export default function DNS() {
         size="sm"
       >
         <p className="text-sm text-gray-600">
-          Remove this blocklist from <strong className="font-mono">{effectiveInterface}</strong>?
+          Remove this blocklist from <strong>{effectiveInterfaceLabel}</strong>?
         </p>
       </Modal>
     </div>

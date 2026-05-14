@@ -25,6 +25,7 @@ import Table, { Column } from '../../components/Table'
 import FormField from '../../components/FormField'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 import ErrorBoundary from '../../components/ErrorBoundary'
+import { ManageRulesModal } from './ManageRulesModal'
 
 type RulesetRow = SuricataRuleset & Record<string, unknown>
 type AlertRow = SuricataAlert & Record<string, unknown>
@@ -88,6 +89,8 @@ function SuricataContent() {
   const [rulesetsError, setRulesetsError] = useState<string | null>(null)
   const [rulesetsSuccess, setRulesetsSuccess] = useState<string | null>(null)
   const [rulesetActionLoading, setRulesetActionLoading] = useState<Record<string, RulesetAction>>({})
+  const [manageRulesModalOpen, setManageRulesModalOpen] = useState(false)
+  const [manageRulesRulesetId, setManageRulesRulesetId] = useState<string | null>(null)
 
   const loadRulesets = useCallback(() => {
     setRulesetsLoading(true)
@@ -356,6 +359,18 @@ function SuricataContent() {
               {row.enabled ? 'Disable' : 'Enable'}
             </Button>
           )}
+          {row.installed && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setManageRulesRulesetId(String(row.id))
+                setManageRulesModalOpen(true)
+              }}
+            >
+              Rules
+            </Button>
+          )}
         </div>
       ),
     },
@@ -579,6 +594,19 @@ function SuricataContent() {
           </p>
         )}
       </Card>
+
+      {/* Manage Rules Modal */}
+      {manageRulesRulesetId && (
+        <ManageRulesModal
+          open={manageRulesModalOpen}
+          rulesetId={manageRulesRulesetId}
+          rulesetName={rulesets.find((r) => String(r.id) === manageRulesRulesetId)?.name || null}
+          onClose={() => setManageRulesModalOpen(false)}
+          onSaved={() => {
+            loadRulesets()
+          }}
+        />
+      )}
     </div>
   )
 }

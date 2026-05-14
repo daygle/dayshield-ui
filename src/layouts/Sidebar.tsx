@@ -242,7 +242,7 @@ export default function Sidebar() {
                 <button
                   type="button"
                   onClick={() => setIsSecurityMenuOpen((open) => !open)}
-                  className={[itemClassName, isSecurityRoute ? 'active' : ''].join(' ')}
+                  className={[itemClassName, 'w-full text-left border-0 bg-transparent', isSecurityRoute ? 'active' : ''].join(' ')}
                 >
                   {item.icon}
                   {item.label}
