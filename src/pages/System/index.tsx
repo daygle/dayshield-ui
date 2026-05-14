@@ -42,7 +42,12 @@ const UPDATE_WEEKDAY_OPTIONS: Array<{ value: UpdateScheduleWeekday; label: strin
   { value: 'sunday', label: 'Sunday' },
 ]
 
-const UPDATE_MONTH_DAYS = Array.from({ length: 31 }, (_, index) => index + 1)
+type UpdateMonthlyDay = 'first' | 'last'
+
+const UPDATE_MONTHLY_DAY_OPTIONS: Array<{ value: UpdateMonthlyDay; label: string }> = [
+  { value: 'first', label: 'First Day of Month' },
+  { value: 'last', label: 'Last Day of Month' },
+]
 
 function formatUptime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0d 0h 0m'
@@ -196,8 +201,10 @@ function formatUpdateSchedule(settings: {
     case 'weekly':
       return `Every week on ${formatUpdateScheduleWeekday(settings.autoCheckWeekday ?? 'monday')} at ${time}`
     case 'monthly': {
-      const days = normalizeUpdateMonthDays(settings.autoCheckMonthDays ?? [1])
-      return `Every month on day${days.length > 1 ? 's' : ''} ${days.join(', ')} at ${time}`
+      const monthlyDay = getMonthlyDaySelection(settings.autoCheckMonthDays)
+      return monthlyDay === 'last'
+        ? `Every month on the last day at ${time}`
+        : `Every month on the first day at ${time}`
     }
     case 'daily':
     default:
@@ -211,9 +218,16 @@ function normalizeUpdateTime(value: string): string {
 }
 
 function normalizeUpdateMonthDays(days: number[]): number[] {
-  const normalized = Array.from(new Set(days.filter((day) => Number.isInteger(day) && day >= 1 && day <= 31)))
-  normalized.sort((a, b) => a - b)
-  return normalized.length > 0 ? normalized : [1]
+  return days.includes(31) ? [31] : [1]
+}
+
+function getMonthlyDaySelection(days?: number[]): UpdateMonthlyDay {
+  const normalized = normalizeUpdateMonthDays(days ?? [1])
+  return normalized.includes(31) ? 'last' : 'first'
+}
+
+function toMonthlyDays(selection: UpdateMonthlyDay): number[] {
+  return selection === 'last' ? [31] : [1]
 }
 
 function normalizeRegistryUrl(input?: string): string {
@@ -1242,41 +1256,25 @@ export default function System() {
                 )}
 
                 {updateSettings.autoCheckFrequency === 'monthly' && (
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">Days of Month</p>
-                      <p className="text-xs text-gray-500">Select one or more days when the monthly check should run.</p>
-                    </div>
-                    <div className="grid grid-cols-7 gap-2 sm:grid-cols-8 md:grid-cols-10">
-                      {UPDATE_MONTH_DAYS.map((day) => {
-                        const selected = (updateSettings.autoCheckMonthDays ?? []).includes(day)
-                        return (
-                          <button
-                            key={day}
-                            type="button"
-                            className={`rounded-md border px-2 py-2 text-sm font-medium transition ${selected
-                              ? 'border-blue-500 bg-blue-600 text-white'
-                              : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:text-blue-600'
-                              }`}
-                            onClick={() => {
-                              const current = new Set(normalizeUpdateMonthDays(updateSettings.autoCheckMonthDays ?? [1]))
-                              if (current.has(day)) {
-                                current.delete(day)
-                              } else {
-                                current.add(day)
-                              }
-                              setUpdateSettings({
-                                ...updateSettings,
-                                autoCheckMonthDays: Array.from(current).sort((a, b) => a - b),
-                              })
-                            }}
-                          >
-                            {day}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
+                  <FormField
+                    id="upd-monthly-day"
+                    as="select"
+                    label="Monthly Day"
+                    hint="Choose whether the monthly check runs on the first or last day of each month."
+                    value={getMonthlyDaySelection(updateSettings.autoCheckMonthDays)}
+                    onChange={(e) =>
+                      setUpdateSettings({
+                        ...updateSettings,
+                        autoCheckMonthDays: toMonthlyDays(e.target.value as UpdateMonthlyDay),
+                      })
+                    }
+                  >
+                    {UPDATE_MONTHLY_DAY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </FormField>
                 )}
               </div>
             )}
