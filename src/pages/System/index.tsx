@@ -406,19 +406,6 @@ export default function System() {
     return () => window.clearInterval(timer)
   }, [activeSection])
 
-  useEffect(() => {
-    if (activeSection !== 'updates') return
-
-    const refreshUpdates = () => {
-      getUpdatesStatus()
-        .then((res) => setUpdates(res.data))
-        .catch((err: Error) => setError(err.message))
-    }
-
-    const timer = window.setInterval(refreshUpdates, 5000)
-    return () => window.clearInterval(timer)
-  }, [activeSection])
-
   const handleSaveConfig = () => {
     setSaving(true)
     updateSystemConfig(editConfig)
