@@ -7,7 +7,7 @@ import Button from '../../components/Button'
 import FormField from '../../components/FormField'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
-// ── IPv4 validation ───────────────────────────────────────────────────────────
+// ── NTP server validation (IPv4 or hostname; IPv6 rejected) ─────────────────
 
 const IPV4_RE = /^(\d{1,3}\.){3}\d{1,3}$/
 
@@ -19,6 +19,22 @@ function isValidIPv4(val: string): boolean {
     const n = Number(octet)
     return n >= 0 && n <= 255
   })
+}
+
+function isValidHostname(hostname: string): boolean {
+  const normalized = hostname.endsWith('.') ? hostname.slice(0, -1) : hostname
+  if (!normalized || normalized.length > 253) return false
+  return normalized.split('.').every((label) => {
+    if (!label || label.length > 63) return false
+    if (label.startsWith('-') || label.endsWith('-')) return false
+    return /^[A-Za-z0-9-]+$/.test(label)
+  })
+}
+
+function isValidNtpServer(value: string): boolean {
+  if (value.startsWith('[')) return false
+  if (isValidIPv4(value)) return true
+  return isValidHostname(value)
 }
 
 function firstKernelIpv4Cidr(addresses: string[] | undefined): string | undefined {
@@ -195,11 +211,11 @@ export default function NtpPage() {
   const handleAddServer = () => {
     const trimmed = serverInput.trim()
     if (!trimmed) {
-      setServerError('Enter an IPv4 address.')
+      setServerError('Enter an IPv4 address or hostname.')
       return
     }
-    if (!isValidIPv4(trimmed)) {
-      setServerError('Only valid IPv4 addresses are accepted.')
+    if (!isValidNtpServer(trimmed)) {
+      setServerError('Only valid IPv4 addresses or hostnames are accepted.')
       return
     }
     if (config.servers.includes(trimmed)) {
@@ -319,7 +335,7 @@ export default function NtpPage() {
       {/* Upstream Servers */}
       <Card
         title="Upstream Servers"
-        subtitle="IPv4 addresses of NTP servers used for clock synchronisation."
+        subtitle="IPv4 addresses or hostnames of NTP servers used for clock synchronisation."
       >
         <div className="space-y-4">
           {/* Server list */}
@@ -347,8 +363,8 @@ export default function NtpPage() {
           <div className="flex items-end gap-3">
             <FormField
               id="ntp-server-input"
-              label="Add Server (IPv4)"
-              placeholder="203.0.113.1"
+              label="Add Server (IPv4 or hostname)"
+              placeholder="0.pool.ntp.org or 203.0.113.1"
               className="flex-1"
               value={serverInput}
               error={serverError}

@@ -522,9 +522,15 @@ export interface SystemConfig {
 
 export type UpdateComponent = 'core' | 'ui' | 'rootfs' | 'both'
 
+export type UpdateScheduleFrequency = 'daily' | 'weekly' | 'monthly'
+export type UpdateScheduleWeekday = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'
+
 export interface UpdateSettings {
   autoCheckEnabled: boolean
-  checkIntervalMinutes: number
+  autoCheckFrequency: UpdateScheduleFrequency
+  autoCheckTime: string
+  autoCheckWeekday: UpdateScheduleWeekday
+  autoCheckMonthDays: number[]
   rebootRequiredAfterApply: boolean
   deployRuntimeAfterApply: boolean
   updateMode?: string

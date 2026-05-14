@@ -21,18 +21,27 @@ import Card from '../../components/Card'
 import Button from '../../components/Button'
 import FormField from '../../components/FormField'
 import Modal from '../../components/Modal'
+import type { UpdateScheduleFrequency, UpdateScheduleWeekday } from '../../types'
 
 const DEFAULT_GITHUB_REGISTRY_URL = 'https://api.github.com/repos/daygle/dayshield-core'
 const STATUS_REFRESH_INTERVAL_MS = 15000
-const UPDATE_INTERVAL_OPTIONS = [
-  15,
-  30,
-  60,
-  6 * 60,
-  12 * 60,
-  24 * 60,
-  7 * 24 * 60,
+const UPDATE_SCHEDULE_FREQUENCY_OPTIONS: Array<{ value: UpdateScheduleFrequency; label: string }> = [
+  { value: 'daily', label: 'Every Day' },
+  { value: 'weekly', label: 'Every Week' },
+  { value: 'monthly', label: 'Every Month' },
 ]
+
+const UPDATE_WEEKDAY_OPTIONS: Array<{ value: UpdateScheduleWeekday; label: string }> = [
+  { value: 'monday', label: 'Monday' },
+  { value: 'tuesday', label: 'Tuesday' },
+  { value: 'wednesday', label: 'Wednesday' },
+  { value: 'thursday', label: 'Thursday' },
+  { value: 'friday', label: 'Friday' },
+  { value: 'saturday', label: 'Saturday' },
+  { value: 'sunday', label: 'Sunday' },
+]
+
+const UPDATE_MONTH_DAYS = Array.from({ length: 31 }, (_, index) => index + 1)
 
 function formatUptime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0d 0h 0m'
@@ -119,79 +128,22 @@ function updateLogLevelClasses(level: string): string {
  * Get a list of IANA timezone identifiers for use in dropdowns
  */
 function getTimezones(): Array<{ name: string; label: string }> {
-  // Common IANA timezones organized by region
-  const timezones = [
-    // UTC
-    { name: 'UTC', label: 'UTC' },
-    { name: 'GMT', label: 'GMT (Greenwich Mean Time)' },
-    
-    // Africa
-    { name: 'Africa/Cairo', label: 'Cairo' },
-    { name: 'Africa/Johannesburg', label: 'Johannesburg' },
-    { name: 'Africa/Lagos', label: 'Lagos' },
-    { name: 'Africa/Nairobi', label: 'Nairobi' },
-    
-    // Americas - US & Canada
-    { name: 'America/Anchorage', label: 'Anchorage' },
-    { name: 'America/Chicago', label: 'Chicago' },
-    { name: 'America/Denver', label: 'Denver' },
-    { name: 'America/Los_Angeles', label: 'Los Angeles' },
-    { name: 'America/New_York', label: 'New York' },
-    { name: 'America/Phoenix', label: 'Phoenix' },
-    { name: 'America/Toronto', label: 'Toronto' },
-    { name: 'America/Vancouver', label: 'Vancouver' },
-    
-    // Americas - Other
-    { name: 'America/Bogota', label: 'Bogota' },
-    { name: 'America/Buenos_Aires', label: 'Buenos Aires' },
-    { name: 'America/Caracas', label: 'Caracas' },
-    { name: 'America/Mexico_City', label: 'Mexico City' },
-    { name: 'America/Sao_Paulo', label: 'Sao Paulo' },
-    
-    // Asia
-    { name: 'Asia/Bangkok', label: 'Bangkok' },
-    { name: 'Asia/Dubai', label: 'Dubai' },
-    { name: 'Asia/Ho_Chi_Minh', label: 'Ho Chi Minh City' },
-    { name: 'Asia/Hong_Kong', label: 'Hong Kong' },
-    { name: 'Asia/Jakarta', label: 'Jakarta' },
-    { name: 'Asia/Kolkata', label: 'Kolkata' },
-    { name: 'Asia/Manila', label: 'Manila' },
-    { name: 'Asia/Singapore', label: 'Singapore' },
-    { name: 'Asia/Seoul', label: 'Seoul' },
-    { name: 'Asia/Shanghai', label: 'Shanghai' },
-    { name: 'Asia/Tokyo', label: 'Tokyo' },
-    
-    // Europe
-    { name: 'Europe/Amsterdam', label: 'Amsterdam' },
-    { name: 'Europe/Athens', label: 'Athens' },
-    { name: 'Europe/Berlin', label: 'Berlin' },
-    { name: 'Europe/Brussels', label: 'Brussels' },
-    { name: 'Europe/Budapest', label: 'Budapest' },
-    { name: 'Europe/Dublin', label: 'Dublin' },
-    { name: 'Europe/Helsinki', label: 'Helsinki' },
-    { name: 'Europe/Istanbul', label: 'Istanbul' },
-    { name: 'Europe/Lisbon', label: 'Lisbon' },
-    { name: 'Europe/London', label: 'London' },
-    { name: 'Europe/Madrid', label: 'Madrid' },
-    { name: 'Europe/Moscow', label: 'Moscow' },
-    { name: 'Europe/Paris', label: 'Paris' },
-    { name: 'Europe/Rome', label: 'Rome' },
-    { name: 'Europe/Stockholm', label: 'Stockholm' },
-    { name: 'Europe/Vienna', label: 'Vienna' },
-    { name: 'Europe/Warsaw', label: 'Warsaw' },
-    { name: 'Europe/Zurich', label: 'Zurich' },
-    
-    // Oceania
-    { name: 'Australia/Brisbane', label: 'Brisbane' },
-    { name: 'Australia/Melbourne', label: 'Melbourne' },
-    { name: 'Australia/Perth', label: 'Perth' },
-    { name: 'Australia/Sydney', label: 'Sydney' },
-    { name: 'Pacific/Auckland', label: 'Auckland' },
-    { name: 'Pacific/Fiji', label: 'Fiji' },
-    { name: 'Pacific/Honolulu', label: 'Honolulu' },
-  ]
-  
-  return timezones.sort((a, b) => a.label.localeCompare(b.label))
+  const fallback = ['UTC', 'Etc/UTC']
+  const zoneIds = (() => {
+    const maybeIntl = Intl as typeof Intl & {
+      supportedValuesOf?: (key: string) => string[]
+    }
+    if (typeof maybeIntl.supportedValuesOf === 'function') {
+      const zones = maybeIntl.supportedValuesOf('timeZone')
+      if (Array.isArray(zones) && zones.length > 0) return zones
+    }
+    return fallback
+  })()
+
+  const unique = Array.from(new Set([...zoneIds, 'UTC']))
+  return unique
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) => ({ name, label: name }))
 }
 
 
@@ -228,27 +180,39 @@ function updateActionMessageClasses(message: string): string {
   return 'rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700'
 }
 
-function formatUpdateInterval(minutes: number): string {
-  if (!Number.isFinite(minutes) || minutes <= 0) return 'Disabled'
-  if (minutes % 1440 === 0) {
-    const days = minutes / 1440
-    return days === 1 ? 'Every 24 hours' : `Every ${days} days`
-  }
-  if (minutes % 60 === 0) {
-    const hours = minutes / 60
-    return hours === 1 ? 'Every 1 hour' : `Every ${hours} hours`
-  }
-  return `Every ${minutes} minutes`
+function formatUpdateScheduleWeekday(weekday: UpdateScheduleWeekday): string {
+  return UPDATE_WEEKDAY_OPTIONS.find((option) => option.value === weekday)?.label ?? weekday
 }
 
-function getUpdateIntervalOptions(selectedMinutes: number): number[] {
-  if (!Number.isFinite(selectedMinutes) || selectedMinutes <= 0) {
-    return UPDATE_INTERVAL_OPTIONS
+function formatUpdateSchedule(settings: {
+  autoCheckFrequency?: UpdateScheduleFrequency
+  autoCheckTime?: string
+  autoCheckWeekday?: UpdateScheduleWeekday
+  autoCheckMonthDays?: number[]
+}): string {
+  const time = normalizeUpdateTime(settings.autoCheckTime ?? '03:00')
+  switch (settings.autoCheckFrequency ?? 'daily') {
+    case 'weekly':
+      return `Every week on ${formatUpdateScheduleWeekday(settings.autoCheckWeekday ?? 'monday')} at ${time}`
+    case 'monthly': {
+      const days = normalizeUpdateMonthDays(settings.autoCheckMonthDays ?? [1])
+      return `Every month on day${days.length > 1 ? 's' : ''} ${days.join(', ')} at ${time}`
+    }
+    case 'daily':
+    default:
+      return `Every day at ${time}`
   }
+}
 
-  return UPDATE_INTERVAL_OPTIONS.includes(selectedMinutes)
-    ? UPDATE_INTERVAL_OPTIONS
-    : [...UPDATE_INTERVAL_OPTIONS, selectedMinutes].sort((a, b) => a - b)
+function normalizeUpdateTime(value: string): string {
+  const match = value.trim().match(/^([01]\d|2[0-3]):([0-5]\d)$/)
+  return match ? `${match[1]}:${match[2]}` : '03:00'
+}
+
+function normalizeUpdateMonthDays(days: number[]): number[] {
+  const normalized = Array.from(new Set(days.filter((day) => Number.isInteger(day) && day >= 1 && day <= 31)))
+  normalized.sort((a, b) => a - b)
+  return normalized.length > 0 ? normalized : [1]
 }
 
 function normalizeRegistryUrl(input?: string): string {
@@ -354,6 +318,7 @@ export default function System() {
   const [error, setError] = useState<string | null>(null)
   const [acmeDomains, setAcmeDomains] = useState<string[]>([])
   const [editConfig, setEditConfig] = useState<Partial<SystemConfig>>({})
+  const [timezoneQuery, setTimezoneQuery] = useState('')
   const [editOpen, setEditOpen] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -375,6 +340,29 @@ export default function System() {
       ? 'reboot'
       : 'overview'
   const isRegistryMode = (updates?.settings.updateMode ?? 'registry') === 'registry'
+  const allTimezones = getTimezones()
+  const normalizedTimezoneQuery = timezoneQuery.trim().toLowerCase()
+  const filteredTimezones = normalizedTimezoneQuery
+    ? allTimezones.filter((tz) => {
+      const name = tz.name.toLowerCase()
+      const label = tz.label.toLowerCase()
+      return name.includes(normalizedTimezoneQuery) || label.includes(normalizedTimezoneQuery)
+    })
+    : allTimezones
+  const selectedTimezone = editConfig.timezone ?? 'UTC'
+  const timezoneOptions = (() => {
+    if (filteredTimezones.some((tz) => tz.name === selectedTimezone)) {
+      return filteredTimezones
+    }
+    const selected = allTimezones.find((tz) => tz.name === selectedTimezone)
+    if (selected) {
+      return [selected, ...filteredTimezones]
+    }
+    if (selectedTimezone) {
+      return [{ name: selectedTimezone, label: selectedTimezone }, ...filteredTimezones]
+    }
+    return filteredTimezones
+  })()
 
   const loadAll = () => {
     setLoading(true)
@@ -412,6 +400,7 @@ export default function System() {
       .then((res) => {
         setConfig(res.data)
         setEditConfig(res.data)
+        setTimezoneQuery('')
         setEditOpen(false)
       })
       .catch((err: Error) => setError(err.message))
@@ -478,8 +467,14 @@ export default function System() {
     if (!updateSettings) return
     setUpdateSaving(true)
     const normalizedRegistryUrl = normalizeRegistryUrl(updateSettings.registryUrl)
-    updateUpdateSettings({
+    const normalizedUpdateSettings: UpdateSettings = {
       ...updateSettings,
+      autoCheckTime: normalizeUpdateTime(updateSettings.autoCheckTime),
+      autoCheckMonthDays: normalizeUpdateMonthDays(updateSettings.autoCheckMonthDays),
+      autoCheckWeekday: updateSettings.autoCheckWeekday ?? 'monday',
+    }
+    updateUpdateSettings({
+      ...normalizedUpdateSettings,
       updateMode: 'registry',
       registryUrl: normalizedRegistryUrl,
     })
@@ -673,7 +668,7 @@ export default function System() {
               <p className="text-gray-500 text-sm">Automatic update checks</p>
               <p className="font-medium text-gray-900">
                 {updates.settings.autoCheckEnabled
-                  ? formatUpdateInterval(updates.settings.checkIntervalMinutes)
+                  ? formatUpdateSchedule(updates.settings)
                   : 'Disabled'}
               </p>
             </div>
@@ -1050,18 +1045,29 @@ export default function System() {
             onChange={(e) => setEditConfig({ ...editConfig, hostname: e.target.value })}
           />
           <FormField
+            id="cfg-timezone-search"
+            label="Search Timezones"
+            className="col-span-2"
+            placeholder="Type city, region, or timezone ID"
+            value={timezoneQuery}
+            onChange={(e) => setTimezoneQuery(e.target.value)}
+            hint={`${filteredTimezones.length} match${filteredTimezones.length === 1 ? '' : 'es'}`}
+          />
+          <FormField
             id="cfg-timezone"
             label="Timezone"
+            className="col-span-2"
             as="select"
             value={editConfig.timezone ?? 'UTC'}
             onChange={(e) => setEditConfig({ ...editConfig, timezone: e.target.value })}
           >
             <option value="">-- Select Timezone --</option>
-            {getTimezones().map((tz) => (
+            {timezoneOptions.map((tz) => (
               <option key={tz.name} value={tz.name}>
                 {tz.label}
               </option>
             ))}
+            {timezoneOptions.length === 0 && <option value="" disabled>No matching timezones</option>}
           </FormField>
           <FormField
             id="cfg-ntp"
@@ -1144,7 +1150,7 @@ export default function System() {
         {updateSettings && (
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              Choose whether DayShield checks for updates automatically and how often it does so.
+              Choose whether DayShield checks for updates automatically and when it runs.
             </p>
             <div className="flex items-center gap-2">
               <input
@@ -1159,25 +1165,101 @@ export default function System() {
               </label>
             </div>
             {updateSettings.autoCheckEnabled && (
-              <FormField
-                id="upd-interval"
-                as="select"
-                label="Check for updates"
-                hint="Choose how often DayShield checks for new updates automatically."
-                value={String(updateSettings.checkIntervalMinutes)}
-                onChange={(e) =>
-                  setUpdateSettings({
-                    ...updateSettings,
-                    checkIntervalMinutes: Math.max(1, Number(e.target.value) || 1),
-                  })
-                }
-              >
-                {getUpdateIntervalOptions(updateSettings.checkIntervalMinutes).map((minutes) => (
-                  <option key={minutes} value={minutes}>
-                    {formatUpdateInterval(minutes)}
-                  </option>
-                ))}
-              </FormField>
+              <div className="space-y-4">
+                <FormField
+                  id="upd-frequency"
+                  as="select"
+                  label="Schedule"
+                  hint="Pick whether updates run daily, weekly, or monthly."
+                  value={updateSettings.autoCheckFrequency ?? 'daily'}
+                  onChange={(e) => {
+                    const nextFrequency = e.target.value as UpdateScheduleFrequency
+                    setUpdateSettings({
+                      ...updateSettings,
+                      autoCheckFrequency: nextFrequency,
+                      autoCheckWeekday: nextFrequency === 'weekly' ? updateSettings.autoCheckWeekday ?? 'monday' : updateSettings.autoCheckWeekday,
+                      autoCheckMonthDays: nextFrequency === 'monthly'
+                        ? normalizeUpdateMonthDays(updateSettings.autoCheckMonthDays ?? [1])
+                        : updateSettings.autoCheckMonthDays,
+                    })
+                  }}
+                >
+                  {UPDATE_SCHEDULE_FREQUENCY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </FormField>
+
+                <FormField
+                  id="upd-time"
+                  label="Time"
+                  type="time"
+                  hint="The update check runs at this local time."
+                  value={normalizeUpdateTime(updateSettings.autoCheckTime ?? '03:00')}
+                  onChange={(e) => setUpdateSettings({ ...updateSettings, autoCheckTime: e.target.value })}
+                />
+
+                {updateSettings.autoCheckFrequency === 'weekly' && (
+                  <FormField
+                    id="upd-weekday"
+                    as="select"
+                    label="Day of Week"
+                    hint="Choose the day DayShield checks for updates each week."
+                    value={updateSettings.autoCheckWeekday ?? 'monday'}
+                    onChange={(e) =>
+                      setUpdateSettings({
+                        ...updateSettings,
+                        autoCheckWeekday: e.target.value as UpdateScheduleWeekday,
+                      })
+                    }
+                  >
+                    {UPDATE_WEEKDAY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </FormField>
+                )}
+
+                {updateSettings.autoCheckFrequency === 'monthly' && (
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Days of Month</p>
+                      <p className="text-xs text-gray-500">Select one or more days when the monthly check should run.</p>
+                    </div>
+                    <div className="grid grid-cols-7 gap-2 sm:grid-cols-8 md:grid-cols-10">
+                      {UPDATE_MONTH_DAYS.map((day) => {
+                        const selected = (updateSettings.autoCheckMonthDays ?? []).includes(day)
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            className={`rounded-md border px-2 py-2 text-sm font-medium transition ${selected
+                              ? 'border-blue-500 bg-blue-600 text-white'
+                              : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:text-blue-600'
+                              }`}
+                            onClick={() => {
+                              const current = new Set(normalizeUpdateMonthDays(updateSettings.autoCheckMonthDays ?? [1]))
+                              if (current.has(day)) {
+                                current.delete(day)
+                              } else {
+                                current.add(day)
+                              }
+                              setUpdateSettings({
+                                ...updateSettings,
+                                autoCheckMonthDays: Array.from(current).sort((a, b) => a - b),
+                              })
+                            }}
+                          >
+                            {day}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
