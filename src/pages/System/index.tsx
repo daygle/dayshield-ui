@@ -16,7 +16,7 @@ import {
   rollbackRootfsLiveUpdate,
 } from '../../api/system'
 import { getAcmeConfig } from '../../api/acme'
-import type { SystemStatus, SystemConfig, UpdatesStatus, UpdateSettings } from '../../types'
+import type { SystemStatus, SystemConfig, UpdatesStatus, UpdateSettings, UpdateLogEntry } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import FormField from '../../components/FormField'
@@ -84,6 +84,34 @@ function formatUpdateComponentName(component: string): string {
       return 'Root Filesystem'
     default:
       return component.charAt(0).toUpperCase() + component.slice(1)
+  }
+}
+
+function formatUpdateOperationName(operation: string): string {
+  switch (operation) {
+    case 'apply':
+      return 'Apply'
+    case 'check':
+      return 'Check'
+    case 'rollback':
+      return 'Rollback'
+    case 'validate':
+      return 'Validate'
+    case 'rootfs-live-rollback':
+      return 'RootFS Live Rollback'
+    default:
+      return operation
+  }
+}
+
+function updateLogLevelClasses(level: string): string {
+  switch (level) {
+    case 'success':
+      return 'bg-green-100 text-green-700'
+    case 'error':
+      return 'bg-red-100 text-red-700'
+    default:
+      return 'bg-blue-100 text-blue-700'
   }
 }
 
@@ -375,6 +403,19 @@ export default function System() {
     }
 
     const timer = window.setInterval(refreshStatus, STATUS_REFRESH_INTERVAL_MS)
+    return () => window.clearInterval(timer)
+  }, [activeSection])
+
+  useEffect(() => {
+    if (activeSection !== 'updates') return
+
+    const refreshUpdates = () => {
+      getUpdatesStatus()
+        .then((res) => setUpdates(res.data))
+        .catch((err: Error) => setError(err.message))
+    }
+
+    const timer = window.setInterval(refreshUpdates, 5000)
     return () => window.clearInterval(timer)
   }, [activeSection])
 
@@ -880,6 +921,44 @@ export default function System() {
                 </div>
               )
             })()}
+
+            <div className="rounded-md border border-gray-200 bg-gray-50">
+              <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2">
+                <h4 className="text-sm font-semibold text-gray-900">Update Logs</h4>
+                <span className="text-xs text-gray-500">Newest first</span>
+              </div>
+              {updates.operationLogs && updates.operationLogs.length > 0 ? (
+                <ul className="max-h-72 overflow-auto divide-y divide-gray-200">
+                  {[...updates.operationLogs]
+                    .sort((a: UpdateLogEntry, b: UpdateLogEntry) =>
+                      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+                    )
+                    .map((entry: UpdateLogEntry, idx: number) => (
+                      <li key={`${entry.timestamp}-${entry.operation}-${idx}`} className="px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-mono text-gray-500">
+                            {formatIsoDate(entry.timestamp)}
+                          </span>
+                          <span className="text-xs font-medium text-gray-700">
+                            {formatUpdateOperationName(entry.operation)}
+                          </span>
+                          {entry.component && (
+                            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 uppercase">
+                              {entry.component}
+                            </span>
+                          )}
+                          <span className={`rounded px-2 py-0.5 text-xs font-medium ${updateLogLevelClasses(entry.level)}`}>
+                            {entry.level}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm text-gray-800">{entry.message}</p>
+                      </li>
+                    ))}
+                </ul>
+              ) : (
+                <div className="px-4 py-4 text-sm text-gray-500">No update logs recorded yet.</div>
+              )}
+            </div>
 
             {updates && updates.availableUpdateCount && updates.availableUpdateCount > 1 && (
               <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 space-y-3">

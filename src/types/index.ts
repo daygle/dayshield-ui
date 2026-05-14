@@ -567,6 +567,14 @@ export interface ComponentUpdateStatus {
   lastError?: string
 }
 
+export interface UpdateLogEntry {
+  timestamp: string
+  operation: string
+  level: 'info' | 'success' | 'error' | string
+  message: string
+  component?: string
+}
+
 export interface UpdatesStatus {
   settings: UpdateSettings
   lastCheckedAt?: string
@@ -579,6 +587,7 @@ export interface UpdatesStatus {
   components: ComponentUpdateStatus[]
   /** Number of components with available updates (read-only, computed server-side) */
   availableUpdateCount?: number
+  operationLogs?: UpdateLogEntry[]
 }
 
 export interface UpdatesActionResult {
