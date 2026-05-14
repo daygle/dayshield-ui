@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import {
   getSuricataConfig,
   getInterfaceSuricataConfig,
@@ -21,6 +21,7 @@ import Table, { Column } from '../../components/Table'
 import FormField from '../../components/FormField'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 import ErrorBoundary from '../../components/ErrorBoundary'
+import { SuricataRulesetsSection } from './RulesetsPage'
 
 type AlertRow = SuricataAlert & Record<string, unknown>
 
@@ -335,33 +336,7 @@ function SuricataContent() {
         </Card>
       )}
 
-      <Card
-        title="Rulesets"
-        subtitle="Manage bundled rulesets on a dedicated page grouped by family/package"
-        actions={
-          <Link
-            to="/suricata/rulesets"
-            className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Open Rulesets
-          </Link>
-        }
-      >
-        <div className="grid gap-3 text-sm md:grid-cols-3">
-          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
-            <div className="text-gray-500">What changed</div>
-            <div className="font-medium text-gray-900">The old modal is replaced by a dedicated page.</div>
-          </div>
-          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
-            <div className="text-gray-500">Grouping</div>
-            <div className="font-medium text-gray-900">Rulesets are grouped by family/package.</div>
-          </div>
-          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
-            <div className="text-gray-500">Drill down</div>
-            <div className="font-medium text-gray-900">Pick a ruleset, then toggle individual rules.</div>
-          </div>
-        </div>
-      </Card>
+      <SuricataRulesetsSection />
 
       {/* Alerts */}
       <Card
