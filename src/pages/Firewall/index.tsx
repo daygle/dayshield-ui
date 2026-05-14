@@ -20,12 +20,29 @@ import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
+// Common IPv4 subnet masks for dropdown
+const CIDR_MASKS = [
+  32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8
+]
+
+function parseCidrParts(val: string | null): { ip: string, mask: string } {
+  if (!val) return { ip: '', mask: '32' }
+  const [ip, mask] = val.split('/')
+  return { ip: ip ?? '', mask: mask ?? '32' }
+}
+
+function joinCidr(ip: string, mask: string): string {
+  if (!ip) return ''
+  return mask ? `${ip}/${mask}` : ip
+}
+
 type RuleRow = FirewallRule & Record<string, unknown>
 type AliasRow = Alias & Record<string, unknown>
 
 const defaultRuleForm: Partial<FirewallRule> = {
   description: '',
   action: 'accept',
+  direction: 'forward',
   protocol: 'tcp',
   source: null,
   source_port: null,
@@ -68,6 +85,7 @@ const defaultSettings: FirewallSettings = {
   management_interface: null,
   management_allowed_sources: [],
   management_ports: [22, 443, 8443],
+  log_position: 'after',
 }
 
 function actionBadge(action: FirewallRule['action']) {
@@ -83,6 +101,55 @@ function actionBadge(action: FirewallRule['action']) {
       {action}
     </span>
   )
+}
+
+function directionLabel(direction: FirewallRule['direction']) {
+  switch (direction) {
+    case 'input':
+      return 'Inbound'
+    case 'forward':
+      return 'Forwarded'
+    case 'output':
+      return 'Outbound'
+    default:
+      return direction
+  }
+}
+
+function protocolLabel(protocol: FirewallRule['protocol']) {
+  switch (protocol) {
+    case 'tcp':
+      return 'TCP'
+    case 'udp':
+      return 'UDP'
+    case 'icmp':
+      return 'ICMP'
+    case 'icmpv6':
+      return 'ICMPv6'
+    case 'any':
+    case null:
+    case undefined:
+      return 'Any'
+    default:
+      return String(protocol)
+  }
+}
+
+function interfaceFieldLabel(direction: FirewallRule['direction']) {
+  return direction === 'output' ? 'Egress Interface' : 'Ingress Interface'
+}
+
+function interfaceFieldHint(direction: FirewallRule['direction']) {
+  switch (direction) {
+    case 'input':
+      return 'Matches traffic entering the firewall on this interface.'
+    case 'forward':
+      return 'Matches forwarded traffic by its incoming interface.'
+    case 'output':
+      return 'Matches traffic leaving the firewall on this interface.'
+    default:
+      return undefined
+  }
 }
 
 function unwrapArray<T>(res: unknown): T[] {
@@ -528,15 +595,20 @@ export default function Firewall() {
     { key: 'priority', header: '#', className: 'w-10' },
     { key: 'description', header: 'Description' },
     { key: 'action', header: 'Action', render: (row) => actionBadge(row.action as FirewallRule['action']) },
-    { key: 'protocol', header: 'Protocol', render: (row) => (row.protocol as string) ?? 'any' },
-    { key: 'source', header: 'Source', render: (row) => (row.source as string) ?? 'any' },
-    { key: 'destination', header: 'Destination', render: (row) => (row.destination as string) ?? 'any' },
+    {
+      key: 'direction',
+      header: 'Direction',
+      render: (row) => <span className="text-xs font-medium text-gray-700">{directionLabel(row.direction as FirewallRule['direction'])}</span>,
+    },
+    { key: 'protocol', header: 'Protocol', render: (row) => protocolLabel((row.protocol as FirewallRule['protocol']) ?? null) },
+    { key: 'source', header: 'Source', render: (row) => (row.source as string) ?? 'Any' },
+    { key: 'destination', header: 'Destination', render: (row) => (row.destination as string) ?? 'Any' },
     {
       key: 'interface',
       header: 'Interface',
       render: (row) => {
         const name = row.interface as string | null
-        if (!name) return 'any'
+        if (!name) return 'Any'
         const iface = interfaces.find((item) => item.name === name)
         return iface ? interfaceLabel(iface) : name
       },
@@ -546,10 +618,10 @@ export default function Firewall() {
       header: 'Schedule',
       render: (row) => {
         const sched = row.schedule as FirewallSchedule | null
-        if (!sched) return <span className="text-gray-400 text-xs">always</span>
+        if (!sched) return <span className="text-gray-400 text-xs">Always</span>
         const dayLabels = sched.days.length > 0
           ? sched.days.map((d) => DAY_NAMES[d]).join(',')
-          : 'all'
+          : 'All'
         const timeLabel = sched.time_start || sched.time_end
           ? `${sched.time_start ?? '00:00'}\u2013${sched.time_end ?? '23:59'}`
           : null
@@ -874,6 +946,18 @@ export default function Firewall() {
                 value={managementPortsInput}
                 onChange={(e) => setManagementPortsInput(e.target.value)}
               />
+              <FormField
+                id="fw-log-position"
+                className="col-span-2"
+                label="Log packets before or after action"
+                as="select"
+                value={settings.log_position ?? 'after'}
+                onChange={e => setSettings({ ...settings, log_position: e.target.value as 'before' | 'after' })}
+                hint="Controls whether log entries are written before or after the rule’s action is applied."
+              >
+                <option value="before">Before action (default)</option>
+                <option value="after">After action</option>
+              </FormField>
             </div>
           </details>
         </div>
@@ -927,6 +1011,17 @@ export default function Firewall() {
               <option value="log">Log</option>
             </FormField>
             <FormField
+              id="rule-direction"
+              label="Direction"
+              as="select"
+              value={ruleForm.direction ?? 'forward'}
+              onChange={(e) => setRuleForm({ ...ruleForm, direction: e.target.value as FirewallRule['direction'] })}
+            >
+              <option value="input">Input</option>
+              <option value="forward">Forward</option>
+              <option value="output">Output</option>
+            </FormField>
+            <FormField
               id="rule-protocol"
               label="Protocol"
               as="select"
@@ -941,7 +1036,8 @@ export default function Firewall() {
             </FormField>
             <FormField
               id="rule-iface"
-              label="Interface"
+              label={interfaceFieldLabel(ruleForm.direction ?? 'forward')}
+              hint={interfaceFieldHint(ruleForm.direction ?? 'forward')}
               as="select"
               value={ruleForm.interface ?? ''}
               onChange={(e) => setRuleForm({ ...ruleForm, interface: e.target.value || null })}
@@ -971,11 +1067,34 @@ export default function Firewall() {
                 </FormField>
                 <FormField
                   id="rule-src"
-                  label="Source (custom CIDR/IP/Alias)"
-                  placeholder="Optional override"
-                  value={ruleForm.source ?? ''}
-                  onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
-                />
+                  label="Source (IP/CIDR/Alias)"
+                  className="col-span-2"
+                >
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="IP or Alias"
+                      value={parseCidrParts(ruleForm.source ?? '').ip}
+                      onChange={e => {
+                        const mask = parseCidrParts(ruleForm.source ?? '').mask
+                        setRuleForm({ ...ruleForm, source: joinCidr(e.target.value, mask) })
+                      }}
+                    />
+                    <select
+                      className="rounded-md border border-gray-300 px-2 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      value={parseCidrParts(ruleForm.source ?? '').mask}
+                      onChange={e => {
+                        const ip = parseCidrParts(ruleForm.source ?? '').ip
+                        setRuleForm({ ...ruleForm, source: joinCidr(ip, e.target.value) })
+                      }}
+                    >
+                      {CIDR_MASKS.map(mask => (
+                        <option key={mask} value={mask}>{`/${mask}`}</option>
+                      ))}
+                    </select>
+                  </div>
+                </FormField>
                 <FormField
                   id="rule-src-port"
                   label="Source Port"
@@ -996,11 +1115,34 @@ export default function Firewall() {
                 </FormField>
                 <FormField
                   id="rule-dst"
-                  label="Destination (custom CIDR/IP/Alias)"
-                  placeholder="Optional override"
-                  value={ruleForm.destination ?? ''}
-                  onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
-                />
+                  label="Destination (IP/CIDR/Alias)"
+                  className="col-span-2"
+                >
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="IP or Alias"
+                      value={parseCidrParts(ruleForm.destination ?? '').ip}
+                      onChange={e => {
+                        const mask = parseCidrParts(ruleForm.destination ?? '').mask
+                        setRuleForm({ ...ruleForm, destination: joinCidr(e.target.value, mask) })
+                      }}
+                    />
+                    <select
+                      className="rounded-md border border-gray-300 px-2 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      value={parseCidrParts(ruleForm.destination ?? '').mask}
+                      onChange={e => {
+                        const ip = parseCidrParts(ruleForm.destination ?? '').ip
+                        setRuleForm({ ...ruleForm, destination: joinCidr(ip, e.target.value) })
+                      }}
+                    >
+                      {CIDR_MASKS.map(mask => (
+                        <option key={mask} value={mask}>{`/${mask}`}</option>
+                      ))}
+                    </select>
+                  </div>
+                </FormField>
                 <FormField
                   id="rule-dst-port"
                   label="Destination Port"
@@ -1011,14 +1153,24 @@ export default function Firewall() {
               </div>
             </details>
 
-            <label className="flex items-center gap-3 col-span-2">
-              <input
-                type="checkbox"
-                checked={ruleForm.enabled ?? true}
-                onChange={(e) => setRuleForm({ ...ruleForm, enabled: e.target.checked })}
-              />
-              <span className="text-sm text-gray-700">Rule enabled</span>
-            </label>
+            <div className="flex gap-6 col-span-2">
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={ruleForm.enabled ?? true}
+                  onChange={(e) => setRuleForm({ ...ruleForm, enabled: e.target.checked })}
+                />
+                <span className="text-sm text-gray-700">Rule enabled</span>
+              </label>
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={ruleForm.log ?? false}
+                  onChange={(e) => setRuleForm({ ...ruleForm, log: e.target.checked })}
+                />
+                <span className="text-sm text-gray-700">Log this rule</span>
+              </label>
+            </div>
 
             <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
               <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
@@ -1117,6 +1269,17 @@ export default function Firewall() {
               <option value="log">Log</option>
             </FormField>
             <FormField
+              id="edit-rule-direction"
+              label="Direction"
+              as="select"
+              value={editRule.direction}
+              onChange={(e) => setEditRule({ ...editRule, direction: e.target.value as FirewallRule['direction'] })}
+            >
+              <option value="input">Input</option>
+              <option value="forward">Forward</option>
+              <option value="output">Output</option>
+            </FormField>
+            <FormField
               id="edit-rule-protocol"
               label="Protocol"
               as="select"
@@ -1131,7 +1294,8 @@ export default function Firewall() {
             </FormField>
             <FormField
               id="edit-rule-iface"
-              label="Interface"
+              label={interfaceFieldLabel(editRule.direction)}
+              hint={interfaceFieldHint(editRule.direction)}
               as="select"
               value={editRule.interface ?? ''}
               onChange={(e) => setEditRule({ ...editRule, interface: e.target.value || null })}
@@ -1200,14 +1364,24 @@ export default function Firewall() {
             </details>
 
             {/* Enabled toggle */}
-            <label className="flex items-center gap-3 col-span-2">
-              <input
-                type="checkbox"
-                checked={editRule.enabled}
-                onChange={(e) => setEditRule({ ...editRule, enabled: e.target.checked })}
-              />
-              <span className="text-sm text-gray-700">Rule enabled</span>
-            </label>
+            <div className="flex gap-6 col-span-2">
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={editRule.enabled}
+                  onChange={(e) => setEditRule({ ...editRule, enabled: e.target.checked })}
+                />
+                <span className="text-sm text-gray-700">Rule enabled</span>
+              </label>
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={editRule.log ?? false}
+                  onChange={(e) => setEditRule({ ...editRule, log: e.target.checked })}
+                />
+                <span className="text-sm text-gray-700">Log this rule</span>
+              </label>
+            </div>
 
             <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
               <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">

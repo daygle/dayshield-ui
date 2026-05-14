@@ -87,6 +87,7 @@ export interface ListGatewaysResponse {
 export type FirewallAction = 'accept' | 'drop' | 'reject' | 'jump' | 'log'
 export type FirewallProtocol = 'tcp' | 'udp' | 'icmp' | 'icmpv6' | 'any'
 export type FirewallChainPolicy = 'accept' | 'drop'
+export type FirewallDirection = 'input' | 'forward' | 'output'
 
 /** Time-based schedule that gates when a firewall rule is active. */
 export interface FirewallSchedule {
@@ -112,6 +113,7 @@ export interface FirewallRule {
   source_port: number | null
   destination_port: number | null
   action: FirewallAction
+  direction: FirewallDirection
   interface: string | null
   log: boolean
   enabled: boolean
@@ -125,6 +127,7 @@ export interface FirewallRuleStats {
   bytes: number
 }
 
+export type LogPosition = 'before' | 'after'
 export interface FirewallSettings {
   input_policy: FirewallChainPolicy
   forward_policy: FirewallChainPolicy
@@ -137,6 +140,7 @@ export interface FirewallSettings {
   management_interface: string | null
   management_allowed_sources: string[]
   management_ports: number[]
+  log_position?: LogPosition // Optional for backward compatibility
 }
 
 // ── Aliases ───────────────────────────────────────────────────────────────────
