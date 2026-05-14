@@ -76,13 +76,13 @@ export default function RestoreBackupDialog({
           <div>
             <dt className="text-gray-500">Size</dt>
             <dd className="font-medium text-gray-800">
-              {entry.size !== undefined && entry.size !== null ? formatBytes(entry.size) : '—'}
+              {entry.size !== undefined && entry.size !== null ? formatBytes(entry.size) : '-'}
             </dd>
           </div>
           <div className="col-span-2">
             <dt className="text-gray-500">SHA256</dt>
             <dd className="font-mono text-xs text-gray-700 break-all">
-              {entry.sha256 ?? '—'}
+              {entry.sha256 ?? '-'}
             </dd>
           </div>
           <div>

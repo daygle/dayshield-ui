@@ -97,7 +97,7 @@ export default function ACME() {
       header: 'SANs',
       render: (row) => {
         const sans = row.sans as string[] | undefined
-        return sans && Array.isArray(sans) && sans.length ? sans.join(', ') : '—'
+        return sans && Array.isArray(sans) && sans.length ? sans.join(', ') : '-'
       },
     },
     { key: 'status', header: 'Status', render: (row) => statusBadge(row.status as AcmeCertificateStatus) },
@@ -161,11 +161,11 @@ export default function ACME() {
           <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
             <div>
               <dt className="text-gray-500">Email</dt>
-              <dd className="font-medium text-gray-800">{account.email || '—'}</dd>
+              <dd className="font-medium text-gray-800">{account.email || '-'}</dd>
             </div>
             <div>
               <dt className="text-gray-500">ACME Server</dt>
-              <dd className="font-medium text-gray-800 break-all">{account.directory_url || '—'}</dd>
+              <dd className="font-medium text-gray-800 break-all">{account.directory_url || '-'}</dd>
             </div>
             <div>
               <dt className="text-gray-500">Registered</dt>

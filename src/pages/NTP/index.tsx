@@ -267,7 +267,7 @@ export default function NtpPage() {
             </div>
             <div>
               <dt className="text-gray-500">Upstream</dt>
-              <dd className="font-medium text-gray-800">{status.upstream || '—'}</dd>
+              <dd className="font-medium text-gray-800">{status.upstream || '-'}</dd>
             </div>
             <div>
               <dt className="text-gray-500">Stratum</dt>
@@ -278,7 +278,7 @@ export default function NtpPage() {
               <dd className="font-medium text-gray-800">
                 {typeof status.offset === 'number' && Number.isFinite(status.offset)
                   ? `${status.offset.toFixed(3)} ms`
-                  : '—'}
+                  : '-'}
               </dd>
             </div>
             <div>
@@ -286,7 +286,7 @@ export default function NtpPage() {
               <dd className="font-medium text-gray-800">
                 {typeof status.jitter === 'number' && Number.isFinite(status.jitter)
                   ? `${status.jitter.toFixed(3)} ms`
-                  : '—'}
+                  : '-'}
               </dd>
             </div>
           </dl>

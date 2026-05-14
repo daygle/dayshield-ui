@@ -142,7 +142,7 @@ export default function OutboundNAT() {
       header: 'Enabled',
       render: (row) => (
         <span className={row.enabled ? 'text-green-600' : 'text-gray-400'}>
-          {row.enabled ? 'âœ“' : 'âœ—'}
+          {row.enabled ? 'Yes' : 'No'}
         </span>
       ),
     },
@@ -163,7 +163,7 @@ export default function OutboundNAT() {
         const rule = row as NatRule
         if (rule.rule_type === 'masquerade') return 'Masquerade'
         const t = rule.translation
-        if (!t?.address) return 'â€”'
+        if (!t?.address) return '-'
         return t.port ? `${t.address}:${t.port}` : t.address
       },
     },
