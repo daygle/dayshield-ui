@@ -37,6 +37,21 @@ function isValidNtpServer(value: string): boolean {
   return isValidHostname(value)
 }
 
+function normalizeNtpServerInput(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+
+  const parts = trimmed.split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return ''
+
+  const directive = parts[0].toLowerCase()
+  if (['server', 'pool', 'peer'].includes(directive)) {
+    return parts[1] ?? ''
+  }
+
+  return parts[0]
+}
+
 function firstKernelIpv4Cidr(addresses: string[] | undefined): string | undefined {
   return addresses?.find((addr) => addr.includes('.') && addr.includes('/'))
 }
@@ -209,20 +224,20 @@ export default function NtpPage() {
   }
 
   const handleAddServer = () => {
-    const trimmed = serverInput.trim()
-    if (!trimmed) {
+    const normalized = normalizeNtpServerInput(serverInput)
+    if (!normalized) {
       setServerError('Enter an IPv4 address or hostname.')
       return
     }
-    if (!isValidNtpServer(trimmed)) {
+    if (!isValidNtpServer(normalized)) {
       setServerError('Only valid IPv4 addresses or hostnames are accepted.')
       return
     }
-    if (config.servers.includes(trimmed)) {
+    if (config.servers.includes(normalized)) {
       setServerError('This server is already in the list.')
       return
     }
-    setConfig((c) => ({ ...c, servers: [...c.servers, trimmed] }))
+    setConfig((c) => ({ ...c, servers: [...c.servers, normalized] }))
     setServerInput('')
     setServerError('')
   }
@@ -335,7 +350,7 @@ export default function NtpPage() {
       {/* Upstream Servers */}
       <Card
         title="Upstream Servers"
-        subtitle="IPv4 addresses or hostnames of NTP servers used for clock synchronisation."
+        subtitle="IPv4 addresses or hostnames of NTP servers used for clock synchronisation. Pasted entries like server pool.ntp.org are also accepted."
       >
         <div className="space-y-4">
           {/* Server list */}
@@ -364,7 +379,7 @@ export default function NtpPage() {
             <FormField
               id="ntp-server-input"
               label="Add Server (IPv4 or hostname)"
-              placeholder="0.pool.ntp.org or 203.0.113.1"
+              placeholder="0.pool.ntp.org, 203.0.113.1, or server 0.pool.ntp.org"
               className="flex-1"
               value={serverInput}
               error={serverError}
