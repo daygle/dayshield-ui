@@ -543,13 +543,13 @@ export default function DNS() {
                 <div>
                   <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listen Addresses</dt>
                   <dd className="mt-1 font-medium text-gray-800 font-mono">
-                    {config.listen_addresses?.length ? config.listen_addresses.join(', ') : 'All interfaces'}
+                    {config.listen_addresses?.length ? config.listen_addresses.join(', ') : 'All Interfaces'}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Upstream Forwarders</dt>
                   <dd className="mt-1 font-medium text-gray-800 font-mono">
-                    {config.forwarders?.length ? config.forwarders.join(', ') : '- (recursive)'}
+                    {config.forwarders?.length ? config.forwarders.join(', ') : '- (Recursive)'}
                   </dd>
                 </div>
                 <div>
@@ -830,12 +830,14 @@ export default function DNS() {
         size="lg"
       >
         <div className="space-y-5">
+          <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+            DNS-over-TLS encrypts DNS traffic between clients and DayShield on port {configForm.dot_port ?? 853}.
+          </div>
+
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-gray-900">DNS-over-TLS (DoT)</h3>
-              <p className="text-xs text-gray-500">
-                Configure the encrypted DNS listener and its certificate selection.
-              </p>
+              <h3 className="text-sm font-semibold text-gray-900">Step 1: Turn on encrypted DNS</h3>
+              <p className="text-xs text-gray-500">Enable DoT to accept encrypted DNS connections.</p>
             </div>
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input
@@ -845,7 +847,7 @@ export default function DNS() {
                 checked={!!configForm.dot_enabled}
                 onChange={(e) => setConfigForm((f) => ({ ...f, dot_enabled: e.target.checked }))}
               />
-              <span className="text-sm font-medium text-gray-700">Enable DoT server</span>
+              <span className="text-sm font-medium text-gray-700">Enable DNS-over-TLS</span>
             </label>
           </div>
 
@@ -862,21 +864,30 @@ export default function DNS() {
             </div>
           </div>
 
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <input
-              id="dns-dot-wan-access"
-              type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              checked={configForm.dot_lan_only === false}
-              onChange={(e) => setConfigForm((f) => ({ ...f, dot_lan_only: !e.target.checked }))}
-            />
-            <span className="text-sm font-medium text-gray-700">Allow external / WAN clients to connect</span>
-          </label>
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-gray-900">Step 2: Choose who can connect</p>
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                id="dns-dot-wan-access"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                checked={configForm.dot_lan_only === false}
+                onChange={(e) => setConfigForm((f) => ({ ...f, dot_lan_only: !e.target.checked }))}
+              />
+              <span className="text-sm font-medium text-gray-700">Allow external (WAN) clients</span>
+            </label>
+            <p className="text-xs text-gray-500">
+              Keep this off unless you intentionally want remote clients to query your DNS server.
+            </p>
+          </div>
 
           <div className="space-y-2">
-            <label htmlFor="dns-dot-acme-domain" className="block text-sm font-medium text-gray-700">
-              DoT Certificate Source
+            <label htmlFor="dns-dot-acme-domain" className="block text-sm font-semibold text-gray-900">
+              Step 3: Select certificate source
             </label>
+            <p className="text-xs text-gray-500">
+              Use an issued ACME certificate when available, or paste/upload a PEM certificate and key.
+            </p>
             <select
               id="dns-dot-acme-domain"
               value={configForm.dot_acme_domain ?? ''}
@@ -890,9 +901,15 @@ export default function DNS() {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-gray-500">
-              Select an issued ACME certificate for DoT. When selected, the raw PEM fields are optional and the backend will use the ACME-generated certificate.
-            </p>
+            {useAcmeDoTCert ? (
+              <p className="text-xs text-green-700">
+                ACME certificate selected. PEM fields below are disabled and not required.
+              </p>
+            ) : (
+              <p className="text-xs text-gray-500">
+                If DoT is enabled, certificate and private key PEM content are required unless an ACME domain is selected.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -940,8 +957,7 @@ export default function DNS() {
           </div>
 
           <p className="text-xs text-gray-500">
-            Configure DoT certificate selection and access policy. When enabled,
-            DayShield will present the configured certificate/key on TCP/{configForm.dot_port ?? 853} to the allowed clients.
+            Save applies DoT settings to DNS service. Clients can then connect on TCP/{configForm.dot_port ?? 853} based on your access policy.
           </p>
         </div>
       </Modal>
