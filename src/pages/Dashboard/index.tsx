@@ -204,6 +204,7 @@ export default function Dashboard() {
   const acme = useAcmeStatus()
 
   const [customizeOpen, setCustomizeOpen] = useState(false)
+  const [layoutLocked, setLayoutLocked] = useState(true)
   const [cardConfig, setCardConfig] = useState<DashboardCardConfig[]>(loadDashboardCardConfig)
   const [dragCardId, setDragCardId] = useState<DashboardCardId | null>(null)
 
@@ -500,11 +501,23 @@ export default function Dashboard() {
           <p className="text-sm text-gray-500 max-w-2xl">
             Customize which cards appear, rearrange their order, and resize the layout to suit your workflow.
           </p>
-          <p className="mt-1 text-xs text-gray-400">Tip: drag cards directly in the grid to reorder.</p>
+          {!layoutLocked && (
+            <p className="mt-1 text-xs text-gray-400">Tip: drag cards directly in the grid to reorder.</p>
+          )}
         </div>
-        <Button size="sm" variant="secondary" onClick={() => setCustomizeOpen(true)}>
-          Edit Layout
-        </Button>
+        <div className="flex gap-2 items-center">
+          <Button
+            size="sm"
+            variant={layoutLocked ? 'secondary' : 'primary'}
+            onClick={() => setLayoutLocked((v) => !v)}
+            aria-pressed={!layoutLocked}
+          >
+            {layoutLocked ? 'Unlock Layout' : 'Lock Layout'}
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => setCustomizeOpen(true)}>
+            Edit Layout
+          </Button>
+        </div>
       </div>
 
       {cardConfig.every((card) => !card.visible) && (
@@ -518,38 +531,41 @@ export default function Dashboard() {
           card.visible ? (
             <div
               key={card.id}
-              draggable
-              onDragStart={() => setDragCardId(card.id)}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={() => {
+              draggable={!layoutLocked}
+              onDragStart={layoutLocked ? undefined : () => setDragCardId(card.id)}
+              onDragOver={layoutLocked ? undefined : (event) => event.preventDefault()}
+              onDrop={layoutLocked ? undefined : () => {
                 if (!dragCardId || dragCardId === card.id) return
                 reorderCards(dragCardId, card.id)
                 setDragCardId(null)
               }}
-              onDragEnd={() => setDragCardId(null)}
+              onDragEnd={layoutLocked ? undefined : () => setDragCardId(null)}
               className={`col-span-1 ${cardWidthClass(card.width)} ${dragCardId === card.id ? 'opacity-60' : ''}`}
             >
               <Card
                 className="h-full min-h-[220px]"
                 title={dashboardCardTitles[card.id]}
-                actions={card.id === 'suricata' ? (hasCriticalAlerts ? <Badge variant="red">Critical</Badge> : hasWarningAlerts ? <Badge variant="yellow">High</Badge> : undefined) : undefined}
+                actions={
+                  !layoutLocked && (
+                    <span
+                      className="inline-flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 cursor-grab"
+                      title="Drag to reorder"
+                      aria-label="Drag to reorder"
+                      tabIndex={-1}
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
+                        <circle cx="6" cy="5" r="1.2" />
+                        <circle cx="6" cy="10" r="1.2" />
+                        <circle cx="6" cy="15" r="1.2" />
+                        <circle cx="14" cy="5" r="1.2" />
+                        <circle cx="14" cy="10" r="1.2" />
+                        <circle cx="14" cy="15" r="1.2" />
+                      </svg>
+                    </span>
+                  )
+                }
               >
-                <div className="mb-2 flex justify-end">
-                  <span
-                    className="inline-flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400"
-                    title="Drag to reorder"
-                    aria-label="Drag to reorder"
-                  >
-                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
-                      <circle cx="6" cy="5" r="1.2" />
-                      <circle cx="6" cy="10" r="1.2" />
-                      <circle cx="6" cy="15" r="1.2" />
-                      <circle cx="14" cy="5" r="1.2" />
-                      <circle cx="14" cy="10" r="1.2" />
-                      <circle cx="14" cy="15" r="1.2" />
-                    </svg>
-                  </span>
-                </div>
                 {renderCardBody(card.id)}
               </Card>
             </div>

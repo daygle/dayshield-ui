@@ -761,6 +761,7 @@ export default function Metrics() {
   }
 
   const [customizeOpen, setCustomizeOpen] = useState(false)
+  const [layoutLocked, setLayoutLocked] = useState(true)
   const [cardConfig, setCardConfig] = useState<MetricsCardConfig[]>(loadMetricsCardConfig)
   const [dragCardId, setDragCardId] = useState<MetricsCardId | null>(null)
 
@@ -825,10 +826,20 @@ export default function Metrics() {
           <p className="text-sm text-gray-500 max-w-2xl">
             Rearrange, resize, and show or hide the cards that matter most for your metrics view.
           </p>
-          <p className="mt-1 text-xs text-gray-400">Tip: drag cards directly in the grid to reorder.</p>
+          {!layoutLocked && (
+            <p className="mt-1 text-xs text-gray-400">Tip: drag cards directly in the grid to reorder.</p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <LiveDot connected={stream.connected} />
+          <Button
+            size="sm"
+            variant={layoutLocked ? 'secondary' : 'primary'}
+            onClick={() => setLayoutLocked((v) => !v)}
+            aria-pressed={!layoutLocked}
+          >
+            {layoutLocked ? 'Unlock Layout' : 'Lock Layout'}
+          </Button>
           <Button size="sm" variant="secondary" onClick={() => setCustomizeOpen(true)}>
             Edit Layout
           </Button>
@@ -853,44 +864,53 @@ export default function Metrics() {
           card.visible ? (
             <div
               key={card.id}
-              draggable
-              onDragStart={() => setDragCardId(card.id)}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={() => {
+              draggable={!layoutLocked}
+              onDragStart={layoutLocked ? undefined : () => setDragCardId(card.id)}
+              onDragOver={layoutLocked ? undefined : (event) => event.preventDefault()}
+              onDrop={layoutLocked ? undefined : () => {
                 if (!dragCardId || dragCardId === card.id) return
                 reorderCards(dragCardId, card.id)
                 setDragCardId(null)
               }}
-              onDragEnd={() => setDragCardId(null)}
+              onDragEnd={layoutLocked ? undefined : () => setDragCardId(null)}
               className={`${metricsCardWidthClass(card.width)} ${dragCardId === card.id ? 'opacity-60' : ''}`}
             >
-              <div className="mb-2 flex justify-end">
-                <span
-                  className="inline-flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400"
-                  title="Drag to reorder"
-                  aria-label="Drag to reorder"
-                >
-                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
-                    <circle cx="6" cy="5" r="1.2" />
-                    <circle cx="6" cy="10" r="1.2" />
-                    <circle cx="6" cy="15" r="1.2" />
-                    <circle cx="14" cy="5" r="1.2" />
-                    <circle cx="14" cy="10" r="1.2" />
-                    <circle cx="14" cy="15" r="1.2" />
-                  </svg>
-                </span>
-              </div>
-              {renderMetricsCardBody(
-                card.id,
-                snap,
-                rxHistory,
-                txHistory,
-                cpuSparkData,
-                ramSparkData,
-                suricataSparkData,
-                crowdsecSparkData,
-                labelFor,
-              )}
+              <Card
+                className="h-full min-h-[220px]"
+                title={metricsCardTitles[card.id]}
+                actions={
+                  !layoutLocked && (
+                    <span
+                      className="inline-flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 cursor-grab"
+                      title="Drag to reorder"
+                      aria-label="Drag to reorder"
+                      tabIndex={-1}
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
+                        <circle cx="6" cy="5" r="1.2" />
+                        <circle cx="6" cy="10" r="1.2" />
+                        <circle cx="6" cy="15" r="1.2" />
+                        <circle cx="14" cy="5" r="1.2" />
+                        <circle cx="14" cy="10" r="1.2" />
+                        <circle cx="14" cy="15" r="1.2" />
+                      </svg>
+                    </span>
+                  )
+                }
+              >
+                {renderMetricsCardBody(
+                  card.id,
+                  snap,
+                  rxHistory,
+                  txHistory,
+                  cpuSparkData,
+                  ramSparkData,
+                  suricataSparkData,
+                  crowdsecSparkData,
+                  labelFor,
+                )}
+              </Card>
             </div>
           ) : null
         ))}
