@@ -35,8 +35,9 @@ function normalizeBackupEntry(raw: Record<string, unknown>): BackupEntry {
     }
   }
 
-  // Normalize type to proper case if present
-  let type = (raw.type as string) || ''
+  // Normalize type to proper case if present.
+  const rawType = ((raw.backup_type as string) || (raw.type as string) || '').trim()
+  let type = rawType
   if (type) {
     type = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase()
   }
@@ -47,7 +48,7 @@ function normalizeBackupEntry(raw: Record<string, unknown>): BackupEntry {
     sha256: (raw.sha256 as string) ?? '',
     encrypted: Boolean(raw.encrypted),
     type,
-    version: (raw.version as string) ?? '',
+    version: ((raw.version as string) ?? '').trim(),
   }
 }
 
