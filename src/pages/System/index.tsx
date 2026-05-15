@@ -112,6 +112,77 @@ function formatUpdateOperationName(operation: string): string {
   }
 }
 
+function formatUpdateLevelName(level: string): string {
+  if (!level) return 'Info'
+  return level.charAt(0).toUpperCase() + level.slice(1).toLowerCase()
+}
+
+function normalizeUpdateText(text: string): string {
+  const trimmed = text.trim().replace(/\s+/g, ' ')
+  if (!trimmed) return trimmed
+
+  const lower = trimmed.toLowerCase()
+
+  if (lower === 'manual update check started') {
+    return 'Manual update check started.'
+  }
+  if (lower === 'scheduled update check started') {
+    return 'Scheduled update check started.'
+  }
+  if (lower === 'manual update check completed: no updates found') {
+    return 'Manual update check completed: no updates found.'
+  }
+  if (lower === 'scheduled update check completed: no updates found') {
+    return 'Scheduled update check completed: no updates found.'
+  }
+  if (lower === 'artifact update apply started') {
+    return 'Update started.'
+  }
+  if (lower === 'artifact update apply completed') {
+    return 'Update completed successfully.'
+  }
+  if (lower === 'created backup snapshots') {
+    return 'Created backup snapshots.'
+  }
+  if (lower === 'post-apply service health check passed') {
+    return 'Post-update service health check passed.'
+  }
+
+  const downloadedMatch = trimmed.match(/^downloaded and verified\s+([a-z0-9_-]+)-(.+)$/i)
+  if (downloadedMatch) {
+    const component = formatUpdateComponentName(downloadedMatch[1])
+    const version = downloadedMatch[2].trim()
+    return `Downloaded and verified ${component} ${version}.`
+  }
+
+  const deployedMatch = trimmed.match(/^deployed\s+([a-z0-9_-]+)-(.+)$/i)
+  if (deployedMatch) {
+    const component = formatUpdateComponentName(deployedMatch[1])
+    const version = deployedMatch[2].trim()
+    return `Deployed ${component} ${version}.`
+  }
+
+  const updatesFoundMatch = trimmed.match(/^manual update check completed:\s*updates found for\s+(.+)$/i)
+  if (updatesFoundMatch) {
+    const components = updatesFoundMatch[1]
+      .split(',')
+      .map((name) => formatUpdateComponentName(name.trim()))
+      .filter(Boolean)
+      .join(', ')
+    return `Manual update check completed: updates found for ${components}.`
+  }
+
+  const firstUpper = trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
+  const normalized = firstUpper
+    .replace(/\bok\b/g, 'OK')
+    .replace(/\bui\b/g, 'UI')
+    .replace(/\bids\b/g, 'IDS')
+    .replace(/\bips\b/g, 'IPS')
+
+  if (/[.!?]$/.test(normalized)) return normalized
+  return `${normalized}.`
+}
+
 function updateLogLevelClasses(level: string): string {
   switch (level) {
     case 'success':
@@ -311,25 +382,27 @@ function parseValidationMessage(message: string): {
   notes?: Array<{ component: string; message: string }>
   error?: string
 } {
+  const normalized = message.toLowerCase()
+
   // Handle preflight/general update failures
-  if (message.includes('preflight failed') || message.includes('update action failed')) {
+  if (normalized.includes('preflight failed') || normalized.includes('update action failed')) {
     return {
       status: 'error',
       error: message,
     }
   }
 
-  if (message.includes('validation failed')) {
-    const errorMatch = message.match(/validation failed:\s*(.+)/)
+  if (normalized.includes('validation failed')) {
+    const errorMatch = message.match(/validation failed:\s*(.+)/i)
     return {
       status: 'failed',
       error: errorMatch ? errorMatch[1] : 'Validation failed',
     }
   }
 
-  if (message.includes('validation passed')) {
-    const countMatch = message.match(/validation passed with (\d+) note\(s\)/)
-    const noteCount = countMatch ? parseInt(countMatch[1], 10) : 0
+  if (normalized.includes('validation passed')) {
+    const countMatch = message.match(/validation passed with (\d+) note\(s\)/i)
+    let noteCount = countMatch ? parseInt(countMatch[1], 10) : 0
 
     const notePart = message.split(': ', 2)[1] || ''
     const notes: Array<{ component: string; message: string }> = []
@@ -340,10 +413,14 @@ function parseValidationMessage(message: string): {
       const match = item.match(/^([^:]+):\s*(.+)$/)
       if (match) {
         notes.push({
-          component: match[1].trim().toUpperCase(),
-          message: match[2].trim(),
+          component: match[1].trim(),
+          message: normalizeUpdateText(match[2].trim()),
         })
       }
+    }
+
+    if (!countMatch && notes.length > 0) {
+      noteCount = notes.length
     }
 
     return {
@@ -378,6 +455,7 @@ export default function System() {
   const [updateActionMessage, setUpdateActionMessage] = useState<string | null>(null)
   const [updateSaving, setUpdateSaving] = useState(false)
   const [markingApplianceRebuildComplete, setMarkingApplianceRebuildComplete] = useState(false)
+  const [rollbackConfirmOpen, setRollbackConfirmOpen] = useState(false)
 
   const activeSection = searchParams.get('section') === 'updates'
     ? 'updates'
@@ -499,6 +577,11 @@ export default function System() {
   }
 
   const handleRollbackUpdates = () => {
+    setRollbackConfirmOpen(true)
+  }
+
+  const handleRollbackConfirm = () => {
+    setRollbackConfirmOpen(false)
     setUpdateActionLoading(true)
     setUpdateActionMessage(null)
     rollbackUpdates('both')
@@ -846,13 +929,14 @@ export default function System() {
             {updateActionMessage && (() => {
               const parsed = parseValidationMessage(updateActionMessage)
               const containerClasses = updateActionMessageClasses(updateActionMessage)
+              const formattedMessage = normalizeUpdateText(updateActionMessage)
 
               if (parsed.status === 'error') {
                 return (
                   <div className={containerClasses}>
                     <div className="space-y-2">
                       <div className="font-medium">Update Failed</div>
-                      <div className="text-sm">{parsed.error}</div>
+                      <div className="text-sm">{parsed.error ? normalizeUpdateText(parsed.error) : 'Update failed.'}</div>
                     </div>
                   </div>
                 )
@@ -862,17 +946,17 @@ export default function System() {
                 return (
                   <div className={containerClasses}>
                     <div className="font-medium mb-2">Validation Failed</div>
-                    <div className="text-sm">{parsed.error}</div>
+                    <div className="text-sm">{parsed.error ? normalizeUpdateText(parsed.error) : 'Validation failed.'}</div>
                   </div>
                 )
               }
 
-              if (parsed.status === 'passed' && parsed.noteCount && parsed.notes && parsed.notes.length > 0) {
+              if (parsed.status === 'passed' && parsed.notes && parsed.notes.length > 0) {
                 return (
                   <div className={containerClasses}>
                     <div className="space-y-3">
                       <div className="font-medium">
-                        Validation OK with {parsed.noteCount} Note{parsed.noteCount !== 1 ? 's' : ''}
+                        Validation passed with {parsed.noteCount ?? parsed.notes.length} note{(parsed.noteCount ?? parsed.notes.length) !== 1 ? 's' : ''}.
                       </div>
                       <div className="space-y-2">
                         {/* Group notes by component */}
@@ -880,7 +964,7 @@ export default function System() {
                           parsed.notes.map(n => [n.component, n])
                         ).entries()).map(([component, note]) => (
                           <div key={component} className="border-l-2 border-current pl-3">
-                            <div className="font-medium text-sm">{component}</div>
+                            <div className="font-medium text-sm">{formatUpdateComponentName(component)}</div>
                             <div className="text-xs mt-1">{note.message}</div>
                           </div>
                         ))}
@@ -892,7 +976,7 @@ export default function System() {
 
               return (
                 <div className={containerClasses}>
-                  {updateActionMessage}
+                  {formattedMessage}
                 </div>
               )
             })()}
@@ -910,23 +994,24 @@ export default function System() {
                     )
                     .map((entry: UpdateLogEntry, idx: number) => (
                       <li key={`${entry.timestamp}-${entry.operation}-${idx}`} className="px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-mono text-gray-500">
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <span className="font-mono text-gray-500">
                             {formatIsoDate(entry.timestamp)}
                           </span>
-                          <span className="text-xs font-medium text-gray-700">
+                          <span className="text-gray-300">•</span>
+                          <span className="rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-700">
                             {formatUpdateOperationName(entry.operation)}
                           </span>
                           {entry.component && (
-                            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 uppercase">
-                              {entry.component}
+                            <span className="rounded bg-slate-100 px-2 py-0.5 font-medium text-slate-700">
+                              {formatUpdateComponentName(entry.component)}
                             </span>
                           )}
-                          <span className={`rounded px-2 py-0.5 text-xs font-medium ${updateLogLevelClasses(entry.level)}`}>
-                            {entry.level}
+                          <span className={`rounded px-2 py-0.5 font-medium ${updateLogLevelClasses(entry.level)}`}>
+                            {formatUpdateLevelName(entry.level)}
                           </span>
                         </div>
-                        <p className="mt-1 text-sm text-gray-800">{entry.message}</p>
+                        <p className="mt-1 text-sm leading-relaxed text-gray-800">{normalizeUpdateText(entry.message)}</p>
                       </li>
                     ))}
                 </ul>
@@ -1256,6 +1341,27 @@ export default function System() {
         <p className="text-sm text-gray-600">
           Are you sure you want to reboot the system? All active connections will be interrupted.
         </p>
+      </Modal>
+
+      {/* Rollback Confirmation Modal */}
+      <Modal
+        open={rollbackConfirmOpen}
+        title="Confirm Rollback"
+        onClose={() => setRollbackConfirmOpen(false)}
+        onConfirm={handleRollbackConfirm}
+        confirmLabel="Rollback"
+        confirmVariant="danger"
+        loading={updateActionLoading}
+        size="sm"
+      >
+        <div className="space-y-2">
+          <p className="text-sm text-red-700 font-medium">
+            Rolling back will revert both the software and the configuration to their previous state.
+          </p>
+          <p className="text-sm text-gray-700">
+            This action cannot be undone. All changes made since the last update will be lost.
+          </p>
+        </div>
       </Modal>
     </div>
   )

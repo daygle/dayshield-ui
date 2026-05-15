@@ -606,6 +606,8 @@ export interface BackupEntry {
   createdAt: string      // ISO timestamp (always provided)
   sha256?: string        // (may be undefined if still processing)
   encrypted: boolean
+  type?: string          // 'Manual' | 'Scheduled' | 'Update' (proper case, optional for legacy)
+  version?: string       // Application version string (optional for legacy)
 }
 
 export interface CreateBackupRequest {

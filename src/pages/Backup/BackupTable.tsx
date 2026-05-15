@@ -33,6 +33,22 @@ const columns = (
     ),
   },
   {
+    key: 'type',
+    header: 'Type',
+    className: 'whitespace-nowrap',
+    render: (row) => (
+      <span className="text-gray-600">{(row as BackupEntry).type || '-'}</span>
+    ),
+  },
+  {
+    key: 'version',
+    header: 'Version',
+    className: 'whitespace-nowrap',
+    render: (row) => (
+      <span className="text-gray-600">{(row as BackupEntry).version || '-'}</span>
+    ),
+  },
+  {
     key: 'size',
     header: 'Size',
     className: 'whitespace-nowrap',
