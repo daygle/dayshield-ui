@@ -448,7 +448,6 @@ export default function System() {
     checkForUpdates()
       .then((res) => {
         setUpdates(res.data)
-        setUpdateActionMessage('Update check completed.')
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false))
