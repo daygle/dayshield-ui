@@ -13,6 +13,23 @@ import type {
  */
 function normalizeBackupEntry(raw: Record<string, unknown>): BackupEntry {
   const filename = (raw.filename as string) ?? ''
+
+  const parseEncrypted = (): boolean => {
+    const candidates = [raw.encrypted, raw.is_encrypted, raw.encryption_enabled]
+
+    for (const value of candidates) {
+      if (typeof value === 'boolean') return value
+      if (typeof value === 'number') return value !== 0
+      if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase()
+        if (['1', 'true', 'yes', 'on'].includes(normalized)) return true
+        if (['0', 'false', 'no', 'off'].includes(normalized)) return false
+      }
+    }
+
+    // Fallback: encrypted archives typically end with .enc.
+    return filename.toLowerCase().endsWith('.enc')
+  }
   
   // Parse created_at from backend response or filename
   let createdAt = ''
@@ -46,7 +63,7 @@ function normalizeBackupEntry(raw: Record<string, unknown>): BackupEntry {
     size: (raw.size_bytes as number) ?? (raw.size as number),
     createdAt: createdAt || new Date().toISOString(),
     sha256: (raw.sha256 as string) ?? '',
-    encrypted: Boolean(raw.encrypted),
+    encrypted: parseEncrypted(),
     type,
     version: ((raw.version as string) ?? '').trim(),
   }
