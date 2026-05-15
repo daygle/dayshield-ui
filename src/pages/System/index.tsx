@@ -124,14 +124,20 @@ function formatUpdateLevelName(level: string): string {
   return level.charAt(0).toUpperCase() + level.slice(1).toLowerCase()
 }
 
-function normalizeUpdateText(text: string): string {
-    // Show only file name for restored config backup archive
-    const restoredBackupMatch = trimmed.match(/^Restored config backup archive: (.+\/)?([^\/]+)$/)
-    if (restoredBackupMatch) {
-      return `Restored config backup archive: ${restoredBackupMatch[2]}.`
-    }
+function normalizeUpdateText(text: string, entry?: Pick<UpdateLogEntry, 'component' | 'fromVersion' | 'toVersion'>): string {
   const trimmed = text.trim().replace(/\s+/g, ' ')
   if (!trimmed) return trimmed
+
+  const ensureVersionPrefix = (version: string): string => {
+    const v = version.trim()
+    return v.toLowerCase().startsWith('v') ? v : `v${v}`
+  }
+
+  // Show only file name for created/restored config backup archive
+  const backupArchiveMatch = trimmed.match(/^(Restored|Created) config backup archive: (.+[\\\/])?([^\\\/]+)$/)
+  if (backupArchiveMatch) {
+    return `${backupArchiveMatch[1]} config backup archive: ${backupArchiveMatch[3]}.`
+  }
 
   const lower = trimmed.toLowerCase()
 
@@ -171,7 +177,22 @@ function normalizeUpdateText(text: string): string {
   if (deployedMatch) {
     const component = formatUpdateComponentName(deployedMatch[1])
     const version = deployedMatch[2].trim()
-    return `Deployed ${component} ${version}.`
+    const fromVersion = entry?.fromVersion?.trim()
+    if (fromVersion) {
+      return `Deployed ${component} from ${ensureVersionPrefix(fromVersion)} to ${ensureVersionPrefix(version)}.`
+    }
+    return `Deployed ${component} ${ensureVersionPrefix(version)}.`
+  }
+
+  const rollbackMatch = trimmed.match(/^rolled back\s+([a-z0-9_-]+)\s+to\s+v?(.+)$/i)
+  if (rollbackMatch) {
+    const component = formatUpdateComponentName(rollbackMatch[1])
+    const toVersion = entry?.toVersion?.trim() || rollbackMatch[2].trim()
+    const fromVersion = entry?.fromVersion?.trim()
+    if (fromVersion) {
+      return `Rolled back ${component} from ${ensureVersionPrefix(fromVersion)} to ${ensureVersionPrefix(toVersion)}.`
+    }
+    return `Rolled back ${component} to ${ensureVersionPrefix(toVersion)}.`
   }
 
   const updatesFoundMatch = trimmed.match(/^manual update check completed:\s*updates found for\s+(.+)$/i)
@@ -996,27 +1017,10 @@ export default function System() {
                 )
               }
 
+
+              // Remove green validation box: do not render anything for validation passed with notes
               if (parsed.status === 'passed' && parsed.notes && parsed.notes.length > 0) {
-                return (
-                  <div className={containerClasses}>
-                    <div className="space-y-3">
-                      <div className="font-medium">
-                        Validation passed with {parsed.noteCount ?? parsed.notes.length} note{(parsed.noteCount ?? parsed.notes.length) !== 1 ? 's' : ''}.
-                      </div>
-                      <div className="space-y-2">
-                        {/* Group notes by component */}
-                        {Array.from(new Map(
-                          parsed.notes.map(n => [n.component, n])
-                        ).entries()).map(([component, note]) => (
-                          <div key={component} className="border-l-2 border-current pl-3">
-                            <div className="font-medium text-sm">{formatUpdateComponentName(component)}</div>
-                            <div className="text-xs mt-1">{note.message}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )
+                return null
               }
 
               return (
@@ -1056,7 +1060,7 @@ export default function System() {
                             {formatUpdateLevelName(entry.level)}
                           </span>
                         </div>
-                        <p className="mt-1 text-sm leading-relaxed text-gray-800">{normalizeUpdateText(entry.message)}</p>
+                        <p className="mt-1 text-sm leading-relaxed text-gray-800">{normalizeUpdateText(entry.message, entry)}</p>
                       </li>
                     ))}
                 </ul>

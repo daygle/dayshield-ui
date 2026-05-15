@@ -574,6 +574,8 @@ export interface UpdateLogEntry {
   level: 'info' | 'success' | 'error' | string
   message: string
   component?: string
+  fromVersion?: string
+  toVersion?: string
 }
 
 export interface UpdatesStatus {
