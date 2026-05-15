@@ -86,17 +86,23 @@ const subgroupLabelFor = (ruleset: SuricataRuleset): string => {
   const family = familyLabelFor(ruleset)
   if (family !== 'ET open') return 'General'
 
+  const normalizeEtGroupLabel = (value: string): string => {
+    const trimmed = value.trim()
+    if (!trimmed) return 'et-open.rules'
+    return trimmed.endsWith('.rules') ? trimmed : `${trimmed}.rules`
+  }
+
   const idParts = String(ruleset.id).split('/').filter(Boolean)
   if (idParts.length > 1 && idParts[1]) {
-    return idParts[1]
+    return normalizeEtGroupLabel(idParts[1])
   }
 
   const basename = sourceFileBasename(ruleset.source)
   if (basename && basename.startsWith('emerging-')) {
-    return basename
+    return normalizeEtGroupLabel(basename)
   }
 
-  return 'et-open'
+  return 'et-open.rules'
 }
 
 const subgroupSort = (a: string, b: string): number => {

@@ -59,6 +59,10 @@ function SuricataContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Summary bar helpers
+  const monitoredCount = config?.interfaces.length ?? 0;
+  const totalIfaces = interfaces.length;
+
   const loadAll = useCallback(() => {
     setLoading(true)
     const loadPromise = selectedInterface
@@ -223,8 +227,20 @@ function SuricataContent() {
     return interfaceConfig?.monitored ? alerts : []
   }, [alerts, selectedInterface, alertsIncludeInterface, interfaceConfig?.monitored])
 
+
   return (
     <div className="space-y-6">
+      {/* Summary/status bar */}
+      {config && (
+        <div className="flex flex-wrap items-center gap-4 rounded-md border border-gray-200 bg-white px-4 py-3 mb-2">
+          <div className="font-semibold text-gray-800">
+            Suricata: <span className={config.enabled ? 'text-green-600' : 'text-gray-400'}>{config.enabled ? 'Running' : 'Stopped'}</span>
+          </div>
+          <div className="text-gray-700">Mode: <span className="font-medium uppercase">{config.mode}</span></div>
+          <div className="text-gray-700">Monitored: <span className="font-medium">{monitoredCount}</span> / {totalIfaces}</div>
+        </div>
+      )}
+
       {loading && (
         <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600" role="status" aria-live="polite">
           Loading Suricata configuration, rulesets, and alerts…
@@ -236,34 +252,29 @@ function SuricataContent() {
         </div>
       )}
 
-      <Card
-        title="Suricata"
-        subtitle="Select the interface whose Suricata settings, rulesets, and recent alerts you want to review"
-      >
-        <div className="max-w-md">
-          <FormField
-            id="suricata-interface-selector"
-            label="Interface"
-            as="select"
-            aria-label="Select Suricata interface"
-            value={selectedInterface ?? ''}
-            onChange={(e) => handleSelectInterface(e.target.value)}
-          >
-            <option value="">Select interface</option>
-            {interfaces.map((iface) => (
-              <option key={iface.name} value={iface.name}>
-                {interfaceLabel(iface.name)}
-              </option>
-            ))}
-          </FormField>
-        </div>
-      </Card>
+      {/* Interface selector, visually separated */}
+      <div className="rounded-md border border-gray-200 bg-white px-4 py-3 max-w-md">
+        <FormField
+          id="suricata-interface-selector"
+          label="Interface"
+          as="select"
+          aria-label="Select Suricata interface"
+          value={selectedInterface ?? ''}
+          onChange={(e) => handleSelectInterface(e.target.value)}
+        >
+          <option value="">Select interface</option>
+          {interfaces.map((iface) => (
+            <option key={iface.name} value={iface.name}>
+              {interfaceLabel(iface.name)}
+            </option>
+          ))}
+        </FormField>
+      </div>
 
       {/* Status card */}
       {config && (
         <Card
           title={selectedInterface ? `Suricata Settings: ${selectedInterfaceLabel}` : 'Suricata IDS/IPS'}
-          subtitle={selectedInterface ? 'Per-interface Suricata monitoring state and engine mode' : 'Network threat detection and prevention'}
           actions={
             <div className="flex items-center gap-2">
               {selectedInterface && interfaceConfig && (
@@ -332,15 +343,21 @@ function SuricataContent() {
         </Card>
       )}
 
-      <SuricataRulesetsSection />
+
+      {/* Rulesets section, clearly labeled */}
+      <div className="mt-2">
+        <Card title="Rulesets" subtitle="Select and manage Suricata rulesets. Grouped by ET Open .rules files.">
+          <SuricataRulesetsSection />
+        </Card>
+      </div>
+
 
       {/* Alerts */}
       <Card
         title="Recent Alerts"
-        subtitle={selectedInterface ? `Latest IDS/IPS events for ${selectedInterfaceLabel}` : 'Latest 100 IDS/IPS events'}
         actions={
-          <Button variant="secondary" size="sm" onClick={loadAll}>
-            Refresh
+          <Button variant="primary" size="sm" onClick={loadAll}>
+            Refresh Alerts
           </Button>
         }
       >
