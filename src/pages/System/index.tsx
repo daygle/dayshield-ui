@@ -20,6 +20,7 @@ import Card from '../../components/Card'
 import Button from '../../components/Button'
 import FormField from '../../components/FormField'
 import Modal from '../../components/Modal'
+import { useDisplayPreferences, type DateFormatPreference, type TimeFormatPreference } from '../../context/DisplayPreferencesContext'
 import type { UpdateScheduleFrequency, UpdateScheduleWeekday } from '../../types'
 
 const DEFAULT_GITHUB_REGISTRY_URL = 'https://api.github.com/repos/daygle/dayshield-core'
@@ -48,18 +49,23 @@ const UPDATE_MONTHLY_DAY_OPTIONS: Array<{ value: UpdateMonthlyDay; label: string
   { value: 'last', label: 'Last Day of Month' },
 ]
 
+const DATE_FORMAT_OPTIONS: Array<{ value: DateFormatPreference; label: string }> = [
+  { value: 'yyyy-mm-dd', label: 'YYYY-MM-DD' },
+  { value: 'dd-mm-yyyy', label: 'DD-MM-YYYY' },
+  { value: 'mm-dd-yyyy', label: 'MM-DD-YYYY' },
+]
+
+const TIME_FORMAT_OPTIONS: Array<{ value: TimeFormatPreference; label: string }> = [
+  { value: '24h', label: '24-hour (HH:MM:SS)' },
+  { value: '12h', label: '12-hour (HH:MM:SS AM/PM)' },
+]
+
 function formatUptime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0d 0h 0m'
   const d = Math.floor(seconds / 86400)
   const h = Math.floor((seconds % 86400) / 3600)
   const m = Math.floor((seconds % 3600) / 60)
   return `${d}d ${h}h ${m}m`
-}
-
-function formatIsoDate(value?: string): string {
-  if (!value) return '-'
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? '-' : parsed.toLocaleString()
 }
 
 function shortCommit(value?: string): string {
@@ -434,6 +440,7 @@ function parseValidationMessage(message: string): {
 }
 
 export default function System() {
+  const { dateFormat, timeFormat, setDateFormat, setTimeFormat, formatDateTime } = useDisplayPreferences()
   const [searchParams] = useSearchParams()
   const [status, setStatus] = useState<SystemStatus | null>(null)
   const [config, setConfig] = useState<SystemConfig | null>(null)
@@ -716,7 +723,7 @@ export default function System() {
             <div>
               <dt className="text-gray-500">Last Updated</dt>
               <dd className="font-medium text-gray-800">
-                {formatIsoDate(status.lastUpdated)}
+                {formatDateTime(status.lastUpdated)}
               </dd>
             </div>
             <div>
@@ -772,6 +779,40 @@ export default function System() {
               <dd className="font-medium text-gray-800">{config.webPort}</dd>
             </div>
           </dl>
+        </Card>
+      )}
+
+      {activeSection === 'overview' && (
+        <Card title="Display Preferences" subtitle="Global date and time display format for the web UI">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              id="display-date-format"
+              label="Date Format"
+              as="select"
+              value={dateFormat}
+              onChange={(e) => setDateFormat(e.target.value as DateFormatPreference)}
+            >
+              {DATE_FORMAT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </FormField>
+
+            <FormField
+              id="display-time-format"
+              label="Time Format"
+              as="select"
+              value={timeFormat}
+              onChange={(e) => setTimeFormat(e.target.value as TimeFormatPreference)}
+            >
+              {TIME_FORMAT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </FormField>
+          </div>
+
+          <p className="mt-3 text-xs text-gray-500">
+            Preview: {formatDateTime(new Date())}
+          </p>
         </Card>
       )}
 
@@ -917,7 +958,7 @@ export default function System() {
                   </Button>
                   {updates.applianceRebuildMarkedAt && (
                     <span className="text-xs text-orange-700">
-                      Last changed: {formatIsoDate(updates.applianceRebuildMarkedAt)}
+                      Last changed: {formatDateTime(updates.applianceRebuildMarkedAt)}
                     </span>
                   )}
                 </div>
@@ -994,7 +1035,7 @@ export default function System() {
                       <li key={`${entry.timestamp}-${entry.operation}-${idx}`} className="px-4 py-3">
                         <div className="flex flex-wrap items-center gap-2 text-xs">
                           <span className="font-mono text-gray-500">
-                            {formatIsoDate(entry.timestamp)}
+                            {formatDateTime(entry.timestamp)}
                           </span>
                           <span className="text-gray-300">•</span>
                           <span className="rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-700">
@@ -1058,7 +1099,7 @@ export default function System() {
               <div className="rounded-lg border border-gray-200 bg-gray-50 px-5 py-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Last Reboot</p>
                 <p className="mt-1 text-base font-semibold text-gray-900">
-                  {new Date(Date.now() - status.uptime * 1000).toLocaleString()}
+                  {formatDateTime(new Date(Date.now() - status.uptime * 1000))}
                 </p>
               </div>
             </div>

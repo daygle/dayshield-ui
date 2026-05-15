@@ -9,6 +9,7 @@ import Button from '../../components/Button'
 import ErrorBanner from '../../components/ErrorBanner'
 import Sparkline from '../../components/Sparkline'
 import CardLayoutManager from '../../components/CardLayoutManager'
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -203,6 +204,7 @@ const loadDashboardCardConfig = (): DashboardCardConfig[] => {
 }
 
 export default function Dashboard() {
+  const { formatDate } = useDisplayPreferences()
   const sys = useSystemStatus()
   const net = useNetworkStatus()
   const sec = useSecurityStatus()
@@ -370,7 +372,7 @@ export default function Dashboard() {
                     {acme.data.next_renewal && (
                       <MetricRow
                         label="Next Renewal"
-                        value={new Date(acme.data.next_renewal).toLocaleDateString()}
+                        value={formatDate(acme.data.next_renewal)}
                       />
                     )}
                   </div>

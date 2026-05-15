@@ -12,6 +12,7 @@ import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
 import ErrorBoundary from '../../components/ErrorBoundary'
 import { useToast } from '../../context/ToastContext'
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
 
 type DecisionRow = CrowdSecDecision & Record<string, unknown>
 
@@ -36,15 +37,18 @@ export default function CrowdSec() {
   )
 }
 
-const decisionColumns: Column<DecisionRow>[] = [
+const decisionColumns = (
+  formatDateTime: (value?: Date | string | number | null) => string,
+): Column<DecisionRow>[] => [
   { key: 'value', header: 'IP / Range', render: (row) => <span className="font-mono text-xs">{row.value as string}</span> },
   { key: 'type', header: 'Type', render: (row) => decisionTypeBadge(row.type as CrowdSecDecision['type']) },
   { key: 'origin', header: 'Origin' },
   { key: 'duration', header: 'Duration' },
-  { key: 'createdAt', header: 'Created', render: (row) => new Date(row.createdAt as string).toLocaleString() },
+  { key: 'createdAt', header: 'Created', render: (row) => formatDateTime(row.createdAt as string) },
 ]
 
 function CrowdSecContent() {
+  const { formatDateTime } = useDisplayPreferences()
   const [status, setStatus] = useState<CrowdSecStatus | null>(null)
   const [decisions, setDecisions] = useState<DecisionRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -226,7 +230,7 @@ function CrowdSecContent() {
         subtitle="IP bans, captchas and throttles enforced by CrowdSec"
       >
         <Table
-          columns={decisionColumns}
+          columns={decisionColumns(formatDateTime)}
           data={decisions}
           keyField="id"
           loading={false}

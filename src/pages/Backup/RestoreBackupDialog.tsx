@@ -1,5 +1,6 @@
 import Modal from '../../components/Modal'
 import type { BackupEntry } from '../../types'
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -22,6 +23,8 @@ export default function RestoreBackupDialog({
   onClose,
   onConfirm,
 }: RestoreBackupDialogProps) {
+  const { formatDateTime } = useDisplayPreferences()
+
   if (!entry) return null
 
   return (
@@ -70,7 +73,7 @@ export default function RestoreBackupDialog({
           <div>
             <dt className="text-gray-500">Created</dt>
             <dd className="font-medium text-gray-800">
-              {new Date(entry.createdAt).toLocaleString()}
+              {formatDateTime(entry.createdAt)}
             </dd>
           </div>
           <div>

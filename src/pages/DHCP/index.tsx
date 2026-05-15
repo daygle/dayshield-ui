@@ -21,6 +21,7 @@ import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
 
 type StaticLeaseRow = DhcpStaticLease & Record<string, unknown>
 type ActiveLeaseRow = DhcpLease & Record<string, unknown>
@@ -57,6 +58,7 @@ function isWanInterface(iface: NetworkInterface): boolean {
 }
 
 export default function DHCP() {
+  const { formatDateTime } = useDisplayPreferences()
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedInterface = searchParams.get('iface')
   const [config, setConfig] = useState<DhcpConfig | null>(null)
@@ -145,7 +147,7 @@ export default function DHCP() {
         const d = Number.isFinite(asNum) && asNum > 1e9
           ? new Date(asNum * 1000)
           : new Date(raw)
-        return isNaN(d.getTime()) ? raw : d.toLocaleString()
+        return isNaN(d.getTime()) ? raw : formatDateTime(d)
       },
     },
     {

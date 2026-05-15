@@ -21,6 +21,7 @@ import Table, { Column } from '../../components/Table'
 import FormField from '../../components/FormField'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 import ErrorBoundary from '../../components/ErrorBoundary'
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
 import { SuricataRulesetsSection } from './RulesetsPage'
 
 type AlertRow = SuricataAlert & Record<string, unknown>
@@ -50,6 +51,7 @@ const actionBadge = (action: 'alert' | 'drop') => (
 )
 
 function SuricataContent() {
+  const { formatDateTime } = useDisplayPreferences()
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedInterface = searchParams.get('iface')
   const [config, setConfig] = useState<SuricataConfig | null>(null)
@@ -185,7 +187,7 @@ function SuricataContent() {
     {
       key: 'timestamp',
       header: 'Time',
-      render: (row) => new Date(row.timestamp as string).toLocaleString(),
+      render: (row) => formatDateTime(row.timestamp as string),
     },
     { key: 'srcIp', header: 'Src IP' },
     { key: 'dstIp', header: 'Dst IP' },

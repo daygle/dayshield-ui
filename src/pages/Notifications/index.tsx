@@ -9,6 +9,7 @@ import CategorySelector from './CategorySelector'
 import RateLimitInput from './RateLimitInput'
 import DigestToggle from './DigestToggle'
 import TestEmailButton from './TestEmailButton'
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
@@ -94,6 +95,7 @@ function validateSmtp(smtp: SmtpConfig): SmtpErrors {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
+  const { formatDateTime } = useDisplayPreferences()
   const [config, setConfig] = useState<NotifyConfig>(DEFAULT_CONFIG)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -153,7 +155,7 @@ export default function NotificationsPage() {
         }
       >
         {config.lastStatus && (
-          <LastStatusBanner status={config.lastStatus} />
+          <LastStatusBanner status={config.lastStatus} formatDateTime={formatDateTime} />
         )}
         {!config.lastStatus && (
           <p className="text-sm text-gray-500">
@@ -265,10 +267,11 @@ export default function NotificationsPage() {
 
 interface LastStatusBannerProps {
   status: NonNullable<NotifyConfig['lastStatus']>
+  formatDateTime: (value?: Date | string | number | null) => string
 }
 
-function LastStatusBanner({ status }: LastStatusBannerProps) {
-  const sentAt = new Date(status.sentAt).toLocaleString()
+function LastStatusBanner({ status, formatDateTime }: LastStatusBannerProps) {
+  const sentAt = formatDateTime(status.sentAt)
   return (
     <div
       className={[

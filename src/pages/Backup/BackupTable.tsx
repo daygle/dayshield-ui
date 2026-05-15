@@ -1,6 +1,7 @@
 import type { BackupEntry } from '../../types'
 import Table, { Column } from '../../components/Table'
 import Button from '../../components/Button'
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -22,6 +23,7 @@ const columns = (
   onDownload: (e: BackupEntry) => void,
   onRestore: (e: BackupEntry) => void,
   onDelete: (e: BackupEntry) => void,
+  formatDateTime: (value?: Date | string | number | null) => string,
 ): Column<BackupEntry & Record<string, unknown>>[] => [
   {
     key: 'filename',
@@ -66,7 +68,7 @@ const columns = (
     className: 'whitespace-nowrap',
     render: (row) => (
       <span className="text-gray-600">
-        {new Date((row as BackupEntry).createdAt).toLocaleString()}
+        {formatDateTime((row as BackupEntry).createdAt)}
       </span>
     ),
   },
@@ -153,9 +155,11 @@ export default function BackupTable({
   onRestore,
   onDelete,
 }: BackupTableProps) {
+  const { formatDateTime } = useDisplayPreferences()
+
   return (
     <Table<BackupEntry & Record<string, unknown>>
-      columns={columns(restoring, onDownload, onRestore, onDelete)}
+      columns={columns(restoring, onDownload, onRestore, onDelete, formatDateTime)}
       data={entries as (BackupEntry & Record<string, unknown>)[]}
       keyField="filename"
       loading={loading}

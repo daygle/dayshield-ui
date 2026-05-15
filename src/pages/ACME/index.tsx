@@ -11,6 +11,7 @@ import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
 
 type CertRow = AcmeCertificate & Record<string, unknown>
 
@@ -35,6 +36,7 @@ function daysUntil(isoDate: string): number {
 const defaultCertForm = { domain: '', sans: '', autoRenew: true }
 
 export default function ACME() {
+  const { formatDate } = useDisplayPreferences()
   const [account, setAccount] = useState<AcmeAccount | null>(null)
   const [certs, setCerts] = useState<CertRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -116,7 +118,7 @@ export default function ACME() {
         const color = days < 14 ? 'text-red-600' : days < 30 ? 'text-yellow-600' : 'text-gray-800'
         return (
           <span className={`font-medium ${color}`}>
-            {parsed.toLocaleDateString()} ({days}d)
+            {formatDate(parsed)} ({days}d)
           </span>
         )
       },

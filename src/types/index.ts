@@ -87,7 +87,7 @@ export interface ListGatewaysResponse {
 export type FirewallAction = 'accept' | 'drop' | 'reject' | 'jump' | 'log'
 export type FirewallProtocol = 'tcp' | 'udp' | 'icmp' | 'icmpv6' | 'any'
 export type FirewallChainPolicy = 'accept' | 'drop'
-export type FirewallDirection = 'input' | 'forward' | 'output'
+export type FirewallDirection = 'input' | 'forward' | 'output' | 'both'
 
 /** Time-based schedule that gates when a firewall rule is active. */
 export interface FirewallSchedule {

@@ -16,25 +16,13 @@ import Table, { type Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import ErrorBoundary from '../../components/ErrorBoundary'
 import { useToast } from '../../context/ToastContext'
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
 
 type ThreatRow = ThreatEvent & Record<string, unknown>
 type BlockedRow = BlockedEntry & Record<string, unknown>
 
 function unixSecondsToMs(unixSeconds: number): number {
   return unixSeconds * 1000
-}
-
-function formatLocalDateTime(unixSeconds: number | null): string {
-  if (unixSeconds === null || !Number.isFinite(unixSeconds)) return '-'
-  const date = new Date(unixSecondsToMs(unixSeconds))
-  if (Number.isNaN(date.getTime())) return '-'
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  const hh = String(date.getHours()).padStart(2, '0')
-  const mm = String(date.getMinutes()).padStart(2, '0')
-  const ss = String(date.getSeconds()).padStart(2, '0')
-  return `${y}-${m}-${d} ${hh}:${mm}:${ss}`
 }
 
 function formatRelativeFromUnix(unixSeconds: number | null): string {
@@ -121,6 +109,7 @@ function yesNoBadge(flag: boolean, yesText = 'Yes', noText = 'No', yesClass = 'b
 
 function AIThreatsContent() {
   const { addToast } = useToast()
+  const { formatDateTime } = useDisplayPreferences()
   const [threats, setThreats] = useState<ThreatRow[]>([])
   const [blockedEntries, setBlockedEntries] = useState<BlockedRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -133,6 +122,11 @@ function AIThreatsContent() {
   const [aiForm, setAiForm] = useState<AiEngineConfig>(DEFAULT_AI_SETTINGS)
   const [aiLoading, setAiLoading] = useState(true)
   const [aiSaving, setAiSaving] = useState(false)
+
+  const formatUnixDateTime = useCallback((unixSeconds: number | null): string => {
+    if (unixSeconds === null || !Number.isFinite(unixSeconds)) return '-'
+    return formatDateTime(new Date(unixSecondsToMs(unixSeconds)))
+  }, [formatDateTime])
 
   const aiValidation = useMemo(() => {
     const threshold = Number(aiForm.risk_score_block_threshold)
@@ -275,8 +269,8 @@ function AIThreatsContent() {
         key: 'timestamp',
         header: 'Timestamp',
         render: (row) => (
-          <span title={new Date(unixSecondsToMs(row.timestamp as number)).toLocaleString()}>
-            {formatLocalDateTime(row.timestamp as number)}
+          <span title={formatUnixDateTime(row.timestamp as number)}>
+            {formatUnixDateTime(row.timestamp as number)}
           </span>
         ),
       },
@@ -330,7 +324,7 @@ function AIThreatsContent() {
         key: 'added_at',
         header: 'Added',
         render: (row) => (
-          <span title={formatLocalDateTime(Number(row.added_at))}>
+          <span title={formatUnixDateTime(Number(row.added_at))}>
             {formatRelativeFromUnix(Number(row.added_at))}
           </span>
         ),
@@ -342,7 +336,7 @@ function AIThreatsContent() {
           row.expires_at === null ? (
             <span className="text-gray-600">Permanent</span>
           ) : (
-            <span title={formatLocalDateTime(Number(row.expires_at))}>
+            <span title={formatUnixDateTime(Number(row.expires_at))}>
               {formatRelativeFromUnix(Number(row.expires_at))}
             </span>
           ),
@@ -370,7 +364,7 @@ function AIThreatsContent() {
         ),
       },
     ],
-    [handleUnblock, unblockingIp],
+    [formatUnixDateTime, handleUnblock, unblockingIp],
   )
 
   return (
@@ -572,7 +566,7 @@ function AIThreatsContent() {
           <div className="space-y-4 text-sm">
             <dl className="grid grid-cols-2 gap-x-6 gap-y-2">
               <Detail label="ID" value={<span className="font-mono break-all">{selectedThreat.id}</span>} />
-              <Detail label="Timestamp" value={formatLocalDateTime(selectedThreat.timestamp)} />
+              <Detail label="Timestamp" value={formatUnixDateTime(selectedThreat.timestamp)} />
               <Detail label="Source IP" value={<span className="font-mono">{selectedThreat.src_ip}</span>} />
               <Detail label="Destination IP" value={<span className="font-mono">{selectedThreat.dst_ip}</span>} />
               <Detail label="Source Port" value={selectedThreat.src_port === null ? '-' : String(selectedThreat.src_port)} />
@@ -585,7 +579,7 @@ function AIThreatsContent() {
               <Detail label="Model Label" value={selectedThreat.label === undefined ? '-' : String(selectedThreat.label)} />
               <Detail label="Risk Score" value={`${Math.round(selectedThreat.risk_score * 100)}%`} />
               <Detail label="Blocked" value={selectedThreat.blocked ? 'Yes' : 'No'} />
-              <Detail label="Block Expires" value={selectedThreat.block_expires_at === null ? 'Permanent' : formatLocalDateTime(selectedThreat.block_expires_at)} />
+              <Detail label="Block Expires" value={selectedThreat.block_expires_at === null ? 'Permanent' : formatUnixDateTime(selectedThreat.block_expires_at)} />
               <Detail label="Escalated" value={selectedThreat.escalated ? 'Yes' : 'No'} />
               <Detail label="Quarantine" value={selectedThreat.quarantine ? 'Yes' : 'No'} />
               <Detail label="Manually Unblocked" value={selectedThreat.manually_unblocked ? 'Yes' : 'No'} />

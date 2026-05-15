@@ -18,6 +18,7 @@ import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
 type RuleRow = FirewallRule & Record<string, unknown>
@@ -91,6 +92,8 @@ function directionLabel(direction: FirewallRule['direction']) {
   switch (direction) {
     case 'input':
       return 'Inbound'
+    case 'both':
+      return 'In/Out'
     case 'forward':
       return 'Forwarded'
     case 'output':
@@ -120,13 +123,17 @@ function protocolLabel(protocol: FirewallRule['protocol']) {
 }
 
 function interfaceFieldLabel(direction: FirewallRule['direction']) {
-  return direction === 'output' ? 'Egress Interface' : 'Ingress Interface'
+  if (direction === 'output') return 'Egress Interface'
+  if (direction === 'both') return 'Interface'
+  return 'Ingress Interface'
 }
 
 function interfaceFieldHint(direction: FirewallRule['direction']) {
   switch (direction) {
     case 'input':
       return 'Matches traffic entering the firewall on this interface.'
+    case 'both':
+      return 'Matches both inbound and outbound traffic on this interface.'
     case 'forward':
       return 'Matches forwarded traffic by its incoming interface.'
     case 'output':
@@ -231,6 +238,7 @@ function parseCommaSeparatedNumbers(value: string): number[] {
 }
 
 export default function Firewall() {
+  const { formatDate, timeFormat } = useDisplayPreferences()
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedSection = searchParams.get('section')
   const selectedInterface = searchParams.get('iface')
@@ -273,6 +281,32 @@ export default function Firewall() {
     const prefix = vpnInterfaceNames.includes(iface.name) ? 'VPN • ' : ''
     const base = formatInterfaceDisplayName(iface.description, iface.name)
     return `${prefix}${base}`
+  }
+
+  const formatScheduleDate = (value: string | null | undefined): string | null => {
+    if (!value) return null
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (!match) return value
+    const y = Number(match[1])
+    const m = Number(match[2])
+    const d = Number(match[3])
+    const parsed = new Date(y, m - 1, d)
+    if (Number.isNaN(parsed.getTime())) return value
+    return formatDate(parsed)
+  }
+
+  const formatScheduleTime = (value: string | null | undefined, fallback: string): string => {
+    const source = value ?? fallback
+    const match = source.match(/^(\d{2}):(\d{2})$/)
+    if (!match) return source
+    const hours24 = Number(match[1])
+    const minutes = match[2]
+    if (timeFormat === '12h') {
+      const meridiem = hours24 >= 12 ? 'PM' : 'AM'
+      const hours12 = hours24 % 12 || 12
+      return `${String(hours12).padStart(2, '0')}:${minutes} ${meridiem}`
+    }
+    return `${String(hours24).padStart(2, '0')}:${minutes}`
   }
 
   const selectedInterfaceDisplay = selectedInterface
@@ -607,11 +641,16 @@ export default function Firewall() {
           ? sched.days.map((d) => DAY_NAMES[d]).join(',')
           : 'All'
         const timeLabel = sched.time_start || sched.time_end
-          ? `${sched.time_start ?? '00:00'}\u2013${sched.time_end ?? '23:59'}`
+          ? `${formatScheduleTime(sched.time_start, '00:00')}\u2013${formatScheduleTime(sched.time_end, '23:59')}`
+          : null
+        const startDate = formatScheduleDate(sched.date_start)
+        const endDate = formatScheduleDate(sched.date_end)
+        const dateLabel = startDate || endDate
+          ? `${startDate ?? 'Any'}\u2013${endDate ?? 'Any'}`
           : null
         return (
           <span className="inline-block px-1.5 py-0.5 rounded text-xs bg-yellow-50 text-yellow-800">
-            {dayLabels}{timeLabel ? ` ${timeLabel}` : ''}
+            {dayLabels}{timeLabel ? ` ${timeLabel}` : ''}{dateLabel ? ` • ${dateLabel}` : ''}
           </span>
         )
       },
@@ -766,14 +805,239 @@ export default function Firewall() {
               Select an interface to show only that interface's firewall rules.
             </p>
           </div>
-
-          {selectedInterface && (
-            <div className="mb-3 rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700">
-              Filtering rules for interface <span className="font-semibold">{selectedInterfaceDisplay}</span>
-            </div>
-          )}
           {rulesError && <p className="text-sm text-red-600 mb-3">{rulesError}</p>}
           <Table columns={ruleColumns} data={visibleRules} keyField="id" loading={rulesLoading} emptyMessage={rulesEmptyMessage} />
+
+          {editRule && (
+            <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-900">Edit Firewall Rule</h3>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setEditRule(null)
+                    setRuleFormError(null)
+                  }}
+                >
+                  Close
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {ruleFormError && (
+                  <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                    {ruleFormError}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    id="edit-rule-desc"
+                    label="Description"
+                    className="col-span-2"
+                    value={editRule.description ?? ''}
+                    onChange={(e) => setEditRule({ ...editRule, description: e.target.value || null })}
+                  />
+                  <FormField
+                    id="edit-rule-priority"
+                    label="Priority"
+                    type="number"
+                    value={String(editRule.priority)}
+                    onChange={(e) => setEditRule({ ...editRule, priority: parseInt(e.target.value, 10) || 100 })}
+                  />
+                  <FormField
+                    id="edit-rule-action"
+                    label="Action"
+                    as="select"
+                    value={editRule.action}
+                    onChange={(e) => setEditRule({ ...editRule, action: e.target.value as FirewallRule['action'] })}
+                  >
+                    <option value="accept">Accept</option>
+                    <option value="drop">Drop</option>
+                    <option value="reject">Reject</option>
+                    <option value="log">Log</option>
+                  </FormField>
+                  <FormField
+                    id="edit-rule-direction"
+                    label="Direction"
+                    as="select"
+                    value={editRule.direction}
+                    onChange={(e) => setEditRule({ ...editRule, direction: e.target.value as FirewallRule['direction'] })}
+                  >
+                    <option value="input">In</option>
+                    <option value="output">Out</option>
+                    <option value="both">Both</option>
+                    <option value="forward">Forward</option>
+                  </FormField>
+                  <FormField
+                    id="edit-rule-protocol"
+                    label="Protocol"
+                    as="select"
+                    value={editRule.protocol ?? ''}
+                    onChange={(e) => setEditRule({ ...editRule, protocol: (e.target.value || null) as FirewallRule['protocol'] | null })}
+                  >
+                    <option value="">Any</option>
+                    <option value="tcp">TCP</option>
+                    <option value="udp">UDP</option>
+                    <option value="icmp">ICMP</option>
+                    <option value="icmpv6">ICMPv6</option>
+                  </FormField>
+                  <FormField
+                    id="edit-rule-iface"
+                    label={interfaceFieldLabel(editRule.direction)}
+                    hint={interfaceFieldHint(editRule.direction)}
+                    as="select"
+                    value={editRule.interface ?? ''}
+                    onChange={(e) => setEditRule({ ...editRule, interface: e.target.value || null })}
+                  >
+                    <option value="">Any</option>
+                    {interfaces.map((iface) => (
+                      <option key={iface.name} value={iface.name}>
+                        {interfaceLabel(iface)}
+                      </option>
+                    ))}
+                  </FormField>
+                  <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
+                    <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
+                      Advanced Match
+                    </summary>
+                    <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+                      <FormField
+                        id="edit-rule-src-preset"
+                        label="Source Preset"
+                        as="select"
+                        value={(editRule.source ?? '')}
+                        onChange={(e) => setEditRule({ ...editRule, source: e.target.value || null })}
+                      >
+                        {addressPresetOptions.map((opt) => (
+                          <option key={`edit-src-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </FormField>
+                      <FormField
+                        id="edit-rule-src"
+                        label="Source (custom CIDR/IP/Alias)"
+                        value={editRule.source ?? ''}
+                        onChange={(e) => setEditRule({ ...editRule, source: e.target.value || null })}
+                      />
+                      <FormField
+                        id="edit-rule-src-port"
+                        label="Source Port"
+                        type="number"
+                        value={editRule.source_port != null ? String(editRule.source_port) : ''}
+                        onChange={(e) => setEditRule({ ...editRule, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+                      />
+                      <FormField
+                        id="edit-rule-dst-preset"
+                        label="Destination Preset"
+                        as="select"
+                        value={(editRule.destination ?? '')}
+                        onChange={(e) => setEditRule({ ...editRule, destination: e.target.value || null })}
+                      >
+                        {addressPresetOptions.map((opt) => (
+                          <option key={`edit-dst-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </FormField>
+                      <FormField
+                        id="edit-rule-dst"
+                        label="Destination (custom CIDR/IP/Alias)"
+                        value={editRule.destination ?? ''}
+                        onChange={(e) => setEditRule({ ...editRule, destination: e.target.value || null })}
+                      />
+                      <FormField
+                        id="edit-rule-dst-port"
+                        label="Destination Port"
+                        type="number"
+                        value={editRule.destination_port != null ? String(editRule.destination_port) : ''}
+                        onChange={(e) => setEditRule({ ...editRule, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+                      />
+                    </div>
+                  </details>
+
+                  <div className="flex gap-6 col-span-2">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={editRule.enabled}
+                        onChange={(e) => setEditRule({ ...editRule, enabled: e.target.checked })}
+                      />
+                      <span className="text-sm text-gray-700">Rule enabled</span>
+                    </label>
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={editRule.log ?? false}
+                        onChange={(e) => setEditRule({ ...editRule, log: e.target.checked })}
+                      />
+                      <span className="text-sm text-gray-700">Log this rule</span>
+                    </label>
+                  </div>
+
+                  <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
+                    <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
+                      Schedule (optional)
+                    </summary>
+                    <div className="border-t border-gray-200 px-4 py-4 space-y-3">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Days active (leave all unchecked = every day)</p>
+                        <div className="flex gap-3 flex-wrap">
+                          {DAY_NAMES.map((name, idx) => (
+                            <label key={idx} className="flex items-center gap-1 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={(editRule.schedule?.days ?? []).includes(idx)}
+                                onChange={(e) => {
+                                  const days = [...(editRule.schedule?.days ?? [])]
+                                  if (e.target.checked) {
+                                    if (!days.includes(idx)) days.push(idx)
+                                  } else {
+                                    const index = days.indexOf(idx)
+                                    if (index !== -1) days.splice(index, 1)
+                                  }
+                                  days.sort()
+                                  setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), days } })
+                                }}
+                              />
+                              {name}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField id="edit-sched-ts" label="Time start (HH:MM)" placeholder="e.g. 08:00"
+                          value={editRule.schedule?.time_start ?? ''}
+                          onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_start: e.target.value || null } })} />
+                        <FormField id="edit-sched-te" label="Time end (HH:MM)" placeholder="e.g. 17:00"
+                          value={editRule.schedule?.time_end ?? ''}
+                          onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_end: e.target.value || null } })} />
+                        <FormField id="edit-sched-ds" label="Date start (YYYY-MM-DD)" placeholder="e.g. 2026-01-01"
+                          value={editRule.schedule?.date_start ?? ''}
+                          onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_start: e.target.value || null } })} />
+                        <FormField id="edit-sched-de" label="Date end (YYYY-MM-DD)" placeholder="e.g. 2026-12-31"
+                          value={editRule.schedule?.date_end ?? ''}
+                          onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_end: e.target.value || null } })} />
+                      </div>
+                    </div>
+                  </details>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button size="sm" loading={editSaving} onClick={handleUpdateRule}>
+                    Save Changes
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setEditRule(null)
+                      setRuleFormError(null)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </Card>
       </div>}
 
@@ -1001,9 +1265,10 @@ export default function Firewall() {
               value={ruleForm.direction ?? 'forward'}
               onChange={(e) => setRuleForm({ ...ruleForm, direction: e.target.value as FirewallRule['direction'] })}
             >
-              <option value="input">Input</option>
+              <option value="input">In</option>
+              <option value="output">Out</option>
+              <option value="both">Both</option>
               <option value="forward">Forward</option>
-              <option value="output">Output</option>
             </FormField>
             <FormField
               id="rule-protocol"
@@ -1159,217 +1424,6 @@ export default function Firewall() {
       </Modal>
 
       <Modal
-        open={editRule !== null}
-        title="Edit Firewall Rule"
-        onClose={() => {
-          setEditRule(null)
-          setRuleFormError(null)
-        }}
-        onConfirm={handleUpdateRule}
-        confirmLabel="Save Changes"
-        loading={editSaving}
-        size="xl"
-      >
-        {editRule && (
-          <div className="space-y-3">
-            {ruleFormError && (
-              <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                {ruleFormError}
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-4">
-            <FormField
-              id="edit-rule-desc"
-              label="Description"
-              className="col-span-2"
-              value={editRule.description ?? ''}
-              onChange={(e) => setEditRule({ ...editRule, description: e.target.value || null })}
-            />
-            <FormField
-              id="edit-rule-priority"
-              label="Priority"
-              type="number"
-              value={String(editRule.priority)}
-              onChange={(e) => setEditRule({ ...editRule, priority: parseInt(e.target.value, 10) || 100 })}
-            />
-            <FormField
-              id="edit-rule-action"
-              label="Action"
-              as="select"
-              value={editRule.action}
-              onChange={(e) => setEditRule({ ...editRule, action: e.target.value as FirewallRule['action'] })}
-            >
-              <option value="accept">Accept</option>
-              <option value="drop">Drop</option>
-              <option value="reject">Reject</option>
-              <option value="log">Log</option>
-            </FormField>
-            <FormField
-              id="edit-rule-direction"
-              label="Direction"
-              as="select"
-              value={editRule.direction}
-              onChange={(e) => setEditRule({ ...editRule, direction: e.target.value as FirewallRule['direction'] })}
-            >
-              <option value="input">Input</option>
-              <option value="forward">Forward</option>
-              <option value="output">Output</option>
-            </FormField>
-            <FormField
-              id="edit-rule-protocol"
-              label="Protocol"
-              as="select"
-              value={editRule.protocol ?? ''}
-              onChange={(e) => setEditRule({ ...editRule, protocol: (e.target.value || null) as FirewallRule['protocol'] | null })}
-            >
-              <option value="">Any</option>
-              <option value="tcp">TCP</option>
-              <option value="udp">UDP</option>
-              <option value="icmp">ICMP</option>
-              <option value="icmpv6">ICMPv6</option>
-            </FormField>
-            <FormField
-              id="edit-rule-iface"
-              label={interfaceFieldLabel(editRule.direction)}
-              hint={interfaceFieldHint(editRule.direction)}
-              as="select"
-              value={editRule.interface ?? ''}
-              onChange={(e) => setEditRule({ ...editRule, interface: e.target.value || null })}
-            >
-              <option value="">Any</option>
-              {interfaces.map((iface) => (
-                <option key={iface.name} value={iface.name}>
-                  {interfaceLabel(iface)}
-                </option>
-              ))}
-            </FormField>
-            <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
-              <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
-                Advanced Match
-              </summary>
-              <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
-                <FormField
-                  id="edit-rule-src-preset"
-                  label="Source Preset"
-                  as="select"
-                  value={(editRule.source ?? '')}
-                  onChange={(e) => setEditRule({ ...editRule, source: e.target.value || null })}
-                >
-                  {addressPresetOptions.map((opt) => (
-                    <option key={`edit-src-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
-                  ))}
-                </FormField>
-                <FormField
-                  id="edit-rule-src"
-                  label="Source (custom CIDR/IP/Alias)"
-                  value={editRule.source ?? ''}
-                  onChange={(e) => setEditRule({ ...editRule, source: e.target.value || null })}
-                />
-                <FormField
-                  id="edit-rule-src-port"
-                  label="Source Port"
-                  type="number"
-                  value={editRule.source_port != null ? String(editRule.source_port) : ''}
-                  onChange={(e) => setEditRule({ ...editRule, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
-                />
-                <FormField
-                  id="edit-rule-dst-preset"
-                  label="Destination Preset"
-                  as="select"
-                  value={(editRule.destination ?? '')}
-                  onChange={(e) => setEditRule({ ...editRule, destination: e.target.value || null })}
-                >
-                  {addressPresetOptions.map((opt) => (
-                    <option key={`edit-dst-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
-                  ))}
-                </FormField>
-                <FormField
-                  id="edit-rule-dst"
-                  label="Destination (custom CIDR/IP/Alias)"
-                  value={editRule.destination ?? ''}
-                  onChange={(e) => setEditRule({ ...editRule, destination: e.target.value || null })}
-                />
-                <FormField
-                  id="edit-rule-dst-port"
-                  label="Destination Port"
-                  type="number"
-                  value={editRule.destination_port != null ? String(editRule.destination_port) : ''}
-                  onChange={(e) => setEditRule({ ...editRule, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
-                />
-              </div>
-            </details>
-
-            {/* Enabled toggle */}
-            <div className="flex gap-6 col-span-2">
-              <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={editRule.enabled}
-                  onChange={(e) => setEditRule({ ...editRule, enabled: e.target.checked })}
-                />
-                <span className="text-sm text-gray-700">Rule enabled</span>
-              </label>
-              <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={editRule.log ?? false}
-                  onChange={(e) => setEditRule({ ...editRule, log: e.target.checked })}
-                />
-                <span className="text-sm text-gray-700">Log this rule</span>
-              </label>
-            </div>
-
-            <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
-              <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
-                Schedule (optional)
-              </summary>
-              <div className="border-t border-gray-200 px-4 py-4 space-y-3">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Days active (leave all unchecked = every day)</p>
-                  <div className="flex gap-3 flex-wrap">
-                    {DAY_NAMES.map((name, idx) => (
-                      <label key={idx} className="flex items-center gap-1 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={(editRule.schedule?.days ?? []).includes(idx)}
-                          onChange={(e) => {
-                            const days = [...(editRule.schedule?.days ?? [])]
-                            if (e.target.checked) {
-                              if (!days.includes(idx)) days.push(idx)
-                            } else {
-                              const index = days.indexOf(idx)
-                              if (index !== -1) days.splice(index, 1)
-                            }
-                            days.sort()
-                            setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), days } })
-                          }}
-                        />
-                        {name}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField id="edit-sched-ts" label="Time start (HH:MM)" placeholder="e.g. 08:00"
-                    value={editRule.schedule?.time_start ?? ''}
-                    onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_start: e.target.value || null } })} />
-                  <FormField id="edit-sched-te" label="Time end (HH:MM)" placeholder="e.g. 17:00"
-                    value={editRule.schedule?.time_end ?? ''}
-                    onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_end: e.target.value || null } })} />
-                  <FormField id="edit-sched-ds" label="Date start (YYYY-MM-DD)" placeholder="e.g. 2026-01-01"
-                    value={editRule.schedule?.date_start ?? ''}
-                    onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_start: e.target.value || null } })} />
-                  <FormField id="edit-sched-de" label="Date end (YYYY-MM-DD)" placeholder="e.g. 2026-12-31"
-                    value={editRule.schedule?.date_end ?? ''}
-                    onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_end: e.target.value || null } })} />
-                </div>
-              </div>
-            </details>
-          </div>
-          </div>
-        )}
-      </Modal>
-      <Modal
         open={deleteRuleId !== null}
         title="Delete Firewall Rule"
         onClose={() => setDeleteRuleId(null)}
@@ -1468,3 +1522,4 @@ export default function Firewall() {
     </div>
   )
 }
+
