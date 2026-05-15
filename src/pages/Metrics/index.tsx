@@ -823,11 +823,13 @@ export default function Metrics() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Metrics</h1>
-          <p className="text-sm text-gray-500 max-w-2xl">
-            Rearrange, resize, and show or hide the cards that matter most for your metrics view.
-          </p>
           {!layoutLocked && (
-            <p className="mt-1 text-xs text-gray-400">Tip: drag cards directly in the grid to reorder.</p>
+            <>
+              <p className="text-sm text-gray-500 max-w-2xl">
+                Rearrange, resize, and show or hide the cards that matter most for your metrics view.
+              </p>
+              <p className="mt-1 text-xs text-gray-400">Tip: drag cards directly in the grid to reorder.</p>
+            </>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-3">

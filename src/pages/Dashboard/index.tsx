@@ -533,11 +533,13 @@ export default function Dashboard() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500 max-w-2xl">
-            Customize which cards appear, rearrange their order, and resize the layout to suit your workflow.
-          </p>
           {!layoutLocked && (
-            <p className="mt-1 text-xs text-gray-400">Tip: drag cards directly in the grid to reorder.</p>
+            <>
+              <p className="text-sm text-gray-500 max-w-2xl">
+                Customize which cards appear, rearrange their order, and resize the layout to suit your workflow.
+              </p>
+              <p className="mt-1 text-xs text-gray-400">Tip: drag cards directly in the grid to reorder.</p>
+            </>
           )}
         </div>
         <div className="flex gap-2 items-center">
