@@ -71,10 +71,8 @@ function componentCurrentDisplay(
   currentVersion?: string
   currentCommit?: string
   },
-  isRegistryMode: boolean,
 ): string {
-  if (comp.currentVersion) return comp.currentVersion
-  return isRegistryMode ? 'Unknown' : shortCommit(comp.currentCommit)
+  return comp.currentVersion ?? 'Unknown'
 }
 
 function componentRemoteDisplay(
@@ -82,10 +80,8 @@ function componentRemoteDisplay(
   remoteVersion?: string
   remoteCommit?: string
   },
-  isRegistryMode: boolean,
 ): string {
-  if (comp.remoteVersion) return comp.remoteVersion
-  return isRegistryMode ? 'Unknown' : shortCommit(comp.remoteCommit)
+  return comp.remoteVersion ?? 'Unknown'
 }
 
 function formatUpdateComponentName(component: string): string {
@@ -250,16 +246,54 @@ function normalizeRegistryUrl(input?: string): string {
   return trimmed
 }
 
-function inferRegistryStatusLabel(validRepo: boolean, lastError?: string): string {
+function inferUpdateStatusLabel(validRepo: boolean, lastError?: string): string {
   if (validRepo) return 'Up to Date'
   const err = (lastError ?? '').toLowerCase()
-  if (err.includes('http 404')) return 'Registry 404'
-  if (err.includes('http 401') || err.includes('http 403')) return 'Registry Access Denied'
-  if (err.includes('timed out') || err.includes('dns') || err.includes('connection')) return 'Registry Unreachable'
-  return 'Registry Error'
+  if (err.includes('http 404')) return 'Update not available'
+  if (err.includes('http 401') || err.includes('http 403')) return 'Cannot access update server'
+  if (err.includes('timed out') || err.includes('dns') || err.includes('connection')) return 'Update server unreachable'
+  return 'Update check failed'
 }
 
-function detectRegistry404Hint(components: UpdatesStatus['components']): string | null {
+function simplifyErrorMessage(error: string): string {
+  // Remove the "FAILED TO QUERY REGISTRY" prefix and similar wrapper text
+  let simplified = error
+    .replace(/^FAILED TO QUERY REGISTRY:\s*/i, '')
+    .replace(/^UPDATE ERROR:\s*/i, '')
+    .replace(/^failed to query registry:\s*/i, '')
+  
+  // For HTTP errors, provide context
+  if (simplified.includes('HTTP 401') || simplified.includes('HTTP 403')) {
+    return 'Authentication failed. Check if the update source URL is correct.'
+  }
+  if (simplified.includes('HTTP 404')) {
+    return 'Update version not found at the specified source.'
+  }
+  if (simplified.includes('HTTP')) {
+    // Extract just the HTTP status without the full URL
+    const match = simplified.match(/HTTP (\d+)/)
+    if (match) {
+      return `Update check failed (HTTP ${match[1]}). Please check your network connection.`
+    }
+  }
+  if (simplified.includes('rate limit') || simplified.includes('429')) {
+    return 'Update server rate limit exceeded. Please try again in a few minutes.'
+  }
+  if (simplified.includes('timeout') || simplified.includes('timed out')) {
+    return 'Update server connection timed out. Check your network connection.'
+  }
+  if (simplified.includes('dns') || simplified.includes('no such host')) {
+    return 'Cannot resolve update server address. Check your network and DNS settings.'
+  }
+  if (simplified.includes('connection refused')) {
+    return 'Update server connection refused. The server may be down.'
+  }
+  
+  // Return original if no matches, but trim if very long
+  return simplified.length > 150 ? simplified.substring(0, 147) + '...' : simplified
+}
+
+function detectUpdateNotFoundHint(components: UpdatesStatus['components']): string | null {
   const with404 = components.find((comp) => (comp.lastError ?? '').toLowerCase().includes('http 404'))
   if (!with404) return null
   return with404.lastError ?? null
@@ -350,7 +384,6 @@ export default function System() {
     : searchParams.get('section') === 'reboot'
       ? 'reboot'
       : 'overview'
-  const isRegistryMode = (updates?.settings.updateMode ?? 'registry') === 'registry'
   const allTimezones = getTimezones()
   const normalizedTimezoneQuery = timezoneQuery.trim().toLowerCase()
   const filteredTimezones = normalizedTimezoneQuery
@@ -568,7 +601,7 @@ export default function System() {
     )
   }
 
-  const registry404Hint = updates ? detectRegistry404Hint(updates.components) : null
+  const updateNotFoundHint = updates ? detectUpdateNotFoundHint(updates.components) : null
 
   return (
     <div className="space-y-6">
@@ -687,11 +720,11 @@ export default function System() {
               </p>
             </div>
 
-            {isRegistryMode && registry404Hint && (
+            {updateNotFoundHint && (
               <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900 space-y-2">
-                <p className="font-medium">Registry returned HTTP 404.</p>
+                <p className="font-medium">Update not found on server.</p>
                 <p className="text-xs text-amber-800">
-                  This usually means the artifact repository is unreachable, private without auth, or has no published releases.
+                  This usually means the update server is unreachable, requires authentication, or has no published releases.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -700,7 +733,7 @@ export default function System() {
                     onClick={handleSetDefaultRegistry}
                     disabled={updateSaving || updateActionLoading}
                   >
-                    Use default registry
+                    Use default update source
                   </Button>
                 </div>
               </div>
@@ -712,7 +745,7 @@ export default function System() {
                 .map((comp) => (
                 <div key={comp.component} className="rounded border border-gray-200 p-3">
                   {(() => {
-                    const statusLabel = inferRegistryStatusLabel(comp.validRepo, comp.lastError)
+                    const statusLabel = inferUpdateStatusLabel(comp.validRepo, comp.lastError)
                     const statusClass = comp.validRepo
                       ? comp.updateAvailable
                         ? 'bg-amber-100 text-amber-700'
@@ -735,22 +768,16 @@ export default function System() {
                     )
                   })()}
                   <dl className="mt-2 space-y-1 text-xs text-gray-600">
-                    {!isRegistryMode && (
-                      <div>
-                        <dt className="inline text-gray-500">Update branch: </dt>
-                        <dd className="inline font-medium text-gray-800">{comp.branch}</dd>
-                      </div>
-                    )}
                     <div>
                       <dt className="inline text-gray-500">Current version: </dt>
                       <dd className="inline font-mono text-gray-800">
-                        {componentCurrentDisplay(comp, isRegistryMode)}
+                        {componentCurrentDisplay(comp)}
                       </dd>
                     </div>
                     <div>
                       <dt className="inline text-gray-500">Available version: </dt>
                       <dd className="inline font-mono text-gray-800">
-                        {componentRemoteDisplay(comp, isRegistryMode)}
+                        {componentRemoteDisplay(comp)}
                       </dd>
                     </div>
                     {/* Show last applied version if available */}
@@ -769,10 +796,11 @@ export default function System() {
                     )}
                     {comp.lastError && (() => {
                       const parsed = parseComponentError(comp.lastError)
+                      const simplified = simplifyErrorMessage(parsed.message)
                       return (
                         <div className="mt-2 rounded bg-red-50 border border-red-200 p-2">
-                          <div className="text-xs font-medium text-red-700">{parsed.component ? `${parsed.component} Error` : 'Error'}</div>
-                          <div className="text-xs text-red-600 mt-1">{parsed.message}</div>
+                          <div className="text-xs font-medium text-red-700">Update Check Failed</div>
+                          <div className="text-xs text-red-600 mt-1">{simplified}</div>
                         </div>
                       )
                     })()}
@@ -925,7 +953,7 @@ export default function System() {
                           <span className="text-amber-600">•</span>
                           <span className="font-medium uppercase">{c.component}</span>
                           <span className="text-amber-600 font-mono text-xs">
-                            {componentCurrentDisplay(c, isRegistryMode)} → {componentRemoteDisplay(c, isRegistryMode)}
+                            {componentCurrentDisplay(c)} → {componentRemoteDisplay(c)}
                           </span>
                         </li>
                       ))}
