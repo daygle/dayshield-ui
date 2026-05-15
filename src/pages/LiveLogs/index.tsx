@@ -120,8 +120,8 @@ export default function LiveLogs() {
         {searchError && <p className="text-xs text-red-700">{searchError}</p>}
       </div>
 
-      {/* LogViewer takes up remaining height */}
-      <div className="flex-1 min-h-0" style={{ height: 'calc(100vh - 140px)' }}>
+      {/* LogViewer fills remaining page space and keeps a usable minimum height */}
+      <div className="flex-1 min-h-[360px]">
         <LogViewer
           logs={logs}
           allLogs={allLogs}
