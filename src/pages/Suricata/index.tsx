@@ -22,7 +22,7 @@ import FormField from '../../components/FormField'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 import ErrorBoundary from '../../components/ErrorBoundary'
 import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
-import { SuricataRulesetsSection } from './RulesetsPage'
+import { SuricataRulesetGroupsSection } from './RulesetsPage'
 
 type AlertRow = SuricataAlert & Record<string, unknown>
 
@@ -245,7 +245,7 @@ function SuricataContent() {
 
       {loading && (
         <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600" role="status" aria-live="polite">
-          Loading Suricata configuration, rulesets, and alerts…
+          Loading Suricata configuration and alerts…
         </div>
       )}
       {error && (
@@ -348,8 +348,11 @@ function SuricataContent() {
 
       {/* Rulesets section, clearly labeled */}
       <div className="mt-2">
-        <Card title="Rulesets" subtitle="Select and manage Suricata rulesets. Grouped by ET Open .rules files.">
-          <SuricataRulesetsSection />
+        <Card
+          title="Rulesets"
+          subtitle="Manage ruleset groups here, then open a dedicated page to inspect the rules inside each group."
+        >
+          <SuricataRulesetGroupsSection />
         </Card>
       </div>
 
