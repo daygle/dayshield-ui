@@ -570,7 +570,6 @@ export default function System() {
     applyUpdates('both')
       .then((res) => {
         setUpdates(res.data.status)
-        setUpdateActionMessage('Update process started. Progress will appear in Update Logs.')
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false))
@@ -587,7 +586,6 @@ export default function System() {
     rollbackUpdates('both')
       .then((res) => {
         setUpdates(res.data.status)
-        setUpdateActionMessage('Rollback process started. Progress will appear in Update Logs.')
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false))
@@ -1019,33 +1017,6 @@ export default function System() {
                 <div className="px-4 py-4 text-sm text-gray-500">No update logs recorded yet.</div>
               )}
             </div>
-
-            {updates && updates.availableUpdateCount && updates.availableUpdateCount > 1 && (
-              <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 space-y-3">
-                <div>
-                  <p className="font-medium">Multiple Component Updates Available</p>
-                  <p className="text-xs mt-1">
-                    {updates.availableUpdateCount} components have available updates. For consistency, all available components should be updated together.
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-amber-700 mb-1">Components to update:</p>
-                  <ul className="text-xs space-y-1 ml-2">
-                    {updates.components
-                      .filter((c) => c.updateAvailable && c.component !== 'rootfs')
-                      .map((c) => (
-                        <li key={c.component} className="flex items-center gap-2">
-                          <span className="text-amber-600">•</span>
-                          <span className="font-medium uppercase">{c.component}</span>
-                          <span className="text-amber-600 font-mono text-xs">
-                            {componentCurrentDisplay(c)} → {componentRemoteDisplay(c)}
-                          </span>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              </div>
-            )}
 
             <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={handleCheckUpdates} disabled={updateActionLoading}>
