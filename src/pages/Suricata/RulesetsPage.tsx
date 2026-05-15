@@ -127,6 +127,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
   const [selectedSubgroup, setSelectedSubgroup] = useState<string>('')
   const [selectedRulesetId, setSelectedRulesetId] = useState<string>('')
   const [rules, setRules] = useState<RulesetRule[]>([])
+  const [rulesHint, setRulesHint] = useState<string | null>(null)
   const [disabledRuleIds, setDisabledRuleIds] = useState<Set<string>>(new Set())
   const [rulesSearch, setRulesSearch] = useState('')
 
@@ -262,6 +263,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
   const loadSelectedRules = useCallback((rulesetId: string) => {
     if (!rulesetId) return
     setRulesLoading(true)
+    setRulesHint(null)
     getSuricataRulesetRules(rulesetId)
       .then((res) => {
         const nextRules = res.data ?? []
@@ -273,14 +275,32 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
         setDisabledRuleIds(disabled)
         setError(null)
       })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => {
+        const message = err.message ?? String(err)
+        if (/rules file not found/i.test(message)) {
+          setRules([])
+          setDisabledRuleIds(new Set())
+          setRulesHint('No downloaded rules are available for this ruleset yet. Install and enable the ruleset to load rule contents.')
+          setError(null)
+          return
+        }
+        setRulesHint(null)
+        setError(message)
+      })
       .finally(() => setRulesLoading(false))
   }, [])
 
   useEffect(() => {
     if (!selectedRulesetId) return
+    if (!selectedRuleset?.installed) {
+      setRules([])
+      setDisabledRuleIds(new Set())
+      setRulesHint('This ruleset is not installed yet. Click Install to download its rules.')
+      setError(null)
+      return
+    }
     loadSelectedRules(selectedRulesetId)
-  }, [selectedRulesetId, loadSelectedRules])
+  }, [selectedRulesetId, selectedRuleset, loadSelectedRules])
 
   const handleSelectGroup = (label: string) => {
     setSelectedGroup(label)
@@ -521,9 +541,12 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                 placeholder="Search by rule ID, action, or signature"
                 value={rulesSearch}
                 onChange={(e) => setRulesSearch(e.target.value)}
+                disabled={!selectedRuleset.installed || Boolean(rulesHint)}
               />
 
-              {rulesLoading ? (
+              {rulesHint ? (
+                <div className="rounded border border-blue-200 bg-blue-50 px-4 py-6 text-sm text-blue-800">{rulesHint}</div>
+              ) : rulesLoading ? (
                 <div className="rounded border border-gray-200 px-4 py-6 text-sm text-gray-500">Loading rules…</div>
               ) : (
                 <div className="max-h-[36rem] overflow-auto rounded border border-gray-200">
@@ -575,7 +598,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                       Back to Suricata
                     </Link>
                   )}
-                  <Button variant="primary" onClick={saveRules} loading={saving}>
+                  <Button variant="primary" onClick={saveRules} loading={saving} disabled={!selectedRuleset.installed || rules.length === 0 || Boolean(rulesHint)}>
                     Save Rules
                   </Button>
                 </div>
