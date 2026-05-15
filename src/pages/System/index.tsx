@@ -834,7 +834,7 @@ export default function System() {
         >
           <div className="space-y-4">
             <div className="rounded border border-gray-200 p-3 bg-gray-50">
-              <p className="text-gray-500 text-sm">Automatic update checks</p>
+              <p className="text-gray-500 text-sm">Automatic Update Check</p>
               <p className="font-medium text-gray-900">
                 {updates.settings.autoCheckEnabled
                   ? formatUpdateSchedule(updates.settings)
