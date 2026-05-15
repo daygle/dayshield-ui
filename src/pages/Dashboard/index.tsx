@@ -3,6 +3,7 @@ import { useSystemStatus } from '../../hooks/useSystemStatus'
 import { useNetworkStatus } from '../../hooks/useNetworkStatus'
 import { useSecurityStatus } from '../../hooks/useSecurityStatus'
 import { useAcmeStatus } from '../../hooks/useAcmeStatus'
+import { useAiEngineStatus } from '../../hooks/useAiEngineStatus'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import ErrorBanner from '../../components/ErrorBanner'
@@ -114,6 +115,7 @@ type DashboardCardId =
   | 'system'
   | 'network'
   | 'acme'
+  | 'ai'
   | 'suricata'
   | 'crowdsec'
   | 'firewall'
@@ -129,7 +131,8 @@ const defaultDashboardCardConfigs: DashboardCardConfig[] = [
   { id: 'system', visible: true, width: 1 },
   { id: 'network', visible: true, width: 1 },
   { id: 'acme', visible: true, width: 1 },
-  { id: 'suricata', visible: true, width: 2 },
+  { id: 'ai', visible: true, width: 1 },
+  { id: 'suricata', visible: true, width: 1 },
   { id: 'crowdsec', visible: true, width: 1 },
   { id: 'firewall', visible: true, width: 1 },
   { id: 'interface', visible: true, width: 1 },
@@ -139,6 +142,7 @@ const dashboardCardTitles: Record<DashboardCardId, string> = {
   system: 'System Status',
   network: 'Network Status',
   acme: 'Certificate Status',
+  ai: 'AI Threat Engine',
   suricata: 'Suricata Alerts',
   crowdsec: 'CrowdSec Decisions',
   firewall: 'Firewall Summary',
@@ -149,6 +153,7 @@ const dashboardCardDescriptions: Record<DashboardCardId, string> = {
   system: 'Hostname, uptime, CPU, RAM and disk stats.',
   network: 'WAN/LAN status and traffic throughput.',
   acme: 'ACME certificate health and renewal status.',
+  ai: 'AI Threat Engine configuration and blocking state.',
   suricata: 'Suricata alert rate and danger state.',
   crowdsec: 'Active CrowdSec decisions summary.',
   firewall: 'Firewall rule and state counts.',
@@ -202,6 +207,7 @@ export default function Dashboard() {
   const net = useNetworkStatus()
   const sec = useSecurityStatus()
   const acme = useAcmeStatus()
+  const ai = useAiEngineStatus()
 
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [layoutLocked, setLayoutLocked] = useState(true)
@@ -408,6 +414,35 @@ export default function Dashboard() {
                 {hasCriticalAlerts && (
                   <p className="text-xs text-red-700">Critical alert flood detected; check Suricata immediately.</p>
                 )}
+              </div>
+            )}
+          </>
+        )
+      case 'ai':
+        return (
+          <>
+            {ai.isError && <ErrorBanner message={ai.error?.message ?? 'Failed to load AI status'} />}
+            {ai.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
+            {ai.data && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Engine</span>
+                  {ai.data.enabled ? <Badge variant="green">Enabled</Badge> : <Badge variant="gray">Disabled</Badge>}
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Automatic Blocking</span>
+                  {ai.data.automatic_blocking ? <Badge variant="red">Enabled</Badge> : <Badge variant="gray">Disabled</Badge>}
+                </div>
+                <MetricRow
+                  label="Block Threshold"
+                  value={`${Math.round(toFiniteNumber(ai.data.risk_score_block_threshold) * 100)}%`}
+                  bar={toFiniteNumber(ai.data.risk_score_block_threshold) * 100}
+                  warn={90}
+                />
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Model</span>
+                  <span className="font-medium text-gray-800 uppercase">{ai.data.model_type}</span>
+                </div>
               </div>
             )}
           </>
