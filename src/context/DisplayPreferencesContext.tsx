@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 
-export type DateFormatPreference = 'yyyy-mm-dd' | 'dd-mm-yyyy' | 'mm-dd-yyyy' | 'mm/dd/yyyy'
+export type DateFormatPreference = 'yyyy-mm-dd' | 'dd-mm-yyyy' | 'mm-dd-yyyy' | 'mm/dd/yyyy' | 'dd/mm/yyyy'
 export type TimeFormatPreference = '24h' | '12h'
 
 interface DisplayPreferencesState {
@@ -26,7 +26,7 @@ const DEFAULT_PREFERENCES: DisplayPreferencesState = {
 const DisplayPreferencesContext = createContext<DisplayPreferencesContextValue | undefined>(undefined)
 
 function isDateFormatPreference(value: unknown): value is DateFormatPreference {
-  return value === 'yyyy-mm-dd' || value === 'dd-mm-yyyy' || value === 'mm-dd-yyyy' || value === 'mm/dd/yyyy'
+  return value === 'yyyy-mm-dd' || value === 'dd-mm-yyyy' || value === 'mm-dd-yyyy' || value === 'mm/dd/yyyy' || value === 'dd/mm/yyyy'
 }
 
 function isTimeFormatPreference(value: unknown): value is TimeFormatPreference {
@@ -71,6 +71,8 @@ function formatDatePart(date: Date, dateFormat: DateFormatPreference): string {
       return `${d}-${m}-${y}`
     case 'mm-dd-yyyy':
       return `${m}-${d}-${y}`
+    case 'dd/mm/yyyy':
+      return `${d}/${m}/${y}`
     case 'mm/dd/yyyy':
       return `${m}/${d}/${y}`
     case 'yyyy-mm-dd':
