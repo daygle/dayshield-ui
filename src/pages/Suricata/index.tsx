@@ -270,10 +270,10 @@ function SuricataContent() {
                 <Button
                   variant={interfaceConfig.monitored ? 'secondary' : 'primary'}
                   size="sm"
-                  aria-label={interfaceConfig.monitored ? 'Disable Suricata on selected interface' : 'Enable Suricata on selected interface'}
+                  aria-label={interfaceConfig.monitored ? 'Disable Suricata monitoring' : 'Enable Suricata monitoring'}
                   onClick={handleToggleSelectedInterface}
                 >
-                  {interfaceConfig.monitored ? 'Disable on Interface' : 'Enable on Interface'}
+                  {interfaceConfig.monitored ? 'Disable' : 'Enable'}
                 </Button>
               )}
               <Button
@@ -307,10 +307,6 @@ function SuricataContent() {
               <dd className="font-medium text-gray-800 uppercase">{config.mode}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Interfaces</dt>
-              <dd className="font-medium text-gray-800">{config.interfaces.map(interfaceLabel).join(', ') || '-'}</dd>
-            </div>
-            <div>
               <dt className="text-gray-500">Home Networks</dt>
               <dd className="font-medium text-gray-800 text-xs">
                 {config.homeNet.join(', ') || '-'}
@@ -318,7 +314,7 @@ function SuricataContent() {
             </div>
             {selectedInterface && (
               <div>
-                <dt className="text-gray-500">Monitored on selected interface</dt>
+                <dt className="text-gray-500">Monitoring</dt>
                 <dd
                   className={`font-medium ${
                     config.interfaces.includes(selectedInterface)

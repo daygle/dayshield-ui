@@ -882,22 +882,39 @@ export default function Metrics() {
                 title={metricsCardTitles[card.id]}
                 actions={
                   !layoutLocked && (
-                    <span
-                      className="inline-flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 cursor-grab"
-                      title="Drag to reorder"
-                      aria-label="Drag to reorder"
-                      tabIndex={-1}
-                      style={{ pointerEvents: 'none' }}
-                    >
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
-                        <circle cx="6" cy="5" r="1.2" />
-                        <circle cx="6" cy="10" r="1.2" />
-                        <circle cx="6" cy="15" r="1.2" />
-                        <circle cx="14" cy="5" r="1.2" />
-                        <circle cx="14" cy="10" r="1.2" />
-                        <circle cx="14" cy="15" r="1.2" />
-                      </svg>
-                    </span>
+                    <div className="inline-flex items-center gap-1.5">
+                      <span
+                        className="inline-flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 cursor-grab"
+                        title="Drag to reorder"
+                        aria-label="Drag to reorder"
+                        tabIndex={-1}
+                        style={{ pointerEvents: 'none' }}
+                      >
+                        <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
+                          <circle cx="6" cy="5" r="1.2" />
+                          <circle cx="6" cy="10" r="1.2" />
+                          <circle cx="6" cy="15" r="1.2" />
+                          <circle cx="14" cy="5" r="1.2" />
+                          <circle cx="14" cy="10" r="1.2" />
+                          <circle cx="14" cy="15" r="1.2" />
+                        </svg>
+                      </span>
+                      <button
+                        type="button"
+                        className="inline-flex h-6 items-center justify-center rounded border border-gray-200 bg-white px-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                        title="Hide this card"
+                        aria-label={`Hide ${metricsCardTitles[card.id]} card`}
+                        onMouseDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setCardConfig((current) =>
+                            current.map((item) => (item.id === card.id ? { ...item, visible: false } : item)),
+                          )
+                        }}
+                      >
+                        Hide
+                      </button>
+                    </div>
                   )
                 }
               >

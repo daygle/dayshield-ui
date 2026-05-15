@@ -359,7 +359,6 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
   })
 
   const installedCount = rulesets.filter((ruleset) => ruleset.installed).length
-  const availableCount = rulesets.length - installedCount
   const disabledCount = disabledRuleIds.size
 
   return (
@@ -373,7 +372,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
           </Button>
         }
       >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
           <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
             <div className="text-gray-500">Total Rulesets</div>
             <div className="text-lg font-semibold text-gray-900">{rulesets.length}</div>
@@ -381,10 +380,6 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
           <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
             <div className="text-gray-500">Installed</div>
             <div className="text-lg font-semibold text-green-700">{installedCount}</div>
-          </div>
-          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
-            <div className="text-gray-500">Available</div>
-            <div className="text-lg font-semibold text-amber-700">{availableCount}</div>
           </div>
         </div>
       </Card>
