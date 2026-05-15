@@ -260,11 +260,6 @@ export const markApplianceRebuildComplete = (): Promise<ApiResponse<UpdatesStatu
     .post<ApiResponse<UpdatesStatus>>('/system/updates/appliance-rebuild-complete')
     .then((r) => r.data)
 
-export const rollbackRootfsLiveUpdate = (): Promise<ApiResponse<UpdatesActionResult>> =>
-  apiClient
-    .post<ApiResponse<UpdatesActionResult>>('/system/updates/rootfs-live-rollback')
-    .then((r) => r.data)
-
 // ── Dashboard-specific endpoints ──────────────────────────────────────────────
 
 export const getDashboardSystemStatus = (): Promise<ApiResponse<DashboardSystemStatus>> =>

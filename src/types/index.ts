@@ -551,17 +551,6 @@ export interface UpdateSettings {
   rootfsBranch: string
 }
 
-export interface RootfsLiveUpdateSummary {
-  reportTimestamp?: string
-  reportCommit?: string
-  stagedFiles: string[]
-  backupDir?: string
-  changedUnits: string[]
-  migrationFromVersion?: number
-  migrationToVersion?: number
-  rollbackAvailable: boolean
-}
-
 export interface ComponentUpdateStatus {
   component: 'core' | 'ui' | 'rootfs' | string
   repoPath: string
@@ -595,7 +584,6 @@ export interface UpdatesStatus {
   pendingApplianceRebuild: boolean
   applianceRebuildReason?: string
   applianceRebuildMarkedAt?: string
-  rootfsLiveUpdate?: RootfsLiveUpdateSummary
   components: ComponentUpdateStatus[]
   /** Number of components with available updates (read-only, computed server-side) */
   availableUpdateCount?: number

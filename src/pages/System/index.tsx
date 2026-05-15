@@ -13,7 +13,6 @@ import {
   rollbackUpdates,
   validateUpdates,
   markApplianceRebuildComplete,
-  rollbackRootfsLiveUpdate,
 } from '../../api/system'
 import { getAcmeConfig } from '../../api/acme'
 import type { SystemStatus, SystemConfig, UpdatesStatus, UpdateSettings, UpdateLogEntry } from '../../types'
@@ -112,8 +111,6 @@ function formatUpdateOperationName(operation: string): string {
       return 'Rollback'
     case 'validate':
       return 'Validate'
-    case 'rootfs-live-rollback':
-      return 'RootFS Live Rollback'
     default:
       return operation
   }
@@ -347,7 +344,6 @@ export default function System() {
   const [updateActionMessage, setUpdateActionMessage] = useState<string | null>(null)
   const [updateSaving, setUpdateSaving] = useState(false)
   const [markingApplianceRebuildComplete, setMarkingApplianceRebuildComplete] = useState(false)
-  const [rollingBackRootfsLive, setRollingBackRootfsLive] = useState(false)
 
   const activeSection = searchParams.get('section') === 'updates'
     ? 'updates'
@@ -563,18 +559,6 @@ export default function System() {
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setMarkingApplianceRebuildComplete(false))
-  }
-
-  const handleRollbackRootfsLiveUpdate = () => {
-    setRollingBackRootfsLive(true)
-    setUpdateActionMessage(null)
-    rollbackRootfsLiveUpdate()
-      .then((res) => {
-        setUpdates(res.data.status)
-        setUpdateActionMessage(`${res.data.message}: ${res.data.details.join(' | ')}`)
-      })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setRollingBackRootfsLive(false))
   }
 
   if (loading) {
@@ -827,57 +811,6 @@ export default function System() {
                     <span className="text-xs text-orange-700">
                       Last changed: {formatIsoDate(updates.applianceRebuildMarkedAt)}
                     </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {updates.rootfsLiveUpdate && (
-              <div className="rounded-md bg-slate-50 border border-slate-200 px-4 py-3 text-sm text-slate-800 space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium">RootFS Live Update Report</p>
-                  {updates.rootfsLiveUpdate.reportCommit && (
-                    <span className="text-xs font-mono text-slate-600">
-                      {shortCommit(updates.rootfsLiveUpdate.reportCommit)}
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-slate-600 space-y-1">
-                  <p>Last run: {formatIsoDate(updates.rootfsLiveUpdate.reportTimestamp)}</p>
-                  {updates.rootfsLiveUpdate.backupDir && (
-                    <p>Backup: {updates.rootfsLiveUpdate.backupDir}</p>
-                  )}
-                  {typeof updates.rootfsLiveUpdate.migrationFromVersion === 'number' && typeof updates.rootfsLiveUpdate.migrationToVersion === 'number' && (
-                    <p>
-                      Migration schema: {updates.rootfsLiveUpdate.migrationFromVersion} → {updates.rootfsLiveUpdate.migrationToVersion}
-                    </p>
-                  )}
-                </div>
-
-                {updates.rootfsLiveUpdate.stagedFiles.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-amber-700 mb-1">
-                      Staged config deltas (merge required)
-                    </p>
-                    <ul className="max-h-36 overflow-auto rounded border border-amber-200 bg-amber-50 p-2 text-xs font-mono text-amber-800 space-y-1">
-                      {updates.rootfsLiveUpdate.stagedFiles.map((file) => (
-                        <li key={file}>{file}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleRollbackRootfsLiveUpdate}
-                    disabled={rollingBackRootfsLive || updateActionLoading || !updates.rootfsLiveUpdate.rollbackAvailable}
-                  >
-                    Roll Back RootFS Live Update
-                  </Button>
-                  {!updates.rootfsLiveUpdate.rollbackAvailable && (
-                    <span className="text-xs text-slate-500">No rollback snapshot available.</span>
                   )}
                 </div>
               </div>

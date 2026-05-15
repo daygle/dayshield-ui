@@ -16,6 +16,9 @@ interface NavSection {
 
 type NavEntry = NavItem | NavSection
 
+const appReleaseVersion = import.meta.env.VITE_GITHUB_RELEASE ?? '0.0.0'
+const appVersionLabel = appReleaseVersion.startsWith('v') ? appReleaseVersion : `v${appReleaseVersion}`
+
 function QueryNavLink({
   to,
   label,
@@ -316,7 +319,7 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="px-4 py-3 border-t border-white/10 text-xs text-slate-500">
-        v0.1.0
+        {appVersionLabel}
       </div>
     </aside>
   )
