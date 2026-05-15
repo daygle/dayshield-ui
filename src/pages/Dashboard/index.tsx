@@ -4,6 +4,8 @@ import { useNetworkStatus } from '../../hooks/useNetworkStatus'
 import { useSecurityStatus } from '../../hooks/useSecurityStatus'
 import { useAcmeStatus } from '../../hooks/useAcmeStatus'
 import { useAiEngineStatus } from '../../hooks/useAiEngineStatus'
+import { useMetrics } from '../../hooks/useMetrics'
+import { useMetricsHistory } from '../../hooks/useMetricsHistory'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import ErrorBanner from '../../components/ErrorBanner'
@@ -25,6 +27,13 @@ function formatBps(bps: number): string {
   if (bps < 1_000_000) return `${(bps / 1000).toFixed(1)} KB/s`
   if (bps < 1_000_000_000) return `${(bps / 1_000_000).toFixed(1)} MB/s`
   return `${(bps / 1_000_000_000).toFixed(2)} GB/s`
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes.toFixed(0)} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
 
 function toFiniteNumber(value: unknown, fallback = 0): number {
@@ -113,6 +122,7 @@ function useThroughputBuffer(rx: number | undefined, tx: number | undefined, siz
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 type DashboardCardId =
+  | 'metrics'
   | 'system'
   | 'network'
   | 'acme'
@@ -129,6 +139,7 @@ type DashboardCardConfig = {
 }
 
 const defaultDashboardCardConfigs: DashboardCardConfig[] = [
+  { id: 'metrics', visible: true, width: 2 },
   { id: 'system', visible: true, width: 1 },
   { id: 'network', visible: true, width: 1 },
   { id: 'acme', visible: true, width: 1 },
@@ -140,6 +151,7 @@ const defaultDashboardCardConfigs: DashboardCardConfig[] = [
 ]
 
 const dashboardCardTitles: Record<DashboardCardId, string> = {
+  metrics: 'Live Metrics',
   system: 'System Status',
   network: 'Network Status',
   acme: 'Certificate Status',
@@ -151,6 +163,7 @@ const dashboardCardTitles: Record<DashboardCardId, string> = {
 }
 
 const dashboardCardDescriptions: Record<DashboardCardId, string> = {
+  metrics: 'Live CPU, memory, throughput, firewall, and security snapshot.',
   system: 'Hostname, uptime, CPU, RAM and disk stats.',
   network: 'WAN/LAN status and traffic throughput.',
   acme: 'ACME certificate health and renewal status.',
@@ -205,6 +218,8 @@ const loadDashboardCardConfig = (): DashboardCardConfig[] => {
 
 export default function Dashboard() {
   const { formatDate } = useDisplayPreferences()
+  const metrics = useMetrics()
+  const metricsHistory = useMetricsHistory(180)
   const sys = useSystemStatus()
   const net = useNetworkStatus()
   const sec = useSecurityStatus()
@@ -245,6 +260,75 @@ export default function Dashboard() {
 
   const renderCardBody = (id: DashboardCardId) => {
     switch (id) {
+      case 'metrics':
+        return (
+          <>
+            {metrics.isError && <ErrorBanner message={metrics.error?.message ?? 'Failed to load metrics'} />}
+            {metrics.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
+            {metrics.data && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-500">CPU</p>
+                    <p className="mt-1 text-2xl font-semibold text-gray-900">
+                      {formatPercent(metrics.data.cpu_percent)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Load {metrics.data.loadavg.map((value) => toFiniteNumber(value).toFixed(2)).join(' / ')}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Memory</p>
+                    <p className="mt-1 text-2xl font-semibold text-gray-900">
+                      {formatPercent(metrics.data.ram_percent)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {formatBytes(metrics.data.ram_used_bytes)} / {formatBytes(metrics.data.ram_total_bytes)} used
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <MetricRow label="WAN RX" value={formatBps(metrics.data.wan_rx_bps)} />
+                  <MetricRow label="WAN TX" value={formatBps(metrics.data.wan_tx_bps)} />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <MetricRow label="Firewall States" value={metrics.data.firewall_state_count.toString()} />
+                  <MetricRow label="Suricata Alerts" value={`${metrics.data.suricata_alert_rate.toFixed(1)} / min`} />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <MetricRow label="CrowdSec Decisions" value={`${metrics.data.crowdsec_decision_rate.toFixed(1)} / min`} />
+                  <MetricRow label="Uptime" value={formatUptime(metrics.data.uptime)} />
+                </div>
+
+                {metricsHistory.data?.points && metricsHistory.data.points.length > 1 && (
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center justify-between gap-3 text-xs text-gray-500">
+                      <span>CPU trend</span>
+                      <Sparkline
+                        data={metricsHistory.data.points.map((point) => point.cpu_percent)}
+                        color="#ef4444"
+                        height={28}
+                        width={120}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 text-xs text-gray-500">
+                      <span>RAM trend</span>
+                      <Sparkline
+                        data={metricsHistory.data.points.map((point) => point.ram_percent)}
+                        color="#3b82f6"
+                        height={28}
+                        width={120}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )
       case 'system':
         return (
           <>

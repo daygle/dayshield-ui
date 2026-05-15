@@ -17,7 +17,6 @@ import AIThreats from './pages/AIThreats'
 import ACME from './pages/ACME'
 import System from './pages/System'
 import LiveLogs from './pages/LiveLogs'
-import Metrics from './pages/Metrics'
 import Backup from './pages/Backup'
 import Notifications from './pages/Notifications'
 import NTP from './pages/NTP'
@@ -43,7 +42,7 @@ function App() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="metrics" element={<Metrics />} />
+          <Route path="metrics" element={<Navigate to="/dashboard" replace />} />
           <Route path="interfaces" element={<Interfaces />} />
           <Route path="gateways" element={<Gateways />} />
           <Route path="firewall" element={<Firewall />} />
