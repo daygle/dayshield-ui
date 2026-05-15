@@ -53,6 +53,7 @@ const DATE_FORMAT_OPTIONS: Array<{ value: DateFormatPreference; label: string }>
   { value: 'yyyy-mm-dd', label: 'YYYY-MM-DD' },
   { value: 'dd-mm-yyyy', label: 'DD-MM-YYYY' },
   { value: 'mm-dd-yyyy', label: 'MM-DD-YYYY' },
+  { value: 'mm/dd/yyyy', label: 'MM/DD/YYYY' },
 ]
 
 const TIME_FORMAT_OPTIONS: Array<{ value: TimeFormatPreference; label: string }> = [
