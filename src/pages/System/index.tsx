@@ -125,6 +125,11 @@ function formatUpdateLevelName(level: string): string {
 }
 
 function normalizeUpdateText(text: string): string {
+    // Show only file name for restored config backup archive
+    const restoredBackupMatch = trimmed.match(/^Restored config backup archive: (.+\/)?([^\/]+)$/)
+    if (restoredBackupMatch) {
+      return `Restored config backup archive: ${restoredBackupMatch[2]}.`
+    }
   const trimmed = text.trim().replace(/\s+/g, ' ')
   if (!trimmed) return trimmed
 
