@@ -4,11 +4,11 @@ import { useMetricsHistory } from '../../hooks/useMetricsHistory'
 import { useMetricsStream } from '../../hooks/useMetricsStream'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
-import Modal from '../../components/Modal'
 import ErrorBanner from '../../components/ErrorBanner'
 import type { MetricsSnapshot, MetricsHistoryPoint, LanIfaceMetrics, FirewallRuleHit, NetworkInterface } from '../../types'
 import { getInterfaces } from '../../api/interfaces'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
+import CardLayoutManager from '../../components/CardLayoutManager'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -334,6 +334,7 @@ function MetricCard({
   sparkData,
   sparkColor,
   children,
+  className,
 }: {
   title: string
   value: string
@@ -343,9 +344,10 @@ function MetricCard({
   sparkData?: number[]
   sparkColor?: string
   children?: React.ReactNode
+  className?: string
 }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 flex flex-col gap-2">
+    <div className={`bg-white rounded-lg border border-gray-200 shadow-sm p-4 flex flex-col gap-2 ${className ?? ''}`}>
       <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">{title}</p>
       <p className="text-2xl font-bold text-gray-900 leading-none">{value}</p>
       {sub && <p className="text-xs text-gray-400">{sub}</p>}
@@ -466,6 +468,7 @@ function renderMetricsCardBody(
           warn={85}
           sparkData={cpuSparkData}
           sparkColor="#3b82f6"
+          className="h-full min-h-[220px]"
         />
       )
     case 'ram':
@@ -478,11 +481,12 @@ function renderMetricsCardBody(
           warn={85}
           sparkData={ramSparkData}
           sparkColor="#8b5cf6"
+          className="h-full min-h-[220px]"
         />
       )
     case 'load':
       return (
-        <Card title="Load Average">
+        <Card className="h-full min-h-[220px]" title="Load Average">
           {snap ? (
             <div className="mt-2 space-y-1.5">
               {([1, 5, 15] as const).map((min, idx) => {
@@ -504,7 +508,7 @@ function renderMetricsCardBody(
       )
     case 'temperature':
       return (
-        <Card title="Temperature + Uptime">
+        <Card className="h-full min-h-[220px]" title="Temperature + Uptime">
           {snap ? (
             <>
               {snap.temperature != null ? (
@@ -528,7 +532,7 @@ function renderMetricsCardBody(
       )
     case 'throughput':
       return (
-        <Card title="WAN Throughput">
+        <Card className="h-full min-h-[220px]" title="WAN Throughput">
           <div className="space-y-2">
             {snap && (
               <div className="flex gap-6 text-xs">
@@ -542,7 +546,7 @@ function renderMetricsCardBody(
       )
     case 'lan':
       return (
-        <Card title="LAN Interfaces">
+        <Card className="h-full min-h-[220px]" title="LAN Interfaces">
           {snap ? (
             <InterfaceTable ifaces={snap.lan_ifaces} labelFor={labelFor} />
           ) : (
@@ -552,7 +556,7 @@ function renderMetricsCardBody(
       )
     case 'disk':
       return (
-        <Card title="Disk Usage">
+        <Card className="h-full min-h-[220px]" title="Disk Usage">
           {snap ? (
             <div className="flex items-center gap-4">
               <div className="flex-1">
@@ -580,7 +584,7 @@ function renderMetricsCardBody(
           .filter((item) => toFiniteNumber(item.hits) > 0)
           .sort((a, b) => toFiniteNumber(b.hits) - toFiniteNumber(a.hits))
       return (
-        <Card title="Firewall">
+        <Card className="h-full min-h-[220px]" title="Firewall">
           {snap ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -605,7 +609,7 @@ function renderMetricsCardBody(
       }
     case 'suricata':
       return (
-        <Card title="Suricata">
+        <Card className="h-full min-h-[220px]" title="Suricata">
           {snap ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -628,7 +632,7 @@ function renderMetricsCardBody(
       )
     case 'crowdsec':
       return (
-        <Card title="CrowdSec">
+        <Card className="h-full min-h-[220px]" title="CrowdSec">
           {snap ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -758,6 +762,7 @@ export default function Metrics() {
 
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [cardConfig, setCardConfig] = useState<MetricsCardConfig[]>(loadMetricsCardConfig)
+  const [dragCardId, setDragCardId] = useState<MetricsCardId | null>(null)
 
   useEffect(() => {
     window.localStorage.setItem('metricsCardConfig', JSON.stringify(cardConfig))
@@ -798,6 +803,20 @@ export default function Metrics() {
   const isLoading = poll.isLoading && !snap
   const isError = poll.isError && !snap
 
+  const reorderCards = (sourceId: MetricsCardId, targetId: MetricsCardId) => {
+    if (sourceId === targetId) return
+    setCardConfig((current) => {
+      const sourceIndex = current.findIndex((card) => card.id === sourceId)
+      const targetIndex = current.findIndex((card) => card.id === targetId)
+      if (sourceIndex < 0 || targetIndex < 0) return current
+
+      const next = [...current]
+      const [moved] = next.splice(sourceIndex, 1)
+      next.splice(targetIndex, 0, moved)
+      return next
+    })
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -806,11 +825,12 @@ export default function Metrics() {
           <p className="text-sm text-gray-500 max-w-2xl">
             Rearrange, resize, and show or hide the cards that matter most for your metrics view.
           </p>
+          <p className="mt-1 text-xs text-gray-400">Tip: drag cards directly in the grid to reorder.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <LiveDot connected={stream.connected} />
           <Button size="sm" variant="secondary" onClick={() => setCustomizeOpen(true)}>
-            Customize Metrics
+            Edit Layout
           </Button>
         </div>
       </div>
@@ -831,7 +851,35 @@ export default function Metrics() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {cardConfig.map((card) => (
           card.visible ? (
-            <div key={card.id} className={metricsCardWidthClass(card.width)}>
+            <div
+              key={card.id}
+              draggable
+              onDragStart={() => setDragCardId(card.id)}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={() => {
+                if (!dragCardId || dragCardId === card.id) return
+                reorderCards(dragCardId, card.id)
+                setDragCardId(null)
+              }}
+              onDragEnd={() => setDragCardId(null)}
+              className={`${metricsCardWidthClass(card.width)} ${dragCardId === card.id ? 'opacity-60' : ''}`}
+            >
+              <div className="mb-2 flex justify-end">
+                <span
+                  className="inline-flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400"
+                  title="Drag to reorder"
+                  aria-label="Drag to reorder"
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
+                    <circle cx="6" cy="5" r="1.2" />
+                    <circle cx="6" cy="10" r="1.2" />
+                    <circle cx="6" cy="15" r="1.2" />
+                    <circle cx="14" cy="5" r="1.2" />
+                    <circle cx="14" cy="10" r="1.2" />
+                    <circle cx="14" cy="15" r="1.2" />
+                  </svg>
+                </span>
+              </div>
               {renderMetricsCardBody(
                 card.id,
                 snap,
@@ -848,79 +896,29 @@ export default function Metrics() {
         ))}
       </div>
 
-      <Modal
+      <CardLayoutManager
         open={customizeOpen}
-        title="Customize Metrics"
+        title="Metrics Layout"
+        subtitle="Toggle cards, drag to reorder, and choose sizes without leaving the page."
         onClose={() => setCustomizeOpen(false)}
-        onConfirm={() => setCustomizeOpen(false)}
-        confirmLabel="Done"
-        size="lg"
-      >
-        <div className="space-y-4">
-          {cardConfig.map((card, index) => (
-            <div key={card.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="font-semibold text-gray-900">{metricsCardTitles[card.id]}</div>
-                  <p className="text-sm text-gray-500">{metricsCardDescriptions[card.id]}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => setCardConfig((current) => {
-                    const next = [...current]
-                    if (index === 0) return current
-                    const [item] = next.splice(index, 1)
-                    next.splice(index - 1, 0, item)
-                    return next
-                  })} disabled={index === 0}>
-                    Move Up
-                  </Button>
-                  <Button size="sm" variant="secondary" onClick={() => setCardConfig((current) => {
-                    const next = [...current]
-                    if (index === next.length - 1) return current
-                    const [item] = next.splice(index, 1)
-                    next.splice(index + 1, 0, item)
-                    return next
-                  })} disabled={index === cardConfig.length - 1}>
-                    Move Down
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={card.visible ? 'secondary' : 'primary'}
-                    onClick={() => setCardConfig((current) => current.map((item) =>
-                      item.id === card.id ? { ...item, visible: !item.visible } : item
-                    ))}
-                  >
-                    {card.visible ? 'Hide' : 'Show'}
-                  </Button>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  Size:
-                  <select
-                    className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
-                    value={card.width}
-                    onChange={(event) => setCardConfig((current) =>
-                      current.map((item) =>
-                        item.id === card.id
-                          ? { ...item, width: Number(event.target.value) as 1 | 2 | 3 }
-                          : item
-                      )
-                    )}
-                  >
-                    <option value={1}>Small</option>
-                    <option value={2}>Medium</option>
-                    <option value={3}>Large</option>
-                  </select>
-                </label>
-                <div className="text-xs text-gray-500">
-                  Small = 1 column, Medium = 2 columns, Large = full width on desktop.
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Modal>
+        items={cardConfig.map((card) => ({
+          id: card.id,
+          title: metricsCardTitles[card.id],
+          description: metricsCardDescriptions[card.id],
+          visible: card.visible,
+          width: card.width,
+        }))}
+        onChange={(items) => {
+          setCardConfig(
+            items.map((item) => ({
+              id: item.id as MetricsCardId,
+              visible: item.visible,
+              width: item.width,
+            })),
+          )
+        }}
+        onReset={() => setCardConfig(defaultMetricsCardConfig)}
+      />
     </div>
   )
 }

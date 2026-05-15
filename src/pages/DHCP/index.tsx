@@ -51,6 +51,11 @@ const defaultConfigForm = (): Partial<DhcpConfig> => ({
   domainName: '',
 })
 
+function isWanInterface(iface: NetworkInterface): boolean {
+  const desc = iface.description?.trim().toLowerCase() ?? ''
+  return Boolean(iface.wanMode) || desc.includes('wan') || iface.name.toLowerCase() === 'wan'
+}
+
 export default function DHCP() {
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedInterface = searchParams.get('iface')
@@ -76,6 +81,11 @@ export default function DHCP() {
   const interfaceLabel = (iface: NetworkInterface): string =>
     formatInterfaceDisplayName(iface.description, iface.name)
 
+  const selectableInterfaces = useMemo(
+    () => interfaces.filter((iface) => !isWanInterface(iface)),
+    [interfaces],
+  )
+
   const selectedInterfaceMeta = useMemo(
     () => interfaces.find((iface) => iface.name === selectedInterface) ?? null,
     [interfaces, selectedInterface],
@@ -84,6 +94,13 @@ export default function DHCP() {
   const selectedInterfaceLabel = selectedInterfaceMeta
     ? interfaceLabel(selectedInterfaceMeta)
     : selectedInterface || ''
+
+  const globalConfigInterfaceLabel = useMemo(() => {
+    const name = config?.interface
+    if (!name) return '-'
+    const iface = interfaces.find((item) => item.name === name)
+    return iface ? interfaceLabel(iface) : name
+  }, [config?.interface, interfaces])
 
   const openStaticReservationFromLease = (lease: ActiveLeaseRow) => {
     setLeaseForm({
@@ -181,9 +198,21 @@ export default function DHCP() {
   useEffect(loadAll, [selectedInterface])
 
   useEffect(() => {
-    if (selectedInterface || interfaces.length === 0) return
+    if (!selectedInterface || selectableInterfaces.length === 0) return
+    const isSelectable = selectableInterfaces.some((iface) => iface.name === selectedInterface)
+    if (isSelectable) return
 
-    const preferred = interfaces.find((iface) => iface.name === config?.interface) ?? interfaces[0]
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set('iface', selectableInterfaces[0].name)
+      return next
+    }, { replace: true })
+  }, [selectedInterface, selectableInterfaces, setSearchParams])
+
+  useEffect(() => {
+    if (selectedInterface || selectableInterfaces.length === 0) return
+
+    const preferred = selectableInterfaces.find((iface) => iface.name === config?.interface) ?? selectableInterfaces[0]
     if (!preferred) return
 
     setSearchParams((prev) => {
@@ -191,7 +220,7 @@ export default function DHCP() {
       next.set('iface', preferred.name)
       return next
     }, { replace: true })
-  }, [selectedInterface, interfaces, config?.interface, setSearchParams])
+  }, [selectedInterface, selectableInterfaces, config?.interface, setSearchParams])
 
   const activeLeasesForSelectedInterface = useMemo(() => {
     if (!selectedInterface) return activeLeases
@@ -371,7 +400,7 @@ export default function DHCP() {
             onChange={(e) => handleSelectInterface(e.target.value)}
           >
             <option value="">Select interface</option>
-            {interfaces.map((iface) => (
+            {selectableInterfaces.map((iface) => (
               <option key={iface.name} value={iface.name}>
                 {interfaceLabel(iface)}
               </option>
@@ -391,13 +420,13 @@ export default function DHCP() {
         }
       >
         {loading ? (
-          <p className="text-sm text-gray-400">LoadingÔÇª</p>
+          <p className="text-sm text-gray-400">Loading...</p>
         ) : (selectedInterface ? interfaceConfig : config) ? (
           <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
             {!selectedInterface && (
               <div>
                 <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Interface</dt>
-                <dd className="mt-1 font-medium text-gray-800 font-mono">{config?.interface || '-'}</dd>
+                <dd className="mt-1 font-medium text-gray-800">{globalConfigInterfaceLabel}</dd>
               </div>
             )}
             <div>
@@ -414,7 +443,7 @@ export default function DHCP() {
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Pool Range</dt>
               <dd className="mt-1 font-medium text-gray-800 font-mono">
                 {(selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart) && (selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd)
-                  ? `${selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart} ÔÇô ${selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd}`
+                  ? `${selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart} - ${selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd}`
                   : '-'}
               </dd>
             </div>
@@ -453,7 +482,7 @@ export default function DHCP() {
       {/* Static Leases */}
       <Card
         title={selectedInterface ? 'Static IP Reservations' : 'Static Leases'}
-        subtitle={selectedInterface ? `Reservations for ${selectedInterfaceLabel}` : 'MAC ÔåÆ IP address reservations (always assigned the same IP)'}
+        subtitle={selectedInterface ? `Reservations for ${selectedInterfaceLabel}` : 'MAC to IP address reservations (always assigned the same IP)'}
         actions={
           <Button size="sm" onClick={() => setLeaseModalOpen(true)}>
             + Add Lease
@@ -519,7 +548,7 @@ export default function DHCP() {
                   onChange={(e) => setConfigForm((f) => ({ ...f, interface: e.target.value }))}
                 >
                   <option value="">Select interface</option>
-                  {interfaces.map((iface) => (
+                  {selectableInterfaces.map((iface) => (
                     <option key={iface.name} value={iface.name}>{interfaceLabel(iface)}</option>
                   ))}
                 </FormField>

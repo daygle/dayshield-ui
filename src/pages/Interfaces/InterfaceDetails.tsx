@@ -4,6 +4,7 @@ import { updateInterface } from '../../api/interfaces'
 import Button from '../../components/Button'
 import FormField from '../../components/FormField'
 import Modal from '../../components/Modal'
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
 interface InterfaceDetailsProps {
   iface: NetworkInterface
@@ -54,6 +55,7 @@ export default function InterfaceDetails({ iface, parentInterfaceOptions = [], p
   const statusClass = statusText.toUpperCase() === 'UP'
     ? 'bg-green-100 text-green-700'
     : 'bg-gray-100 text-gray-600'
+  const interfaceDisplayName = formatInterfaceDisplayName(iface.description, iface.name)
 
   const formatCount = (value?: number) => (typeof value === 'number' ? value.toLocaleString() : '-')
   const formatBytes = (value?: number) => {
@@ -114,7 +116,10 @@ export default function InterfaceDetails({ iface, parentInterfaceOptions = [], p
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div className="rounded border border-gray-200 bg-white p-3">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Interface Name</p>
-          <p className="mt-1 font-mono text-sm text-gray-900">{iface.name}</p>
+          <p className="mt-1 text-sm font-medium text-gray-900">{interfaceDisplayName}</p>
+          {interfaceDisplayName !== iface.name && (
+            <p className="mt-1 font-mono text-xs text-gray-500">NIC: {iface.name}</p>
+          )}
         </div>
         <div className="rounded border border-gray-200 bg-white p-3">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv4 Configuration Type</p>
@@ -172,7 +177,7 @@ export default function InterfaceDetails({ iface, parentInterfaceOptions = [], p
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           <div className="rounded border border-gray-100 bg-gray-50 p-3">
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Identity</p>
-            <p className="mt-1 text-sm text-gray-900">{iface.description || iface.name}</p>
+            <p className="mt-1 text-sm text-gray-900">{interfaceDisplayName}</p>
             <p className="mt-1 font-mono text-xs text-gray-500">{iface.name}</p>
           </div>
           <div className="rounded border border-gray-100 bg-gray-50 p-3">

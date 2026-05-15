@@ -5,9 +5,9 @@ import { useSecurityStatus } from '../../hooks/useSecurityStatus'
 import { useAcmeStatus } from '../../hooks/useAcmeStatus'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
-import Modal from '../../components/Modal'
 import ErrorBanner from '../../components/ErrorBanner'
 import Sparkline from '../../components/Sparkline'
+import CardLayoutManager from '../../components/CardLayoutManager'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -205,6 +205,7 @@ export default function Dashboard() {
 
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [cardConfig, setCardConfig] = useState<DashboardCardConfig[]>(loadDashboardCardConfig)
+  const [dragCardId, setDragCardId] = useState<DashboardCardId | null>(null)
 
   useEffect(() => {
     window.localStorage.setItem('dashboardCardConfig', JSON.stringify(cardConfig))
@@ -219,21 +220,18 @@ export default function Dashboard() {
   const hasWarningAlerts = alertRate >= 1 && alertRate < 5
   const hasCriticalAlerts = alertRate >= 5
 
-  const moveCard = (index: number, direction: -1 | 1) => {
+  const reorderCards = (sourceId: DashboardCardId, targetId: DashboardCardId) => {
+    if (sourceId === targetId) return
     setCardConfig((current) => {
+      const sourceIndex = current.findIndex((card) => card.id === sourceId)
+      const targetIndex = current.findIndex((card) => card.id === targetId)
+      if (sourceIndex < 0 || targetIndex < 0) return current
+
       const next = [...current]
-      const target = index + direction
-      if (target < 0 || target >= next.length) return current
-      const [item] = next.splice(index, 1)
-      next.splice(target, 0, item)
+      const [moved] = next.splice(sourceIndex, 1)
+      next.splice(targetIndex, 0, moved)
       return next
     })
-  }
-
-  const updateCard = (id: DashboardCardId, partial: Partial<DashboardCardConfig>) => {
-    setCardConfig((current) =>
-      current.map((card) => (card.id === id ? { ...card, ...partial } : card)),
-    )
   }
 
   const renderCardBody = (id: DashboardCardId) => {
@@ -502,9 +500,10 @@ export default function Dashboard() {
           <p className="text-sm text-gray-500 max-w-2xl">
             Customize which cards appear, rearrange their order, and resize the layout to suit your workflow.
           </p>
+          <p className="mt-1 text-xs text-gray-400">Tip: drag cards directly in the grid to reorder.</p>
         </div>
         <Button size="sm" variant="secondary" onClick={() => setCustomizeOpen(true)}>
-          Customize Dashboard
+          Edit Layout
         </Button>
       </div>
 
@@ -514,14 +513,43 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {cardConfig.map((card) =>
           card.visible ? (
-            <div key={card.id} className={`col-span-1 ${cardWidthClass(card.width)}`}>
+            <div
+              key={card.id}
+              draggable
+              onDragStart={() => setDragCardId(card.id)}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={() => {
+                if (!dragCardId || dragCardId === card.id) return
+                reorderCards(dragCardId, card.id)
+                setDragCardId(null)
+              }}
+              onDragEnd={() => setDragCardId(null)}
+              className={`col-span-1 ${cardWidthClass(card.width)} ${dragCardId === card.id ? 'opacity-60' : ''}`}
+            >
               <Card
+                className="h-full min-h-[220px]"
                 title={dashboardCardTitles[card.id]}
                 actions={card.id === 'suricata' ? (hasCriticalAlerts ? <Badge variant="red">Critical</Badge> : hasWarningAlerts ? <Badge variant="yellow">High</Badge> : undefined) : undefined}
               >
+                <div className="mb-2 flex justify-end">
+                  <span
+                    className="inline-flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400"
+                    title="Drag to reorder"
+                    aria-label="Drag to reorder"
+                  >
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
+                      <circle cx="6" cy="5" r="1.2" />
+                      <circle cx="6" cy="10" r="1.2" />
+                      <circle cx="6" cy="15" r="1.2" />
+                      <circle cx="14" cy="5" r="1.2" />
+                      <circle cx="14" cy="10" r="1.2" />
+                      <circle cx="14" cy="15" r="1.2" />
+                    </svg>
+                  </span>
+                </div>
                 {renderCardBody(card.id)}
               </Card>
             </div>
@@ -529,59 +557,29 @@ export default function Dashboard() {
         )}
       </div>
 
-      <Modal
+      <CardLayoutManager
         open={customizeOpen}
-        title="Customize Dashboard"
+        title="Dashboard Layout"
+        subtitle="Toggle cards, drag to reorder, and choose sizes without leaving the page."
         onClose={() => setCustomizeOpen(false)}
-        onConfirm={() => setCustomizeOpen(false)}
-        confirmLabel="Done"
-        size="lg"
-      >
-        <div className="space-y-4">
-          {cardConfig.map((card, index) => (
-            <div key={card.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="font-semibold text-gray-900">{dashboardCardTitles[card.id]}</div>
-                  <p className="text-sm text-gray-500">{dashboardCardDescriptions[card.id]}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => moveCard(index, -1)} disabled={index === 0}>
-                    Move Up
-                  </Button>
-                  <Button size="sm" variant="secondary" onClick={() => moveCard(index, 1)} disabled={index === cardConfig.length - 1}>
-                    Move Down
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={card.visible ? 'secondary' : 'primary'}
-                    onClick={() => updateCard(card.id, { visible: !card.visible })}
-                  >
-                    {card.visible ? 'Hide' : 'Show'}
-                  </Button>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  Size:
-                  <select
-                    className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
-                    value={card.width}
-                    onChange={(event) => updateCard(card.id, { width: Number(event.target.value) as 1 | 2 | 3 })}
-                  >
-                    <option value={1}>Small</option>
-                    <option value={2}>Medium</option>
-                    <option value={3}>Large</option>
-                  </select>
-                </label>
-                <div className="text-xs text-gray-500">
-                  Small = 1 column, Medium = 2 columns, Large = full width on desktop.
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Modal>
+        items={cardConfig.map((card) => ({
+          id: card.id,
+          title: dashboardCardTitles[card.id],
+          description: dashboardCardDescriptions[card.id],
+          visible: card.visible,
+          width: card.width,
+        }))}
+        onChange={(items) => {
+          setCardConfig(
+            items.map((item) => ({
+              id: item.id as DashboardCardId,
+              visible: item.visible,
+              width: item.width,
+            })),
+          )
+        }}
+        onReset={() => setCardConfig(defaultDashboardCardConfigs)}
+      />
     </div>
   )
 }

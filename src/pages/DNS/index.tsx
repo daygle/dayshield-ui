@@ -32,6 +32,12 @@ import FormField from '../../components/FormField'
 type HostRow = DnsHostOverride & Record<string, unknown>
 type DomainRow = DnsDomainOverride & Record<string, unknown>
 type BlocklistRow = DnsBlocklistEntry & Record<string, unknown>
+type DnsListenCandidate = {
+  key: string
+  ip: string
+  interfaceName: string
+  interfaceLabel: string
+}
 
 const hostColumns: Column<HostRow>[] = [
   { key: 'hostname', header: 'Hostname (FQDN)' },
@@ -176,6 +182,35 @@ export default function DNS() {
   const effectiveInterfaceLabel = effectiveInterfaceObj
     ? interfaceLabel(effectiveInterfaceObj)
     : (effectiveInterface || '-')
+
+  const interfaceLabelByName = useMemo(
+    () => new Map(interfaces.map((iface) => [iface.name, interfaceLabel(iface)] as const)),
+    [interfaces],
+  )
+
+  const listenEntries = useMemo(
+    () => listenInput.split(',').map((v) => v.trim()).filter(Boolean),
+    [listenInput],
+  )
+
+  const dnsListenCandidates = useMemo<DnsListenCandidate[]>(
+    () =>
+      dnsInterfaces.flatMap((iface) =>
+        (iface.addresses ?? [])
+          .map((cidr) => {
+            const ip = cidr.split('/')[0]?.trim()
+            if (!ip) return null
+            return {
+              key: `${iface.name}-${ip}`,
+              ip,
+              interfaceName: iface.name,
+              interfaceLabel: interfaceLabelByName.get(iface.name) ?? iface.name,
+            }
+          })
+          .filter((entry): entry is DnsListenCandidate => entry !== null),
+      ),
+    [dnsInterfaces, interfaceLabelByName],
+  )
 
   useEffect(() => {
     if (activeSection !== 'blocklists') return
@@ -673,8 +708,8 @@ export default function DNS() {
         size="lg"
       >
         <div className="space-y-5">
-          <>
-              {/* Enable toggle */}
+          <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="flex items-center gap-3 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -685,24 +720,7 @@ export default function DNS() {
                 <span className="text-sm font-medium text-gray-700">Enable DNS resolver</span>
               </label>
 
-              <div className="grid grid-cols-2 gap-4">
-            {/* Port */}
-            <FormField
-              id="dns-port"
-              label="Listen Port"
-              type="number"
-              min={1}
-              max={65535}
-              placeholder="53"
-              value={String(configForm.port ?? 53)}
-              onChange={(e) =>
-                setConfigForm((f) => ({ ...f, port: parseInt(e.target.value, 10) || 53 }))
-              }
-            />
-
-            {/* DNSSEC toggle */}
-            <div className="flex items-end pb-1">
-              <label className="flex items-center gap-3 cursor-pointer select-none">
+              <label className="flex items-center gap-3 cursor-pointer select-none md:justify-end">
                 <input
                   type="checkbox"
                   className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -711,74 +729,93 @@ export default function DNS() {
                 />
                 <span className="text-sm font-medium text-gray-700">Enable DNSSEC validation</span>
               </label>
+
+              <div className="md:col-span-2">
+                <FormField
+                  id="dns-port"
+                  label="Listen Port"
+                  type="number"
+                  min={1}
+                  max={65535}
+                  placeholder="53"
+                  value={String(configForm.port ?? 53)}
+                  onChange={(e) =>
+                    setConfigForm((f) => ({ ...f, port: parseInt(e.target.value, 10) || 53 }))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <label className="block text-xs font-medium text-gray-700">Listen Addresses</label>
+              <span className="text-xs text-gray-500">
+                {listenEntries.length > 0
+                  ? `${listenEntries.length} selected`
+                  : 'Blank = all interfaces'}
+              </span>
             </div>
 
-            {/* Listen addresses */}
-            <div className="col-span-2 space-y-2">
-              <label className="block text-xs font-medium text-gray-700">
-                Listen Addresses
-              </label>
-              {dnsInterfaces.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {dnsInterfaces.flatMap((iface) =>
-                    (iface.addresses ?? []).map((cidr) => {
-                      const ip = cidr.split('/')[0]
-                      const current = listenInput.split(',').map((v) => v.trim()).filter(Boolean)
-                      const selected = current.includes(ip)
-                      return (
-                        <button
-                          key={`${iface.name}-${ip}`}
-                          type="button"
-                          onClick={() => {
-                            const entries = listenInput.split(',').map((v) => v.trim()).filter(Boolean)
-                            const next = selected
-                              ? entries.filter((e) => e !== ip)
-                              : [...entries, ip]
-                            setListenInput(next.join(', '))
-                          }}
-                          className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium border transition-colors ${
-                            selected
-                              ? 'bg-blue-600 text-white border-blue-600'
-                              : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:text-blue-600'
-                          }`}
-                        >
-                          <span className="font-mono">{ip}</span>
-                          <span className="opacity-60">{iface.name}</span>
-                        </button>
-                      )
-                    }),
-                  )}
+            {dnsListenCandidates.length > 0 && (
+              <div className="rounded-md border border-gray-200 bg-gray-50 p-2">
+                <div className="flex flex-wrap gap-2">
+                  {dnsListenCandidates.map((candidate) => {
+                    const selected = listenEntries.includes(candidate.ip)
+                    return (
+                      <button
+                        key={candidate.key}
+                        type="button"
+                        onClick={() => {
+                          const next = selected
+                            ? listenEntries.filter((entry) => entry !== candidate.ip)
+                            : [...listenEntries, candidate.ip]
+                          setListenInput(next.join(', '))
+                        }}
+                        className={`rounded border px-2.5 py-1.5 text-left text-xs transition-colors ${
+                          selected
+                            ? 'border-blue-600 bg-blue-600 text-white'
+                            : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:text-blue-600'
+                        }`}
+                        title={`${candidate.interfaceLabel} (${candidate.interfaceName})`}
+                      >
+                        <div className="font-mono leading-4">{candidate.ip}</div>
+                        <div className={`leading-4 ${selected ? 'text-blue-100' : 'text-gray-500'}`}>
+                          {candidate.interfaceLabel}
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
-              )}
-              <input
-                id="dns-listen"
-                type="text"
-                className="block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="e.g. 192.168.1.1, 127.0.0.1  (leave blank to listen on all interfaces)"
-                value={listenInput}
-                onChange={(e) => setListenInput(e.target.value)}
-              />
-            </div>
+              </div>
+            )}
 
-            {/* Upstream forwarders */}
-            <FormField
-              id="dns-fwd"
-              label="Upstream Forwarders"
-              className="col-span-2"
-              placeholder="e.g. 1.1.1.1, 8.8.8.8  (leave blank for full recursion)"
-              value={forwardersInput}
-              onChange={(e) => setForwardersInput(e.target.value)}
+            <input
+              id="dns-listen"
+              type="text"
+              className="block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="e.g. 192.168.1.1, 127.0.0.1 (leave blank to listen on all interfaces)"
+              value={listenInput}
+              onChange={(e) => setListenInput(e.target.value)}
             />
           </div>
 
-          <p className="text-xs text-gray-500">
-            Enter multiple addresses as comma-separated values.
-            When <strong>upstream forwarders</strong> are set Unbound operates in forwarder mode;
-            otherwise it performs full recursive resolution.
-            Use <strong>Host Overrides</strong> and <strong>Domain Overrides</strong> to add
-            local DNS entries and per-domain forwarding.
-          </p>
-          </>
+          <div className="space-y-2">
+            <FormField
+              id="dns-fwd"
+              label="Upstream Forwarders"
+              placeholder="e.g. 1.1.1.1, 8.8.8.8 (leave blank for full recursion)"
+              value={forwardersInput}
+              onChange={(e) => setForwardersInput(e.target.value)}
+            />
+            <p className="text-xs text-gray-500">
+              Enter multiple addresses as comma-separated values. When <strong>upstream forwarders</strong> are set,
+              Unbound operates in forwarder mode; otherwise it performs full recursive resolution.
+              Use <strong>Host Overrides</strong> and <strong>Domain Overrides</strong> for local entries and
+              per-domain forwarding.
+            </p>
+          </div>
+
         </div>
       </Modal>
 
