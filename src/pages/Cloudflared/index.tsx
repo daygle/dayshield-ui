@@ -312,9 +312,16 @@ function CloudflaredPageContent() {
         title="Ingress Rules"
         subtitle="Each rule maps a public hostname to an internal HTTP or HTTPS service."
         actions={
-          <Button size="sm" disabled={busy} onClick={addIngress}>
-            + Add Route
-          </Button>
+          <button
+            disabled={busy}
+            onClick={addIngress}
+            className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Add new route"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
         }
       >
         <div className="space-y-4">
@@ -386,9 +393,17 @@ function CloudflaredPageContent() {
                   >
                     ↓
                   </Button>
-                  <Button variant="danger" size="sm" aria-label={`Remove ingress rule ${index + 1}`} disabled={busy} onClick={() => removeIngress(index)}>
-                    Remove
-                  </Button>
+                  <button
+                    className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900 disabled:opacity-40 disabled:cursor-not-allowed"
+                    aria-label={`Remove ingress rule ${index + 1}`}
+                    disabled={busy}
+                    onClick={() => removeIngress(index)}
+                    title="Remove rule"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             ))

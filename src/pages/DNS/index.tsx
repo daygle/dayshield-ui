@@ -419,9 +419,16 @@ export default function DNS() {
       header: '',
       className: 'w-16 text-right',
       render: (row) => (
-        <Button variant="danger" size="sm" onClick={() => setHostDeleteName(row.hostname as string)}>
-          Delete
-        </Button>
+        <button
+          onClick={() => setHostDeleteName(row.hostname as string)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+          title="Delete host override"
+          aria-label="Delete host override"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+          </svg>
+        </button>
       ),
     },
   ]
@@ -433,9 +440,16 @@ export default function DNS() {
       header: '',
       className: 'w-16 text-right',
       render: (row) => (
-        <Button variant="danger" size="sm" onClick={() => setDomainDeleteName(row.domain as string)}>
-          Delete
-        </Button>
+        <button
+          onClick={() => setDomainDeleteName(row.domain as string)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+          title="Delete domain override"
+          aria-label="Delete domain override"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+          </svg>
+        </button>
       ),
     },
   ]
@@ -465,9 +479,16 @@ export default function DNS() {
       header: '',
       className: 'w-16 text-right',
       render: (row) => (
-        <Button variant="danger" size="sm" onClick={() => setBlocklistDeleteId(String(row.id))}>
-          Delete
-        </Button>
+        <button
+          onClick={() => setBlocklistDeleteId(String(row.id))}
+          className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+          title="Delete blocklist"
+          aria-label="Delete blocklist"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+          </svg>
+        </button>
       ),
     },
   ]
@@ -495,9 +516,16 @@ export default function DNS() {
             title="DNS Resolver (Unbound)"
             subtitle="Recursive resolver / forwarder configuration"
             actions={
-              <Button size="sm" variant="secondary" onClick={openConfigModal}>
-                Edit Resolver
-              </Button>
+              <button
+                onClick={openConfigModal}
+                className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                title="Edit resolver"
+                aria-label="Edit resolver"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
             }
           >
             {loading ? (
@@ -595,9 +623,16 @@ export default function DNS() {
             title="Host Overrides"
             subtitle="Map fully-qualified hostnames to specific IP addresses (local A/AAAA records)"
             actions={
-              <Button size="sm" onClick={() => setHostModalOpen(true)}>
-                + Add Host
-              </Button>
+              <button
+                onClick={() => setHostModalOpen(true)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                title="Add host override"
+                aria-label="Add host override"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
             }
           >
             <Table
@@ -613,9 +648,16 @@ export default function DNS() {
             title="Domain Overrides"
             subtitle="Forward all DNS queries for a domain to a specific resolver"
             actions={
-              <Button size="sm" onClick={() => setDomainModalOpen(true)}>
-                + Add Domain
-              </Button>
+              <button
+                onClick={() => setDomainModalOpen(true)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                title="Add domain override"
+                aria-label="Add domain override"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
             }
           >
             <Table
@@ -634,9 +676,17 @@ export default function DNS() {
           title="DNS Blocklists"
           subtitle="Attach external DNS blocklist sources per interface"
           actions={
-            <Button size="sm" onClick={openAddBlocklistModal} disabled={!effectiveInterface}>
-              + Add Blocklist
-            </Button>
+            <button
+              onClick={openAddBlocklistModal}
+              disabled={!effectiveInterface}
+              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Add blocklist"
+              aria-label="Add blocklist"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
           }
         >
           <div className="space-y-4">

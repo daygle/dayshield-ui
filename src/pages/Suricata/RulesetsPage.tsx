@@ -465,7 +465,8 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
   })
 
   const installedCount = rulesets.filter((ruleset) => ruleset.installed).length
-  const disabledCount = disabledRuleIds.size
+  const enabledCount = rulesets.filter((ruleset) => ruleset.installed && ruleset.enabled).length
+  const disabledCount = rulesets.filter((ruleset) => ruleset.installed && !ruleset.enabled).length
 
   return (
     <div className="space-y-6">
@@ -492,14 +493,18 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
           </div>
         }
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
           <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
             <div className="text-gray-500">Total Rulesets</div>
             <div className="text-lg font-semibold text-gray-900">{rulesets.length}</div>
           </div>
           <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
-            <div className="text-gray-500">Installed</div>
-            <div className="text-lg font-semibold text-green-700">{installedCount}</div>
+            <div className="text-gray-500">Enabled</div>
+            <div className="text-lg font-semibold text-green-700">{enabledCount}</div>
+          </div>
+          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
+            <div className="text-gray-500">Disabled</div>
+            <div className="text-lg font-semibold text-orange-700">{disabledCount}</div>
           </div>
         </div>
       </Card>
@@ -624,7 +629,6 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                         <div className="mt-1 text-xs text-gray-500">
                           {familyLabelFor(ruleset)}/{subgroupLabelFor(ruleset)}
                         </div>
-                        <div className="mt-1 text-xs text-gray-500 break-all">{ruleset.source}</div>
                       </div>
                       <div className="flex flex-col items-end gap-1 text-xs">
                         <span
@@ -702,7 +706,6 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="font-medium text-gray-900">{ruleset.name}</div>
-                      <div className="mt-1 text-xs text-gray-500 break-all">{ruleset.source}</div>
                     </div>
                     <div className="flex flex-col items-end gap-1 text-xs">
                       <span

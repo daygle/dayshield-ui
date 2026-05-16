@@ -162,9 +162,16 @@ export default function InterfaceDetails({ iface, parentInterfaceOptions = [], p
       </div>
 
       <div className="flex justify-end">
-        <Button size="sm" variant="secondary" onClick={() => setEditOpen(true)}>
-          Edit Interface Settings
-        </Button>
+        <button
+          onClick={() => setEditOpen(true)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+          title="Edit interface settings"
+          aria-label="Edit interface settings"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </button>
       </div>
 
       <div className="rounded border border-gray-200 bg-white p-4">

@@ -562,6 +562,29 @@ export default function Firewall() {
       .finally(() => setDeletingRule(false))
   }
 
+  const handleMoveRuleUp = (rule: FirewallRule) => {
+    // Move up means decrease priority (lower number = higher in list)
+    if (rule.priority <= 1) return
+    const updatedRule = { ...rule, priority: rule.priority - 1 }
+    setRuleSaving(true)
+    updateFirewallRule(rule.id, updatedRule)
+      .then(() => loadRules())
+      .catch((err: Error) => setRulesError(err.message))
+      .finally(() => setRuleSaving(false))
+  }
+
+  const handleMoveRuleDown = (rule: FirewallRule) => {
+    // Move down means increase priority (higher number = lower in list)
+    const maxPriority = Math.max(...visibleRules.map((r) => (r.priority as number) ?? 100), rule.priority)
+    if (rule.priority >= maxPriority) return
+    const updatedRule = { ...rule, priority: rule.priority + 1 }
+    setRuleSaving(true)
+    updateFirewallRule(rule.id, updatedRule)
+      .then(() => loadRules())
+      .catch((err: Error) => setRulesError(err.message))
+      .finally(() => setRuleSaving(false))
+  }
+
   const handleSaveAlias = () => {
     const validationError = validateAliasForm(aliasForm)
     if (validationError) {
@@ -672,17 +695,53 @@ export default function Firewall() {
     {
       key: 'actions',
       header: '',
-      className: 'w-36 text-right',
-      render: (row) => (
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" size="sm" onClick={() => setEditRule(row as unknown as FirewallRule)}>
-            Edit
-          </Button>
-          <Button variant="danger" size="sm" onClick={() => setDeleteRuleId(row.id as string)}>
-            Delete
-          </Button>
-        </div>
-      ),
+      className: 'w-48 text-right',
+      render: (row) => {
+        const ruleData = row as unknown as FirewallRule
+        const maxPriority = Math.max(...visibleRules.map((r) => (r.priority as number) ?? 100), ruleData.priority)
+        return (
+          <div className="flex justify-end gap-1">
+            <button
+              title="Move rule up"
+              onClick={() => handleMoveRuleUp(ruleData)}
+              disabled={ruleSaving || ruleData.priority <= 1}
+              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15V3m0 0l-6 6m6-6l6 6" />
+              </svg>
+            </button>
+            <button
+              title="Move rule down"
+              onClick={() => handleMoveRuleDown(ruleData)}
+              disabled={ruleSaving || ruleData.priority >= maxPriority}
+              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v12m0 0l-6-6m6 6l6-6" />
+              </svg>
+            </button>
+            <button
+              title="Edit rule"
+              onClick={() => setEditRule(ruleData)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button
+              title="Delete rule"
+              onClick={() => setDeleteRuleId(row.id as string)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+              </svg>
+            </button>
+          </div>
+        )
+      },
     },
   ]
 
@@ -716,9 +775,16 @@ export default function Firewall() {
       header: '',
       className: 'w-16 text-right',
       render: (row) => (
-        <Button variant="danger" size="sm" onClick={() => setDeleteAliasName(row.name)}>
-          Delete
-        </Button>
+        <button
+          onClick={() => setDeleteAliasName(row.name)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+          title="Delete alias"
+          aria-label="Delete alias"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+          </svg>
+        </button>
       ),
     },
   ]
@@ -730,9 +796,16 @@ export default function Firewall() {
           title="Firewall Settings"
           subtitle="Global chain policies, management-plane protection, and advanced stateful controls"
           actions={
-            <Button size="sm" variant="secondary" onClick={openSettingsModal}>
-              Edit Settings
-            </Button>
+            <button
+              onClick={openSettingsModal}
+              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+              title="Edit settings"
+              aria-label="Edit firewall settings"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
           }
         >
         {settingsError && <p className="text-sm text-red-600 mb-3">{settingsError}</p>}
@@ -778,9 +851,16 @@ export default function Firewall() {
               <Button size="sm" variant="secondary" onClick={loadStats}>
                 Refresh Counters
               </Button>
-              <Button size="sm" onClick={openAddRuleModal}>
-                + Add Rule
-              </Button>
+              <button
+                onClick={openAddRuleModal}
+                className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                title="Add rule"
+                aria-label="Add firewall rule"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
             </div>
           }
         >
@@ -1046,12 +1126,18 @@ export default function Firewall() {
           title="Aliases"
           subtitle="Named sets of hosts, networks, or ports reusable in firewall rules"
           actions={
-            <Button size="sm" onClick={() => {
+            <button onClick={() => {
               setAliasFormError(null)
               setAliasModalOpen(true)
-            }}>
-              + Add Alias
-            </Button>
+            }}
+              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+              title="Add alias"
+              aria-label="Add firewall alias"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
           }
         >
           {aliasesError && <p className="text-sm text-red-600 mb-3">{aliasesError}</p>}

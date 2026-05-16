@@ -175,12 +175,26 @@ export default function OutboundNAT() {
       className: 'w-24 text-right',
       render: (row) => (
         <div className="flex items-center justify-end gap-2">
-          <Button size="sm" variant="secondary" onClick={() => openEditModal(row as NatRule)}>
-            Edit
-          </Button>
-          <Button size="sm" variant="danger" onClick={() => setDeleteId(row.id as string)}>
-            Delete
-          </Button>
+          <button
+            onClick={() => openEditModal(row as NatRule)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+            title="Edit rule"
+            aria-label="Edit NAT rule"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setDeleteId(row.id as string)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+            title="Delete rule"
+            aria-label="Delete NAT rule"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
+          </button>
         </div>
       ),
     },
@@ -244,9 +258,16 @@ export default function OutboundNAT() {
         title="Outbound NAT Rules"
         subtitle="Rules are evaluated top-to-bottom. Manual rules are only active in Hybrid or Manual mode."
         actions={
-          <Button size="sm" onClick={openAddModal}>
-            + Add Rule
-          </Button>
+          <button
+            onClick={openAddModal}
+            className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+            title="Add rule"
+            aria-label="Add NAT rule"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
         }
       >
         <Table

@@ -400,9 +400,16 @@ export default function VPN() {
                       </p>
                     </div>
                   </div>
-                  <Button size="sm" onClick={() => setPeerModalOpen(true)}>
-                    + Add Peer
-                  </Button>
+                  <button
+                    onClick={() => setPeerModalOpen(true)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                    title="Add peer"
+                    aria-label="Add VPN peer"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
                 </div>
 
                 {peers.length > 0 ? (
@@ -427,13 +434,16 @@ export default function VPN() {
                             <p className="text-gray-500 text-xs">Endpoint: {peer.endpoint}</p>
                           )}
                         </div>
-                        <Button
-                          variant="danger"
-                          size="sm"
+                        <button
                           onClick={() => setDeleteId(peer.id as number)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+                          title="Delete peer"
+                          aria-label="Delete peer"
                         >
-                          Delete
-                        </Button>
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                          </svg>
+                        </button>
                       </div>
                     ))}
                   </div>
