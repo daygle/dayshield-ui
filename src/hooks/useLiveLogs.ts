@@ -19,6 +19,19 @@ function sourceFromSystemEvent(unit: string, message: string): LogSource {
   if (hay.includes('suricata')) return 'suricata'
   if (hay.includes('ai threat engine') || hay.includes('ai engine') || hay.includes('ai-threat') || hay.includes('ai threat')) return 'ai'
   if (hay.includes('nft') || hay.includes('firewall')) return 'firewall'
+  if (
+    hay.includes('pppoe') ||
+    hay.includes('pppd') ||
+    hay.includes('rp-pppoe') ||
+    hay.includes(' lcp') ||
+    hay.includes(' ipcp') ||
+    hay.includes(' pap') ||
+    hay.includes(' chap') ||
+    hay.includes('padi') ||
+    hay.includes('pado') ||
+    hay.includes('padr') ||
+    hay.includes('pads')
+  ) return 'pppoe'
   if (hay.includes('crowdsec')) return 'crowdsec'
   if (hay.includes('ntp') || hay.includes('chrony') || hay.includes('chronyd') || hay.includes('timesyncd') || hay.includes('systemd-timesyncd')) return 'ntp'
   if (hay.includes('unbound') || hay.includes('resolver') || hay.includes('dns ') || hay.includes('dns:') || hay.includes('named')) return 'dns'

@@ -12,6 +12,7 @@ export type LogSource =
   | 'dns'
   | 'ntp'
   | 'crowdsec'
+  | 'pppoe'
   | 'backup_restore'
   | 'updates'
 

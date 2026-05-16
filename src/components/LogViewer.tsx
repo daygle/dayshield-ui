@@ -38,6 +38,7 @@ function buildCounts(logs: LogEntry[]): Record<LogSource | 'all', number> {
     dns: 0,
     ntp: 0,
     crowdsec: 0,
+    pppoe: 0,
     backup_restore: 0,
     updates: 0,
     system: 0,

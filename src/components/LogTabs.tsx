@@ -10,6 +10,7 @@ const TABS: { value: LogSource | 'all'; label: string }[] = [
   { value: 'dns', label: 'DNS' },
   { value: 'ntp', label: 'NTP' },
   { value: 'crowdsec', label: 'CrowdSec' },
+  { value: 'pppoe', label: 'PPPoE' },
   { value: 'backup_restore', label: 'Backup/Restore' },
   { value: 'updates', label: 'Updates' },
   { value: 'system', label: 'System' },
