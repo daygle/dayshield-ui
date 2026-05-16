@@ -7,6 +7,8 @@ import type {
   UpdatesStatus,
   UpdatesActionResult,
   UpdateComponent,
+  SystemSchedules,
+  ScheduleJobType,
   DashboardSystemStatus,
   NetworkStatus,
   SecurityStatus,
@@ -258,6 +260,25 @@ export const validateUpdates = (
 export const markApplianceRebuildComplete = (): Promise<ApiResponse<UpdatesStatus>> =>
   apiClient
     .post<ApiResponse<UpdatesStatus>>('/system/updates/appliance-rebuild-complete')
+    .then((r) => r.data)
+
+export const getSystemSchedules = (): Promise<ApiResponse<SystemSchedules>> =>
+  apiClient
+    .get<ApiResponse<SystemSchedules>>('/system/schedules')
+    .then((r) => r.data)
+
+export const updateSystemSchedules = (
+  schedules: SystemSchedules,
+): Promise<ApiResponse<SystemSchedules>> =>
+  apiClient
+    .post<ApiResponse<SystemSchedules>>('/system/schedules', schedules)
+    .then((r) => r.data)
+
+export const runSystemScheduleJob = (
+  job: ScheduleJobType,
+): Promise<ApiResponse<SystemSchedules>> =>
+  apiClient
+    .post<ApiResponse<SystemSchedules>>(`/system/schedules/run/${encodeURIComponent(job)}`)
     .then((r) => r.data)
 
 // ── Dashboard-specific endpoints ──────────────────────────────────────────────

@@ -111,59 +111,21 @@ export default function InterfaceDetails({ iface, parentInterfaceOptions = [], p
         </div>
       )}
 
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Interface Name</p>
-          <p className="mt-1 text-sm font-medium text-gray-900">{interfaceDisplayName}</p>
-          {interfaceDisplayName !== iface.name && (
-            <p className="mt-1 font-mono text-xs text-gray-500">NIC: {iface.name}</p>
+      <div className="flex items-center justify-between rounded border border-gray-200 bg-white p-3">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">{interfaceDisplayName}</h3>
+          <p className="mt-0.5 text-xs text-gray-500">
+            {iface.name} • {iface.type.toUpperCase()} • {ipv4ConfigurationType}
+          </p>
+          {iface.type === 'vlan' && (
+            <p className="mt-0.5 text-xs text-gray-500">
+              Parent: {labelParentInterface(iface.parentInterface)} • VLAN {iface.vlanId ?? '-'}
+            </p>
           )}
         </div>
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv4 Configuration Type</p>
-          <p className="mt-1 text-sm font-medium text-gray-900">{ipv4ConfigurationType}</p>
-        </div>
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">MTU</p>
-          <p className="mt-1 text-sm font-medium text-gray-900">{iface.mtu ?? 'Default'}</p>
-        </div>
-        {iface.type === 'vlan' && (
-          <>
-            <div className="rounded border border-gray-200 bg-white p-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Parent Interface</p>
-              <p className="mt-1 text-sm text-gray-900">{labelParentInterface(iface.parentInterface)}</p>
-            </div>
-            <div className="rounded border border-gray-200 bg-white p-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">VLAN ID</p>
-              <p className="mt-1 text-sm font-medium text-gray-900">{iface.vlanId ?? '-'}</p>
-            </div>
-          </>
-        )}
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv4 Address</p>
-          <p className="mt-1 font-mono text-sm text-gray-900">
-            {iface.ipv4Address ? `${iface.ipv4Address}/${iface.ipv4Prefix ?? '-'}` : '-'}
-          </p>
-        </div>
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Gateway</p>
-          <p className="mt-1 font-mono text-sm text-gray-900">{iface.gateway ?? '-'}</p>
-        </div>
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">MSS</p>
-          <p className="mt-1 text-sm font-medium text-gray-900">{iface.mss ?? '-'}</p>
-        </div>
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Description</p>
-          <p className="mt-1 text-sm font-medium text-gray-900">{iface.description || '-'}</p>
-        </div>
-      </div>
-
-      <div className="flex justify-end">
         <button
           onClick={() => setEditOpen(true)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
           title="Edit interface settings"
           aria-label="Edit interface settings"
         >

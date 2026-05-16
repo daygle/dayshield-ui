@@ -32,7 +32,7 @@ export default function NATReflection() {
     <div className="space-y-6">
       <Card
         title="NAT Reflection"
-        subtitle="Controls whether LAN clients can reach internal servers via the WAN (public) IP address"
+        subtitle="Controls whether local interfaces can reach internal servers via the WAN (public) IP address"
       >
         {isLoading ? (
           <p className="text-sm text-gray-400">Loadingâ€¦</p>
@@ -44,8 +44,8 @@ export default function NATReflection() {
               </p>
               <p className="text-xs text-gray-500 mt-0.5">
                 {config?.nat_reflection
-                  ? 'LAN clients can reach port forwards using the WAN IP (hairpin NAT active).'
-                  : 'LAN clients cannot reach port forwards using the WAN IP.'}
+                  ? 'Local interfaces can reach port forwards using the WAN IP (hairpin NAT active).'
+                  : 'Local interfaces cannot reach port forwards using the WAN IP.'}
               </p>
             </div>
             <button
@@ -70,11 +70,11 @@ export default function NATReflection() {
       <Card title="About NAT Reflection">
         <div className="prose prose-sm text-gray-600 max-w-none">
           <p>
-            NAT reflection (also called NAT loopback or hairpin NAT) allows hosts on your LAN to
-            connect to servers on the same LAN using the firewall's WAN IP address or hostname.
+            NAT reflection (also called NAT loopback or hairpin NAT) allows local interfaces to
+            connect to servers on internal networks using the firewall's WAN IP address or hostname.
           </p>
           <p className="mt-2">
-            Without NAT reflection, a LAN client connecting to your public IP for a port-forwarded
+            Without NAT reflection, traffic from local interfaces connecting to your public IP for a port-forwarded
             service will be routed to the WAN gateway instead of the internal server. Enabling NAT
             reflection inserts additional rules so these connections are redirected correctly.
           </p>

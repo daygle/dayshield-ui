@@ -5,6 +5,8 @@ import {
   getSuricataRulesetRules,
   installSuricataRuleset,
   updateSuricataRuleset,
+  checkSuricataRulesetUpdates,
+  updateManagedSuricataRuleset,
   updateSuricataRulesetDisabledRules,
   type RulesetRule,
 } from '../../api/suricata'
@@ -213,6 +215,8 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
   const [rulesHint, setRulesHint] = useState<string | null>(null)
   const [disabledRuleIds, setDisabledRuleIds] = useState<Set<string>>(new Set())
   const [rulesSearch, setRulesSearch] = useState('')
+  const [checkingUpdates, setCheckingUpdates] = useState(false)
+  const [updatingRulesetId, setUpdatingRulesetId] = useState<string | null>(null)
 
   const loadRulesets = useCallback(() => {
     setLoading(true)
@@ -455,6 +459,37 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
     }
   }
 
+  const checkAllUpdates = async () => {
+    setCheckingUpdates(true)
+    setSuccess(null)
+    setError(null)
+    try {
+      await checkSuricataRulesetUpdates()
+      setSuccess('Checked for ruleset updates.')
+      await loadRulesets()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setCheckingUpdates(false)
+    }
+  }
+
+  const updateRuleset = async (ruleset: SuricataRuleset) => {
+    const id = rulesetKey(ruleset.id)
+    setUpdatingRulesetId(id)
+    setSuccess(null)
+    setError(null)
+    try {
+      await updateManagedSuricataRuleset(ruleset.id)
+      setSuccess(`Updated ${ruleset.name}.`)
+      await loadRulesets()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setUpdatingRulesetId(null)
+    }
+  }
+
   const filteredRules = rules.filter((rule) => {
     const term = rulesSearch.toLowerCase()
     return (
@@ -488,6 +523,9 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
             )}
             <Button variant="secondary" size="sm" onClick={loadRulesets} loading={loading}>
               Refresh
+            </Button>
+            <Button variant="secondary" size="sm" onClick={checkAllUpdates} loading={checkingUpdates}>
+              Check Updates
             </Button>
           </div>
         }
@@ -551,7 +589,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                     <div>
                       <div className="font-medium text-gray-900">{group.label}</div>
                       <div className="text-xs text-gray-500">
-                        {group.rulesets.length} ruleset{group.rulesets.length === 1 ? '' : 's'}
+                        Rulesets: {group.rulesets.length}
                       </div>
                     </div>
                     <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
@@ -672,6 +710,19 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                           {ruleset.enabled ? 'Disable' : 'Enable'}
                         </Button>
                       )}
+                      {ruleset.installed && ruleset.updateAvailable && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            updateRuleset(ruleset)
+                          }}
+                          loading={updatingRulesetId === rulesetKey(ruleset.id)}
+                        >
+                          Update
+                        </Button>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -747,6 +798,19 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                         }}
                       >
                         {ruleset.enabled ? 'Disable' : 'Enable'}
+                      </Button>
+                    )}
+                    {ruleset.installed && ruleset.updateAvailable && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          updateRuleset(ruleset)
+                        }}
+                        loading={updatingRulesetId === rulesetKey(ruleset.id)}
+                      >
+                        Update
                       </Button>
                     )}
                   </div>
@@ -912,6 +976,7 @@ export function SuricataRulesetGroupsSection() {
   const [success, setSuccess] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [actingGroupKey, setActingGroupKey] = useState<string | null>(null)
+  const [checkingUpdates, setCheckingUpdates] = useState(false)
 
   const loadRulesets = useCallback(() => {
     setLoading(true)
@@ -970,6 +1035,21 @@ export function SuricataRulesetGroupsSection() {
     }
   }
 
+  const handleCheckUpdates = async () => {
+    setCheckingUpdates(true)
+    setSuccess(null)
+    setError(null)
+    try {
+      await checkSuricataRulesetUpdates()
+      setSuccess('Checked for ruleset updates.')
+      await loadRulesets()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setCheckingUpdates(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -982,9 +1062,14 @@ export function SuricataRulesetGroupsSection() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="secondary" size="sm" onClick={loadRulesets} loading={loading}>
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={loadRulesets} loading={loading}>
+            Refresh
+          </Button>
+          <Button variant="secondary" size="sm" onClick={handleCheckUpdates} loading={checkingUpdates}>
+            Check Updates
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -1014,10 +1099,10 @@ export function SuricataRulesetGroupsSection() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h4 className="text-sm font-semibold text-gray-900">
-                    {subgroup.rulesets[0]?.name || subgroup.label}
+                    {subgroup.label}
                   </h4>
                   <p className="mt-1 text-xs text-gray-500">
-                    {subgroup.rulesets.length} ruleset{subgroup.rulesets.length === 1 ? '' : 's'}
+                    Rulesets: {subgroup.rulesets.length}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

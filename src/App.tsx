@@ -9,11 +9,13 @@ import Firewall from './pages/Firewall'
 import NAT from './pages/NAT'
 import VPN from './pages/VPN'
 import DNS from './pages/DNS'
+import DynamicDNS from './pages/DynamicDNS'
 import DHCP from './pages/DHCP'
 import Suricata from './pages/Suricata'
 import SuricataRulesetsPage from './pages/Suricata/RulesetsPage'
 import CrowdSec from './pages/CrowdSec'
 import AIThreats from './pages/AIThreats'
+import Security from './pages/Security'
 import ACME from './pages/ACME'
 import System from './pages/System'
 import LiveLogs from './pages/LiveLogs'
@@ -49,11 +51,13 @@ function App() {
           <Route path="nat" element={<NAT />} />
           <Route path="vpn" element={<VPN />} />
           <Route path="dns" element={<DNS />} />
+          <Route path="dynamic-dns" element={<DynamicDNS />} />
           <Route path="dhcp" element={<DHCP />} />
           <Route path="suricata" element={<Suricata />} />
           <Route path="suricata/rulesets" element={<SuricataRulesetsPage />} />
           <Route path="crowdsec" element={<CrowdSec />} />
           <Route path="ai-threats" element={<AIThreats />} />
+          <Route path="security" element={<Security />} />
           <Route path="acme" element={<ACME />} />
           <Route path="system" element={<System />} />
           <Route path="live-logs" element={<LiveLogs />} />

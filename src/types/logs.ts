@@ -1,4 +1,19 @@
-export type LogSource = 'suricata' | 'firewall' | 'system' | 'dhcp' | 'vpn' | 'cloudflared' | 'acme' | 'ai'
+export type LogSource =
+  | 'suricata'
+  | 'firewall'
+  | 'system'
+  | 'dhcp'
+  | 'vpn'
+  | 'cloudflared'
+  | 'acme'
+  | 'ai'
+  | 'interfaces'
+  | 'gateways'
+  | 'dns'
+  | 'ntp'
+  | 'crowdsec'
+  | 'backup_restore'
+  | 'updates'
 
 export type LogLevel = 'debug' | 'info' | 'warning' | 'error' | 'critical'
 

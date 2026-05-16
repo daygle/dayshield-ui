@@ -279,12 +279,52 @@ export default function NtpPage() {
   return (
     <div className="space-y-6">
 
-      {/* NTP Status */}
-      <Card title="NTP Status" subtitle="Current synchronization state">
+      {/* NTP Overview */}
+      <Card
+        title="NTP Overview"
+        subtitle="Service status and synchronization health"
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={busy || resyncing}
+              onClick={handleResync}
+              title={resyncing ? 'Resyncing time' : 'Manual resync'}
+              aria-label={resyncing ? 'Resyncing time' : 'Manual resync'}
+            >
+              {resyncing ? (
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14 10 10 0 01-14.14 0" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m8 6h-4" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 4.5v6h6M19.5 19.5v-6h-6" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.7 14.3A8 8 0 0012 20a8 8 0 007.5-5M18.3 9.7A8 8 0 0012 4a8 8 0 00-7.5 5" />
+                </svg>
+              )}
+            </button>
+            <Button
+              variant={config.enabled ? 'danger' : 'primary'}
+              disabled={busy}
+              onClick={() => setConfig((c) => ({ ...c, enabled: !c.enabled }))}
+            >
+              {config.enabled ? 'Disable NTP' : 'Enable NTP'}
+            </Button>
+          </div>
+        }
+      >
         {loading ? (
           <p className="text-sm text-gray-400">Loading…</p>
         ) : status ? (
-          <dl className="grid grid-cols-2 md:grid-cols-5 gap-x-6 gap-y-3 text-sm">
+          <dl className="grid grid-cols-2 md:grid-cols-6 gap-x-6 gap-y-3 text-sm">
+            <div>
+              <dt className="text-gray-500">Service</dt>
+              <dd className={`font-medium ${config.enabled ? 'text-green-600' : 'text-gray-500'}`}>
+                {config.enabled ? 'Enabled' : 'Disabled'}
+              </dd>
+            </div>
             <div>
               <dt className="text-gray-500">Sync</dt>
               <dd>
@@ -324,22 +364,6 @@ export default function NtpPage() {
         ) : (
           <p className="text-sm text-gray-400">NTP status unavailable.</p>
         )}
-      </Card>
-
-      {/* Global enable/disable */}
-      <Card
-        title="NTP Service"
-        subtitle="Enable or disable the Network Time Protocol daemon."
-        actions={
-          <Button
-            variant={config.enabled ? 'danger' : 'primary'}
-            disabled={busy}
-            onClick={() => setConfig((c) => ({ ...c, enabled: !c.enabled }))}
-          >
-            {config.enabled ? 'Disable NTP' : 'Enable NTP'}
-          </Button>
-        }
-      >
         <p className="text-sm text-gray-500">
           {config.enabled
             ? 'NTP is enabled. The system clock is synchronised with upstream servers.'
@@ -347,12 +371,24 @@ export default function NtpPage() {
         </p>
       </Card>
 
-      {/* Upstream Servers */}
+      {/* Consolidated configuration */}
       <Card
-        title="Upstream Servers"
-        subtitle="IPv4 addresses or hostnames of NTP servers used for clock synchronisation. Pasted entries like server pool.ntp.org are also accepted."
+        title="NTP Configuration"
+        subtitle="Manage upstream time servers and LAN interfaces that are allowed to serve NTP"
+        actions={
+          <Button loading={saving} disabled={busy} onClick={handleSave}>
+            Save configuration
+          </Button>
+        }
       >
         <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Upstream Servers</h3>
+            <p className="mt-1 text-xs text-gray-500">
+              IPv4 addresses or hostnames used for time synchronization. Pasted entries like server pool.ntp.org are also accepted.
+            </p>
+          </div>
+
           {/* Server list */}
           {config.servers.length === 0 ? (
             <p className="text-sm text-gray-400">No upstream servers configured.</p>
@@ -362,7 +398,7 @@ export default function NtpPage() {
                 <li key={server} className="flex items-center justify-between px-4 py-2.5 text-sm">
                   <span className="font-mono text-gray-800">{server}</span>
                   <button
-                    className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900 disabled:opacity-40 disabled:cursor-not-allowed"
                     disabled={busy}
                     onClick={() => handleRemoveServer(server)}
                     title="Remove server"
@@ -400,7 +436,7 @@ export default function NtpPage() {
             <button
               disabled={busy}
               onClick={handleAddServer}
-              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
               title="Add server"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -408,70 +444,53 @@ export default function NtpPage() {
               </svg>
             </button>
           </div>
+
+          <div className="border-t border-gray-200 pt-4">
+            <h3 className="text-sm font-semibold text-gray-900">NTP Server Interfaces</h3>
+            <p className="mt-1 text-xs text-gray-500">
+              Select which interfaces should serve NTP to clients. If none are selected, the device will not serve NTP.
+            </p>
+          </div>
+
+          {loading ? (
+            <p className="text-sm text-gray-400">Loading interfaces…</p>
+          ) : interfaces.length === 0 ? (
+            <p className="text-sm text-gray-400">No network interfaces available.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {interfaces.map((iface) => {
+                const checked = config.listenInterfaces.includes(iface.name)
+                return (
+                  <label
+                    key={iface.name}
+                    className={`flex cursor-pointer items-center gap-3 rounded-md border px-4 py-3 text-sm transition-colors ${
+                      checked
+                        ? 'border-blue-400 bg-blue-50 text-blue-800'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                    } ${busy ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={checked}
+                      disabled={busy}
+                      onChange={() => handleToggleInterface(iface.name)}
+                    />
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{interfaceLabel(iface)}</p>
+                      {iface.ipv4Address && iface.ipv4Prefix !== undefined && (
+                        <p className="text-xs text-gray-500 font-mono truncate">
+                          {iface.ipv4Address}/{iface.ipv4Prefix}
+                        </p>
+                      )}
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+          )}
         </div>
       </Card>
-
-      {/* NTP Server Interfaces */}
-      <Card
-        title="NTP Server Interfaces"
-        subtitle="Select which network interfaces should serve NTP to clients. If none are selected, the device will not serve NTP."
-      >
-        {loading ? (
-          <p className="text-sm text-gray-400">Loading interfaces…</p>
-        ) : interfaces.length === 0 ? (
-          <p className="text-sm text-gray-400">No network interfaces available.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {interfaces.map((iface) => {
-              const checked = config.listenInterfaces.includes(iface.name)
-              return (
-                <label
-                  key={iface.name}
-                  className={`flex cursor-pointer items-center gap-3 rounded-md border px-4 py-3 text-sm transition-colors ${
-                    checked
-                      ? 'border-blue-400 bg-blue-50 text-blue-800'
-                      : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                  } ${busy ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    checked={checked}
-                    disabled={busy}
-                    onChange={() => handleToggleInterface(iface.name)}
-                  />
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{interfaceLabel(iface)}</p>
-                    {iface.ipv4Address && iface.ipv4Prefix !== undefined && (
-                      <p className="text-xs text-gray-500 font-mono truncate">
-                        {iface.ipv4Address}/{iface.ipv4Prefix}
-                      </p>
-                    )}
-                  </div>
-                </label>
-              )
-            })}
-          </div>
-        )}
-      </Card>
-
-      {/* Actions */}
-      <div className="flex items-center justify-between">
-        {/* Manual Resync */}
-        <Button
-          variant="secondary"
-          loading={resyncing}
-          disabled={busy || resyncing}
-          onClick={handleResync}
-        >
-          {resyncing ? 'Resyncing…' : 'Manual Resync'}
-        </Button>
-
-        {/* Save */}
-        <Button loading={saving} disabled={busy} onClick={handleSave}>
-          Save configuration
-        </Button>
-      </div>
 
       <Toast messages={toasts} />
     </div>

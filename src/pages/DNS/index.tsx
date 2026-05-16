@@ -82,6 +82,11 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
+function isWanInterface(iface: NetworkInterface): boolean {
+  const desc = iface.description?.trim().toLowerCase() ?? ''
+  return Boolean(iface.wanMode) || desc.includes('wan') || iface.name.toLowerCase() === 'wan'
+}
+
 export default function DNS() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [config, setConfig] = useState<DnsConfig | null>(null)
@@ -167,14 +172,40 @@ export default function DNS() {
       ? sectionParam
       : 'settings'
 
+  const sectionTabs: Array<{ id: 'settings' | 'dot' | 'overrides' | 'blocklists'; label: string }> = [
+    { id: 'settings', label: 'Settings' },
+    { id: 'dot', label: 'DoT' },
+    { id: 'overrides', label: 'Overrides' },
+    { id: 'blocklists', label: 'Blocklists' },
+  ]
+
+  const setActiveSection = (section: 'settings' | 'dot' | 'overrides' | 'blocklists') => {
+    const next = new URLSearchParams(searchParams)
+    next.set('section', section)
+    if (section !== 'blocklists') {
+      next.delete('iface')
+    }
+    setSearchParams(next)
+  }
+
   const interfaceLabel = (iface: NetworkInterface): string => {
     return formatInterfaceDisplayName(iface.description, iface.name)
   }
 
-  const interfaceOptions = useMemo(() => interfaces.map((iface) => iface.name), [interfaces])
+  const blocklistInterfaces = useMemo(
+    () => interfaces.filter((iface) => !isWanInterface(iface)),
+    [interfaces],
+  )
+  const interfaceOptions = useMemo(
+    () => blocklistInterfaces.map((iface) => iface.name),
+    [blocklistInterfaces],
+  )
   const selectedInterface = searchParams.get('iface') ?? ''
-  const effectiveInterface = selectedInterface || interfaceOptions[0] || ''
-  const effectiveInterfaceObj = interfaces.find((iface) => iface.name === effectiveInterface)
+  const effectiveInterface =
+    (selectedInterface && interfaceOptions.includes(selectedInterface) ? selectedInterface : '') ||
+    interfaceOptions[0] ||
+    ''
+  const effectiveInterfaceObj = blocklistInterfaces.find((iface) => iface.name === effectiveInterface)
   const effectiveInterfaceLabel = effectiveInterfaceObj
     ? interfaceLabel(effectiveInterfaceObj)
     : (effectiveInterface || '-')
@@ -413,7 +444,7 @@ export default function DNS() {
       render: (row) => (
         <button
           onClick={() => setHostDeleteName(row.hostname as string)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
           title="Delete host override"
           aria-label="Delete host override"
         >
@@ -434,7 +465,7 @@ export default function DNS() {
       render: (row) => (
         <button
           onClick={() => setDomainDeleteName(row.domain as string)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
           title="Delete domain override"
           aria-label="Delete domain override"
         >
@@ -473,7 +504,7 @@ export default function DNS() {
       render: (row) => (
         <button
           onClick={() => setBlocklistDeleteId(String(row.id))}
-          className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
           title="Delete blocklist"
           aria-label="Delete blocklist"
         >
@@ -502,6 +533,30 @@ export default function DNS() {
         </div>
       )}
 
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex gap-1" aria-label="DNS tabs">
+          {sectionTabs.map((tab) => {
+            const isActive = activeSection === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveSection(tab.id)}
+                className={[
+                  'px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
+                  isActive
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                ].join(' ')}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </nav>
+      </div>
+
       {activeSection === 'settings' && (
         <>
           <Card
@@ -510,7 +565,7 @@ export default function DNS() {
             actions={
               <button
                 onClick={openConfigModal}
-                className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                 title="Edit resolver"
                 aria-label="Edit resolver"
               >
@@ -617,7 +672,7 @@ export default function DNS() {
             actions={
               <button
                 onClick={() => setHostModalOpen(true)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                 title="Add host override"
                 aria-label="Add host override"
               >
@@ -642,7 +697,7 @@ export default function DNS() {
             actions={
               <button
                 onClick={() => setDomainModalOpen(true)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                 title="Add domain override"
                 aria-label="Add domain override"
               >
@@ -671,7 +726,7 @@ export default function DNS() {
             <button
               onClick={openAddBlocklistModal}
               disabled={!effectiveInterface}
-              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
               title="Add blocklist"
               aria-label="Add blocklist"
             >
@@ -692,8 +747,8 @@ export default function DNS() {
                   value={effectiveInterface}
                   onChange={(e) => handleChangeBlocklistInterface(e.target.value)}
                 >
-                  {interfaceOptions.length === 0 && <option value="">No interfaces available</option>}
-                  {interfaces.map((iface) => (
+                  {interfaceOptions.length === 0 && <option value="">No non-WAN interfaces available</option>}
+                  {blocklistInterfaces.map((iface) => (
                     <option key={iface.name} value={iface.name}>
                       {interfaceLabel(iface)}
                     </option>

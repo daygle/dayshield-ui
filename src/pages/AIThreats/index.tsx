@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   getAiThreats,
   getAiThreatById,
@@ -8,7 +9,9 @@ import {
   getAiEngineConfig,
   updateAiEngineConfig,
 } from '../../api/ai'
-import type { ThreatEvent, BlockedEntry, AiEngineConfig } from '../../types'
+import { getSuricataConfig, updateSuricataConfig } from '../../api/suricata'
+import { getCrowdSecConfig, updateCrowdSecConfig } from '../../api/crowdsec'
+import type { ThreatEvent, BlockedEntry, AiEngineConfig, SuricataConfig, CrowdSecStatus } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import FormField from '../../components/FormField'
@@ -122,6 +125,11 @@ function AIThreatsContent() {
   const [aiForm, setAiForm] = useState<AiEngineConfig>(DEFAULT_AI_SETTINGS)
   const [aiLoading, setAiLoading] = useState(true)
   const [aiSaving, setAiSaving] = useState(false)
+  const [suricataConfig, setSuricataConfig] = useState<SuricataConfig | null>(null)
+  const [crowdSecConfig, setCrowdSecConfig] = useState<CrowdSecStatus | null>(null)
+  const [sourceLoading, setSourceLoading] = useState(true)
+  const [sourceSaving, setSourceSaving] = useState<'suricata' | 'crowdsec' | null>(null)
+  const [sourceError, setSourceError] = useState<string | null>(null)
 
   const formatUnixDateTime = useCallback((unixSeconds: number | null): string => {
     if (unixSeconds === null || !Number.isFinite(unixSeconds)) return '-'
@@ -214,6 +222,18 @@ function AIThreatsContent() {
       .finally(() => setLoading(false))
   }, [])
 
+  const loadCorrelationSources = useCallback(() => {
+    setSourceLoading(true)
+    Promise.all([getSuricataConfig(), getCrowdSecConfig()])
+      .then(([suricataRes, crowdSecRes]) => {
+        setSuricataConfig(suricataRes.data)
+        setCrowdSecConfig(crowdSecRes.data)
+        setSourceError(null)
+      })
+      .catch((err: Error) => setSourceError(err.message))
+      .finally(() => setSourceLoading(false))
+  }, [])
+
   useEffect(() => {
     loadAll()
     const timer = window.setInterval(loadAll, 30_000)
@@ -223,6 +243,56 @@ function AIThreatsContent() {
   useEffect(() => {
     void loadAiSettings()
   }, [loadAiSettings])
+
+  useEffect(() => {
+    loadCorrelationSources()
+  }, [loadCorrelationSources])
+
+  const handleToggleSuricataEnabled = async () => {
+    if (!suricataConfig) return
+    setSourceSaving('suricata')
+    try {
+      const res = await updateSuricataConfig({ enabled: !suricataConfig.enabled })
+      setSuricataConfig(res.data)
+      setSourceError(null)
+      addToast(`Suricata ${res.data.enabled ? 'enabled' : 'disabled'} for AI correlation sources.`, 'success')
+    } catch (err) {
+      setSourceError(err instanceof Error ? err.message : 'Failed to update Suricata settings')
+    } finally {
+      setSourceSaving(null)
+    }
+  }
+
+  const handleToggleSuricataMode = async () => {
+    if (!suricataConfig) return
+    setSourceSaving('suricata')
+    try {
+      const nextMode = suricataConfig.mode === 'ids' ? 'ips' : 'ids'
+      const res = await updateSuricataConfig({ mode: nextMode })
+      setSuricataConfig(res.data)
+      setSourceError(null)
+      addToast(`Suricata mode updated to ${res.data.mode.toUpperCase()}.`, 'success')
+    } catch (err) {
+      setSourceError(err instanceof Error ? err.message : 'Failed to update Suricata mode')
+    } finally {
+      setSourceSaving(null)
+    }
+  }
+
+  const handleToggleCrowdSecEnabled = async () => {
+    if (!crowdSecConfig) return
+    setSourceSaving('crowdsec')
+    try {
+      const res = await updateCrowdSecConfig({ enabled: !crowdSecConfig.enabled })
+      setCrowdSecConfig(res.data)
+      setSourceError(null)
+      addToast(`CrowdSec ${res.data.enabled ? 'enabled' : 'disabled'} for AI correlation sources.`, 'success')
+    } catch (err) {
+      setSourceError(err instanceof Error ? err.message : 'Failed to update CrowdSec settings')
+    } finally {
+      setSourceSaving(null)
+    }
+  }
 
   const handleOpenThreat = (row: ThreatRow) => {
     const id = String(row.id)
@@ -505,6 +575,156 @@ function AIThreatsContent() {
             </div>
           </div>
         )}
+      </Card>
+
+      <Card
+        title="Correlation Source Settings"
+        subtitle="Control the Suricata and CrowdSec sources that feed AI threat correlation"
+        actions={
+          <Button size="sm" variant="secondary" onClick={loadCorrelationSources} loading={sourceLoading}>
+            Refresh Sources
+          </Button>
+        }
+      >
+        {sourceError && (
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {sourceError}
+          </div>
+        )}
+
+        {sourceLoading ? (
+          <p className="text-sm text-slate-500">Loading Suricata and CrowdSec source settings…</p>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-6 py-5">
+                <p className="text-sm text-gray-500 mb-1">Suricata Status</p>
+                <p className={`text-base font-semibold ${suricataConfig?.enabled ? 'text-green-600' : 'text-gray-500'}`}>
+                  {suricataConfig?.enabled ? 'Enabled' : 'Disabled'}
+                </p>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-6 py-5">
+                <p className="text-sm text-gray-500 mb-1">Suricata Mode</p>
+                <p className="text-base font-semibold text-gray-900 uppercase">{suricataConfig?.mode ?? '-'}</p>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-6 py-5">
+                <p className="text-sm text-gray-500 mb-1">CrowdSec Status</p>
+                <p className={`text-base font-semibold ${crowdSecConfig?.enabled ? 'text-green-600' : 'text-gray-500'}`}>
+                  {crowdSecConfig?.enabled ? 'Enabled' : 'Disabled'}
+                </p>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-6 py-5">
+                <p className="text-sm text-gray-500 mb-1">CrowdSec Poll</p>
+                <p className="text-base font-semibold text-gray-900">{crowdSecConfig ? `${crowdSecConfig.update_interval}s` : '-'}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-lg border border-gray-200 bg-white p-5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900">Suricata Source</h3>
+                  <p className="mt-1 text-sm text-gray-600">Primary IDS/IPS source for AI threat scoring.</p>
+                </div>
+                <Link
+                  to="/suricata"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                  title="Open Suricata settings"
+                  aria-label="Open Suricata settings"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4m-1-9h3m0 0v3m0-3L10 15" />
+                  </svg>
+                </Link>
+              </div>
+              <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                <div>
+                  <dt className="text-gray-500">Status</dt>
+                  <dd className={`font-semibold ${suricataConfig?.enabled ? 'text-green-700' : 'text-gray-500'}`}>
+                    {suricataConfig?.enabled ? 'Enabled' : 'Disabled'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">Mode</dt>
+                  <dd className="font-semibold uppercase text-gray-900">{suricataConfig?.mode ?? '-'}</dd>
+                </div>
+                <div className="col-span-2">
+                  <dt className="text-gray-500">Monitored Interfaces</dt>
+                  <dd className="font-semibold text-gray-900">{suricataConfig?.interfaces.length ?? 0}</dd>
+                </div>
+              </dl>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={suricataConfig?.enabled ? 'secondary' : 'primary'}
+                  loading={sourceSaving === 'suricata'}
+                  onClick={handleToggleSuricataEnabled}
+                >
+                  {suricataConfig?.enabled ? 'Disable Suricata' : 'Enable Suricata'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  loading={sourceSaving === 'suricata'}
+                  onClick={handleToggleSuricataMode}
+                  disabled={!suricataConfig?.enabled}
+                >
+                  Toggle IDS/IPS
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-gray-200 bg-white p-5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900">CrowdSec Source</h3>
+                  <p className="mt-1 text-sm text-gray-600">External reputation decisions used as AI context signals.</p>
+                </div>
+                <Link
+                  to="/crowdsec"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                  title="Open CrowdSec settings"
+                  aria-label="Open CrowdSec settings"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4m-1-9h3m0 0v3m0-3L10 15" />
+                  </svg>
+                </Link>
+              </div>
+              <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                <div>
+                  <dt className="text-gray-500">Status</dt>
+                  <dd className={`font-semibold ${crowdSecConfig?.enabled ? 'text-green-700' : 'text-gray-500'}`}>
+                    {crowdSecConfig?.enabled ? 'Enabled' : 'Disabled'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">Poll Interval</dt>
+                  <dd className="font-semibold text-gray-900">{crowdSecConfig ? `${crowdSecConfig.update_interval}s` : '-'}</dd>
+                </div>
+                <div className="col-span-2">
+                  <dt className="text-gray-500">LAPI</dt>
+                  <dd className="font-semibold text-gray-900 break-all">{crowdSecConfig?.lapi_url || 'Not configured'}</dd>
+                </div>
+              </dl>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={crowdSecConfig?.enabled ? 'secondary' : 'primary'}
+                  loading={sourceSaving === 'crowdsec'}
+                  onClick={handleToggleCrowdSecEnabled}
+                >
+                  {crowdSecConfig?.enabled ? 'Disable CrowdSec' : 'Enable CrowdSec'}
+                </Button>
+              </div>
+            </div>
+          </div>
+          </div>
+        )}
+
+        <p className="mt-3 text-xs text-gray-500">
+          Suricata and CrowdSec still have their full dedicated settings pages. This section is for AI source correlation controls and quick operational toggles.
+        </p>
       </Card>
 
       <Card

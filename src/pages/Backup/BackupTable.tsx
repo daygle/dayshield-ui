@@ -119,27 +119,35 @@ const columns = (
             onClick={() => onDownload(entry)}
             disabled={restoring}
             title="Download backup"
+            aria-label="Download backup"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Download
           </Button>
           <Button
             size="sm"
             variant="secondary"
             onClick={() => onRestore(entry)}
             disabled={restoring}
+            title="Restore backup"
+            aria-label="Restore backup"
           >
-            Restore
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 109-9m0 0v4m0-4h4m-4 0L5 10" />
+            </svg>
           </Button>
           <Button
             size="sm"
             variant="danger"
             onClick={() => onDelete(entry)}
             disabled={restoring}
+            title="Delete backup"
+            aria-label="Delete backup"
           >
-            Delete
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
           </Button>
         </div>
       )

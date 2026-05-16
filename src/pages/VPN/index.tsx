@@ -56,6 +56,32 @@ export default function VPN() {
   const [serverModalOpen, setServerModalOpen] = useState(false)
   const [serverSaving, setServerSaving] = useState(false)
   const [serverForm, setServerForm] = useState(defaultServerForm)
+  const [showPrivateKey, setShowPrivateKey] = useState(false)
+
+  const updatePrimaryTunnelAddress = (nextIp?: string, nextPrefix?: string) => {
+    const entries = serverForm.addresses.split(',').map((s) => s.trim()).filter(Boolean)
+    const first = entries[0] ?? defaultServerForm.addresses
+    const [currentIpRaw, currentPrefixRaw] = first.split('/')
+    const currentIp = currentIpRaw?.trim() || '10.8.0.1'
+    const currentPrefix = currentPrefixRaw?.trim() || '24'
+    const mergedIp = (nextIp ?? currentIp).trim() || currentIp
+    const mergedPrefix = (nextPrefix ?? currentPrefix).trim() || currentPrefix
+    const merged = `${mergedIp}/${mergedPrefix}`
+    const rest = entries.slice(1)
+    setServerForm((prev) => ({
+      ...prev,
+      addresses: [merged, ...rest].join(', '),
+    }))
+  }
+
+  const primaryTunnelAddress = (() => {
+    const first = serverForm.addresses.split(',').map((s) => s.trim()).filter(Boolean)[0] ?? defaultServerForm.addresses
+    const [ip, prefix] = first.split('/')
+    return {
+      ip: ip?.trim() || '10.8.0.1',
+      prefix: prefix?.trim() || '24',
+    }
+  })()
 
   const loadAll = () => {
     setLoading(true)
@@ -88,6 +114,7 @@ export default function VPN() {
       publicKey: server?.publicKey || '',
       privateKey: '',
     })
+    setShowPrivateKey(false)
     setServerModalOpen(true)
   }
 
@@ -100,6 +127,7 @@ export default function VPN() {
           privateKey: res.data.private_key,
           publicKey: res.data.public_key,
         }))
+        setShowPrivateKey(true)
       })
       .catch((err: Error) => setError(err.message))
   }
@@ -226,26 +254,22 @@ export default function VPN() {
               onChange={(e) => setServerForm({ ...serverForm, listenPort: Number(e.target.value) || 51820 })}
             />
             <FormField
-              id="server-addresses"
-              label="Tunnel Addresses"
-              className="col-span-2"
-              placeholder="10.8.0.1/24, fd10:8::1/64"
-              value={serverForm.addresses}
-              onChange={(e) => setServerForm({ ...serverForm, addresses: e.target.value })}
+              id="server-address-ip"
+              label="Server Tunnel IP Address"
+              placeholder="10.8.0.1"
+              value={primaryTunnelAddress.ip}
+              onChange={(e) => updatePrimaryTunnelAddress(e.target.value, undefined)}
+            />
+            <FormField
+              id="server-address-prefix"
+              label="Tunnel Prefix"
+              as="select"
+              value={primaryTunnelAddress.prefix}
+              onChange={(e) => updatePrimaryTunnelAddress(undefined, e.target.value)}
             >
-              <select
-                className="input"
-                value={serverForm.addresses.split('/')[1] || ''}
-                onChange={(e) => {
-                  const prefix = e.target.value
-                  const base = serverForm.addresses.split('/')[0] || ''
-                  setServerForm({ ...serverForm, addresses: `${base}/${prefix}` })
-                }}
-              >
-                {[...Array(33).keys()].map((prefix) => (
-                  <option key={prefix} value={prefix}>{`/${prefix}`}</option>
-                ))}
-              </select>
+              {[...Array(33).keys()].map((prefix) => (
+                <option key={prefix} value={String(prefix)}>{`/${prefix}`}</option>
+              ))}
             </FormField>
             <FormField
               id="server-public-key"
@@ -258,13 +282,22 @@ export default function VPN() {
             <FormField
               id="server-private-key"
               label="Private Key"
-              type="password"
+              type={showPrivateKey ? 'text' : 'password'}
               autoComplete="new-password"
               className="col-span-2"
               placeholder="Generate a keypair to populate this"
               value={serverForm.privateKey}
               onChange={(e) => setServerForm({ ...serverForm, privateKey: e.target.value })}
             />
+            <div className="col-span-2 flex items-center justify-end">
+              <button
+                type="button"
+                className="text-xs text-gray-600 hover:text-gray-900"
+                onClick={() => setShowPrivateKey((v) => !v)}
+              >
+                {showPrivateKey ? 'Hide private key' : 'Show private key'}
+              </button>
+            </div>
             <div className="col-span-2 flex items-center gap-3">
               <input
                 id="server-enabled"
@@ -402,7 +435,7 @@ export default function VPN() {
                   </div>
                   <button
                     onClick={() => setPeerModalOpen(true)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                     title="Add peer"
                     aria-label="Add VPN peer"
                   >
@@ -436,7 +469,7 @@ export default function VPN() {
                         </div>
                         <button
                           onClick={() => setDeleteId(peer.id as number)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
                           title="Delete peer"
                           aria-label="Delete peer"
                         >
@@ -582,26 +615,22 @@ export default function VPN() {
             onChange={(e) => setServerForm({ ...serverForm, listenPort: Number(e.target.value) || 51820 })}
           />
           <FormField
-            id="server-addresses"
-            label="Tunnel Addresses"
-            className="col-span-2"
-            placeholder="10.8.0.1/24, fd10:8::1/64"
-            value={serverForm.addresses}
-            onChange={(e) => setServerForm({ ...serverForm, addresses: e.target.value })}
+            id="server-address-ip"
+            label="Server Tunnel IP Address"
+            placeholder="10.8.0.1"
+            value={primaryTunnelAddress.ip}
+            onChange={(e) => updatePrimaryTunnelAddress(e.target.value, undefined)}
+          />
+          <FormField
+            id="server-address-prefix"
+            label="Tunnel Prefix"
+            as="select"
+            value={primaryTunnelAddress.prefix}
+            onChange={(e) => updatePrimaryTunnelAddress(undefined, e.target.value)}
           >
-            <select
-              className="input"
-              value={serverForm.addresses.split('/')[1] || ''}
-              onChange={(e) => {
-                const prefix = e.target.value
-                const base = serverForm.addresses.split('/')[0] || ''
-                setServerForm({ ...serverForm, addresses: `${base}/${prefix}` })
-              }}
-            >
-              {[...Array(33).keys()].map((prefix) => (
-                <option key={prefix} value={prefix}>{`/${prefix}`}</option>
-              ))}
-            </select>
+            {[...Array(33).keys()].map((prefix) => (
+              <option key={prefix} value={String(prefix)}>{`/${prefix}`}</option>
+            ))}
           </FormField>
           <FormField
             id="server-public-key"
@@ -614,13 +643,22 @@ export default function VPN() {
           <FormField
             id="server-private-key"
             label="Private Key"
-            type="password"
+            type={showPrivateKey ? 'text' : 'password'}
             autoComplete="new-password"
             className="col-span-2"
             placeholder="Generate a keypair to populate this"
             value={serverForm.privateKey}
             onChange={(e) => setServerForm({ ...serverForm, privateKey: e.target.value })}
           />
+          <div className="col-span-2 flex items-center justify-end">
+            <button
+              type="button"
+              className="text-xs text-gray-600 hover:text-gray-900"
+              onClick={() => setShowPrivateKey((v) => !v)}
+            >
+              {showPrivateKey ? 'Hide private key' : 'Show private key'}
+            </button>
+          </div>
           <div className="col-span-2 flex items-center gap-3">
             <input
               id="server-enabled"

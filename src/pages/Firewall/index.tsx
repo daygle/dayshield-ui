@@ -230,13 +230,6 @@ function validateAliasForm(alias: Alias): string | null {
   return null
 }
 
-function parseCommaSeparatedNumbers(value: string): number[] {
-  return value
-    .split(',')
-    .map((item) => Number(item.trim()))
-    .filter((n) => Number.isInteger(n) && n > 0 && n <= 65535)
-}
-
 export default function Firewall() {
   const { formatDate, timeFormat } = useDisplayPreferences()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -270,8 +263,6 @@ export default function Firewall() {
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [settingsError, setSettingsError] = useState<string | null>(null)
   const [settingsFormError, setSettingsFormError] = useState<string | null>(null)
-  const [allowedSourcesInput, setAllowedSourcesInput] = useState('')
-  const [managementPortsInput, setManagementPortsInput] = useState('22, 443, 8443')
 
   const [stats, setStats] = useState<FirewallRuleStats[]>([])
   const [ruleFormError, setRuleFormError] = useState<string | null>(null)
@@ -332,6 +323,21 @@ export default function Firewall() {
   const showRulesSection = activeSection === 'rules'
   const showAliasesSection = activeSection === 'aliases'
   const showSettingsSection = activeSection === 'settings'
+
+  const sectionTabs: Array<{ id: 'settings' | 'rules' | 'aliases'; label: string }> = [
+    { id: 'settings', label: 'Settings' },
+    { id: 'rules', label: 'Rules' },
+    { id: 'aliases', label: 'Aliases' },
+  ]
+
+  const setActiveSection = (section: 'settings' | 'rules' | 'aliases') => {
+    const next = new URLSearchParams(searchParams)
+    next.set('section', section)
+    if (section !== 'rules') {
+      next.delete('iface')
+    }
+    setSearchParams(next)
+  }
 
   const updateRulesInterfaceFilter = (interfaceName: string) => {
     const next = new URLSearchParams(searchParams)
@@ -466,29 +472,17 @@ export default function Firewall() {
   }, [aliases, lanNetworkCidr, thisFirewallAddress])
 
   const openSettingsModal = () => {
-    setAllowedSourcesInput((settings.management_allowed_sources ?? []).join(', '))
-    setManagementPortsInput((settings.management_ports ?? []).join(', '))
     setSettingsModalOpen(true)
   }
 
   const handleSaveSettings = () => {
     setSettingsFormError(null)
-    const allowedSources = allowedSourcesInput
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-
-    const managementPorts = parseCommaSeparatedNumbers(managementPortsInput)
-    if (managementPortsInput.trim() && managementPorts.length === 0) {
-      setSettingsFormError('Enter valid management ports as comma-separated numbers.')
-      return
-    }
 
     const payload: FirewallSettings = {
       ...settings,
       management_interface: settings.management_interface || null,
-      management_allowed_sources: allowedSources,
-      management_ports: managementPorts.length ? managementPorts : [22, 443, 8443],
+      management_allowed_sources: settings.management_allowed_sources ?? [],
+      management_ports: (settings.management_ports ?? []).length ? settings.management_ports : [22, 443, 8443],
       syn_flood_rate: Math.max(1, Number(settings.syn_flood_rate || 1)),
       syn_flood_burst: Math.max(1, Number(settings.syn_flood_burst || 1)),
     }
@@ -705,7 +699,7 @@ export default function Firewall() {
               title="Move rule up"
               onClick={() => handleMoveRuleUp(ruleData)}
               disabled={ruleSaving || ruleData.priority <= 1}
-              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 15V3m0 0l-6 6m6-6l6 6" />
@@ -715,7 +709,7 @@ export default function Firewall() {
               title="Move rule down"
               onClick={() => handleMoveRuleDown(ruleData)}
               disabled={ruleSaving || ruleData.priority >= maxPriority}
-              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v12m0 0l-6-6m6 6l6-6" />
@@ -724,7 +718,7 @@ export default function Firewall() {
             <button
               title="Edit rule"
               onClick={() => setEditRule(ruleData)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -733,7 +727,7 @@ export default function Firewall() {
             <button
               title="Delete rule"
               onClick={() => setDeleteRuleId(row.id as string)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
@@ -777,7 +771,7 @@ export default function Firewall() {
       render: (row) => (
         <button
           onClick={() => setDeleteAliasName(row.name)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
           title="Delete alias"
           aria-label="Delete alias"
         >
@@ -791,6 +785,30 @@ export default function Firewall() {
 
   return (
     <div className="space-y-6">
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex gap-1" aria-label="Firewall tabs">
+          {sectionTabs.map((tab) => {
+            const isActive = activeSection === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveSection(tab.id)}
+                className={[
+                  'px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
+                  isActive
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                ].join(' ')}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </nav>
+      </div>
+
       {showSettingsSection && <div id="firewall-settings">
         <Card
           title="Firewall Settings"
@@ -798,7 +816,7 @@ export default function Firewall() {
           actions={
             <button
               onClick={openSettingsModal}
-              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
               title="Edit settings"
               aria-label="Edit firewall settings"
             >
@@ -853,7 +871,7 @@ export default function Firewall() {
               </Button>
               <button
                 onClick={openAddRuleModal}
-                className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                 title="Add rule"
                 aria-label="Add firewall rule"
               >
@@ -1130,7 +1148,7 @@ export default function Firewall() {
               setAliasFormError(null)
               setAliasModalOpen(true)
             }}
-              className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
               title="Add alias"
               aria-label="Add firewall alias"
             >
@@ -1248,38 +1266,6 @@ export default function Firewall() {
                 />
                 <span className="text-sm text-gray-700">Enable management anti-lockout rule</span>
               </label>
-
-              <FormField
-                id="fw-mgmt-iface"
-                className="col-span-2"
-                label="Management Interface (optional)"
-                as="select"
-                value={settings.management_interface ?? ''}
-                onChange={(e) => setSettings({ ...settings, management_interface: e.target.value || null })}
-              >
-                <option value="">Any interface</option>
-                {interfaces.map((iface) => (
-                  <option key={iface.name} value={iface.name}>
-                    {interfaceLabel(iface)}
-                  </option>
-                ))}
-              </FormField>
-              <FormField
-                id="fw-mgmt-src"
-                className="col-span-2"
-                label="Management Allowed Sources (comma-separated CIDRs)"
-                placeholder="e.g. 192.168.1.0/24, 10.0.0.0/8"
-                value={allowedSourcesInput}
-                onChange={(e) => setAllowedSourcesInput(e.target.value)}
-              />
-              <FormField
-                id="fw-mgmt-ports"
-                className="col-span-2"
-                label="Management Ports (comma-separated)"
-                placeholder="e.g. 22, 443, 8443"
-                value={managementPortsInput}
-                onChange={(e) => setManagementPortsInput(e.target.value)}
-              />
               <FormField
                 id="fw-log-position"
                 className="col-span-2"

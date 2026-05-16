@@ -520,6 +520,21 @@ export interface SystemConfig {
   managementTlsAcmeDomain?: string | null
 }
 
+export type ScheduleJobType = 'dynamic_dns_update' | 'acme_renew' | 'suricata_rulesets_update'
+
+export interface SystemScheduleJob {
+  job: ScheduleJobType
+  enabled: boolean
+  intervalMinutes: number
+  lastRunAt?: string | null
+  lastSuccess?: boolean | null
+  lastMessage?: string | null
+}
+
+export interface SystemSchedules {
+  jobs: SystemScheduleJob[]
+}
+
 export type UpdateComponent = 'core' | 'ui' | 'rootfs' | 'both'
 
 export type UpdateScheduleFrequency = 'daily' | 'weekly' | 'monthly'
@@ -732,6 +747,45 @@ export interface NtpStatus {
   jitter: number             // milliseconds
   upstream: string           // upstream server address
   stratum: number
+}
+
+// ── Dynamic DNS ─────────────────────────────────────────────────────────────
+
+export type DynamicDnsProvider = 'duck_dns' | 'no_ip' | 'dynu' | 'free_dns' | 'custom'
+
+export interface DynamicDnsEntry {
+  id: string
+  enabled: boolean
+  provider: DynamicDnsProvider
+  interface: string
+  hostname: string
+  username?: string
+  password: string
+  passwordConfigured: boolean
+  updateUrl?: string
+}
+
+export interface DynamicDnsConfig {
+  enabled: boolean
+  checkIntervalSeconds: number
+  entries: DynamicDnsEntry[]
+}
+
+export interface DynamicDnsStatusEntry {
+  id: string
+  hostname: string
+  provider: DynamicDnsProvider
+  interface: string
+  ip?: string
+  success: boolean
+  message: string
+  updatedAt: string
+}
+
+export interface DynamicDnsStatus {
+  enabled: boolean
+  lastRunAt?: string
+  entries: DynamicDnsStatusEntry[]
 }
 
 // ── Cloudflared ─────────────────────────────────────────────────────────────

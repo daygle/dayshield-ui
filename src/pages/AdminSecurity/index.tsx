@@ -126,7 +126,7 @@ export default function AdminSecurity() {
         </div>
         <button
           onClick={openEdit}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white shadow-sm transition-colors hover:bg-slate-50 text-slate-700 hover:text-slate-900 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100"
           title="Edit settings"
           aria-label="Edit admin security settings"
         >

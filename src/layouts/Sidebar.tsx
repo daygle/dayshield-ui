@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 
 interface NavItem {
   type?: 'item'
@@ -18,39 +17,6 @@ type NavEntry = NavItem | NavSection
 
 const appReleaseVersion = import.meta.env.VITE_GITHUB_RELEASE ?? '0.0.0'
 const appVersionLabel = appReleaseVersion.startsWith('v') ? appReleaseVersion : `v${appReleaseVersion}`
-
-function QueryNavLink({
-  to,
-  label,
-  icon,
-  level = 1,
-}: {
-  to: string
-  label: string
-  icon?: React.ReactNode
-  level?: 1 | 2
-}) {
-  const location = useLocation()
-  const [pathname, search = ''] = to.split('?')
-  const targetParams = new URLSearchParams(search)
-  const currentParams = new URLSearchParams(location.search)
-
-  const active = location.pathname === pathname && Array.from(targetParams.entries()).every(
-    ([key, value]) => currentParams.get(key) === value,
-  )
-
-  const className = [
-    level === 2 ? 'sidebar-sub-link-nested' : 'sidebar-sub-link',
-    active ? 'active' : '',
-  ].join(' ')
-
-  return (
-    <Link to={to} className={className}>
-      {icon}
-      {label}
-    </Link>
-  )
-}
 
 const navEntries: NavEntry[] = [
   {
@@ -90,6 +56,16 @@ const navEntries: NavEntry[] = [
     ),
   },
   {
+    to: '/nat',
+    label: 'NAT',
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h10M7 12h10M7 17h10" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 4l3 3-3 3M9 14l-3 3 3 3" />
+      </svg>
+    ),
+  },
+  {
     to: '/vpn',
     label: 'VPN',
     icon: (
@@ -104,6 +80,16 @@ const navEntries: NavEntry[] = [
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" />
+      </svg>
+    ),
+  },
+  {
+    to: '/dynamic-dns',
+    label: 'Dynamic DNS',
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 0112.9-5.3M19.5 12a7.5 7.5 0 01-12.9 5.3" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18 3v4h-4M6 21v-4h4" />
       </svg>
     ),
   },
@@ -193,15 +179,11 @@ const navEntries: NavEntry[] = [
 
 export default function Sidebar() {
   const location = useLocation()
-  const [isFirewallMenuOpen, setIsFirewallMenuOpen] = useState(false)
-  const [isDnsMenuOpen, setIsDnsMenuOpen] = useState(false)
-  const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false)
-  const [isSecurityMenuOpen, setIsSecurityMenuOpen] = useState(false)
   const isSecurityRoute =
+    location.pathname.startsWith('/security') ||
     location.pathname.startsWith('/suricata') ||
     location.pathname.startsWith('/crowdsec') ||
     location.pathname.startsWith('/ai-threats')
-  const shouldShowSecurityMenu = isSecurityMenuOpen || isSecurityRoute
 
   return (
     <aside className="flex flex-col h-full w-60 bg-[#0f172a] shrink-0">
@@ -232,77 +214,15 @@ export default function Sidebar() {
           const itemClassName = level === 0 ? 'sidebar-link' : level === 2 ? 'sidebar-sub-link-nested' : 'sidebar-sub-link'
           return (
             <div key={item.to}>
-              {item.to === '/security' ? (
-                <button
-                  type="button"
-                  onClick={() => setIsSecurityMenuOpen((open) => !open)}
-                  className={[itemClassName, 'w-full text-left border-0 bg-transparent', isSecurityRoute ? 'active' : ''].join(' ')}
-                >
-                  {item.icon}
-                  {item.label}
-                </button>
-              ) : item.to.includes('?') ? (
-                <QueryNavLink
-                  to={item.to}
-                  label={item.label}
-                  icon={item.icon}
-                  level={level === 2 ? 2 : 1}
-                />
-              ) : (
-                <NavLink
-                  to={item.to}
-                  onClick={
-                    item.to === '/firewall' || item.to === '/dns' || item.to === '/system'
-                      ? (event) => {
-                          if (location.pathname === item.to) {
-                            event.preventDefault()
-                          }
-                          if (item.to === '/firewall') setIsFirewallMenuOpen((open) => !open)
-                          if (item.to === '/dns') setIsDnsMenuOpen((open) => !open)
-                          if (item.to === '/system') setIsSystemMenuOpen((open) => !open)
-                        }
-                      : undefined
-                  }
-                  className={({ isActive }) =>
-                    [itemClassName, isActive ? 'active' : ''].join(' ')
-                  }
-                >
-                  {item.icon}
-                  {item.label}
-                </NavLink>
-              )}
-
-              {item.to === '/dns' && isDnsMenuOpen && (
-                <div className="mt-1 space-y-0.5">
-                  <QueryNavLink to="/dns?section=dot" label="DoT" level={1} />
-                  <QueryNavLink to="/dns?section=overrides" label="Overrides" level={1} />
-                  <QueryNavLink to="/dns?section=blocklists" label="Blocklists" level={1} />
-                </div>
-              )}
-
-              {item.to === '/firewall' && isFirewallMenuOpen && (
-                <div className="mt-1 space-y-0.5">
-                  <QueryNavLink to="/firewall?section=rules" label="Rules" level={1} />
-                  <QueryNavLink to="/firewall?section=aliases" label="Aliases" level={1} />
-                </div>
-              )}
-
-              {item.to === '/system' && isSystemMenuOpen && (
-                <div className="mt-1 space-y-0.5">
-                  <QueryNavLink to="/system?section=updates" label="Updates" level={1} />
-                  <QueryNavLink to="/system?section=reboot" label="Reboot" level={1} />
-                  <QueryNavLink to="/admin-security" label="Security" level={1} />
-                  <QueryNavLink to="/change-password" label="Change Password" level={1} />
-                </div>
-              )}
-
-              {item.to === '/security' && shouldShowSecurityMenu && (
-                <div className="mt-1 space-y-0.5">
-                  <QueryNavLink to="/suricata" label="Suricata" level={1} />
-                  <QueryNavLink to="/crowdsec" label="CrowdSec" level={1} />
-                  <QueryNavLink to="/ai-threats" label="AI Threat Engine" level={1} />
-                </div>
-              )}
+              <NavLink
+                to={item.to}
+                className={({ isActive }) =>
+                  [itemClassName, isActive || (item.to === '/security' && isSecurityRoute) ? 'active' : ''].join(' ')
+                }
+              >
+                {item.icon}
+                {item.label}
+              </NavLink>
             </div>
           )
         })}

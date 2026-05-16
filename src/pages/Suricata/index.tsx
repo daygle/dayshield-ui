@@ -64,6 +64,15 @@ function SuricataContent() {
   const monitoredCount = config?.interfaces.length ?? 0;
   const totalIfaces = interfaces.length;
 
+  const extractInterfaceIpv4Cidr = useCallback((iface?: NetworkInterface | null): string | null => {
+    if (!iface) return null
+    if (iface.ipv4Address && iface.ipv4Prefix != null) {
+      return `${iface.ipv4Address}/${iface.ipv4Prefix}`
+    }
+    const runtimeIpv4 = (iface.kernelAddresses ?? []).find((addr) => addr.includes('.') && addr.includes('/'))
+    return runtimeIpv4 ?? null
+  }, [])
+
   const loadAll = useCallback(() => {
     setLoading(true)
     const loadPromise = selectedInterface
@@ -176,42 +185,52 @@ function SuricataContent() {
 
   const handleAutoPopulateHomeNetworks = () => {
     if (!config) return
-    
+
     // Get CIDRs from monitored interfaces
     const homeNets = config.interfaces
       .map((ifaceName) => interfaces.find((iface) => iface.name === ifaceName))
-      .filter((iface): iface is NetworkInterface => iface != null && iface.ipv4Address != null && iface.ipv4Prefix != null)
-      .map((iface) => `${iface.ipv4Address}/${iface.ipv4Prefix}`)
-    
+      .map((iface) => extractInterfaceIpv4Cidr(iface))
+      .filter((cidr): cidr is string => Boolean(cidr))
+
     if (homeNets.length === 0) {
       return false
     }
-    
+
     updateSuricataConfig({ homeNet: homeNets })
       .then((res) => {
         setConfig(res.data)
         setError(null)
       })
       .catch((err: Error) => setError(err.message))
-    
+
     return true
   }
 
   // Auto-populate Home Networks when empty and monitored interfaces are available
   useEffect(() => {
     if (!config || config.homeNet.length > 0 || config.interfaces.length === 0) return
-    
+
     const hasMonitoredIfaceWithIp = config.interfaces.some(
       (ifaceName) => {
         const iface = interfaces.find((i) => i.name === ifaceName)
-        return iface && iface.ipv4Address && iface.ipv4Prefix
+        return Boolean(extractInterfaceIpv4Cidr(iface))
       }
     )
-    
+
     if (hasMonitoredIfaceWithIp) {
       handleAutoPopulateHomeNetworks()
     }
-  }, [config?.interfaces.join(','), interfaces.length])
+  }, [config?.interfaces.join(','), interfaces.length, extractInterfaceIpv4Cidr])
+
+  const derivedHomeNets = React.useMemo(() => {
+    if (!config) return []
+    return config.interfaces
+      .map((ifaceName) => interfaces.find((iface) => iface.name === ifaceName))
+      .map((iface) => extractInterfaceIpv4Cidr(iface))
+      .filter((cidr): cidr is string => Boolean(cidr))
+  }, [config, interfaces, extractInterfaceIpv4Cidr])
+
+  const displayedHomeNets = config?.homeNet.length ? config.homeNet : derivedHomeNets
 
   const interfaceLabels = React.useMemo(
     () =>
@@ -325,9 +344,9 @@ function SuricataContent() {
             <div className="md:col-span-3">
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Home Networks</dt>
               <dd className="mt-1 font-medium text-gray-800">
-                {config.homeNet.length > 0 ? (
+                {displayedHomeNets.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {config.homeNet.map((net) => (
+                    {displayedHomeNets.map((net) => (
                       <div key={net} className="text-sm font-mono text-gray-700 bg-gray-50 rounded px-2 py-1">
                         {net}
                       </div>
@@ -335,6 +354,9 @@ function SuricataContent() {
                   </div>
                 ) : (
                   <span className="text-gray-400">Not configured</span>
+                )}
+                {config.homeNet.length === 0 && displayedHomeNets.length > 0 && (
+                  <div className="mt-1 text-xs text-blue-700">Auto-derived from monitored interface IPs</div>
                 )}
               </dd>
             </div>
@@ -352,6 +374,7 @@ function SuricataContent() {
             {interfaces.map((iface) => {
               const isMonitored = config.interfaces.includes(iface.name)
               const isSelected = selectedInterface === iface.name
+              const interfaceIp = extractInterfaceIpv4Cidr(iface)
               return (
                 <button
                   key={iface.name}
@@ -368,7 +391,7 @@ function SuricataContent() {
                         {formatInterfaceDisplayName(iface.description, iface.name)}
                       </h4>
                       <p className="mt-1 text-xs text-gray-500">
-                        {iface.ipv4Address ? `${iface.ipv4Address}/${iface.ipv4Prefix}` : 'No IP configured'}
+                        {interfaceIp ?? 'No IP configured'}
                       </p>
                     </div>
                     <span
@@ -414,9 +437,7 @@ function SuricataContent() {
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">IP Address</dt>
               <dd className="mt-1 font-mono text-gray-900">
-                {selectedInterfaceMeta?.ipv4Address
-                  ? `${selectedInterfaceMeta.ipv4Address}/${selectedInterfaceMeta.ipv4Prefix ?? '-'}`
-                  : 'Not configured'}
+                {extractInterfaceIpv4Cidr(selectedInterfaceMeta) ?? 'Not configured'}
               </dd>
             </div>
             <div>
@@ -426,7 +447,6 @@ function SuricataContent() {
           </dl>
         </Card>
       )}
-
 
       {/* Rulesets section, clearly labeled */}
       <div className="mt-2">

@@ -369,7 +369,7 @@ export default function DHCP() {
       render: (row) => (
         <button
           onClick={() => setDeleteId(row.id as string)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
           title="Delete static lease"
           aria-label="Delete static lease"
         >
@@ -425,7 +425,7 @@ export default function DHCP() {
         actions={
           <button
             onClick={openConfigModal}
-            className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
             title={selectedInterface ? 'Edit interface DHCP settings' : 'Edit DHCP settings'}
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -501,7 +501,7 @@ export default function DHCP() {
         actions={
           <button
             onClick={() => setLeaseModalOpen(true)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
             title="Add new lease"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

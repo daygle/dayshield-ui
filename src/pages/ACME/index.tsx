@@ -7,7 +7,6 @@ import {
 } from '../../api/acme'
 import type { AcmeAccount, AcmeCertificate, AcmeCertificateStatus } from '../../types'
 import Card from '../../components/Card'
-import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
@@ -155,9 +154,16 @@ export default function ACME() {
         <Card
           title="ACME Account"
           actions={
-            <Button size="sm" onClick={() => { setAccountForm(account); setAccountEditOpen(true) }}>
-              Edit
-            </Button>
+            <button
+              onClick={() => { setAccountForm(account); setAccountEditOpen(true) }}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+              title="Edit ACME account"
+              aria-label="Edit ACME account"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
           }
         >
           <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
@@ -190,9 +196,16 @@ export default function ACME() {
         title="Certificates"
         subtitle="TLS certificates issued via the ACME protocol. Use Issue Certificate to add or renew certificates."
         actions={
-          <Button size="sm" onClick={() => setIssueOpen(true)}>
-            + Issue Certificate
-          </Button>
+          <button
+            onClick={() => setIssueOpen(true)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            title="Issue certificate"
+            aria-label="Issue certificate"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
         }
       >
         <Table

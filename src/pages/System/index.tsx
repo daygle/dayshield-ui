@@ -14,14 +14,18 @@ import {
   validateUpdates,
   markApplianceRebuildComplete,
 } from '../../api/system'
+import { getFirewallSettings, updateFirewallSettings } from '../../api/firewall'
 import { getAcmeConfig } from '../../api/acme'
-import type { SystemStatus, SystemConfig, UpdatesStatus, UpdateSettings, UpdateLogEntry } from '../../types'
+import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
+import type { SystemStatus, SystemConfig, UpdatesStatus, UpdateSettings, UpdateLogEntry, FirewallSettings, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import FormField from '../../components/FormField'
 import Modal from '../../components/Modal'
+import SchedulesPanel from './SchedulesPanel'
 import { useDisplayPreferences, type DateFormatPreference, type TimeFormatPreference } from '../../context/DisplayPreferencesContext'
 import type { UpdateScheduleFrequency, UpdateScheduleWeekday } from '../../types'
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
 const DEFAULT_GITHUB_REGISTRY_URL = 'https://api.github.com/repos/daygle/dayshield-core'
 const STATUS_REFRESH_INTERVAL_MS = 15000
@@ -62,12 +66,34 @@ const TIME_FORMAT_OPTIONS: Array<{ value: TimeFormatPreference; label: string }>
   { value: '12h', label: '12-hour (HH:MM:SS AM/PM)' },
 ]
 
+const DEFAULT_FIREWALL_SETTINGS: FirewallSettings = {
+  input_policy: 'drop',
+  forward_policy: 'drop',
+  output_policy: 'accept',
+  drop_invalid_state: true,
+  syn_flood_protection: true,
+  syn_flood_rate: 120,
+  syn_flood_burst: 240,
+  management_anti_lockout: true,
+  management_interface: null,
+  management_allowed_sources: [],
+  management_ports: [22, 443, 8443],
+  log_position: 'after',
+}
+
 function formatUptime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0d 0h 0m'
   const d = Math.floor(seconds / 86400)
   const h = Math.floor((seconds % 86400) / 3600)
   const m = Math.floor((seconds % 3600) / 60)
   return `${d}d ${h}h ${m}m`
+}
+
+function parseCommaSeparatedNumbers(value: string): number[] {
+  return value
+    .split(',')
+    .map((item) => Number(item.trim()))
+    .filter((n) => Number.isInteger(n) && n > 0 && n <= 65535)
 }
 
 function shortCommit(value?: string): string {
@@ -469,14 +495,17 @@ function parseValidationMessage(message: string): {
 
 export default function System() {
   const { dateFormat, timeFormat, setDateFormat, setTimeFormat, formatDateTime } = useDisplayPreferences()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [status, setStatus] = useState<SystemStatus | null>(null)
   const [config, setConfig] = useState<SystemConfig | null>(null)
+  const [firewallSettings, setFirewallSettings] = useState<FirewallSettings>(DEFAULT_FIREWALL_SETTINGS)
+  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [acmeDomains, setAcmeDomains] = useState<string[]>([])
   const [editConfig, setEditConfig] = useState<Partial<SystemConfig>>({})
-  const [timezoneQuery, setTimezoneQuery] = useState('')
+  const [managementAllowedSourcesInput, setManagementAllowedSourcesInput] = useState('')
+  const [managementPortsInput, setManagementPortsInput] = useState('22, 443, 8443')
   const [editOpen, setEditOpen] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -496,41 +525,78 @@ export default function System() {
     ? 'updates'
     : searchParams.get('section') === 'reboot'
       ? 'reboot'
+      : searchParams.get('section') === 'schedules'
+        ? 'schedules'
       : 'overview'
+
+  const sectionTabs: Array<{ id: 'overview' | 'updates' | 'schedules' | 'reboot'; label: string }> = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'updates', label: 'Updates' },
+    { id: 'schedules', label: 'Schedules' },
+    { id: 'reboot', label: 'Reboot' },
+  ]
+
+  const setActiveSection = (section: 'overview' | 'updates' | 'schedules' | 'reboot') => {
+    const next = new URLSearchParams(searchParams)
+    if (section === 'overview') next.delete('section')
+    else next.set('section', section)
+    setSearchParams(next)
+  }
   const allTimezones = getTimezones()
-  const normalizedTimezoneQuery = timezoneQuery.trim().toLowerCase()
-  const filteredTimezones = normalizedTimezoneQuery
-    ? allTimezones.filter((tz) => {
-      const name = tz.name.toLowerCase()
-      const label = tz.label.toLowerCase()
-      return name.includes(normalizedTimezoneQuery) || label.includes(normalizedTimezoneQuery)
-    })
-    : allTimezones
   const selectedTimezone = editConfig.timezone ?? 'UTC'
   const timezoneOptions = (() => {
-    if (filteredTimezones.some((tz) => tz.name === selectedTimezone)) {
-      return filteredTimezones
+    if (allTimezones.some((tz) => tz.name === selectedTimezone)) {
+      return allTimezones
     }
     const selected = allTimezones.find((tz) => tz.name === selectedTimezone)
     if (selected) {
-      return [selected, ...filteredTimezones]
+      return [selected, ...allTimezones]
     }
     if (selectedTimezone) {
-      return [{ name: selectedTimezone, label: selectedTimezone }, ...filteredTimezones]
+      return [{ name: selectedTimezone, label: selectedTimezone }, ...allTimezones]
     }
-    return filteredTimezones
+    return allTimezones
   })()
+
+  const interfaceLabel = (iface: NetworkInterface): string =>
+    formatInterfaceDisplayName(iface.description, iface.name)
 
   const loadAll = () => {
     setLoading(true)
-    Promise.all([getSystemStatus(), getSystemConfig(), getUpdatesStatus(), getUpdateSettings(), getAcmeConfig()])
-      .then(([st, cfg, upd, updSettings, acme]) => {
+    Promise.all([
+      getSystemStatus(),
+      getSystemConfig(),
+      getUpdatesStatus(),
+      getUpdateSettings(),
+      getAcmeConfig(),
+      getFirewallSettings(),
+      getInterfaces(),
+      getInterfacesInventory(),
+    ])
+      .then(([st, cfg, upd, updSettings, acme, fw, ifacesRes, inventoryRes]) => {
         setStatus(st.data)
         setConfig(cfg.data)
         setEditConfig(cfg.data)
         setUpdates(upd.data)
         setUpdateSettings(updSettings.data)
         setAcmeDomains(acme.data.domains ?? [])
+
+        const mergedFirewallSettings = { ...DEFAULT_FIREWALL_SETTINGS, ...fw.data }
+        setFirewallSettings(mergedFirewallSettings)
+        setManagementAllowedSourcesInput((mergedFirewallSettings.management_allowed_sources ?? []).join(', '))
+        setManagementPortsInput((mergedFirewallSettings.management_ports ?? []).join(', '))
+
+        const configured = (ifacesRes.data ?? []).filter((iface) => iface.enabled !== false)
+        const known = new Set(configured.map((iface) => iface.name))
+        const extras = (inventoryRes.data?.names ?? [])
+          .filter((name) => name !== 'lo' && !known.has(name))
+          .map((name) => ({
+            name,
+            description: '',
+            type: 'ethernet' as const,
+            enabled: true,
+          }))
+        setInterfaces([...configured, ...extras])
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))
@@ -568,12 +634,36 @@ export default function System() {
   }, [activeSection])
 
   const handleSaveConfig = () => {
+    const managementAllowedSources = managementAllowedSourcesInput
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+    const managementPorts = parseCommaSeparatedNumbers(managementPortsInput)
+
+    if (managementPortsInput.trim() && managementPorts.length === 0) {
+      setError('Enter valid management ports as comma-separated numbers.')
+      return
+    }
+
+    const firewallPayload: FirewallSettings = {
+      ...firewallSettings,
+      management_interface: firewallSettings.management_interface || null,
+      management_allowed_sources: managementAllowedSources,
+      management_ports: managementPorts.length ? managementPorts : [22, 443, 8443],
+      syn_flood_rate: Math.max(1, Number(firewallSettings.syn_flood_rate || 1)),
+      syn_flood_burst: Math.max(1, Number(firewallSettings.syn_flood_burst || 1)),
+    }
+
     setSaving(true)
-    updateSystemConfig(editConfig)
-      .then((res) => {
-        setConfig(res.data)
-        setEditConfig(res.data)
-        setTimezoneQuery('')
+    Promise.all([updateSystemConfig(editConfig), updateFirewallSettings(firewallPayload)])
+      .then(([systemRes, firewallRes]) => {
+        setConfig(systemRes.data)
+        setEditConfig(systemRes.data)
+        const mergedFirewallSettings = { ...DEFAULT_FIREWALL_SETTINGS, ...firewallRes.data }
+        setFirewallSettings(mergedFirewallSettings)
+        setManagementAllowedSourcesInput((mergedFirewallSettings.management_allowed_sources ?? []).join(', '))
+        setManagementPortsInput((mergedFirewallSettings.management_ports ?? []).join(', '))
+        setError(null)
         setEditOpen(false)
       })
       .catch((err: Error) => setError(err.message))
@@ -727,6 +817,30 @@ export default function System() {
         </div>
       )}
 
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex gap-1" aria-label="System tabs">
+          {sectionTabs.map((tab) => {
+            const isActive = activeSection === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveSection(tab.id)}
+                className={[
+                  'px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
+                  isActive
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                ].join(' ')}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </nav>
+      </div>
+
       {activeSection === 'overview' && status && (
         <Card title="System Status">
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
@@ -774,9 +888,16 @@ export default function System() {
         <Card
           title="System Configuration"
           actions={
-            <Button size="sm" onClick={() => { setEditConfig(config); setEditOpen(true) }}>
-              Edit
-            </Button>
+            <button
+              onClick={() => { setEditConfig(config); setEditOpen(true) }}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+              title="Edit system configuration"
+              aria-label="Edit system configuration"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
           }
         >
           <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
@@ -805,6 +926,18 @@ export default function System() {
             <div>
               <dt className="text-gray-500">Web Port</dt>
               <dd className="font-medium text-gray-800">{config.webPort}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Management Interface</dt>
+              <dd className="font-medium text-gray-800">{firewallSettings.management_interface || 'Any interface'}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Management Allowed Sources</dt>
+              <dd className="font-medium text-gray-800">{(firewallSettings.management_allowed_sources ?? []).join(', ') || 'Any source'}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Management Ports</dt>
+              <dd className="font-medium text-gray-800">{(firewallSettings.management_ports ?? []).join(', ') || '-'}</dd>
             </div>
           </dl>
         </Card>
@@ -1097,6 +1230,10 @@ export default function System() {
         </Card>
       )}
 
+      {activeSection === 'schedules' && (
+        <SchedulesPanel onError={setError} />
+      )}
+
       {activeSection === 'reboot' && (
         <div className="space-y-5">
           {status && (
@@ -1144,15 +1281,6 @@ export default function System() {
             label="Hostname"
             value={editConfig.hostname ?? ''}
             onChange={(e) => setEditConfig({ ...editConfig, hostname: e.target.value })}
-          />
-          <FormField
-            id="cfg-timezone-search"
-            label="Search Timezones"
-            className="col-span-2"
-            placeholder="Type city, region, or timezone ID"
-            value={timezoneQuery}
-            onChange={(e) => setTimezoneQuery(e.target.value)}
-            hint={`${filteredTimezones.length} match${filteredTimezones.length === 1 ? '' : 'es'}`}
           />
           <FormField
             id="cfg-timezone"
@@ -1235,6 +1363,41 @@ export default function System() {
               Select an issued ACME certificate to use for the DayShield management UI.
             </p>
           </div>
+          <div className="col-span-2 border-t border-gray-200 pt-3">
+            <p className="text-sm font-semibold text-gray-900">Management Access Controls</p>
+            <p className="text-xs text-gray-500 mt-1">These controls were moved from Firewall Settings to System Settings.</p>
+          </div>
+          <FormField
+            id="cfg-management-interface"
+            className="col-span-2"
+            label="Management Interface (optional)"
+            as="select"
+            value={firewallSettings.management_interface ?? ''}
+            onChange={(e) => setFirewallSettings((prev) => ({ ...prev, management_interface: e.target.value || null }))}
+          >
+            <option value="">Any interface</option>
+            {interfaces.map((iface) => (
+              <option key={iface.name} value={iface.name}>
+                {interfaceLabel(iface)}
+              </option>
+            ))}
+          </FormField>
+          <FormField
+            id="cfg-management-sources"
+            className="col-span-2"
+            label="Management Allowed Sources (comma-separated CIDRs)"
+            placeholder="e.g. 192.168.1.0/24, 10.0.0.0/8"
+            value={managementAllowedSourcesInput}
+            onChange={(e) => setManagementAllowedSourcesInput(e.target.value)}
+          />
+          <FormField
+            id="cfg-management-ports"
+            className="col-span-2"
+            label="Management Ports (comma-separated)"
+            placeholder="e.g. 22, 443, 8443"
+            value={managementPortsInput}
+            onChange={(e) => setManagementPortsInput(e.target.value)}
+          />
         </div>
       </Modal>
 

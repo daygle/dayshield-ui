@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPortForwards, createPortForward, updatePortForward, deletePortForward } from '../../api/nat'
+import { getInterfaces } from '../../api/interfaces'
 import { useToast } from '../../context/ToastContext'
-import type { NatRule, NatProtocol } from '../../types'
+import type { NatRule, NatProtocol, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
 // Port forwards are DNAT NAT rules. All fields map directly to NatRule.
 type PfRow = NatRule & Record<string, unknown>
@@ -32,6 +34,11 @@ const defaultForm = (): Omit<NatRule, 'id'> => ({
   auto_firewall_rule: true,
 })
 
+function isWanInterface(iface: NetworkInterface): boolean {
+  const desc = iface.description?.trim().toLowerCase() ?? ''
+  return Boolean(iface.wanMode) || Boolean(iface.gateway) || desc.includes('wan') || iface.name.toLowerCase() === 'wan'
+}
+
 export default function PortForwardPage() {
   const qc = useQueryClient()
   const { addToast } = useToast()
@@ -41,7 +48,13 @@ export default function PortForwardPage() {
     queryFn: getPortForwards,
   })
 
+  const { data: interfacesData } = useQuery({
+    queryKey: ['interfaces', 'nat-portforward'],
+    queryFn: getInterfaces,
+  })
+
   const portForwards = (data?.data ?? []) as PfRow[]
+  const wanInterfaces = (interfacesData?.data ?? []).filter((iface) => iface.enabled !== false && isWanInterface(iface))
 
   // â”€â”€ Form state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [modalOpen, setModalOpen] = useState(false)
@@ -153,7 +166,7 @@ export default function PortForwardPage() {
         <div className="flex items-center justify-end gap-2">
           <button
             onClick={() => openEdit(row as NatRule)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
             title="Edit port forward"
             aria-label="Edit port forward"
           >
@@ -163,7 +176,7 @@ export default function PortForwardPage() {
           </button>
           <button
             onClick={() => setDeleteId(row.id as string)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-red-600 hover:text-red-900"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
             title="Delete port forward"
             aria-label="Delete port forward"
           >
@@ -184,7 +197,7 @@ export default function PortForwardPage() {
         actions={
           <button
             onClick={openAdd}
-            className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
             title="Add port forward"
             aria-label="Add port forward"
           >
@@ -217,12 +230,19 @@ export default function PortForwardPage() {
           <FormField
             id="pf-wan"
             label="WAN Interface"
+            as="select"
             required
-            placeholder="e.g. eth0"
             value={form.interface ?? ''}
             error={formErrors.interface}
             onChange={(e) => setForm({ ...form, interface: e.target.value || null })}
-          />
+          >
+            <option value="">Select WAN interface</option>
+            {wanInterfaces.map((iface) => (
+              <option key={iface.name} value={iface.name}>
+                {formatInterfaceDisplayName(iface.description, iface.name)}
+              </option>
+            ))}
+          </FormField>
           <FormField
             id="pf-proto"
             label="Protocol"
@@ -319,7 +339,7 @@ export default function PortForwardPage() {
                 onChange={(e) => setForm({ ...form, nat_reflection: e.target.checked })}
               />
               <span className="text-sm font-medium text-gray-700">
-                Enable NAT reflection for this rule
+                Enable NAT Reflection
               </span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer select-none">
