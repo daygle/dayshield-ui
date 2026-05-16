@@ -175,6 +175,45 @@ function SuricataContent() {
       .catch((err: Error) => setError(err.message))
   }
 
+  const handleAutoPopulateHomeNetworks = () => {
+    if (!config) return
+    
+    // Get CIDRs from monitored interfaces
+    const homeNets = config.interfaces
+      .map((ifaceName) => interfaces.find((iface) => iface.name === ifaceName))
+      .filter((iface): iface is NetworkInterface => iface != null && iface.ipv4Address != null && iface.ipv4Prefix != null)
+      .map((iface) => `${iface.ipv4Address}/${iface.ipv4Prefix}`)
+    
+    if (homeNets.length === 0) {
+      return false
+    }
+    
+    updateSuricataConfig({ homeNet: homeNets })
+      .then((res) => {
+        setConfig(res.data)
+        setError(null)
+      })
+      .catch((err: Error) => setError(err.message))
+    
+    return true
+  }
+
+  // Auto-populate Home Networks when empty and monitored interfaces are available
+  useEffect(() => {
+    if (!config || config.homeNet.length > 0 || config.interfaces.length === 0) return
+    
+    const hasMonitoredIfaceWithIp = config.interfaces.some(
+      (ifaceName) => {
+        const iface = interfaces.find((i) => i.name === ifaceName)
+        return iface && iface.ipv4Address && iface.ipv4Prefix
+      }
+    )
+    
+    if (hasMonitoredIfaceWithIp) {
+      handleAutoPopulateHomeNetworks()
+    }
+  }, [config?.interfaces.join(','), interfaces.length])
+
   const interfaceLabels = React.useMemo(
     () =>
       new Map(interfaces.map((iface) => [iface.name, formatInterfaceDisplayName(iface.description, iface.name)])),
@@ -232,17 +271,6 @@ function SuricataContent() {
 
   return (
     <div className="space-y-6">
-      {/* Summary/status bar */}
-      {config && (
-        <div className="flex flex-wrap items-center gap-4 rounded-md border border-gray-200 bg-white px-4 py-3 mb-2">
-          <div className="font-semibold text-gray-800">
-            Suricata: <span className={config.enabled ? 'text-green-600' : 'text-gray-400'}>{config.enabled ? 'Running' : 'Stopped'}</span>
-          </div>
-          <div className="text-gray-700">Mode: <span className="font-medium uppercase">{config.mode}</span></div>
-          <div className="text-gray-700">Monitored: <span className="font-medium">{monitoredCount}</span> / {totalIfaces}</div>
-        </div>
-      )}
-
       {loading && (
         <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600" role="status" aria-live="polite">
           Loading Suricata configuration and alerts…
@@ -254,41 +282,13 @@ function SuricataContent() {
         </div>
       )}
 
-      {/* Interface selector, visually separated */}
-      <div className="rounded-md border border-gray-200 bg-white px-4 py-3 max-w-md">
-        <FormField
-          id="suricata-interface-selector"
-          label="Interface"
-          as="select"
-          aria-label="Select Suricata interface"
-          value={selectedInterface ?? ''}
-          onChange={(e) => handleSelectInterface(e.target.value)}
-        >
-          <option value="">Select interface</option>
-          {interfaces.map((iface) => (
-            <option key={iface.name} value={iface.name}>
-              {interfaceLabel(iface.name)}
-            </option>
-          ))}
-        </FormField>
-      </div>
-
-      {/* Status card */}
+      {/* Global Suricata Status Card */}
       {config && (
         <Card
-          title={selectedInterface ? `Suricata Settings: ${selectedInterfaceLabel}` : 'Suricata IDS/IPS'}
+          title="Suricata Status"
+          subtitle="Global IDS/IPS configuration and settings"
           actions={
             <div className="flex items-center gap-2">
-              {selectedInterface && interfaceConfig && (
-                <Button
-                  variant={interfaceConfig.monitored ? 'secondary' : 'primary'}
-                  size="sm"
-                  aria-label={interfaceConfig.monitored ? 'Disable Suricata monitoring' : 'Enable Suricata monitoring'}
-                  onClick={handleToggleSelectedInterface}
-                >
-                  {interfaceConfig.monitored ? 'Disable' : 'Enable'}
-                </Button>
-              )}
               <Button
                 variant={config.mode === 'ips' ? 'danger' : 'secondary'}
                 size="sm"
@@ -308,39 +308,122 @@ function SuricataContent() {
             </div>
           }
         >
-          <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+          <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
             <div>
-              <dt className="text-gray-500">Status</dt>
-              <dd className={`font-medium ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
+              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
+              <dd className={`mt-1 text-lg font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
                 {config.enabled ? 'Running' : 'Stopped'}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">Mode</dt>
-              <dd className="font-medium text-gray-800 uppercase">{config.mode}</dd>
+              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Mode</dt>
+              <dd className="mt-1 text-lg font-semibold text-gray-800 uppercase">{config.mode}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Home Networks</dt>
-              <dd className="font-medium text-gray-800 text-xs">
-                {config.homeNet.join(', ') || '-'}
+              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Interfaces Monitored</dt>
+              <dd className="mt-1 text-lg font-semibold text-gray-800">{monitoredCount} / {totalIfaces}</dd>
+            </div>
+            <div className="md:col-span-3">
+              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Home Networks</dt>
+              <dd className="mt-1 font-medium text-gray-800">
+                {config.homeNet.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {config.homeNet.map((net) => (
+                      <div key={net} className="text-sm font-mono text-gray-700 bg-gray-50 rounded px-2 py-1">
+                        {net}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-gray-400">Not configured</span>
+                )}
               </dd>
             </div>
-            {selectedInterface && (
-              <div>
-                <dt className="text-gray-500">Monitoring</dt>
-                <dd
-                  className={`font-medium ${
-                    config.interfaces.includes(selectedInterface)
-                      ? 'text-green-600'
-                      : 'text-amber-600'
+          </dl>
+        </Card>
+      )}
+
+      {/* Interface Monitoring Grid */}
+      {config && interfaces.length > 0 && (
+        <Card
+          title="Interface Monitoring"
+          subtitle={`Select an interface to view details (${monitoredCount} monitored)`}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {interfaces.map((iface) => {
+              const isMonitored = config.interfaces.includes(iface.name)
+              const isSelected = selectedInterface === iface.name
+              return (
+                <button
+                  key={iface.name}
+                  onClick={() => handleSelectInterface(iface.name)}
+                  className={`rounded-lg border-2 p-3 text-left transition-colors ${
+                    isSelected
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  {config.interfaces.includes(selectedInterface)
-                    ? 'Yes'
-                    : 'No'}
-                </dd>
-              </div>
-            )}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-medium text-gray-900">
+                        {formatInterfaceDisplayName(iface.description, iface.name)}
+                      </h4>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {iface.ipv4Address ? `${iface.ipv4Address}/${iface.ipv4Prefix}` : 'No IP configured'}
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${
+                        isMonitored
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {isMonitored ? 'Monitored' : 'Not monitored'}
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Selected Interface Details Card */}
+      {config && selectedInterface && interfaceConfig && (
+        <Card
+          title={`Interface Details: ${selectedInterfaceLabel}`}
+          subtitle={`Configure monitoring for ${selectedInterfaceLabel}`}
+          actions={
+            <Button
+              variant={interfaceConfig.monitored ? 'secondary' : 'primary'}
+              size="sm"
+              aria-label={interfaceConfig.monitored ? 'Disable Suricata monitoring' : 'Enable Suricata monitoring'}
+              onClick={handleToggleSelectedInterface}
+            >
+              {interfaceConfig.monitored ? 'Disable Monitoring' : 'Enable Monitoring'}
+            </Button>
+          }
+        >
+          <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+            <div>
+              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
+              <dd className={`mt-1 font-semibold ${interfaceConfig.monitored ? 'text-green-600' : 'text-gray-400'}`}>
+                {interfaceConfig.monitored ? 'Monitored' : 'Not monitored'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">IP Address</dt>
+              <dd className="mt-1 font-mono text-gray-900">
+                {selectedInterfaceMeta?.ipv4Address
+                  ? `${selectedInterfaceMeta.ipv4Address}/${selectedInterfaceMeta.ipv4Prefix ?? '-'}`
+                  : 'Not configured'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Interface Type</dt>
+              <dd className="mt-1 capitalize text-gray-900">{selectedInterfaceMeta?.type ?? 'Unknown'}</dd>
+            </div>
           </dl>
         </Card>
       )}

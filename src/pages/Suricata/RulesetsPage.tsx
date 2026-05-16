@@ -1010,49 +1010,37 @@ export function SuricataRulesetGroupsSection() {
               key={groupKey}
               className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                    {subgroup.familyLabel}
-                  </div>
-                  <h4 className="mt-1 text-sm font-semibold text-gray-900">{subgroup.label}</h4>
+                  <h4 className="text-sm font-semibold text-gray-900">
+                    {subgroup.rulesets[0]?.name || subgroup.label}
+                  </h4>
                   <p className="mt-1 text-xs text-gray-500">
-                    {subgroup.rulesets.length} ruleset{subgroup.rulesets.length === 1 ? '' : 's'} ·{' '}
-                    {installedCount} installed · {enabledCount} enabled
+                    {subgroup.rulesets.length} ruleset{subgroup.rulesets.length === 1 ? '' : 's'}
                   </p>
                 </div>
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                  {action ? groupActionLabel[action] : 'Ready'}
-                </span>
-              </div>
-
-              <div className="mt-3 space-y-1 text-xs text-gray-500">
-                {subgroup.rulesets.slice(0, 3).map((ruleset) => (
-                  <div key={rulesetKey(ruleset.id)}>{ruleset.name}</div>
-                ))}
-                {subgroup.rulesets.length > 3 && (
-                  <div>+{subgroup.rulesets.length - 3} more rulesets</div>
-                )}
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant={action === 'disable' ? 'secondary' : 'primary'}
-                  onClick={() => handleGroupAction(subgroup)}
-                  loading={actingGroupKey === groupKey}
-                  disabled={!action}
-                >
-                  {action ? groupActionLabel[action] : 'Ready'}
-                </Button>
-                <Link
-                  to={`/suricata/rulesets?group=${encodeURIComponent(
-                    subgroup.familyLabel,
-                  )}&subgroup=${encodeURIComponent(subgroup.label)}`}
-                  className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Rules
-                </Link>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                    {enabledCount} enabled
+                  </span>
+                  <Button
+                    size="sm"
+                    variant={action === 'disable' ? 'secondary' : 'primary'}
+                    onClick={() => handleGroupAction(subgroup)}
+                    loading={actingGroupKey === groupKey}
+                    disabled={!action}
+                  >
+                    {action ? groupActionLabel[action] : 'Ready'}
+                  </Button>
+                  <Link
+                    to={`/suricata/rulesets?group=${encodeURIComponent(
+                      subgroup.familyLabel,
+                    )}&subgroup=${encodeURIComponent(subgroup.label)}`}
+                    className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Rules
+                  </Link>
+                </div>
               </div>
             </div>
           )
