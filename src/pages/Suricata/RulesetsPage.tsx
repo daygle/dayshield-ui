@@ -464,7 +464,6 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
     )
   })
 
-  const installedCount = rulesets.filter((ruleset) => ruleset.installed).length
   const enabledCount = rulesets.filter((ruleset) => ruleset.installed && ruleset.enabled).length
   const disabledCount = rulesets.filter((ruleset) => ruleset.installed && !ruleset.enabled).length
 
@@ -1003,7 +1002,6 @@ export function SuricataRulesetGroupsSection() {
         {visibleSubgroupCards.map((subgroup) => {
           const groupKey = `${subgroup.familyLabel}:${subgroup.label}`
           const action = getGroupAction(subgroup.rulesets)
-          const installedCount = subgroup.rulesets.filter((ruleset) => ruleset.installed).length
           const enabledCount = subgroup.rulesets.filter(
             (ruleset) => ruleset.installed && ruleset.enabled,
           ).length

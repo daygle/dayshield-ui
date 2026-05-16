@@ -424,7 +424,6 @@ export default function DHCP() {
         subtitle={selectedInterface ? 'Per-interface DHCPv4 scope and reservation settings' : 'Kea DHCPv4 configuration'}
         actions={
           <button
-            size="sm"
             onClick={openConfigModal}
             className="inline-flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100 text-gray-600 hover:text-gray-900"
             title={selectedInterface ? 'Edit interface DHCP settings' : 'Edit DHCP settings'}

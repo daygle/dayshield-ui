@@ -6,7 +6,6 @@ import {
 } from '../../api/crowdsec'
 import type { CrowdSecStatus, CrowdSecDecision } from '../../types'
 import Card from '../../components/Card'
-import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'

@@ -4,7 +4,6 @@ import { getNatConfig, updateNatConfig, getNatRules, createNatRule, updateNatRul
 import { useToast } from '../../context/ToastContext'
 import type { NatRule, NatOutboundMode, NatProtocol, NatRuleType } from '../../types'
 import Card from '../../components/Card'
-import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'

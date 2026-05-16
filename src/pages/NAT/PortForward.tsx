@@ -4,7 +4,6 @@ import { getPortForwards, createPortForward, updatePortForward, deletePortForwar
 import { useToast } from '../../context/ToastContext'
 import type { NatRule, NatProtocol } from '../../types'
 import Card from '../../components/Card'
-import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'

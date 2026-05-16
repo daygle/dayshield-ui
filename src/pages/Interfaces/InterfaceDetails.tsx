@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { NetworkInterface } from '../../types'
 import { updateInterface } from '../../api/interfaces'
-import Button from '../../components/Button'
 import FormField from '../../components/FormField'
 import Modal from '../../components/Modal'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'

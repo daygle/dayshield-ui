@@ -82,10 +82,6 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-function hasText(value: string | undefined): boolean {
-  return typeof value === 'string' && value.trim().length > 0
-}
-
 export default function DNS() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [config, setConfig] = useState<DnsConfig | null>(null)
@@ -314,10 +310,6 @@ export default function DNS() {
       .catch((err: Error) => setError(err.message))
       .finally(() => setConfigSaving(false))
   }
-
-  const useAcmeDoTCert = Boolean(configForm.dot_acme_domain?.trim())
-
-
 
   const handleAddHost = () => {
     setHostSaving(true)

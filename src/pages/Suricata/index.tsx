@@ -18,7 +18,6 @@ import type {
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
-import FormField from '../../components/FormField'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 import ErrorBoundary from '../../components/ErrorBoundary'
 import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
