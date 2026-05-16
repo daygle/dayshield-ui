@@ -11,11 +11,17 @@ import type {
  * Normalize backend backup responses to frontend BackupEntry type.
  * Backend returns size_bytes and created_at, frontend expects size and createdAt.
  */
-function normalizeBackupEntry(raw: Record<string, unknown>): BackupEntry {
+export function normalizeBackupEntry(raw: Record<string, unknown>): BackupEntry {
   const filename = (raw.filename as string) ?? ''
 
   const parseEncrypted = (): boolean => {
-    const candidates = [raw.encrypted, raw.is_encrypted, raw.encryption_enabled]
+    const candidates = [
+      raw.encrypted,
+      raw.is_encrypted,
+      raw.isEncrypted,
+      raw.encryption_enabled,
+      raw.encryptionEnabled,
+    ]
 
     for (const value of candidates) {
       if (typeof value === 'boolean') return value

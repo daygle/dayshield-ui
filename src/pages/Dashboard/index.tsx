@@ -635,7 +635,15 @@ export default function Dashboard() {
             onClick={() => setLayoutLocked((v) => !v)}
             aria-pressed={!layoutLocked}
           >
-            {layoutLocked ? 'Unlock Layout' : 'Lock Layout'}
+            {layoutLocked ? (
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m0 0l-4-4m4 4H7" />
+              </svg>
+            ) : (
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12l-2-2-4 4m0 0l4 4m-4-4h8" />
+              </svg>
+            )}
           </Button>
           <button
             onClick={() => setCustomizeOpen(true)}

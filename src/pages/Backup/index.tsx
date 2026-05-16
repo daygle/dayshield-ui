@@ -7,6 +7,7 @@ import {
   downloadBackup,
   getBackupSchedule,
   updateBackupSchedule,
+  normalizeBackupEntry,
 } from '../../api/backup'
 import apiClient from '../../api/client'
 import type {
@@ -270,17 +271,37 @@ export default function BackupRestorePage() {
         </div>
       )}
 
-      {/* Create Backup */}
+      {/* Backups & Restore */}
       <Card
-        title="Create Backup"
-        subtitle="Generate a new system backup that can be downloaded or used for restoration."
+        title="Backups & Restore"
+        subtitle="Create, upload, and restore backups from one place."
         actions={
-          <Button onClick={() => setCreateOpen(true)} disabled={restoring}>
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            New Backup
-          </Button>
+          <>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={loadBackups}
+              disabled={listLoading || restoring}
+              title="Refresh backups"
+              aria-label="Refresh backups"
+              className="px-2 py-2"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </Button>
+            <Button
+              onClick={() => setCreateOpen(true)}
+              disabled={restoring}
+              title="Create new backup"
+              aria-label="Create new backup"
+              className="px-2 py-2"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </Button>
+          </>
         }
       >
         <p className="text-sm text-gray-500">
@@ -288,45 +309,39 @@ export default function BackupRestorePage() {
           configuration) or a <span className="font-medium text-gray-700">selective</span> backup
           to pick specific components. Backups can optionally be encrypted with a password.
         </p>
-      </Card>
 
-      {/* Available Backups */}
-      <Card
-        title="Available Backups"
-        actions={
-          <Button size="sm" variant="secondary" onClick={loadBackups} disabled={listLoading || restoring}>
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh
-          </Button>
-        }
-      >
-        <BackupTable
-          entries={backups}
-          loading={listLoading}
-          restoring={restoring}
-          onDownload={handleDownload}
-          onRestore={handleRestoreClick}
-          onDelete={handleDeleteClick}
-        />
-      </Card>
+        <div className="mt-4 border-t border-gray-100 pt-4">
+          <h4 className="text-sm font-semibold text-gray-800">Available Backups</h4>
+          <div className="mt-3">
+            <BackupTable
+              entries={backups}
+              loading={listLoading}
+              restoring={restoring}
+              onDownload={handleDownload}
+              onRestore={handleRestoreClick}
+              onDelete={handleDeleteClick}
+            />
+          </div>
+        </div>
 
-      {/* Restore Backup (upload) */}
-      <Card
-        title="Restore from File"
-        subtitle="Upload a previously downloaded backup file to restore your configuration."
-      >
-        <UploadRestoreSection
-          restoring={restoring}
-          onRestore={(entry) => {
-            setBackups((prev) =>
-              prev.find((b) => b.filename === entry.filename) ? prev : [entry, ...prev],
-            )
-            handleRestoreClick(entry)
-          }}
-          addToast={addToast}
-        />
+        <div className="mt-6 border-t border-gray-100 pt-4">
+          <h4 className="text-sm font-semibold text-gray-800">Restore from File</h4>
+          <p className="mt-1 text-sm text-gray-500">
+            Upload a previously downloaded backup file to restore your configuration.
+          </p>
+          <div className="mt-3">
+            <UploadRestoreSection
+              restoring={restoring}
+              onRestore={(entry) => {
+                setBackups((prev) =>
+                  prev.find((b) => b.filename === entry.filename) ? prev : [entry, ...prev],
+                )
+                handleRestoreClick(entry)
+              }}
+              addToast={addToast}
+            />
+          </div>
+        </div>
       </Card>
 
       {/* Schedule */}
@@ -412,13 +427,14 @@ function UploadRestoreSection({ restoring, onRestore, addToast }: UploadRestoreS
       formData.append('file', file)
 
       // POST the file to the server; expect it to return a BackupEntry
-      const res = await apiClient.post<{ data: BackupEntry; success: boolean }>(
+      const res = await apiClient.post<{ data: Record<string, unknown>; success: boolean }>(
         '/backup/upload',
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } },
       )
-      addToast('success', `"${res.data.data.filename}" uploaded. Review and confirm restore below.`)
-      onRestore(res.data.data)
+      const entry = normalizeBackupEntry(res.data.data)
+      addToast('success', `"${entry.filename}" uploaded. Review and confirm restore below.`)
+      onRestore(entry)
     } catch (err) {
       addToast('error', `Upload failed: ${(err as Error).message}`)
     } finally {

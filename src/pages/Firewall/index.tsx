@@ -16,7 +16,6 @@ import type { Alias, AliasType, FirewallRule, FirewallRuleStats, FirewallSchedul
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
-import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
 import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
@@ -26,57 +25,56 @@ type AliasRow = Alias & Record<string, unknown>
 
 const defaultRuleForm: Partial<FirewallRule> = {
   description: '',
-  action: 'accept',
-  direction: 'forward',
-  protocol: 'tcp',
-  source: null,
-  source_port: null,
-  destination: null,
-  destination_port: null,
-  interface: null,
-  log: false,
-  priority: 100,
-  enabled: true,
-  schedule: null,
-}
-
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-function formatBytes(b: number): string {
-  if (b < 1024) return `${b} B`
-  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`
-  if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`
-  return `${(b / (1024 * 1024 * 1024)).toFixed(1)} GB`
-}
-
-const defaultAliasForm: Alias = {
-  name: '',
-  alias_type: 'host',
-  description: null,
-  values: [],
-  ttl: null,
-  enabled: true,
-}
-
-const defaultSettings: FirewallSettings = {
-  input_policy: 'drop',
-  forward_policy: 'drop',
-  output_policy: 'accept',
-  drop_invalid_state: true,
-  syn_flood_protection: true,
-  syn_flood_rate: 120,
-  syn_flood_burst: 240,
-  management_anti_lockout: true,
-  management_interface: null,
-  management_allowed_sources: [],
-  management_ports: [22, 443, 8443],
-  log_position: 'after',
-}
-
-function actionBadge(action: FirewallRule['action']) {
-  const map: Record<FirewallRule['action'], string> = {
-    accept: 'bg-green-100 text-green-700',
-    drop: 'bg-red-100 text-red-700',
+        <div id="firewall-rules">
+          {editRule && (
+            <div className="mb-4">
+              <Card title={editRule.id ? 'Edit Firewall Rule' : 'New Firewall Rule'}>
+                ...existing code...
+              </Card>
+            </div>
+          )}
+          <Card
+            title="Firewall Rules"
+            subtitle={selectedInterface ? `Rules for interface ${selectedInterfaceDisplay}` : 'Define allow/deny rules evaluated top-to-bottom'}
+            actions={
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" onClick={loadStats}>
+                  Refresh Counters
+                </Button>
+                <button
+                  onClick={openAddRuleCard}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                  title="Add rule"
+                  aria-label="Add firewall rule"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              </div>
+            }
+          >
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div className="w-full max-w-sm">
+                <FormField
+                  id="firewall-rules-interface-filter"
+                  label="Interface"
+                  as="select"
+                  value={selectedInterface ?? ''}
+                  onChange={(e) => updateRulesInterfaceFilter(e.target.value)}
+                >
+                  <option value="">All interfaces</option>
+                  {interfaces.map((iface) => (
+                    <option key={iface.name} value={iface.name}>
+                      {interfaceLabel(iface)}
+                    </option>
+                  ))}
+                </FormField>
+              </div>
+              <p className="text-xs text-gray-500">
+                Select an interface to show only that interface's firewall rules.
+              </p>
+            </div>
     reject: 'bg-orange-100 text-orange-700',
     jump: 'bg-purple-100 text-purple-700',
     log: 'bg-gray-100 text-gray-700',
@@ -95,7 +93,7 @@ function directionLabel(direction: FirewallRule['direction']) {
     case 'both':
       return 'In/Out'
     case 'forward':
-      return 'Forwarded'
+      return 'Routed'
     case 'output':
       return 'Outbound'
     default:
@@ -238,8 +236,18 @@ export default function Firewall() {
 
   const [rules, setRules] = useState<RuleRow[]>([])
   const [rulesLoading, setRulesLoading] = useState(true)
+
+  // Toggle logging for a rule
+  const handleToggleLogRule = async (rule: FirewallRule) => {
+    try {
+      await updateFirewallRule(rule.id, { ...rule, log: !rule.log });
+      setRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, log: !r.log } : r)));
+    } catch (err) {
+      alert('Failed to update log setting for this rule.');
+    }
+  };
   const [rulesError, setRulesError] = useState<string | null>(null)
-  const [ruleModalOpen, setRuleModalOpen] = useState(false)
+  // Remove ruleModalOpen, use editRule for both add/edit
   const [ruleForm, setRuleForm] = useState<Partial<FirewallRule>>(defaultRuleForm)
   const [ruleSaving, setRuleSaving] = useState(false)
   const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null)
@@ -252,14 +260,16 @@ export default function Firewall() {
   const [vpnInterfaceNames, setVpnInterfaceNames] = useState<string[]>([])
   const [aliasesLoading, setAliasesLoading] = useState(true)
   const [aliasesError, setAliasesError] = useState<string | null>(null)
-  const [aliasModalOpen, setAliasModalOpen] = useState(false)
+  // Remove aliasModalOpen, use editAlias for both add/edit
+  const [editAlias, setEditAlias] = useState<Alias | null>(null)
   const [aliasForm, setAliasForm] = useState<Alias>(defaultAliasForm)
   const [aliasSaving, setAliasSaving] = useState(false)
   const [deleteAliasName, setDeleteAliasName] = useState<string | null>(null)
   const [deletingAlias, setDeletingAlias] = useState(false)
 
   const [settings, setSettings] = useState<FirewallSettings>(defaultSettings)
-  const [settingsModalOpen, setSettingsModalOpen] = useState(false)
+  // Remove settingsModalOpen, use editSettings for inline editing
+  const [editSettings, setEditSettings] = useState(false)
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [settingsError, setSettingsError] = useState<string | null>(null)
   const [settingsFormError, setSettingsFormError] = useState<string | null>(null)
@@ -347,15 +357,14 @@ export default function Firewall() {
     setSearchParams(next)
   }
 
-  const openAddRuleModal = () => {
+  const openAddRuleCard = () => {
     setRuleForm({
       ...defaultRuleForm,
       interface: selectedInterface || null,
-    })
-    setRuleFormError(null)
-    setEditRule(null)
-    setRuleModalOpen(true)
-  }
+    });
+    setRuleFormError(null);
+    setEditRule({ ...defaultRuleForm, interface: selectedInterface || null } as FirewallRule);
+  };
 
   const loadRules = () => {
     setRulesLoading(true)
@@ -611,22 +620,6 @@ export default function Firewall() {
   }
 
   const ruleColumns: Column<RuleRow>[] = [
-    {
-      key: 'enabled',
-      header: '',
-      className: 'w-8',
-      render: (row) => (
-        <button
-          title={row.enabled ? 'Disable rule' : 'Enable rule'}
-          onClick={() => handleToggleRule(row as unknown as FirewallRule)}
-          className={`w-4 h-4 rounded-full border-2 transition-colors ${
-            row.enabled
-              ? 'bg-green-500 border-green-500'
-              : 'bg-gray-200 border-gray-300'
-          }`}
-        />
-      ),
-    },
     { key: 'priority', header: '#', className: 'w-10' },
     { key: 'description', header: 'Description' },
     { key: 'action', header: 'Action', render: (row) => actionBadge(row.action as FirewallRule['action']) },
@@ -637,7 +630,9 @@ export default function Firewall() {
     },
     { key: 'protocol', header: 'Protocol', render: (row) => protocolLabel((row.protocol as FirewallRule['protocol']) ?? null) },
     { key: 'source', header: 'Source', render: (row) => (row.source as string) ?? 'Any' },
+    { key: 'source_port', header: 'Source Port', render: (row) => row.source_port != null ? row.source_port : 'Any' },
     { key: 'destination', header: 'Destination', render: (row) => (row.destination as string) ?? 'Any' },
+    { key: 'destination_port', header: 'Destination Port', render: (row) => row.destination_port != null ? row.destination_port : 'Any' },
     {
       key: 'interface',
       header: 'Interface',
@@ -658,12 +653,12 @@ export default function Firewall() {
           ? sched.days.map((d) => DAY_NAMES[d]).join(',')
           : 'All'
         const timeLabel = sched.time_start || sched.time_end
-          ? `${formatScheduleTime(sched.time_start, '00:00')}\u2013${formatScheduleTime(sched.time_end, '23:59')}`
+          ? `${formatScheduleTime(sched.time_start, '00:00')}${formatScheduleTime(sched.time_end, '23:59')}`
           : null
         const startDate = formatScheduleDate(sched.date_start)
         const endDate = formatScheduleDate(sched.date_end)
         const dateLabel = startDate || endDate
-          ? `${startDate ?? 'Any'}\u2013${endDate ?? 'Any'}`
+          ? `${startDate ?? 'Any'}${endDate ?? 'Any'}`
           : null
         return (
           <span className="inline-block px-1.5 py-0.5 rounded text-xs bg-yellow-50 text-yellow-800">
@@ -687,14 +682,61 @@ export default function Firewall() {
       },
     },
     {
+      key: 'log',
+      header: 'Log',
+      render: (row) => {
+        const ruleData = row as unknown as FirewallRule;
+        return (
+          <button
+            title={ruleData.log ? 'Disable logging for this rule' : 'Enable logging for this rule'}
+            onClick={() => handleToggleLogRule(ruleData)}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors ${
+              ruleData.log
+                ? 'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-900'
+                : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+            }`}
+          >
+            {ruleData.log ? (
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            ) : (
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            )}
+          </button>
+        );
+      },
+    },
+    {
       key: 'actions',
       header: '',
-      className: 'w-48 text-right',
+      className: 'w-56 text-right',
       render: (row) => {
         const ruleData = row as unknown as FirewallRule
         const maxPriority = Math.max(...visibleRules.map((r) => (r.priority as number) ?? 100), ruleData.priority)
         return (
           <div className="flex justify-end gap-1">
+            <button
+              title={ruleData.enabled ? 'Disable rule' : 'Enable rule'}
+              onClick={() => handleToggleRule(ruleData)}
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors ${
+                ruleData.enabled
+                  ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-900'
+                  : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+              }`}
+            >
+              {ruleData.enabled ? (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" />
+                </svg>
+              )}
+            </button>
             <button
               title="Move rule up"
               onClick={() => handleMoveRuleUp(ruleData)}
@@ -810,12 +852,76 @@ export default function Firewall() {
       </div>
 
       {showSettingsSection && <div id="firewall-settings">
+        {editSettings && (
+          <div className="mb-4">
+            <Card title="Edit Firewall Settings">
+              <div className="space-y-4">
+                {settingsFormError && (
+                  <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{settingsFormError}</div>
+                )}
+                <details open className="overflow-hidden rounded border border-gray-200 bg-white">
+                  <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">Policies</summary>
+                  <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+                    <FormField id="fw-input-policy" label="Input Policy" as="select" value={settings.input_policy} onChange={(e) => setSettings({ ...settings, input_policy: e.target.value as FirewallSettings['input_policy'] })}>
+                      <option value="drop">Drop</option>
+                      <option value="accept">Accept</option>
+                    </FormField>
+                    <FormField id="fw-forward-policy" label="Forward Policy" as="select" value={settings.forward_policy} onChange={(e) => setSettings({ ...settings, forward_policy: e.target.value as FirewallSettings['forward_policy'] })}>
+                      <option value="drop">Drop</option>
+                      <option value="accept">Accept</option>
+                    </FormField>
+                    <FormField id="fw-output-policy" label="Output Policy" as="select" value={settings.output_policy} onChange={(e) => setSettings({ ...settings, output_policy: e.target.value as FirewallSettings['output_policy'] })}>
+                      <option value="accept">Accept</option>
+                      <option value="drop">Drop</option>
+                    </FormField>
+                  </div>
+                </details>
+                <details open className="overflow-hidden rounded border border-gray-200 bg-white">
+                  <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">Protection</summary>
+                  <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+                    <label className="flex items-center gap-3 col-span-2">
+                      <input type="checkbox" checked={settings.drop_invalid_state} onChange={(e) => setSettings({ ...settings, drop_invalid_state: e.target.checked })} />
+                      <span className="text-sm text-gray-700">Drop invalid conntrack state</span>
+                    </label>
+                    <label className="flex items-center gap-3 col-span-2">
+                      <input type="checkbox" checked={settings.syn_flood_protection} onChange={(e) => setSettings({ ...settings, syn_flood_protection: e.target.checked })} />
+                      <span className="text-sm text-gray-700">Enable SYN flood protection</span>
+                    </label>
+                    <FormField id="fw-syn-rate" label="SYN Flood Rate (/sec)" type="number" min={1} value={String(settings.syn_flood_rate)} onChange={(e) => setSettings({ ...settings, syn_flood_rate: Number(e.target.value) || 1 })} />
+                    <FormField id="fw-syn-burst" label="SYN Burst" type="number" min={1} value={String(settings.syn_flood_burst)} onChange={(e) => setSettings({ ...settings, syn_flood_burst: Number(e.target.value) || 1 })} />
+                  </div>
+                </details>
+                <details open className="overflow-hidden rounded border border-gray-200 bg-white">
+                  <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">Management</summary>
+                  <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+                    <label className="flex items-center gap-3 col-span-2">
+                      <input type="checkbox" checked={settings.management_anti_lockout} onChange={(e) => setSettings({ ...settings, management_anti_lockout: e.target.checked })} />
+                      <span className="text-sm text-gray-700">Enable management anti-lockout rule</span>
+                    </label>
+                    <FormField id="fw-log-position" className="col-span-2" label="Log packets before or after action" as="select" value={settings.log_position ?? 'after'} onChange={e => setSettings({ ...settings, log_position: e.target.value as 'before' | 'after' })} hint="Controls whether log entries are written before or after the rule’s action is applied.">
+                      <option value="before">Before action (default)</option>
+                      <option value="after">After action</option>
+                    </FormField>
+                  </div>
+                </details>
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button size="sm" variant="primary" onClick={handleSaveSettings} loading={settingsSaving}>Save</Button>
+                  <button type="button" onClick={() => { setEditSettings(false); setSettingsFormError(null); }} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900" title="Close" aria-label="Close">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
         <Card
           title="Firewall Settings"
           subtitle="Global chain policies, management-plane protection, and advanced stateful controls"
           actions={
             <button
-              onClick={openSettingsModal}
+              onClick={() => setEditSettings(true)}
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
               title="Edit settings"
               aria-label="Edit firewall settings"
@@ -826,37 +932,16 @@ export default function Firewall() {
             </button>
           }
         >
-        {settingsError && <p className="text-sm text-red-600 mb-3">{settingsError}</p>}
-        <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
-          <div>
-            <dt className="text-gray-500">Input Policy</dt>
-            <dd className="font-medium text-gray-800 uppercase">{settings.input_policy}</dd>
-          </div>
-          <div>
-            <dt className="text-gray-500">Forward Policy</dt>
-            <dd className="font-medium text-gray-800 uppercase">{settings.forward_policy}</dd>
-          </div>
-          <div>
-            <dt className="text-gray-500">Output Policy</dt>
-            <dd className="font-medium text-gray-800 uppercase">{settings.output_policy}</dd>
-          </div>
-          <div>
-            <dt className="text-gray-500">Drop Invalid State</dt>
-            <dd className="font-medium text-gray-800">{settings.drop_invalid_state ? 'Enabled' : 'Disabled'}</dd>
-          </div>
-          <div>
-            <dt className="text-gray-500">SYN Flood Protection</dt>
-            <dd className="font-medium text-gray-800">
-              {settings.syn_flood_protection
-                ? `Enabled (${settings.syn_flood_rate}/s, burst ${settings.syn_flood_burst})`
-                : 'Disabled'}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-gray-500">Management Anti-lockout</dt>
-            <dd className="font-medium text-gray-800">{settings.management_anti_lockout ? 'Enabled' : 'Disabled'}</dd>
-          </div>
-        </dl>
+          {settingsError && <p className="text-sm text-red-600 mb-3">{settingsError}</p>}
+          <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+            <div><dt className="text-gray-500">Input Policy</dt><dd className="font-medium text-gray-800 uppercase">{settings.input_policy}</dd></div>
+            <div><dt className="text-gray-500">Forward Policy</dt><dd className="font-medium text-gray-800 uppercase">{settings.forward_policy}</dd></div>
+            <div><dt className="text-gray-500">Output Policy</dt><dd className="font-medium text-gray-800 uppercase">{settings.output_policy}</dd></div>
+            <div><dt className="text-gray-500">Drop Invalid State</dt><dd className="font-medium text-gray-800">{settings.drop_invalid_state ? 'Enabled' : 'Disabled'}</dd></div>
+            <div><dt className="text-gray-500">SYN Flood Protection</dt><dd className="font-medium text-gray-800">{settings.syn_flood_protection ? `Enabled (${settings.syn_flood_rate}/s, burst ${settings.syn_flood_burst})` : 'Disabled'}</dd></div>
+            <div><dt className="text-gray-500">Management Anti-lockout</dt><dd className="font-medium text-gray-800">{settings.management_anti_lockout ? 'Enabled' : 'Disabled'}</dd></div>
+            <div><dt className="text-gray-500">Log Position</dt><dd className="font-medium text-gray-800">{settings.log_position ?? 'after'}</dd></div>
+          </dl>
         </Card>
       </div>}
 
@@ -866,11 +951,18 @@ export default function Firewall() {
           subtitle={selectedInterface ? `Rules for interface ${selectedInterfaceDisplay}` : 'Define allow/deny rules evaluated top-to-bottom'}
           actions={
             <div className="flex gap-2">
-              <Button size="sm" variant="secondary" onClick={loadStats}>
-                Refresh Counters
-              </Button>
               <button
-                onClick={openAddRuleModal}
+                onClick={loadStats}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                title="Refresh Counters"
+                aria-label="Refresh Counters"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582M20 20v-5h-.581M5.41 19.59A9 9 0 104.58 6.41" />
+                </svg>
+              </button>
+              <button
+                onClick={openAddRuleCard}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                 title="Add rule"
                 aria-label="Add firewall rule"
@@ -893,244 +985,114 @@ export default function Firewall() {
               >
                 <option value="">All interfaces</option>
                 {interfaces.map((iface) => (
-                  <option key={iface.name} value={iface.name}>
-                    {interfaceLabel(iface)}
-                  </option>
-                ))}
-              </FormField>
-            </div>
-            <p className="text-xs text-gray-500">
-              Select an interface to show only that interface's firewall rules.
-            </p>
-          </div>
-          {rulesError && <p className="text-sm text-red-600 mb-3">{rulesError}</p>}
-          <Table columns={ruleColumns} data={visibleRules} keyField="id" loading={rulesLoading} emptyMessage={rulesEmptyMessage} />
+                          label="Destination (custom CIDR/IP/Alias)"
+                          value={editRule.destination ?? ''}
+                          onChange={(e) => setEditRule({ ...editRule, destination: e.target.value || null })}
+                        />
+                        <FormField
+                          id="edit-rule-dst-port"
+                          label="Destination Port"
+                          type="number"
+                          value={editRule.destination_port != null ? String(editRule.destination_port) : ''}
+                          onChange={(e) => setEditRule({ ...editRule, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+                        />
+                      </div>
+                    </details>
 
-          {editRule && (
-            <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-900">Edit Firewall Rule</h3>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    setEditRule(null)
-                    setRuleFormError(null)
-                  }}
-                >
-                  Close
-                </Button>
-              </div>
-
-              <div className="space-y-3">
-                {ruleFormError && (
-                  <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                    {ruleFormError}
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    id="edit-rule-desc"
-                    label="Description"
-                    className="col-span-2"
-                    value={editRule.description ?? ''}
-                    onChange={(e) => setEditRule({ ...editRule, description: e.target.value || null })}
-                  />
-                  <FormField
-                    id="edit-rule-priority"
-                    label="Priority"
-                    type="number"
-                    value={String(editRule.priority)}
-                    onChange={(e) => setEditRule({ ...editRule, priority: parseInt(e.target.value, 10) || 100 })}
-                  />
-                  <FormField
-                    id="edit-rule-action"
-                    label="Action"
-                    as="select"
-                    value={editRule.action}
-                    onChange={(e) => setEditRule({ ...editRule, action: e.target.value as FirewallRule['action'] })}
-                  >
-                    <option value="accept">Accept</option>
-                    <option value="drop">Drop</option>
-                    <option value="reject">Reject</option>
-                    <option value="log">Log</option>
-                  </FormField>
-                  <FormField
-                    id="edit-rule-direction"
-                    label="Direction"
-                    as="select"
-                    value={editRule.direction}
-                    onChange={(e) => setEditRule({ ...editRule, direction: e.target.value as FirewallRule['direction'] })}
-                  >
-                    <option value="input">In</option>
-                    <option value="output">Out</option>
-                    <option value="both">Both</option>
-                    <option value="forward">Forward</option>
-                  </FormField>
-                  <FormField
-                    id="edit-rule-protocol"
-                    label="Protocol"
-                    as="select"
-                    value={editRule.protocol ?? ''}
-                    onChange={(e) => setEditRule({ ...editRule, protocol: (e.target.value || null) as FirewallRule['protocol'] | null })}
-                  >
-                    <option value="">Any</option>
-                    <option value="tcp">TCP</option>
-                    <option value="udp">UDP</option>
-                    <option value="icmp">ICMP</option>
-                    <option value="icmpv6">ICMPv6</option>
-                  </FormField>
-                  <FormField
-                    id="edit-rule-iface"
-                    label={interfaceFieldLabel(editRule.direction)}
-                    hint={interfaceFieldHint(editRule.direction)}
-                    as="select"
-                    value={editRule.interface ?? ''}
-                    onChange={(e) => setEditRule({ ...editRule, interface: e.target.value || null })}
-                  >
-                    <option value="">Any</option>
-                    {interfaces.map((iface) => (
-                      <option key={iface.name} value={iface.name}>
-                        {interfaceLabel(iface)}
-                      </option>
-                    ))}
-                  </FormField>
-                  <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
-                    <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
-                      Advanced Match
-                    </summary>
-                    <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
-                      <FormField
-                        id="edit-rule-src-preset"
-                        label="Source Preset"
-                        as="select"
-                        value={(editRule.source ?? '')}
-                        onChange={(e) => setEditRule({ ...editRule, source: e.target.value || null })}
-                      >
-                        {addressPresetOptions.map((opt) => (
-                          <option key={`edit-src-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </FormField>
-                      <FormField
-                        id="edit-rule-src"
-                        label="Source (custom CIDR/IP/Alias)"
-                        value={editRule.source ?? ''}
-                        onChange={(e) => setEditRule({ ...editRule, source: e.target.value || null })}
-                      />
-                      <FormField
-                        id="edit-rule-src-port"
-                        label="Source Port"
-                        type="number"
-                        value={editRule.source_port != null ? String(editRule.source_port) : ''}
-                        onChange={(e) => setEditRule({ ...editRule, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
-                      />
-                      <FormField
-                        id="edit-rule-dst-preset"
-                        label="Destination Preset"
-                        as="select"
-                        value={(editRule.destination ?? '')}
-                        onChange={(e) => setEditRule({ ...editRule, destination: e.target.value || null })}
-                      >
-                        {addressPresetOptions.map((opt) => (
-                          <option key={`edit-dst-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </FormField>
-                      <FormField
-                        id="edit-rule-dst"
-                        label="Destination (custom CIDR/IP/Alias)"
-                        value={editRule.destination ?? ''}
-                        onChange={(e) => setEditRule({ ...editRule, destination: e.target.value || null })}
-                      />
-                      <FormField
-                        id="edit-rule-dst-port"
-                        label="Destination Port"
-                        type="number"
-                        value={editRule.destination_port != null ? String(editRule.destination_port) : ''}
-                        onChange={(e) => setEditRule({ ...editRule, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
-                      />
+                    <div className="flex gap-6 col-span-2">
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={editRule.enabled}
+                          onChange={(e) => setEditRule({ ...editRule, enabled: e.target.checked })}
+                        />
+                        <span className="text-sm text-gray-700">Rule enabled</span>
+                      </label>
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={editRule.log ?? false}
+                          onChange={(e) => setEditRule({ ...editRule, log: e.target.checked })}
+                        />
+                        <span className="text-sm text-gray-700">Log this rule</span>
+                      </label>
                     </div>
-                  </details>
 
-                  <div className="flex gap-6 col-span-2">
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={editRule.enabled}
-                        onChange={(e) => setEditRule({ ...editRule, enabled: e.target.checked })}
-                      />
-                      <span className="text-sm text-gray-700">Rule enabled</span>
-                    </label>
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={editRule.log ?? false}
-                        onChange={(e) => setEditRule({ ...editRule, log: e.target.checked })}
-                      />
-                      <span className="text-sm text-gray-700">Log this rule</span>
-                    </label>
-                  </div>
-
-                  <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
-                    <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
-                      Schedule (optional)
-                    </summary>
-                    <div className="border-t border-gray-200 px-4 py-4 space-y-3">
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Days active (leave all unchecked = every day)</p>
-                        <div className="flex gap-3 flex-wrap">
-                          {DAY_NAMES.map((name, idx) => (
-                            <label key={idx} className="flex items-center gap-1 text-sm">
-                              <input
-                                type="checkbox"
-                                checked={(editRule.schedule?.days ?? []).includes(idx)}
-                                onChange={(e) => {
-                                  const days = [...(editRule.schedule?.days ?? [])]
-                                  if (e.target.checked) {
-                                    if (!days.includes(idx)) days.push(idx)
-                                  } else {
-                                    const index = days.indexOf(idx)
-                                    if (index !== -1) days.splice(index, 1)
-                                  }
-                                  days.sort()
-                                  setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), days } })
-                                }}
-                              />
-                              {name}
-                            </label>
-                          ))}
+                    <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
+                      <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
+                        Schedule (optional)
+                      </summary>
+                      <div className="border-t border-gray-200 px-4 py-4 space-y-3">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Days active (leave all unchecked = every day)</p>
+                          <div className="flex gap-3 flex-wrap">
+                            {DAY_NAMES.map((name, idx) => (
+                              <label key={idx} className="flex items-center gap-1 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={(editRule.schedule?.days ?? []).includes(idx)}
+                                  onChange={(e) => {
+                                    const days = [...(editRule.schedule?.days ?? [])]
+                                    if (e.target.checked) {
+                                      if (!days.includes(idx)) days.push(idx)
+                                    } else {
+                                      const index = days.indexOf(idx)
+                                      if (index !== -1) days.splice(index, 1)
+                                    }
+                                    days.sort()
+                                    setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), days } })
+                                  }}
+                                />
+                                {name}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <FormField id="edit-sched-ts" label="Time start (HH:MM)" placeholder="e.g. 08:00"
+                            value={editRule.schedule?.time_start ?? ''}
+                            onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_start: e.target.value || null } })} />
+                          <FormField id="edit-sched-te" label="Time end (HH:MM)" placeholder="e.g. 17:00"
+                            value={editRule.schedule?.time_end ?? ''}
+                            onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_end: e.target.value || null } })} />
+                          <FormField id="edit-sched-ds" label="Date start (YYYY-MM-DD)" placeholder="e.g. 2024-01-01"
+                            value={editRule.schedule?.date_start ?? ''}
+                            onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_start: e.target.value || null } })} />
+                          <FormField id="edit-sched-de" label="Date end (YYYY-MM-DD)" placeholder="e.g. 2024-12-31"
+                            value={editRule.schedule?.date_end ?? ''}
+                            onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_end: e.target.value || null } })} />
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <FormField id="edit-sched-ts" label="Time start (HH:MM)" placeholder="e.g. 08:00"
-                          value={editRule.schedule?.time_start ?? ''}
-                          onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_start: e.target.value || null } })} />
-                        <FormField id="edit-sched-te" label="Time end (HH:MM)" placeholder="e.g. 17:00"
-                          value={editRule.schedule?.time_end ?? ''}
-                          onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), time_end: e.target.value || null } })} />
-                        <FormField id="edit-sched-ds" label="Date start (YYYY-MM-DD)" placeholder="e.g. 2026-01-01"
-                          value={editRule.schedule?.date_start ?? ''}
-                          onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_start: e.target.value || null } })} />
-                        <FormField id="edit-sched-de" label="Date end (YYYY-MM-DD)" placeholder="e.g. 2026-12-31"
-                          value={editRule.schedule?.date_end ?? ''}
-                          onChange={(e) => setEditRule({ ...editRule, schedule: { ...(editRule.schedule ?? { days: [], time_start: null, time_end: null, date_start: null, date_end: null }), date_end: e.target.value || null } })} />
-                      </div>
-                    </div>
-                  </details>
+                    </details>
+                  </div>
                 </div>
-
-                <div className="flex gap-2">
-                  <Button size="sm" loading={editSaving} onClick={handleUpdateRule}>
-                    Save Changes
-                  </Button>
+                <div className="mt-4 flex justify-end gap-2">
                   <Button
                     size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      setEditRule(null)
-                      setRuleFormError(null)
-                    }}
+                    variant="primary"
+                    onClick={handleSaveRule}
+                    loading={ruleSaving}
                   >
-                    Cancel
+                    Save
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditRule(null);
+                      setRuleFormError(null);
+                    }}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                    title="Close"
+                    aria-label="Close"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </Card>
+            </div>
+          )}
                   </Button>
                 </div>
               </div>
@@ -1140,13 +1102,93 @@ export default function Firewall() {
       </div>}
 
       {showAliasesSection && <div id="firewall-aliases">
+        {editAlias && (
+          <div className="mb-4">
+            <Card title={editAlias.name ? 'Edit Alias' : 'New Alias'}>
+              <div className="space-y-3">
+                {aliasFormError && (
+                  <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                    {aliasFormError}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    id="alias-name"
+                    label="Name"
+                    required
+                    placeholder="e.g. RFC1918_NETWORKS"
+                    value={aliasForm.name}
+                    onChange={(e) => setAliasForm({ ...aliasForm, name: e.target.value })}
+                  />
+                  <FormField
+                    id="alias-type"
+                    label="Type"
+                    as="select"
+                    value={aliasForm.alias_type}
+                    onChange={(e) => setAliasForm({ ...aliasForm, alias_type: e.target.value as AliasType })}
+                  >
+                    <option value="host">Host</option>
+                    <option value="network">Network</option>
+                    <option value="port">Port</option>
+                    <option value="urltable">URL Table</option>
+                  </FormField>
+                  <FormField
+                    id="alias-desc"
+                    label="Description"
+                    placeholder="Optional description"
+                    value={aliasForm.description ?? ''}
+                    onChange={(e) => setAliasForm({ ...aliasForm, description: e.target.value || null })}
+                  />
+                </div>
+                <FormField
+                  id="alias-values"
+                  label="Entries"
+                  as="textarea"
+                  rows={6}
+                  hint="One entry per line"
+                  value={aliasForm.values.join('\n')}
+                  onChange={(e) => setAliasForm({
+                    ...aliasForm,
+                    values: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
+                  })}
+                />
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={handleSaveAlias}
+                    loading={aliasSaving}
+                  >
+                    Save
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditAlias(null);
+                      setAliasForm(defaultAliasForm);
+                      setAliasFormError(null);
+                    }}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                    title="Close"
+                    aria-label="Close"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
         <Card
           title="Aliases"
           subtitle="Named sets of hosts, networks, or ports reusable in firewall rules"
           actions={
             <button onClick={() => {
               setAliasFormError(null)
-              setAliasModalOpen(true)
+              setAliasForm(defaultAliasForm)
+              setEditAlias({ ...defaultAliasForm })
             }}
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
               title="Add alias"
@@ -1508,76 +1550,6 @@ export default function Firewall() {
         <p className="text-sm text-gray-600">Delete this firewall rule?</p>
       </Modal>
 
-      <Modal
-        open={aliasModalOpen}
-        title="Add Alias"
-        onClose={() => {
-          setAliasModalOpen(false)
-          setAliasFormError(null)
-        }}
-        onConfirm={handleSaveAlias}
-        confirmLabel="Create Alias"
-        loading={aliasSaving}
-        size="lg"
-      >
-        <div className="space-y-4">
-          {aliasFormError && (
-            <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-              {aliasFormError}
-            </div>
-          )}
-          <details open className="overflow-hidden rounded border border-gray-200 bg-white">
-            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">Alias Details</summary>
-            <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
-              <FormField
-                id="alias-name"
-                label="Name"
-                required
-                placeholder="e.g. RFC1918_NETWORKS"
-                value={aliasForm.name}
-                onChange={(e) => setAliasForm({ ...aliasForm, name: e.target.value })}
-              />
-              <FormField
-                id="alias-type"
-                label="Type"
-                as="select"
-                value={aliasForm.alias_type}
-                onChange={(e) => setAliasForm({ ...aliasForm, alias_type: e.target.value as AliasType })}
-              >
-                <option value="host">Host</option>
-                <option value="network">Network</option>
-                <option value="port">Port</option>
-                <option value="urltable">URL Table</option>
-              </FormField>
-              <FormField
-                id="alias-desc"
-                label="Description"
-                placeholder="Optional description"
-                value={aliasForm.description ?? ''}
-                onChange={(e) => setAliasForm({ ...aliasForm, description: e.target.value || null })}
-              />
-            </div>
-          </details>
-
-          <details open className="overflow-hidden rounded border border-gray-200 bg-white">
-            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">Entries</summary>
-            <div className="border-t border-gray-200 px-4 py-4">
-              <FormField
-                id="alias-values"
-                label="Entries"
-                as="textarea"
-                rows={6}
-                hint="One entry per line"
-                value={aliasForm.values.join('\n')}
-                onChange={(e) => setAliasForm({
-                  ...aliasForm,
-                  values: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
-                })}
-              />
-            </div>
-          </details>
-        </div>
-      </Modal>
 
       <Modal
         open={deleteAliasName !== null}

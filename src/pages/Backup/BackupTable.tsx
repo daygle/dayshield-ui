@@ -90,8 +90,9 @@ const columns = (
   {
     key: 'encrypted',
     header: 'Encrypted',
-    render: (row) =>
-      (row as BackupEntry).encrypted ? (
+    render: (row) => {
+      const encrypted = (row as BackupEntry).encrypted
+      return encrypted ? (
         <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
           <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
             <path
@@ -100,11 +101,14 @@ const columns = (
               clipRule="evenodd"
             />
           </svg>
-          Encrypted
+          Yes
         </span>
       ) : (
-        <span className="text-gray-400 text-xs">-</span>
-      ),
+        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+          No
+        </span>
+      )
+    },
   },
   {
     key: 'actions',

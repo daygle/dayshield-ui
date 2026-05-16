@@ -59,9 +59,11 @@ export default function Gateways() {
   const [editingActiveIp, setEditingActiveIp] = useState<string | undefined>()
 
   const interfaceLabel = (name: string) => {
-    const iface = interfaceInventory.find((i) => i.name === name);
-    if (defaultIface && name === defaultIface) return 'WAN';
-    return iface?.description || name;
+    const iface = interfaceInventory.find((i) => i.name === name)
+    if (defaultIface && name === defaultIface) {
+      return formatInterfaceDisplayName('WAN', name)
+    }
+    return formatInterfaceDisplayName(iface?.description, name)
   }
 
   const formatGatewayName = (name: string) => {
