@@ -95,7 +95,7 @@ function directionLabel(direction: FirewallRule['direction']) {
     case 'both':
       return 'In/Out'
     case 'forward':
-      return 'Forwarded'
+      return 'Routed'
     case 'output':
       return 'Outbound'
     default:
@@ -135,7 +135,7 @@ function interfaceFieldHint(direction: FirewallRule['direction']) {
     case 'both':
       return 'Matches both inbound and outbound traffic on this interface.'
     case 'forward':
-      return 'Matches forwarded traffic by its incoming interface.'
+      return 'Matches routed traffic by its incoming interface.'
     case 'output':
       return 'Matches traffic leaving the firewall on this interface.'
     default:
@@ -308,7 +308,12 @@ export default function Firewall() {
     : ''
 
   const visibleRules = useMemo(
-    () => (selectedInterface ? rules.filter((rule) => (rule.interface as string | null) === selectedInterface) : rules),
+    () => {
+      const filtered = selectedInterface
+        ? rules.filter((rule) => (rule.interface as string | null) === selectedInterface)
+        : rules
+      return [...filtered].sort((a, b) => ((a.priority as number) ?? 100) - ((b.priority as number) ?? 100))
+    },
     [rules, selectedInterface],
   )
 
@@ -348,9 +353,14 @@ export default function Firewall() {
   }
 
   const openAddRuleModal = () => {
+    const nextPriority = rules.length > 0
+      ? Math.max(...rules.map((rule) => (rule.priority as number) ?? 100)) + 10
+      : 100
+
     setRuleForm({
       ...defaultRuleForm,
       interface: selectedInterface || null,
+      priority: nextPriority,
     })
     setRuleFormError(null)
     setEditRule(null)
@@ -544,6 +554,12 @@ export default function Firewall() {
       .catch((err: Error) => setRulesError(err.message))
   }
 
+  const handleToggleRuleLog = (rule: FirewallRule) => {
+    updateFirewallRule(rule.id, { ...rule, log: !rule.log })
+      .then(() => loadRules())
+      .catch((err: Error) => setRulesError(err.message))
+  }
+
   const handleDeleteRule = () => {
     if (!deleteRuleId) return
     setDeletingRule(true)
@@ -556,24 +572,30 @@ export default function Firewall() {
       .finally(() => setDeletingRule(false))
   }
 
-  const handleMoveRuleUp = (rule: FirewallRule) => {
-    // Move up means decrease priority (lower number = higher in list)
-    if (rule.priority <= 1) return
-    const updatedRule = { ...rule, priority: rule.priority - 1 }
-    setRuleSaving(true)
-    updateFirewallRule(rule.id, updatedRule)
-      .then(() => loadRules())
-      .catch((err: Error) => setRulesError(err.message))
-      .finally(() => setRuleSaving(false))
-  }
+  const handleReorderRule = (rule: FirewallRule, direction: 'earlier' | 'later') => {
+    const currentIndex = visibleRules.findIndex((item) => item.id === rule.id)
+    const targetIndex = direction === 'earlier' ? currentIndex - 1 : currentIndex + 1
+    if (currentIndex === -1 || targetIndex < 0 || targetIndex >= visibleRules.length) return
 
-  const handleMoveRuleDown = (rule: FirewallRule) => {
-    // Move down means increase priority (higher number = lower in list)
-    const maxPriority = Math.max(...visibleRules.map((r) => (r.priority as number) ?? 100), rule.priority)
-    if (rule.priority >= maxPriority) return
-    const updatedRule = { ...rule, priority: rule.priority + 1 }
+    const targetRule = visibleRules[targetIndex] as unknown as FirewallRule
+    const currentPriority = Number(rule.priority) || 100
+    const targetPriority = Number(targetRule.priority) || 100
+    const nextCurrentPriority = currentPriority === targetPriority
+      ? direction === 'earlier'
+        ? Math.max(1, currentPriority - 1)
+        : currentPriority + 1
+      : targetPriority
+    const nextTargetPriority = currentPriority === targetPriority
+      ? direction === 'earlier'
+        ? currentPriority + 1
+        : Math.max(1, currentPriority - 1)
+      : currentPriority
+
     setRuleSaving(true)
-    updateFirewallRule(rule.id, updatedRule)
+    Promise.all([
+      updateFirewallRule(rule.id, { ...rule, priority: nextCurrentPriority }),
+      updateFirewallRule(targetRule.id, { ...targetRule, priority: nextTargetPriority }),
+    ])
       .then(() => loadRules())
       .catch((err: Error) => setRulesError(err.message))
       .finally(() => setRuleSaving(false))
@@ -614,22 +636,101 @@ export default function Firewall() {
     {
       key: 'enabled',
       header: '',
-      className: 'w-8',
-      render: (row) => (
-        <button
-          title={row.enabled ? 'Disable rule' : 'Enable rule'}
-          onClick={() => handleToggleRule(row as unknown as FirewallRule)}
-          className={`w-4 h-4 rounded-full border-2 transition-colors ${
-            row.enabled
-              ? 'bg-green-500 border-green-500'
-              : 'bg-gray-200 border-gray-300'
-          }`}
-        />
-      ),
+      className: 'w-12',
+      render: (row) => {
+        const enabled = Boolean(row.enabled)
+        return (
+          <button
+            title={enabled ? 'Disable rule' : 'Enable rule'}
+            aria-label={enabled ? 'Disable firewall rule' : 'Enable firewall rule'}
+            onClick={() => handleToggleRule(row as unknown as FirewallRule)}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors ${
+              enabled
+                ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-900'
+                : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+            }`}
+          >
+            {enabled ? (
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            ) : (
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 105.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            )}
+          </button>
+        )
+      },
     },
-    { key: 'priority', header: '#', className: 'w-10' },
+    {
+      key: 'order',
+      header: 'Order',
+      className: 'w-36',
+      render: (row) => {
+        const ruleData = row as unknown as FirewallRule
+        const rowIndex = visibleRules.findIndex((item) => item.id === row.id)
+        const isFirst = rowIndex <= 0
+        const isLast = rowIndex === -1 || rowIndex >= visibleRules.length - 1
+        const positionLabel = isFirst ? 'First' : isLast ? 'Last' : 'Middle'
+
+        return (
+          <div className="flex items-center gap-2">
+            <div className="inline-flex rounded-md shadow-sm">
+              <button
+                title="Run earlier"
+                aria-label="Move rule earlier"
+                onClick={() => handleReorderRule(ruleData, 'earlier')}
+                disabled={ruleSaving || isFirst}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-l-md border border-gray-300 bg-white transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15V3m0 0l-6 6m6-6l6 6" />
+                </svg>
+              </button>
+              <button
+                title="Run later"
+                aria-label="Move rule later"
+                onClick={() => handleReorderRule(ruleData, 'later')}
+                disabled={ruleSaving || isLast}
+                className="-ml-px inline-flex h-8 w-8 items-center justify-center rounded-r-md border border-gray-300 bg-white transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v12m0 0l-6-6m6 6l6-6" />
+                </svg>
+              </button>
+            </div>
+            <span className="text-xs font-medium text-gray-500">{positionLabel}</span>
+          </div>
+        )
+      },
+    },
     { key: 'description', header: 'Description' },
     { key: 'action', header: 'Action', render: (row) => actionBadge(row.action as FirewallRule['action']) },
+    {
+      key: 'log',
+      header: 'Log',
+      className: 'w-12',
+      render: (row) => {
+        const logging = Boolean(row.log)
+        return (
+          <button
+            title={logging ? 'Disable match logging' : 'Log matches to Live Logs'}
+            aria-label={logging ? 'Disable firewall rule match logging' : 'Enable firewall rule match logging'}
+            onClick={() => handleToggleRuleLog(row as unknown as FirewallRule)}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors ${
+              logging
+                ? 'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-900'
+                : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+            }`}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3.75h6m-6 3.75h3M6.75 3.75h10.5A2.25 2.25 0 0119.5 6v12A2.25 2.25 0 0117.25 20.25H6.75A2.25 2.25 0 014.5 18V6a2.25 2.25 0 012.25-2.25z" />
+            </svg>
+          </button>
+        )
+      },
+    },
     {
       key: 'direction',
       header: 'Direction',
@@ -637,7 +738,9 @@ export default function Firewall() {
     },
     { key: 'protocol', header: 'Protocol', render: (row) => protocolLabel((row.protocol as FirewallRule['protocol']) ?? null) },
     { key: 'source', header: 'Source', render: (row) => (row.source as string) ?? 'Any' },
+    { key: 'source_port', header: 'Source Port', render: (row) => (row.source_port as number | null) ?? 'Any' },
     { key: 'destination', header: 'Destination', render: (row) => (row.destination as string) ?? 'Any' },
+    { key: 'destination_port', header: 'Destination Port', render: (row) => (row.destination_port as number | null) ?? 'Any' },
     {
       key: 'interface',
       header: 'Interface',
@@ -689,32 +792,11 @@ export default function Firewall() {
     {
       key: 'actions',
       header: '',
-      className: 'w-48 text-right',
+      className: 'w-24 text-right',
       render: (row) => {
         const ruleData = row as unknown as FirewallRule
-        const maxPriority = Math.max(...visibleRules.map((r) => (r.priority as number) ?? 100), ruleData.priority)
         return (
           <div className="flex justify-end gap-1">
-            <button
-              title="Move rule up"
-              onClick={() => handleMoveRuleUp(ruleData)}
-              disabled={ruleSaving || ruleData.priority <= 1}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15V3m0 0l-6 6m6-6l6 6" />
-              </svg>
-            </button>
-            <button
-              title="Move rule down"
-              onClick={() => handleMoveRuleDown(ruleData)}
-              disabled={ruleSaving || ruleData.priority >= maxPriority}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v12m0 0l-6-6m6 6l6-6" />
-              </svg>
-            </button>
             <button
               title="Edit rule"
               onClick={() => setEditRule(ruleData)}
@@ -1007,13 +1089,6 @@ export default function Firewall() {
                     onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value || null })}
                   />
                   <FormField
-                    id="rule-priority"
-                    label="Priority"
-                    type="number"
-                    value={String(ruleForm.priority ?? 100)}
-                    onChange={(e) => setRuleForm({ ...ruleForm, priority: parseInt(e.target.value, 10) || 100 })}
-                  />
-                  <FormField
                     id="rule-action"
                     label="Action"
                     as="select"
@@ -1023,7 +1098,6 @@ export default function Firewall() {
                     <option value="accept">Accept</option>
                     <option value="drop">Drop</option>
                     <option value="reject">Reject</option>
-                    <option value="log">Log</option>
                   </FormField>
                   <FormField
                     id="rule-direction"
@@ -1035,7 +1109,7 @@ export default function Firewall() {
                     <option value="input">In</option>
                     <option value="output">Out</option>
                     <option value="both">Both</option>
-                    <option value="forward">Forward</option>
+                    <option value="forward">Routed</option>
                   </FormField>
                   <FormField
                     id="rule-protocol"
@@ -1210,9 +1284,16 @@ export default function Firewall() {
           subtitle={selectedInterface ? `Rules for interface ${selectedInterfaceDisplay}` : 'Define allow/deny rules evaluated top-to-bottom'}
           actions={
             <div className="flex gap-2">
-              <Button size="sm" variant="secondary" onClick={loadStats}>
-                Refresh Counters
-              </Button>
+              <button
+                onClick={loadStats}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                title="Refresh counters"
+                aria-label="Refresh firewall rule counters"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992V4.356M21.015 9.348A8.967 8.967 0 0012.048 3.75c-4.948 0-8.958 4.01-8.958 8.958m4.887 2.944H2.985v4.992m0-4.992a8.967 8.967 0 008.967 5.598c4.948 0 8.958-4.01 8.958-8.958" />
+                </svg>
+              </button>
               <button
                 onClick={openAddRuleModal}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
@@ -1281,13 +1362,6 @@ export default function Firewall() {
                     onChange={(e) => setEditRule({ ...editRule, description: e.target.value || null })}
                   />
                   <FormField
-                    id="edit-rule-priority"
-                    label="Priority"
-                    type="number"
-                    value={String(editRule.priority)}
-                    onChange={(e) => setEditRule({ ...editRule, priority: parseInt(e.target.value, 10) || 100 })}
-                  />
-                  <FormField
                     id="edit-rule-action"
                     label="Action"
                     as="select"
@@ -1297,7 +1371,6 @@ export default function Firewall() {
                     <option value="accept">Accept</option>
                     <option value="drop">Drop</option>
                     <option value="reject">Reject</option>
-                    <option value="log">Log</option>
                   </FormField>
                   <FormField
                     id="edit-rule-direction"
@@ -1309,7 +1382,7 @@ export default function Firewall() {
                     <option value="input">In</option>
                     <option value="output">Out</option>
                     <option value="both">Both</option>
-                    <option value="forward">Forward</option>
+                    <option value="forward">Routed</option>
                   </FormField>
                   <FormField
                     id="edit-rule-protocol"
@@ -1612,4 +1685,3 @@ export default function Firewall() {
     </div>
   )
 }
-
