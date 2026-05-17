@@ -76,11 +76,15 @@ export default function Interfaces() {
         setAllInterfaceNames(Array.isArray(res.data?.names) ? res.data.names : [])
         setConfiguredVlanNames(rows.filter((iface) => iface.type === 'vlan').map((iface) => iface.name))
         setIfaces(rows)
-        if (requestedInterface && rows.some((i) => i.name === requestedInterface)) {
-          setExpandedInterface(requestedInterface)
-        } else if (!expandedInterface && rows.length > 0) {
-          setExpandedInterface(rows[0].name)
-        }
+        setExpandedInterface((current) => {
+          if (requestedInterface && rows.some((i) => i.name === requestedInterface)) {
+            return requestedInterface
+          }
+          if (!current && rows.length > 0) {
+            return rows[0].name
+          }
+          return current
+        })
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))
@@ -503,7 +507,13 @@ export default function Interfaces() {
               value={form.wanMode ?? ''}
               onChange={(e) => {
                 const v = e.target.value as NetworkInterface['wanMode'] | ''
-                setForm({ ...form, wanMode: v || undefined, pppoeUsername: '', pppoePassword: '' })
+                setForm({
+                  ...form,
+                  wanMode: v || undefined,
+                  pppoeUsername: '',
+                  pppoePassword: '',
+                  mtu: v === 'pppoe' ? (form.mtu ?? 1492) : form.mtu,
+                })
               }}
             >
               <option value="">- Not a WAN interface -</option>

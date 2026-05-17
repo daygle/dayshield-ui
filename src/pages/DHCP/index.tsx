@@ -20,6 +20,9 @@ import {
   getInterfaceStaticLeases,
   createInterfaceStaticLease,
   deleteInterfaceStaticLease,
+  getInterfaceDhcp6StaticLeases,
+  createInterfaceDhcp6StaticLease,
+  deleteInterfaceDhcp6StaticLease,
 } from '../../api/dhcp'
 import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
 import type {
@@ -102,6 +105,54 @@ function isWanInterface(iface: NetworkInterface): boolean {
   return Boolean(iface.wanMode) || desc.includes('wan') || iface.name.toLowerCase() === 'wan'
 }
 
+function ipv6ToBigInt(value: string): bigint | null {
+  const trimmed = value.trim().toLowerCase()
+  if (!trimmed || trimmed.includes('/') || trimmed.includes('.')) return null
+
+  const halves = trimmed.split('::')
+  if (halves.length > 2) return null
+
+  const parseParts = (part: string): number[] | null => {
+    if (!part) return []
+    const pieces = part.split(':')
+    if (pieces.some((piece) => piece === '')) return null
+    const parsed = pieces.map((piece) => {
+      if (!/^[0-9a-f]{1,4}$/.test(piece)) return null
+      return Number.parseInt(piece, 16)
+    })
+    return parsed.some((piece) => piece == null) ? null : parsed as number[]
+  }
+
+  const head = parseParts(halves[0])
+  const tail = parseParts(halves[1] ?? '')
+  if (head == null || tail == null) return null
+
+  const hasCompression = halves.length === 2
+  const missing = 8 - head.length - tail.length
+  if ((!hasCompression && missing !== 0) || (hasCompression && missing < 0)) return null
+
+  const segments = hasCompression
+    ? [...head, ...Array(missing).fill(0), ...tail]
+    : head
+  if (segments.length !== 8) return null
+
+  return segments.reduce((acc, segment) => (acc << 16n) + BigInt(segment), 0n)
+}
+
+function ipv6InSubnet(address: string, cidr: string): boolean {
+  const [network, prefixText] = cidr.split('/')
+  const prefix = Number(prefixText)
+  if (!network || !Number.isInteger(prefix) || prefix < 0 || prefix > 128) return false
+
+  const ip = ipv6ToBigInt(address)
+  const networkIp = ipv6ToBigInt(network)
+  if (ip == null || networkIp == null) return false
+
+  const allBits = (1n << 128n) - 1n
+  const mask = prefix === 0 ? 0n : (allBits << BigInt(128 - prefix)) & allBits
+  return (ip & mask) === (networkIp & mask)
+}
+
 export default function DHCP() {
   const { formatDateTime } = useDisplayPreferences()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -173,6 +224,17 @@ export default function DHCP() {
     setLeaseModalOpen(true)
   }
 
+  const openStatic6ReservationFromLease = (lease: Active6LeaseRow) => {
+    setLease6Form({
+      duid: lease.duid ?? '',
+      mac: '',
+      ipAddress: lease.ipAddress ?? '',
+      hostname: lease.hostname ?? '',
+      description: '',
+    })
+    setLease6ModalOpen(true)
+  }
+
   const activeColumns: Column<ActiveLeaseRow>[] = [
     { key: 'mac', header: 'MAC Address' },
     { key: 'ipAddress', header: 'IP Address' },
@@ -234,7 +296,7 @@ export default function DHCP() {
         getInterfaceDhcp6Config(selectedInterface),
         getInterfaceStaticLeases(selectedInterface),
         getDhcpLeases(),
-        getDhcp6StaticLeases(),
+        getInterfaceDhcp6StaticLeases(selectedInterface),
         getDhcp6Leases(),
       ])
         .then(([cfg, cfg6, statics, active, statics6, active6]) => {
@@ -320,6 +382,14 @@ export default function DHCP() {
       return ip != null && (ip & mask) === (networkInt & mask)
     })
   }, [activeLeases, selectedInterface, interfaceConfig?.subnet])
+
+  const active6LeasesForSelectedInterface = useMemo(() => {
+    if (!selectedInterface) return active6Leases
+    const subnet = interfaceConfig6?.subnet
+    if (!subnet) return active6Leases
+
+    return active6Leases.filter((lease) => ipv6InSubnet(String(lease.ipAddress ?? ''), subnet))
+  }, [active6Leases, selectedInterface, interfaceConfig6?.subnet])
 
   const handleSelectInterface = (interfaceName: string) => {
     setSearchParams((prev) => {
@@ -470,11 +540,18 @@ export default function DHCP() {
 
   const handleAddLease6 = () => {
     setLease6Saving(true)
-    createDhcp6StaticLease(lease6Form)
+    const addPromise = selectedInterface
+      ? createInterfaceDhcp6StaticLease(selectedInterface, lease6Form)
+      : createDhcp6StaticLease(lease6Form)
+
+    addPromise
       .then(() => {
         setLease6ModalOpen(false)
         setLease6Form(defaultLease6Form)
-        getDhcp6StaticLeases()
+        const reloadLeases = selectedInterface
+          ? getInterfaceDhcp6StaticLeases(selectedInterface)
+          : getDhcp6StaticLeases()
+        reloadLeases
           .then((r) => setStatic6Leases(r.data as Static6LeaseRow[]))
           .catch((err: Error) => setError(err.message))
       })
@@ -485,10 +562,17 @@ export default function DHCP() {
   const handleDeleteLease6 = () => {
     if (delete6Id === null) return
     setDeleting6(true)
-    deleteDhcp6StaticLease(delete6Id)
+    const deletePromise = selectedInterface
+      ? deleteInterfaceDhcp6StaticLease(selectedInterface, delete6Id)
+      : deleteDhcp6StaticLease(delete6Id)
+
+    deletePromise
       .then(() => {
         setDelete6Id(null)
-        getDhcp6StaticLeases()
+        const reloadLeases = selectedInterface
+          ? getInterfaceDhcp6StaticLeases(selectedInterface)
+          : getDhcp6StaticLeases()
+        reloadLeases
           .then((r) => setStatic6Leases(r.data as Static6LeaseRow[]))
           .catch((err: Error) => setError(err.message))
       })
@@ -551,6 +635,21 @@ export default function DHCP() {
           : new Date(raw)
         return isNaN(d.getTime()) ? raw : formatDateTime(d)
       },
+    },
+    {
+      key: 'actions',
+      header: '',
+      className: 'w-28 text-right',
+      render: (row) => (
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => openStatic6ReservationFromLease(row)}
+          disabled={!row.duid || !row.ipAddress}
+        >
+          Reserve
+        </Button>
+      ),
     },
   ]
 
@@ -828,7 +927,7 @@ export default function DHCP() {
       >
         <Table
           columns={active6Columns}
-          data={active6Leases}
+          data={active6LeasesForSelectedInterface}
           keyField="ipAddress"
           loading={loading}
           emptyMessage="No active DHCPv6 leases."

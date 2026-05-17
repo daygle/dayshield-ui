@@ -384,7 +384,7 @@ function AIThreatsContent() {
           ),
       },
     ],
-    [handleUnblock, unblockingIp],
+    [formatUnixDateTime, handleUnblock, unblockingIp],
   )
 
   const blockedColumns: Column<BlockedRow>[] = useMemo(

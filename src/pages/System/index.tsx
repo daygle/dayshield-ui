@@ -388,7 +388,7 @@ function inferUpdateStatusLabel(validRepo: boolean, lastError?: string): string 
 
 function simplifyErrorMessage(error: string): string {
   // Remove the "FAILED TO QUERY REGISTRY" prefix and similar wrapper text
-  let simplified = error
+  const simplified = error
     .replace(/^FAILED TO QUERY REGISTRY:\s*/i, '')
     .replace(/^UPDATE ERROR:\s*/i, '')
     .replace(/^failed to query registry:\s*/i, '')

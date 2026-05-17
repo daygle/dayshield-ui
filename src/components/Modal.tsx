@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from 'react'
+import { ReactNode, useEffect, useId, useRef } from 'react'
 import Button from './Button'
 
 interface ModalProps {
@@ -17,9 +17,9 @@ interface ModalProps {
 
 const sizeClass: Record<string, string> = {
   sm: 'max-w-sm',
-  md: 'max-w-md',
-  lg: 'max-w-lg',
-  xl: 'max-w-xl',
+  md: '',
+  lg: '',
+  xl: '',
 }
 
 export default function Modal({
@@ -35,6 +35,9 @@ export default function Modal({
   footer,
   size = 'md',
 }: ModalProps) {
+  const titleId = useId()
+  const panelRef = useRef<HTMLElement>(null)
+
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => {
@@ -44,31 +47,32 @@ export default function Modal({
     return () => document.removeEventListener('keydown', handler)
   }, [open, onClose])
 
+  useEffect(() => {
+    if (!open) return
+    window.requestAnimationFrame(() => {
+      panelRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    })
+  }, [open])
+
   if (!open) return null
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
+    <section
+      ref={panelRef}
+      className={`mb-4 w-full ${sizeClass[size]}`}
+      aria-labelledby={titleId}
     >
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <div
-        className={`relative z-10 w-full ${sizeClass[size]} rounded-lg bg-white shadow-xl`}
+        className="bg-white rounded-lg border border-gray-200 shadow-sm"
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 id="modal-title" className="text-base font-semibold text-gray-900">
+          <h2 id={titleId} className="text-base font-semibold text-gray-900">
             {title}
           </h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Close modal"
+            aria-label="Close panel"
           >
             <svg
               className="h-5 w-5"
@@ -82,11 +86,11 @@ export default function Modal({
         </div>
         <div className="px-6 py-4">{children}</div>
         {footer ? (
-          <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+          <div className="flex justify-end gap-3 px-6 pb-4">
             {footer}
           </div>
         ) : onConfirm ? (
-          <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+          <div className="flex justify-end gap-3 px-6 pb-4">
             <Button variant="secondary" onClick={onClose} disabled={loading}>
               {cancelLabel}
             </Button>
@@ -100,6 +104,6 @@ export default function Modal({
           </div>
         ) : null}
       </div>
-    </div>
+    </section>
   )
 }

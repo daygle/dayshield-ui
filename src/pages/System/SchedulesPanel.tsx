@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Button from '../../components/Button'
 import Card from '../../components/Card'
 import FormField from '../../components/FormField'
@@ -66,7 +66,7 @@ export default function SchedulesPanel({ onError }: Props) {
     [schedules.jobs],
   )
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true)
     getSystemSchedules()
       .then((res) => {
@@ -75,9 +75,9 @@ export default function SchedulesPanel({ onError }: Props) {
       })
       .catch((err: Error) => onError(err.message))
       .finally(() => setLoading(false))
-  }
+  }, [onError])
 
-  useEffect(load, [])
+  useEffect(load, [load])
 
   const updateJob = (job: ScheduleJobType, patch: Partial<SystemScheduleJob>) => {
     setSchedules((prev) => ({

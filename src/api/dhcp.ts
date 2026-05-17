@@ -190,6 +190,32 @@ export const deleteDhcp6StaticLease = (id: string): Promise<ApiResponse<void>> =
     .delete<ApiResponse<void>>(`/dhcp6/static-leases/${encodeURIComponent(id)}`)
     .then((r) => r.data)
 
+export const getInterfaceDhcp6StaticLeases = (interfaceName: string): Promise<ApiResponse<Dhcp6StaticLease[]>> =>
+  apiClient
+    .get<ApiResponse<Dhcp6StaticLease[]>>(`/interfaces/${encodeURIComponent(interfaceName)}/dhcp6/static-leases`)
+    .then((r) => r.data)
+
+export const createInterfaceDhcp6StaticLease = (
+  interfaceName: string,
+  lease: Omit<Dhcp6StaticLease, 'id'> & { mac?: string },
+): Promise<ApiResponse<Dhcp6StaticLease>> =>
+  apiClient
+    .post<ApiResponse<Dhcp6StaticLease>>(
+      `/interfaces/${encodeURIComponent(interfaceName)}/dhcp6/static-leases`,
+      lease,
+    )
+    .then((r) => r.data)
+
+export const deleteInterfaceDhcp6StaticLease = (
+  interfaceName: string,
+  leaseId: string,
+): Promise<ApiResponse<void>> =>
+  apiClient
+    .delete<ApiResponse<void>>(
+      `/interfaces/${encodeURIComponent(interfaceName)}/dhcp6/static-leases/${encodeURIComponent(leaseId)}`,
+    )
+    .then((r) => r.data)
+
 // ── DHCPv6 Active leases ──────────────────────────────────────────────────────
 
 const DHCPv6_LEASE_STATES: ReadonlySet<Dhcp6Lease['state']> = new Set([

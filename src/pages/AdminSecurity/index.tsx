@@ -150,36 +150,28 @@ export default function AdminSecurity() {
       </Card>
 
 
-      {/* Edit modal */}
+      {/* Edit panel */}
       {editing && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white shadow-xl dark:bg-slate-800">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-700">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Edit Admin Security Settings</h2>
-              <button onClick={closeEdit} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-              </button>
-            </div>
-            <div className="px-6 py-4 space-y-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Session Policy</p>
-              {numField('Session Timeout (minutes)', 'session_timeout_minutes', 1, 'How long before an idle session is expired')}
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 pt-2">Login Lockout</p>
-              {numField('Max Login Attempts', 'max_login_attempts', 0, 'Set to 0 to disable lockout')}
-              {numField('Lockout Duration (minutes)', 'lockout_duration_minutes', 1)}
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 pt-2">Password Complexity</p>
-              {numField('Minimum Password Length', 'min_password_length', 4)}
-              <div className="space-y-2 mt-1">
-                {boolField('Require uppercase letter', 'require_uppercase')}
-                {boolField('Require number', 'require_number')}
-                {boolField('Require special character', 'require_special')}
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-700">
-              <Button variant="secondary" onClick={closeEdit} disabled={saving}>Cancel</Button>
-              <Button variant="primary" onClick={handleSave} loading={saving}>Save</Button>
+        <Card title="Edit Admin Security Settings">
+          <div className="space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Session Policy</p>
+            {numField('Session Timeout (minutes)', 'session_timeout_minutes', 1, 'How long before an idle session is expired')}
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 pt-2">Login Lockout</p>
+            {numField('Max Login Attempts', 'max_login_attempts', 0, 'Set to 0 to disable lockout')}
+            {numField('Lockout Duration (minutes)', 'lockout_duration_minutes', 1)}
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 pt-2">Password Complexity</p>
+            {numField('Minimum Password Length', 'min_password_length', 4)}
+            <div className="space-y-2 mt-1">
+              {boolField('Require uppercase letter', 'require_uppercase')}
+              {boolField('Require number', 'require_number')}
+              {boolField('Require special character', 'require_special')}
             </div>
           </div>
-        </div>
+          <div className="mt-4 flex justify-end gap-3">
+            <Button variant="secondary" onClick={closeEdit} disabled={saving}>Cancel</Button>
+            <Button variant="primary" onClick={handleSave} loading={saving}>Save</Button>
+          </div>
+        </Card>
       )}
 
       <Toast messages={toasts} />

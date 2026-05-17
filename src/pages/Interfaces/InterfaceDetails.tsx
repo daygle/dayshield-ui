@@ -375,6 +375,7 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
                   wanMode: 'pppoe',
                   ipv4Address: '',
                   gateway: '',
+                  mtu: form.mtu ?? 1492,
                 })
                 return
               }

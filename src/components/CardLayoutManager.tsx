@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Button from './Button'
 
 export type LayoutWidth = 1 | 2 | 3
@@ -43,48 +43,49 @@ export default function CardLayoutManager({
   onReset,
 }: CardLayoutManagerProps) {
   const [dragId, setDragId] = useState<string | null>(null)
+  const panelRef = useRef<HTMLElement>(null)
 
   const hiddenCount = useMemo(
     () => items.filter((item) => !item.visible).length,
     [items],
   )
 
+  useEffect(() => {
+    if (!open) return
+    window.requestAnimationFrame(() => {
+      panelRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    })
+  }, [open])
+
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <button
-        type="button"
-        className="flex-1 bg-black/30"
-        aria-label="Close layout editor"
-        onClick={onClose}
-      />
-      <aside className="h-full w-full max-w-xl border-l border-gray-200 bg-white shadow-2xl">
-        <div className="flex h-full flex-col">
-          <div className="border-b border-gray-200 px-5 py-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-base font-semibold text-gray-900">{title}</h3>
-                {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
-              </div>
-              <Button size="sm" variant="secondary" onClick={onClose}>
-                Done
-              </Button>
+    <section ref={panelRef} className="mb-4 w-full">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="border-b border-gray-200 px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+              {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
-              <span className="rounded-full bg-gray-100 px-2 py-1">
-                {items.length - hiddenCount} visible
-              </span>
-              <span className="rounded-full bg-gray-100 px-2 py-1">
-                {hiddenCount} hidden
-              </span>
-              <span className="rounded-full bg-blue-50 px-2 py-1 text-blue-700">
-                Drag rows to reorder
-              </span>
-            </div>
+            <Button size="sm" variant="secondary" onClick={onClose}>
+              Done
+            </Button>
           </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+            <span className="rounded-full bg-gray-100 px-2 py-1">
+              {items.length - hiddenCount} visible
+            </span>
+            <span className="rounded-full bg-gray-100 px-2 py-1">
+              {hiddenCount} hidden
+            </span>
+            <span className="rounded-full bg-blue-50 px-2 py-1 text-blue-700">
+              Drag rows to reorder
+            </span>
+          </div>
+        </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+        <div className="space-y-3 px-4 py-4">
             {items.map((item, index) => (
               <div
                 key={item.id}
@@ -203,8 +204,7 @@ export default function CardLayoutManager({
               )}
             </div>
           </div>
-        </div>
-      </aside>
-    </div>
+      </div>
+    </section>
   )
 }

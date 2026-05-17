@@ -211,7 +211,7 @@ function SuricataContent() {
       .catch((err: Error) => setError(err.message))
   }
 
-  const handleAutoPopulateHomeNetworks = () => {
+  const handleAutoPopulateHomeNetworks = useCallback(() => {
     if (!config) return
 
     // Get CIDRs from monitored interfaces
@@ -231,7 +231,7 @@ function SuricataContent() {
       .catch((err: Error) => setError(err.message))
 
     return true
-  }
+  }, [config, extractInterfaceCidrs, interfaces])
 
   // Auto-populate Home Networks when empty and monitored interfaces are available
   useEffect(() => {
@@ -247,7 +247,7 @@ function SuricataContent() {
     if (hasMonitoredIfaceWithIp) {
       handleAutoPopulateHomeNetworks()
     }
-  }, [config?.interfaces.join(','), interfaces.length, extractInterfaceCidrs])
+  }, [config, extractInterfaceCidrs, handleAutoPopulateHomeNetworks, interfaces])
 
   const derivedHomeNets = React.useMemo(() => {
     if (!config) return []
