@@ -7,12 +7,13 @@ import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
 interface InterfaceDetailsProps {
   iface: NetworkInterface
+  ipv6Enabled?: boolean
   parentInterfaceOptions?: string[]
   parentInterfaceLabel?: (name: string) => string
   onUpdate?: () => void
 }
 
-export default function InterfaceDetails({ iface, parentInterfaceOptions = [], parentInterfaceLabel, onUpdate }: InterfaceDetailsProps) {
+export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInterfaceOptions = [], parentInterfaceLabel, onUpdate }: InterfaceDetailsProps) {
   const [editOpen, setEditOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -22,11 +23,14 @@ export default function InterfaceDetails({ iface, parentInterfaceOptions = [], p
     type: iface.type,
     enabled: iface.enabled,
     dhcp4: iface.dhcp4,
+    dhcp6: iface.dhcp6,
     wanMode: iface.wanMode,
     pppoeUsername: iface.pppoeUsername,
     pppoePassword: iface.pppoePassword,
     ipv4Address: iface.ipv4Address,
     ipv4Prefix: iface.ipv4Prefix,
+    ipv6Address: iface.ipv6Address,
+    ipv6Prefix: iface.ipv6Prefix,
     parentInterface: iface.parentInterface,
     vlanId: iface.vlanId,
     gateway: iface.gateway,
@@ -170,8 +174,11 @@ export default function InterfaceDetails({ iface, parentInterfaceOptions = [], p
           <div className="rounded border border-gray-100 bg-gray-50 p-3">
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv6</p>
             <p className="mt-1 font-mono text-sm text-gray-900">
-              {kernelIpv6.length > 0 ? kernelIpv6.join(', ') : '-'}
+              {iface.ipv6Address ? `${iface.ipv6Address}/${iface.ipv6Prefix ?? '-'}` : kernelIpv6.length > 0 ? kernelIpv6.join(', ') : '-'}
             </p>
+            {kernelIpv6.length > 0 && iface.ipv6Address && (
+              <p className="mt-1 text-xs text-gray-500">Runtime: {kernelIpv6.join(', ')}</p>
+            )}
           </div>
           <div className="rounded border border-gray-100 bg-gray-50 p-3">
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Routing</p>
@@ -374,6 +381,46 @@ export default function InterfaceDetails({ iface, parentInterfaceOptions = [], p
                 className="col-span-2"
                 value={form.gateway ?? ''}
                 onChange={(e) => setForm({ ...form, gateway: e.target.value })}
+              />
+            </>
+          )}
+          {ipv6Enabled && (
+            <>
+              <div className="col-span-2 flex items-center gap-3">
+                <input
+                  id="iface-dhcp6"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked={form.dhcp6 ?? false}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      dhcp6: e.target.checked,
+                      ipv6Address: e.target.checked ? '' : form.ipv6Address,
+                      ipv6Prefix: e.target.checked ? 64 : form.ipv6Prefix,
+                    })
+                  }
+                />
+                <label htmlFor="iface-dhcp6" className="text-sm font-medium text-gray-700">
+                  Obtain IPv6 address via DHCPv6
+                </label>
+              </div>
+              <FormField
+                id="iface-ipv6-address"
+                label="IPv6 Address"
+                value={form.ipv6Address ?? ''}
+                disabled={form.dhcp6 ?? false}
+                onChange={(e) => setForm({ ...form, ipv6Address: e.target.value })}
+              />
+              <FormField
+                id="iface-ipv6-prefix"
+                label="IPv6 Prefix Length"
+                type="number"
+                min={0}
+                max={128}
+                value={String(form.ipv6Prefix ?? 64)}
+                disabled={form.dhcp6 ?? false}
+                onChange={(e) => setForm({ ...form, ipv6Prefix: Number(e.target.value) })}
               />
             </>
           )}

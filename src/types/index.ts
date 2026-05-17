@@ -16,6 +16,7 @@ export interface NetworkInterface {
   vlanId?: number
   enabled: boolean
   dhcp4?: boolean
+  dhcp6?: boolean
   wanMode?: 'dhcp' | 'pppoe'       // only relevant for WAN-designated interfaces
   pppoeUsername?: string
   pppoePassword?: string
@@ -464,6 +465,7 @@ export interface LanIface {
   name: string
   description?: string
   ip?: string
+  ipv6?: string
   enabled: boolean
 }
 
@@ -471,6 +473,7 @@ export interface NetworkStatus {
   wan_iface: string
   wan_iface_description?: string
   wan_ip?: string
+  wan_ipv6?: string
   gateway_status: 'up' | 'down' | 'unknown'
   wan_rx_bps: number       // bytes per second
   wan_tx_bps: number       // bytes per second
@@ -517,6 +520,7 @@ export interface SystemConfig {
   sshEnabled: boolean
   sshPort: number
   webPort: number
+  ipv6Enabled: boolean
   managementTlsAcmeDomain?: string | null
 }
 
@@ -720,13 +724,14 @@ export interface NatRule {
   description: string | null
   rule_type: NatRuleType
   interface: string | null          // outbound for masq/SNAT; inbound for DNAT
-  source: string | null             // IPv4 CIDR filter, null = any
+  source: string | null             // IP/CIDR filter, null = any
   destination: string | null
   protocol: NatProtocol
   source_port: number | null
   destination_port: number | null   // for DNAT: the external port being forwarded
   translation: NatTranslation | null
   nat_reflection: boolean
+  address_family: AddressFamily
   priority: number
   log: boolean
   auto_firewall_rule: boolean       // auto-generate companion forward accept for DNAT
@@ -736,7 +741,7 @@ export interface NatRule {
 
 export interface NtpConfig {
   enabled: boolean
-  servers: string[]          // upstream NTP servers (IPv4)
+  servers: string[]          // upstream NTP servers
   serveLan: boolean          // serve NTP to LAN clients
   listenInterfaces: string[] // interface names to listen on
 }
@@ -752,12 +757,14 @@ export interface NtpStatus {
 // ── Dynamic DNS ─────────────────────────────────────────────────────────────
 
 export type DynamicDnsProvider = 'duck_dns' | 'no_ip' | 'dynu' | 'free_dns' | 'custom'
+export type AddressFamily = 'ipv4' | 'ipv6'
 
 export interface DynamicDnsEntry {
   id: string
   enabled: boolean
   provider: DynamicDnsProvider
   interface: string
+  addressFamily: AddressFamily
   hostname: string
   username?: string
   password: string
@@ -776,6 +783,7 @@ export interface DynamicDnsStatusEntry {
   hostname: string
   provider: DynamicDnsProvider
   interface: string
+  addressFamily: AddressFamily
   ip?: string
   success: boolean
   message: string

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { getInterfacesInventory, createInterface, deleteInterface } from '../../api/interfaces'
+import { getSystemConfig } from '../../api/system'
 import type { NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Modal from '../../components/Modal'
@@ -19,11 +20,14 @@ const defaultForm: Partial<NetworkInterface> = {
   vlanId: undefined,
   enabled: true,
   dhcp4: false,
+  dhcp6: false,
   wanMode: undefined,
   pppoeUsername: '',
   pppoePassword: '',
   ipv4Address: '',
   ipv4Prefix: 24,
+  ipv6Address: '',
+  ipv6Prefix: 64,
   mss: undefined,
 }
 
@@ -42,6 +46,7 @@ export default function Interfaces() {
   const [allInterfaceNames, setAllInterfaceNames] = useState<string[]>([])
   const [configuredVlanNames, setConfiguredVlanNames] = useState<string[]>([])
   const [useCustomName, setUseCustomName] = useState(false)
+  const [ipv6Enabled, setIpv6Enabled] = useState(false)
 
   const requestedInterface = searchParams.get('iface')
   const isInterfaceRowArray = (value: unknown): value is InterfaceRow[] =>
@@ -54,6 +59,9 @@ export default function Interfaces() {
 
   const load = () => {
     setLoading(true)
+    getSystemConfig()
+      .then((res) => setIpv6Enabled(Boolean(res.data?.ipv6Enabled)))
+      .catch(() => setIpv6Enabled(false))
     getInterfacesInventory()
       .then((res) => {
         const rows = isInterfaceRowArray(res.data?.configured) ? res.data.configured : []
@@ -214,6 +222,7 @@ export default function Interfaces() {
                 <InterfaceDetails
                   key={selectedInterfaceDetails.name}
                   iface={selectedInterfaceDetails}
+                  ipv6Enabled={ipv6Enabled}
                   parentInterfaceOptions={parentInterfaceOptions}
                   parentInterfaceLabel={interfaceNameLabel}
                   onUpdate={load}
@@ -433,6 +442,47 @@ export default function Interfaces() {
               ))}
             </select>
           </FormField>
+          {ipv6Enabled && (
+            <>
+              <div className="col-span-2 flex items-center gap-3">
+                <input
+                  id="iface-dhcp6"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked={form.dhcp6 ?? false}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      dhcp6: e.target.checked,
+                      ipv6Address: e.target.checked ? '' : form.ipv6Address,
+                      ipv6Prefix: e.target.checked ? 64 : form.ipv6Prefix,
+                    })
+                  }
+                />
+                <label htmlFor="iface-dhcp6" className="text-sm font-medium text-gray-700">
+                  Obtain IPv6 address via DHCPv6
+                </label>
+              </div>
+              <FormField
+                id="iface-ipv6"
+                label="IPv6 Address"
+                placeholder="2001:db8::1"
+                value={form.ipv6Address ?? ''}
+                disabled={form.dhcp6 ?? false}
+                onChange={(e) => setForm({ ...form, ipv6Address: e.target.value })}
+              />
+              <FormField
+                id="iface-ipv6-prefix"
+                label="IPv6 Prefix Length"
+                type="number"
+                min={0}
+                max={128}
+                value={String(form.ipv6Prefix ?? 64)}
+                disabled={form.dhcp6 ?? false}
+                onChange={(e) => setForm({ ...form, ipv6Prefix: Number(e.target.value) })}
+              />
+            </>
+          )}
           <FormField
             id="iface-mss"
             label="MSS"

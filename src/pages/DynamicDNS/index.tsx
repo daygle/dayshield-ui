@@ -4,6 +4,7 @@ import Button from '../../components/Button'
 import FormField from '../../components/FormField'
 import { useToast } from '../../context/ToastContext'
 import { getInterfacesInventory } from '../../api/interfaces'
+import { getSystemConfig } from '../../api/system'
 import {
   getDynamicDnsConfig,
   getDynamicDnsStatus,
@@ -32,6 +33,7 @@ const DEFAULT_ENTRY = (iface: string): DynamicDnsEntry => ({
   enabled: true,
   provider: 'duck_dns',
   interface: iface,
+  addressFamily: 'ipv4',
   hostname: '',
   username: '',
   password: '',
@@ -69,9 +71,10 @@ function providerHelpText(provider: DynamicDnsProvider): string {
   return ''
 }
 
-function validateEntry(entry: DynamicDnsEntry): string | null {
+function validateEntry(entry: DynamicDnsEntry, ipv6Enabled: boolean): string | null {
   if (!entry.enabled) return null
   if (!entry.interface.trim()) return 'Interface is required.'
+  if (entry.addressFamily === 'ipv6' && !ipv6Enabled) return 'IPv6 Dynamic DNS entries require IPv6 to be enabled in System settings.'
   if (!entry.hostname.trim()) return 'Hostname is required.'
   if (providerNeedsUsername(entry.provider) && !entry.username?.trim()) return 'Username is required.'
   if (!entry.passwordConfigured && !entry.password.trim()) return `${providerSecretLabel(entry.provider)} is required.`
@@ -86,6 +89,7 @@ export default function DynamicDnsPage() {
   const [config, setConfig] = useState<DynamicDnsConfig>(DEFAULT_CONFIG)
   const [status, setStatus] = useState<DynamicDnsStatus | null>(null)
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
+  const [ipv6Enabled, setIpv6Enabled] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [runningUpdate, setRunningUpdate] = useState(false)
@@ -106,11 +110,12 @@ export default function DynamicDnsPage() {
 
   const loadAll = useCallback(() => {
     setLoading(true)
-    Promise.all([getDynamicDnsConfig(), getDynamicDnsStatus(), getInterfacesInventory()])
-      .then(([cfg, stat, inventory]) => {
+    Promise.all([getDynamicDnsConfig(), getDynamicDnsStatus(), getInterfacesInventory(), getSystemConfig()])
+      .then(([cfg, stat, inventory, system]) => {
         setConfig(cfg.data)
         setStatus(stat.data)
         setInterfaces(inventory.data.configured)
+        setIpv6Enabled(Boolean(system.data.ipv6Enabled))
       })
       .catch((err: Error) => addToast(`Failed to load Dynamic DNS data: ${err.message}`, 'error'))
       .finally(() => setLoading(false))
@@ -123,11 +128,11 @@ export default function DynamicDnsPage() {
   const entryErrors = useMemo(() => {
     const out = new Map<string, string>()
     for (const entry of config.entries) {
-      const error = validateEntry(entry)
+      const error = validateEntry(entry, ipv6Enabled)
       if (error) out.set(entry.id, error)
     }
     return out
-  }, [config.entries])
+  }, [config.entries, ipv6Enabled])
 
   const hasErrors = entryErrors.size > 0
 
@@ -302,6 +307,18 @@ export default function DynamicDnsPage() {
                           {iface.label}
                         </option>
                       ))}
+                    </FormField>
+
+                    <FormField
+                      id={`ddns-family-${entry.id}`}
+                      label="Address Family"
+                      as="select"
+                      value={entry.addressFamily ?? 'ipv4'}
+                      disabled={busy}
+                      onChange={(e) => upsertEntry(entry.id, { addressFamily: e.target.value as DynamicDnsEntry['addressFamily'] })}
+                    >
+                      <option value="ipv4">IPv4</option>
+                      <option value="ipv6" disabled={!ipv6Enabled}>IPv6</option>
                     </FormField>
 
                     <FormField

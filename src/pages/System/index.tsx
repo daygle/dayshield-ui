@@ -928,6 +928,12 @@ export default function System() {
               <dd className="font-medium text-gray-800">{config.webPort}</dd>
             </div>
             <div>
+              <dt className="text-gray-500">IPv6</dt>
+              <dd className={`font-medium ${config.ipv6Enabled ? 'text-green-600' : 'text-gray-400'}`}>
+                {config.ipv6Enabled ? 'Enabled' : 'Disabled'}
+              </dd>
+            </div>
+            <div>
               <dt className="text-gray-500">Management Interface</dt>
               <dd className="font-medium text-gray-800">{firewallSettings.management_interface || 'Any interface'}</dd>
             </div>
@@ -1342,6 +1348,18 @@ export default function System() {
             value={String(editConfig.webPort ?? 8080)}
             onChange={(e) => setEditConfig({ ...editConfig, webPort: Number(e.target.value) })}
           />
+          <div className="col-span-2 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+            <input
+              id="cfg-ipv6-enabled"
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              checked={editConfig.ipv6Enabled ?? false}
+              onChange={(e) => setEditConfig({ ...editConfig, ipv6Enabled: e.target.checked })}
+            />
+            <label htmlFor="cfg-ipv6-enabled" className="text-sm font-medium text-gray-700">
+              Enable IPv6
+            </label>
+          </div>
           <div className="col-span-2">
             <label htmlFor="cfg-management-tls-domain" className="block text-sm font-medium text-gray-700">
               Management TLS Certificate (ACME Domain)

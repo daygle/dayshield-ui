@@ -26,11 +26,19 @@ interface BackendSystemStatus {
 interface BackendSystemConfig {
   hostname?: string
   timezone?: string
+  ntpServers?: string[]
+  dnsServers?: string[]
+  sshEnabled?: boolean
+  sshPort?: number
+  webPort?: number
+  ipv6Enabled?: boolean
+  managementTlsAcmeDomain?: string | null
   ntp_servers?: string[]
   dns_servers?: string[]
   ssh_enabled?: boolean
   ssh_port?: number
   web_port?: number
+  ipv6_enabled?: boolean
   management_tls_acme_domain?: string
 }
 
@@ -95,7 +103,7 @@ function normalizeSystemConfig(raw: unknown): SystemConfig {
   const value = (raw ?? {}) as Record<string, unknown>
 
   // Native UI shape
-  if ('ntpServers' in value || 'dnsServers' in value || 'sshEnabled' in value || 'webPort' in value) {
+  if ('ntpServers' in value || 'dnsServers' in value || 'sshEnabled' in value || 'webPort' in value || 'ipv6Enabled' in value) {
     const cfg = value as Partial<SystemConfig>
     return {
       hostname: cfg.hostname ?? 'dayshield',
@@ -105,6 +113,8 @@ function normalizeSystemConfig(raw: unknown): SystemConfig {
       sshEnabled: Boolean(cfg.sshEnabled),
       sshPort: typeof cfg.sshPort === 'number' ? cfg.sshPort : 22,
       webPort: typeof cfg.webPort === 'number' ? cfg.webPort : 8443,
+      ipv6Enabled: Boolean(cfg.ipv6Enabled),
+      managementTlsAcmeDomain: cfg.managementTlsAcmeDomain ?? null,
     }
   }
 
@@ -113,12 +123,19 @@ function normalizeSystemConfig(raw: unknown): SystemConfig {
   return {
     hostname: cfg.hostname ?? 'dayshield',
     timezone: cfg.timezone ?? 'UTC',
-    ntpServers: Array.isArray(cfg.ntp_servers) ? cfg.ntp_servers : [],
-    dnsServers: Array.isArray(cfg.dns_servers) ? cfg.dns_servers : [],
-    sshEnabled: Boolean(cfg.ssh_enabled),
-    sshPort: typeof cfg.ssh_port === 'number' ? cfg.ssh_port : 22,
-    webPort: typeof cfg.web_port === 'number' ? cfg.web_port : 8443,
-    managementTlsAcmeDomain: typeof cfg.management_tls_acme_domain === 'string' ? cfg.management_tls_acme_domain : null,
+    ntpServers: Array.isArray(cfg.ntpServers) ? cfg.ntpServers : Array.isArray(cfg.ntp_servers) ? cfg.ntp_servers : [],
+    dnsServers: Array.isArray(cfg.dnsServers) ? cfg.dnsServers : Array.isArray(cfg.dns_servers) ? cfg.dns_servers : [],
+    sshEnabled: typeof cfg.sshEnabled === 'boolean' ? cfg.sshEnabled : Boolean(cfg.ssh_enabled),
+    sshPort: typeof cfg.sshPort === 'number' ? cfg.sshPort : typeof cfg.ssh_port === 'number' ? cfg.ssh_port : 22,
+    webPort: typeof cfg.webPort === 'number' ? cfg.webPort : typeof cfg.web_port === 'number' ? cfg.web_port : 8443,
+    ipv6Enabled:
+      typeof cfg.ipv6Enabled === 'boolean' ? cfg.ipv6Enabled : Boolean(cfg.ipv6_enabled),
+    managementTlsAcmeDomain:
+      typeof cfg.managementTlsAcmeDomain === 'string'
+        ? cfg.managementTlsAcmeDomain
+        : typeof cfg.management_tls_acme_domain === 'string'
+          ? cfg.management_tls_acme_domain
+          : null,
   }
 }
 
@@ -126,12 +143,13 @@ function toBackendSystemConfig(config: Partial<SystemConfig>): Partial<BackendSy
   return {
     hostname: config.hostname,
     timezone: config.timezone,
-    ntp_servers: config.ntpServers,
-    dns_servers: config.dnsServers,
-    ssh_enabled: config.sshEnabled,
-    ssh_port: config.sshPort,
-    web_port: config.webPort,
-    management_tls_acme_domain: config.managementTlsAcmeDomain ?? undefined,
+    ntpServers: config.ntpServers,
+    dnsServers: config.dnsServers,
+    sshEnabled: config.sshEnabled,
+    sshPort: config.sshPort,
+    webPort: config.webPort,
+    ipv6Enabled: config.ipv6Enabled,
+    managementTlsAcmeDomain: config.managementTlsAcmeDomain ?? undefined,
   }
 }
 

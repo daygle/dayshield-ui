@@ -16,6 +16,7 @@ type BackendInterface = {
   parent?: string
   enabled?: boolean
   dhcp4?: boolean
+  dhcp6?: boolean
   wan_mode?: 'dhcp' | 'pppoe'
   pppoe_username?: string
   pppoe_password?: string
@@ -45,6 +46,8 @@ type InterfaceUpsertPayload = {
   pppoe_password?: string
   ipv4_address?: string
   ipv4_prefix?: number
+  ipv6_address?: string
+  ipv6_prefix?: number
   mtu?: number
   mss?: number
   vlan?: number
@@ -59,12 +62,14 @@ function toInterfaceUpsertPayload(iface: NetworkInterface): InterfaceUpsertPaylo
     type: iface.type,
     enabled: iface.enabled,
     dhcp4: iface.dhcp4,
-    dhcp6: false,
+    dhcp6: iface.dhcp6,
     wan_mode: iface.wanMode,
     pppoe_username: iface.pppoeUsername || undefined,
     pppoe_password: iface.pppoePassword || undefined,
     ipv4_address: iface.ipv4Address || undefined,
     ipv4_prefix: iface.ipv4Prefix,
+    ipv6_address: iface.ipv6Address || undefined,
+    ipv6_prefix: iface.ipv6Prefix,
     mtu: iface.mtu,
     mss: iface.mss,
     vlan: iface.vlanId,
@@ -83,6 +88,7 @@ function toNetworkInterface(raw: BackendInterface): NetworkInterface {
     vlanId,
     enabled: raw.enabled ?? true,
     dhcp4: raw.dhcp4,
+    dhcp6: raw.dhcp6,
     wanMode: raw.wan_mode,
     pppoeUsername: raw.pppoe_username,
     pppoePassword: raw.pppoe_password,
@@ -128,6 +134,8 @@ function buildInterfaceInventory(payload: InterfacesPayload): InterfacesInventor
     const kernelIface = kernelByName.get(iface.name)
     const firstIpv4Cidr = kernelIface?.addresses?.find((addr) => addr.includes('.') && addr.includes('/'))
     const [kernelIpv4Address, kernelIpv4Prefix] = firstIpv4Cidr ? firstIpv4Cidr.split('/') : [undefined, undefined]
+    const firstIpv6Cidr = kernelIface?.addresses?.find((addr) => addr.includes(':') && addr.includes('/'))
+    const [kernelIpv6Address, kernelIpv6Prefix] = firstIpv6Cidr ? firstIpv6Cidr.split('/') : [undefined, undefined]
 
     return {
       ...iface,
@@ -135,6 +143,8 @@ function buildInterfaceInventory(payload: InterfacesPayload): InterfacesInventor
       mtu: iface.mtu ?? kernelIface?.mtu,
       ipv4Address: iface.ipv4Address ?? kernelIpv4Address,
       ipv4Prefix: iface.ipv4Prefix ?? (kernelIpv4Prefix ? Number(kernelIpv4Prefix) : undefined),
+      ipv6Address: iface.ipv6Address ?? kernelIpv6Address,
+      ipv6Prefix: iface.ipv6Prefix ?? (kernelIpv6Prefix ? Number(kernelIpv6Prefix) : undefined),
       kernelState: kernelIface?.state,
       kernelAddresses: kernelIface?.addresses,
       kernelFlags: kernelIface?.flags,

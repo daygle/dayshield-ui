@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getNatConfig, updateNatConfig, getNatRules, createNatRule, updateNatRule, deleteNatRule } from '../../api/nat'
 import { getInterfaces } from '../../api/interfaces'
+import { getSystemConfig } from '../../api/system'
 import { useToast } from '../../context/ToastContext'
 import type { NatRule, NatOutboundMode, NatProtocol, NatRuleType, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
@@ -24,6 +25,7 @@ const defaultRuleForm = (): Omit<NatRule, 'id'> => ({
   destination_port: null,
   translation: null,
   nat_reflection: false,
+  address_family: 'ipv4',
   priority: 100,
   log: false,
   auto_firewall_rule: true,
@@ -53,10 +55,16 @@ export default function OutboundNAT() {
     queryFn: getInterfaces,
   })
 
+  const { data: systemData } = useQuery({
+    queryKey: ['system', 'config'],
+    queryFn: getSystemConfig,
+  })
+
   const config = configData?.data
   // Outbound NAT page shows masquerade + SNAT rules only; DNAT lives in Port Forwards.
   const rules = (rulesData?.data ?? []).filter((r) => r.rule_type !== 'dnat') as RuleRow[]
   const wanInterfaces = (interfacesData?.data ?? []).filter((iface) => iface.enabled !== false && isWanInterface(iface))
+  const ipv6Enabled = Boolean(systemData?.data.ipv6Enabled)
 
   // â”€â”€ Mode mutation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const configMutation = useMutation({
@@ -85,7 +93,7 @@ export default function OutboundNAT() {
   const openEditModal = (rule: NatRule) => {
     setEditingRule(rule)
     const { id: _id, ...rest } = rule
-    setRuleForm(rest)
+    setRuleForm({ ...rest, address_family: rest.address_family ?? 'ipv4' })
     setFormErrors({})
     setRuleModalOpen(true)
   }
@@ -93,6 +101,9 @@ export default function OutboundNAT() {
   const validate = (): boolean => {
     const errors: Partial<Record<keyof NatRule, string>> = {}
     if (!ruleForm.interface?.trim()) errors.interface = 'Interface is required'
+    if (ruleForm.address_family === 'ipv6' && !ipv6Enabled) {
+      errors.address_family = 'IPv6 NAT requires IPv6 to be enabled in System settings'
+    }
     if (ruleForm.rule_type === 'snat' && !ruleForm.translation?.address?.trim()) {
       errors.translation = 'Translation address is required for SNAT'
     }
@@ -166,6 +177,7 @@ export default function OutboundNAT() {
       ),
     },
     { key: 'interface', header: 'Interface' },
+    { key: 'address_family', header: 'Family', render: (row) => ((row as NatRule).address_family ?? 'ipv4').toUpperCase() },
     { key: 'source', header: 'Source', render: (row) => (row as NatRule).source ?? 'any' },
     { key: 'destination', header: 'Destination', render: (row) => (row as NatRule).destination ?? 'any' },
     {
@@ -341,6 +353,17 @@ export default function OutboundNAT() {
             <option value="tcp">TCP</option>
             <option value="udp">UDP</option>
             <option value="tcp_udp">TCP/UDP</option>
+          </FormField>
+          <FormField
+            id="nat-family"
+            label="Address Family"
+            as="select"
+            value={ruleForm.address_family ?? 'ipv4'}
+            error={formErrors.address_family}
+            onChange={(e) => setRuleForm({ ...ruleForm, address_family: e.target.value as NatRule['address_family'] })}
+          >
+            <option value="ipv4">IPv4</option>
+            <option value="ipv6" disabled={!ipv6Enabled}>IPv6</option>
           </FormField>
           <FormField
             id="nat-priority"

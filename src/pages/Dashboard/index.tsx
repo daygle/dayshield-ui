@@ -382,6 +382,12 @@ export default function Dashboard() {
                   <span className="text-gray-500">WAN IPv4</span>
                   <span className="font-medium text-gray-800">{net.data.wan_ip ?? '-'}</span>
                 </div>
+                {net.data.wan_ipv6 && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500">WAN IPv6</span>
+                    <span className="font-medium text-gray-800">{net.data.wan_ipv6}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500">Gateway</span>
                   {net.data.gateway_status === 'up' ? (
@@ -411,7 +417,7 @@ export default function Dashboard() {
                           <span className="font-medium text-gray-700">
                             {formatDashboardInterfaceName(iface.description, iface.name, 'LAN')}
                           </span>
-                          <span className="text-gray-500">{iface.ip ?? '-'}</span>
+                          <span className="text-gray-500">{[iface.ip, iface.ipv6].filter(Boolean).join(' / ') || '-'}</span>
                           {iface.enabled ? (
                             <Badge variant="green">Up</Badge>
                           ) : (
@@ -579,6 +585,7 @@ export default function Dashboard() {
                       {formatDashboardInterfaceName(net.data.wan_iface_description, net.data.wan_iface, 'WAN')}
                     </p>
                     <p className="text-xs text-gray-500">{net.data.wan_ip ?? '-'}</p>
+                    {net.data.wan_ipv6 && <p className="text-xs text-gray-500">{net.data.wan_ipv6}</p>}
                   </div>
                   <div className="flex items-center">
                     {net.data.gateway_status === 'up' ? (
@@ -594,7 +601,7 @@ export default function Dashboard() {
                       <p className="text-sm font-medium text-gray-800">
                         {formatDashboardInterfaceName(iface.description, iface.name, 'LAN')}
                       </p>
-                      <p className="text-xs text-gray-500">{iface.ip ?? '-'}</p>
+                      <p className="text-xs text-gray-500">{[iface.ip, iface.ipv6].filter(Boolean).join(' / ') || '-'}</p>
                     </div>
                     <div className="flex items-center">
                       {iface.enabled ? (

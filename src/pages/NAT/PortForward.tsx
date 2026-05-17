@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPortForwards, createPortForward, updatePortForward, deletePortForward } from '../../api/nat'
 import { getInterfaces } from '../../api/interfaces'
+import { getSystemConfig } from '../../api/system'
 import { useToast } from '../../context/ToastContext'
 import type { NatRule, NatProtocol, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
@@ -29,6 +30,7 @@ const defaultForm = (): Omit<NatRule, 'id'> => ({
     port_end: null,
   },
   nat_reflection: false,
+  address_family: 'ipv4',
   priority: 100,
   log: false,
   auto_firewall_rule: true,
@@ -53,8 +55,14 @@ export default function PortForwardPage() {
     queryFn: getInterfaces,
   })
 
+  const { data: systemData } = useQuery({
+    queryKey: ['system', 'config'],
+    queryFn: getSystemConfig,
+  })
+
   const portForwards = (data?.data ?? []) as PfRow[]
   const wanInterfaces = (interfacesData?.data ?? []).filter((iface) => iface.enabled !== false && isWanInterface(iface))
+  const ipv6Enabled = Boolean(systemData?.data.ipv6Enabled)
 
   // â”€â”€ Form state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [modalOpen, setModalOpen] = useState(false)
@@ -73,7 +81,11 @@ export default function PortForwardPage() {
   const openEdit = (rule: NatRule) => {
     setEditing(rule)
     const { id: _id, ...rest } = rule
-    setForm({ ...rest, translation: rest.translation ?? { address: '', port: null, port_end: null } })
+    setForm({
+      ...rest,
+      address_family: rest.address_family ?? 'ipv4',
+      translation: rest.translation ?? { address: '', port: null, port_end: null },
+    })
     setFormErrors({})
     setModalOpen(true)
   }
@@ -81,6 +93,7 @@ export default function PortForwardPage() {
   const validate = (): boolean => {
     const errors: Record<string, string> = {}
     if (!form.interface?.trim()) errors.interface = 'WAN interface is required'
+    if (form.address_family === 'ipv6' && !ipv6Enabled) errors.address_family = 'IPv6 NAT requires IPv6 to be enabled in System settings'
     if (!form.destination_port) errors.destination_port = 'External port is required'
     if (!form.translation?.address?.trim()) errors.translation_address = 'Internal host IP is required'
     if (!form.translation?.port) errors.translation_port = 'Internal port is required'
@@ -145,6 +158,7 @@ export default function PortForwardPage() {
       ),
     },
     { key: 'interface', header: 'WAN Interface' },
+    { key: 'address_family', header: 'Family', render: (row) => ((row as NatRule).address_family ?? 'ipv4').toUpperCase() },
     { key: 'destination_port', header: 'Ext. Port', render: (row) => (row as NatRule).destination_port ?? 'â€”' },
     {
       key: 'translation_address',
@@ -254,6 +268,17 @@ export default function PortForwardPage() {
             <option value="udp">UDP</option>
             <option value="tcp_udp">TCP/UDP</option>
             <option value="any">Any</option>
+          </FormField>
+          <FormField
+            id="pf-family"
+            label="Address Family"
+            as="select"
+            value={form.address_family ?? 'ipv4'}
+            error={formErrors.address_family}
+            onChange={(e) => setForm({ ...form, address_family: e.target.value as NatRule['address_family'] })}
+          >
+            <option value="ipv4">IPv4</option>
+            <option value="ipv6" disabled={!ipv6Enabled}>IPv6</option>
           </FormField>
           <FormField
             id="pf-ext-port"

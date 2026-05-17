@@ -9,6 +9,7 @@ import {
   getSuricataAlerts,
 } from '../../api/suricata'
 import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
+import { getSystemConfig } from '../../api/system'
 import type {
   SuricataConfig,
   SuricataAlert,
@@ -57,6 +58,7 @@ function SuricataContent() {
   const [interfaceConfig, setInterfaceConfig] = useState<InterfaceSuricataConfig | null>(null)
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
   const [alerts, setAlerts] = useState<AlertRow[]>([])
+  const [ipv6Enabled, setIpv6Enabled] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -73,6 +75,27 @@ function SuricataContent() {
     return runtimeIpv4 ?? null
   }, [])
 
+  const extractInterfaceIpv6Cidr = useCallback((iface?: NetworkInterface | null): string | null => {
+    if (!iface) return null
+    if (iface.ipv6Address && iface.ipv6Prefix != null) {
+      return `${iface.ipv6Address}/${iface.ipv6Prefix}`
+    }
+    const runtimeIpv6 = (iface.kernelAddresses ?? []).find((addr) => {
+      const lower = addr.toLowerCase()
+      return addr.includes(':') && addr.includes('/') && !lower.startsWith('fe80:')
+    })
+    return runtimeIpv6 ?? null
+  }, [])
+
+  const extractInterfaceCidrs = useCallback((iface?: NetworkInterface | null): string[] => {
+    const cidrs = [extractInterfaceIpv4Cidr(iface)].filter((cidr): cidr is string => Boolean(cidr))
+    if (ipv6Enabled) {
+      const ipv6 = extractInterfaceIpv6Cidr(iface)
+      if (ipv6) cidrs.push(ipv6)
+    }
+    return cidrs
+  }, [extractInterfaceIpv4Cidr, extractInterfaceIpv6Cidr, ipv6Enabled])
+
   const loadAll = useCallback(() => {
     setLoading(true)
     const loadPromise = selectedInterface
@@ -80,31 +103,36 @@ function SuricataContent() {
           getSuricataConfig(),
           getInterfaceSuricataConfig(selectedInterface),
           getSuricataAlerts(),
+          getSystemConfig(),
         ])
-      : Promise.all([getSuricataConfig(), getSuricataAlerts()])
+      : Promise.all([getSuricataConfig(), getSuricataAlerts(), getSystemConfig()])
 
     loadPromise
       .then((results) => {
         if (selectedInterface) {
-          const [cfg, ifaceCfg, al] = results as [
+          const [cfg, ifaceCfg, al, system] = results as [
             { data: SuricataConfig },
             { data: InterfaceSuricataConfig },
             { data: SuricataAlert[] },
+            { data: { ipv6Enabled: boolean } },
           ]
           setConfig(cfg.data)
           setInterfaceConfig(ifaceCfg.data)
           setAlerts(al.data as AlertRow[])
+          setIpv6Enabled(Boolean(system.data.ipv6Enabled))
           setError(null)
           return
         }
 
-        const [cfg, al] = results as [
+        const [cfg, al, system] = results as [
           { data: SuricataConfig },
           { data: SuricataAlert[] },
+          { data: { ipv6Enabled: boolean } },
         ]
         setConfig(cfg.data)
         setInterfaceConfig(null)
         setAlerts(al.data as AlertRow[])
+        setIpv6Enabled(Boolean(system.data.ipv6Enabled))
         setError(null)
       })
       .catch((err: Error) => setError(err.message))
@@ -189,8 +217,7 @@ function SuricataContent() {
     // Get CIDRs from monitored interfaces
     const homeNets = config.interfaces
       .map((ifaceName) => interfaces.find((iface) => iface.name === ifaceName))
-      .map((iface) => extractInterfaceIpv4Cidr(iface))
-      .filter((cidr): cidr is string => Boolean(cidr))
+      .flatMap((iface) => extractInterfaceCidrs(iface))
 
     if (homeNets.length === 0) {
       return false
@@ -213,22 +240,21 @@ function SuricataContent() {
     const hasMonitoredIfaceWithIp = config.interfaces.some(
       (ifaceName) => {
         const iface = interfaces.find((i) => i.name === ifaceName)
-        return Boolean(extractInterfaceIpv4Cidr(iface))
+        return extractInterfaceCidrs(iface).length > 0
       }
     )
 
     if (hasMonitoredIfaceWithIp) {
       handleAutoPopulateHomeNetworks()
     }
-  }, [config?.interfaces.join(','), interfaces.length, extractInterfaceIpv4Cidr])
+  }, [config?.interfaces.join(','), interfaces.length, extractInterfaceCidrs])
 
   const derivedHomeNets = React.useMemo(() => {
     if (!config) return []
     return config.interfaces
       .map((ifaceName) => interfaces.find((iface) => iface.name === ifaceName))
-      .map((iface) => extractInterfaceIpv4Cidr(iface))
-      .filter((cidr): cidr is string => Boolean(cidr))
-  }, [config, interfaces, extractInterfaceIpv4Cidr])
+      .flatMap((iface) => extractInterfaceCidrs(iface))
+  }, [config, interfaces, extractInterfaceCidrs])
 
   const displayedHomeNets = config?.homeNet.length ? config.homeNet : derivedHomeNets
 
@@ -374,7 +400,7 @@ function SuricataContent() {
             {interfaces.map((iface) => {
               const isMonitored = config.interfaces.includes(iface.name)
               const isSelected = selectedInterface === iface.name
-              const interfaceIp = extractInterfaceIpv4Cidr(iface)
+              const interfaceIp = extractInterfaceCidrs(iface).join(', ')
               return (
                 <button
                   key={iface.name}
@@ -391,7 +417,7 @@ function SuricataContent() {
                         {formatInterfaceDisplayName(iface.description, iface.name)}
                       </h4>
                       <p className="mt-1 text-xs text-gray-500">
-                        {interfaceIp ?? 'No IP configured'}
+                        {interfaceIp || 'No IP configured'}
                       </p>
                     </div>
                     <span
@@ -437,7 +463,7 @@ function SuricataContent() {
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">IP Address</dt>
               <dd className="mt-1 font-mono text-gray-900">
-                {extractInterfaceIpv4Cidr(selectedInterfaceMeta) ?? 'Not configured'}
+                {extractInterfaceCidrs(selectedInterfaceMeta).join(', ') || 'Not configured'}
               </dd>
             </div>
             <div>

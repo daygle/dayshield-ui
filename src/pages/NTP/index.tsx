@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getNtpConfig, updateNtpConfig, getNtpStatus, postNtpResync } from '../../api/ntp'
 import { getInterfacesInventory } from '../../api/interfaces'
+import { getSystemConfig } from '../../api/system'
 import type { NtpConfig, NtpStatus, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import FormField from '../../components/FormField'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
-// ── NTP server validation (IPv4 or hostname; IPv6 rejected) ─────────────────
+// ── NTP server validation ───────────────────────────────────────────────────
 
 const IPV4_RE = /^(\d{1,3}\.){3}\d{1,3}$/
 
@@ -31,9 +32,20 @@ function isValidHostname(hostname: string): boolean {
   })
 }
 
-function isValidNtpServer(value: string): boolean {
+function isValidIPv6(value: string): boolean {
+  if (!value.includes(':') || value.includes('/')) return false
+  try {
+    new URL(`http://[${value}]/`)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function isValidNtpServer(value: string, ipv6Enabled: boolean): boolean {
   if (value.startsWith('[')) return false
   if (isValidIPv4(value)) return true
+  if (isValidIPv6(value)) return ipv6Enabled
   return isValidHostname(value)
 }
 
@@ -123,6 +135,7 @@ export default function NtpPage() {
   const [config, setConfig] = useState<NtpConfig>(DEFAULT_CONFIG)
   const [status, setStatus] = useState<NtpStatus | null>(null)
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
+  const [ipv6Enabled, setIpv6Enabled] = useState(false)
 
   const interfaceLabel = (iface: NetworkInterface): string =>
     formatInterfaceDisplayName(iface.description, iface.name)
@@ -143,10 +156,11 @@ export default function NtpPage() {
 
   useEffect(() => {
     setLoading(true)
-    Promise.all([getNtpConfig(), getNtpStatus(), getInterfacesInventory()])
-      .then(([cfg, stat, inventory]) => {
+    Promise.all([getNtpConfig(), getNtpStatus(), getInterfacesInventory(), getSystemConfig()])
+      .then(([cfg, stat, inventory, system]) => {
         setConfig(cfg.data)
         setStatus(stat.data)
+        setIpv6Enabled(Boolean(system.data.ipv6Enabled))
         const configured = Array.isArray(inventory.data?.configured)
           ? inventory.data.configured.filter((i) => i.type !== 'loopback')
           : []
@@ -226,11 +240,15 @@ export default function NtpPage() {
   const handleAddServer = () => {
     const normalized = normalizeNtpServerInput(serverInput)
     if (!normalized) {
-      setServerError('Enter an IPv4 address or hostname.')
+      setServerError(ipv6Enabled ? 'Enter an IP address or hostname.' : 'Enter an IPv4 address or hostname.')
       return
     }
-    if (!isValidNtpServer(normalized)) {
-      setServerError('Only valid IPv4 addresses or hostnames are accepted.')
+    if (!isValidNtpServer(normalized, ipv6Enabled)) {
+      if (isValidIPv6(normalized) && !ipv6Enabled) {
+        setServerError('IPv6 NTP servers require IPv6 to be enabled in System settings.')
+      } else {
+        setServerError(ipv6Enabled ? 'Only valid IP addresses or hostnames are accepted.' : 'Only valid IPv4 addresses or hostnames are accepted.')
+      }
       return
     }
     if (config.servers.includes(normalized)) {
@@ -385,7 +403,7 @@ export default function NtpPage() {
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Upstream Servers</h3>
             <p className="mt-1 text-xs text-gray-500">
-              IPv4 addresses or hostnames used for time synchronization. Pasted entries like server pool.ntp.org are also accepted.
+              {ipv6Enabled ? 'IP addresses or hostnames' : 'IPv4 addresses or hostnames'} used for time synchronization. Pasted entries like server pool.ntp.org are also accepted.
             </p>
           </div>
 
@@ -416,8 +434,8 @@ export default function NtpPage() {
           <div className="flex items-end gap-3">
             <FormField
               id="ntp-server-input"
-              label="Add Server (IPv4 or hostname)"
-              placeholder="0.pool.ntp.org, 203.0.113.1, or server 0.pool.ntp.org"
+              label={ipv6Enabled ? 'Add Server (IP or hostname)' : 'Add Server (IPv4 or hostname)'}
+              placeholder={ipv6Enabled ? '0.pool.ntp.org, 203.0.113.1, 2001:db8::123, or server 0.pool.ntp.org' : '0.pool.ntp.org, 203.0.113.1, or server 0.pool.ntp.org'}
               className="flex-1"
               value={serverInput}
               error={serverError}
