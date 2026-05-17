@@ -258,6 +258,28 @@ export interface DhcpConfigPerInterface {
   domainName: string
 }
 
+export interface Dhcp6Config {
+  enabled: boolean
+  interface: string
+  subnet: string      // CIDR e.g. "fd00::/64"
+  rangeStart: string
+  rangeEnd: string
+  dnsServers: string[]
+  leaseTime: number   // seconds
+  domainName: string
+}
+
+/** Per-interface DHCPv6 configuration. Used by /interfaces/{name}/dhcp6 endpoints. */
+export interface Dhcp6ConfigPerInterface {
+  enabled: boolean
+  subnet: string      // CIDR e.g. "fd00::/64" - must match the interface network
+  rangeStart: string
+  rangeEnd: string
+  dnsServers: string[]
+  leaseTime: number   // seconds
+  domainName: string
+}
+
 export interface DhcpStaticLease {
   id: string
   mac: string
@@ -273,6 +295,22 @@ export interface DhcpLease {
   starts: string    // ISO timestamp or empty string
   ends: string      // Unix epoch seconds (string) or ISO timestamp
   state: 'active' | 'expired' | 'reserved' | 'declined' | 'reclaimed'
+}
+
+export interface Dhcp6StaticLease {
+  id: string
+  duid: string       // DHCP Unique Identifier (colon-separated hex)
+  ipAddress: string
+  hostname: string
+  description: string
+}
+
+export interface Dhcp6Lease {
+  ipAddress: string
+  duid: string
+  hostname: string
+  ends: string       // Unix epoch seconds (string)
+  state: 'active' | 'expired' | 'declined' | 'reclaimed'
 }
 
 // ── WireGuard ─────────────────────────────────────────────────────────────────

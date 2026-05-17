@@ -1,5 +1,15 @@
 import apiClient from './client'
-import type { ApiResponse, DhcpConfig, DhcpConfigPerInterface, DhcpStaticLease, DhcpLease } from '../types'
+import type {
+  ApiResponse,
+  Dhcp6Config,
+  Dhcp6ConfigPerInterface,
+  Dhcp6StaticLease,
+  Dhcp6Lease,
+  DhcpConfig,
+  DhcpConfigPerInterface,
+  DhcpStaticLease,
+  DhcpLease,
+} from '../types'
 
 const LEASE_STATES: ReadonlySet<DhcpLease['state']> = new Set([
   'active',
@@ -62,6 +72,18 @@ export const updateDhcpConfig = (config: Partial<DhcpConfig>): Promise<ApiRespon
     .post<ApiResponse<DhcpConfig>>('/dhcp/config', config)
     .then((r) => r.data)
 
+// ── DHCPv6 Config ───────────────────────────────────────────────────────────
+
+export const getDhcp6Config = (): Promise<ApiResponse<Dhcp6Config>> =>
+  apiClient
+    .get<ApiResponse<Dhcp6Config>>('/dhcp6/config')
+    .then((r) => r.data)
+
+export const updateDhcp6Config = (config: Partial<Dhcp6Config>): Promise<ApiResponse<Dhcp6Config>> =>
+  apiClient
+    .post<ApiResponse<Dhcp6Config>>('/dhcp6/config', config)
+    .then((r) => r.data)
+
 // ── Per-interface DHCP ────────────────────────────────────────────────────────
 
 export const getInterfaceDhcpConfig = (interfaceName: string): Promise<ApiResponse<DhcpConfigPerInterface>> =>
@@ -76,6 +98,22 @@ export const updateInterfaceDhcpConfig = (
   apiClient
     .post<ApiResponse<DhcpConfigPerInterface>>(
       `/interfaces/${encodeURIComponent(interfaceName)}/dhcp/config`,
+      config,
+    )
+    .then((r) => r.data)
+
+export const getInterfaceDhcp6Config = (interfaceName: string): Promise<ApiResponse<Dhcp6ConfigPerInterface>> =>
+  apiClient
+    .get<ApiResponse<Dhcp6ConfigPerInterface>>(`/interfaces/${encodeURIComponent(interfaceName)}/dhcp6/config`)
+    .then((r) => r.data)
+
+export const updateInterfaceDhcp6Config = (
+  interfaceName: string,
+  config: Partial<Dhcp6ConfigPerInterface>,
+): Promise<ApiResponse<Dhcp6ConfigPerInterface>> =>
+  apiClient
+    .post<ApiResponse<Dhcp6ConfigPerInterface>>(
+      `/interfaces/${encodeURIComponent(interfaceName)}/dhcp6/config`,
       config,
     )
     .then((r) => r.data)
@@ -132,3 +170,61 @@ export const getDhcpLeases = (): Promise<ApiResponse<DhcpLease[]>> =>
   apiClient
     .get<ApiResponse<unknown>>('/dhcp/leases')
     .then((r) => ({ ...r.data, data: normalizeDhcpLeases(r.data.data) }))
+
+// ── DHCPv6 Static leases ──────────────────────────────────────────────────────
+
+export const getDhcp6StaticLeases = (): Promise<ApiResponse<Dhcp6StaticLease[]>> =>
+  apiClient
+    .get<ApiResponse<Dhcp6StaticLease[]>>('/dhcp6/static-leases')
+    .then((r) => r.data)
+
+export const createDhcp6StaticLease = (
+  lease: Omit<Dhcp6StaticLease, 'id'> & { mac?: string },
+): Promise<ApiResponse<Dhcp6StaticLease>> =>
+  apiClient
+    .post<ApiResponse<Dhcp6StaticLease>>('/dhcp6/static-leases', lease)
+    .then((r) => r.data)
+
+export const deleteDhcp6StaticLease = (id: string): Promise<ApiResponse<void>> =>
+  apiClient
+    .delete<ApiResponse<void>>(`/dhcp6/static-leases/${encodeURIComponent(id)}`)
+    .then((r) => r.data)
+
+// ── DHCPv6 Active leases ──────────────────────────────────────────────────────
+
+const DHCPv6_LEASE_STATES: ReadonlySet<Dhcp6Lease['state']> = new Set([
+  'active',
+  'expired',
+  'declined',
+  'reclaimed',
+])
+
+function normalizeDhcp6LeaseState(raw: unknown): Dhcp6Lease['state'] {
+  const value = typeof raw === 'string' ? raw.toLowerCase() : ''
+  if (DHCPv6_LEASE_STATES.has(value as Dhcp6Lease['state'])) return value as Dhcp6Lease['state']
+  return 'active'
+}
+
+function normalizeDhcp6Lease(raw: unknown): Dhcp6Lease | null {
+  const value = (raw ?? {}) as Record<string, unknown>
+  const ipAddress = readString(value.ipAddress ?? value.ip_address ?? value.address).trim()
+  if (!ipAddress) return null
+  return {
+    ipAddress,
+    duid: readString(value.duid),
+    hostname: readString(value.hostname ?? value.client_hostname),
+    ends: readString(value.ends ?? value.end ?? value.expire ?? value.expires_at),
+    state: normalizeDhcp6LeaseState(value.state),
+  }
+}
+
+export const getDhcp6Leases = (): Promise<ApiResponse<Dhcp6Lease[]>> =>
+  apiClient
+    .get<ApiResponse<unknown>>('/dhcp6/leases')
+    .then((r) => {
+      const raw = r.data.data
+      const leases = Array.isArray(raw)
+        ? raw.map(normalizeDhcp6Lease).filter((l): l is Dhcp6Lease => l !== null)
+        : []
+      return { ...r.data, data: leases }
+    })

@@ -2,19 +2,37 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   getDhcpConfig,
+  getDhcp6Config,
   updateDhcpConfig,
+  updateDhcp6Config,
   getDhcpStaticLeases,
   createDhcpStaticLease,
   deleteDhcpStaticLease,
   getDhcpLeases,
+  getDhcp6StaticLeases,
+  createDhcp6StaticLease,
+  deleteDhcp6StaticLease,
+  getDhcp6Leases,
   getInterfaceDhcpConfig,
+  getInterfaceDhcp6Config,
   updateInterfaceDhcpConfig,
+  updateInterfaceDhcp6Config,
   getInterfaceStaticLeases,
   createInterfaceStaticLease,
   deleteInterfaceStaticLease,
 } from '../../api/dhcp'
 import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
-import type { DhcpConfig, DhcpConfigPerInterface, DhcpStaticLease, DhcpLease, NetworkInterface } from '../../types'
+import type {
+  Dhcp6Config,
+  Dhcp6ConfigPerInterface,
+  Dhcp6StaticLease,
+  Dhcp6Lease,
+  DhcpConfig,
+  DhcpConfigPerInterface,
+  DhcpStaticLease,
+  DhcpLease,
+  NetworkInterface,
+} from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
@@ -25,6 +43,8 @@ import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
 
 type StaticLeaseRow = DhcpStaticLease & Record<string, unknown>
 type ActiveLeaseRow = DhcpLease & Record<string, unknown>
+type Static6LeaseRow = Dhcp6StaticLease & Record<string, unknown>
+type Active6LeaseRow = Dhcp6Lease & Record<string, unknown>
 
 const staticColumns: Column<StaticLeaseRow>[] = [
   { key: 'mac', header: 'MAC Address' },
@@ -32,6 +52,20 @@ const staticColumns: Column<StaticLeaseRow>[] = [
   { key: 'hostname', header: 'Hostname' },
   { key: 'description', header: 'Description' },
 ]
+
+const static6Columns: Column<Static6LeaseRow>[] = [
+  { key: 'duid', header: 'DUID' },
+  { key: 'ipAddress', header: 'IPv6 Address' },
+  { key: 'hostname', header: 'Hostname' },
+  { key: 'description', header: 'Description' },
+]
+
+const defaultLease6Form: Omit<Dhcp6StaticLease, 'id'> = {
+  duid: '',
+  ipAddress: '',
+  hostname: '',
+  description: '',
+}
 
 const defaultLeaseForm: Omit<DhcpStaticLease, 'id'> = {
   mac: '',
@@ -52,6 +86,17 @@ const defaultConfigForm = (): Partial<DhcpConfig> => ({
   domainName: '',
 })
 
+const defaultConfig6Form = (): Partial<Dhcp6Config> => ({
+  enabled: true,
+  interface: '',
+  subnet: '',
+  rangeStart: '',
+  rangeEnd: '',
+  dnsServers: [],
+  leaseTime: 86400,
+  domainName: '',
+})
+
 function isWanInterface(iface: NetworkInterface): boolean {
   const desc = iface.description?.trim().toLowerCase() ?? ''
   return Boolean(iface.wanMode) || desc.includes('wan') || iface.name.toLowerCase() === 'wan'
@@ -62,9 +107,13 @@ export default function DHCP() {
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedInterface = searchParams.get('iface')
   const [config, setConfig] = useState<DhcpConfig | null>(null)
+  const [config6, setConfig6] = useState<Dhcp6Config | null>(null)
   const [interfaceConfig, setInterfaceConfig] = useState<DhcpConfigPerInterface | null>(null)
+  const [interfaceConfig6, setInterfaceConfig6] = useState<Dhcp6ConfigPerInterface | null>(null)
   const [staticLeases, setStaticLeases] = useState<StaticLeaseRow[]>([])
   const [activeLeases, setActiveLeases] = useState<ActiveLeaseRow[]>([])
+  const [static6Leases, setStatic6Leases] = useState<Static6LeaseRow[]>([])
+  const [active6Leases, setActive6Leases] = useState<Active6LeaseRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -73,11 +122,21 @@ export default function DHCP() {
   const [leaseSaving, setLeaseSaving] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  const [lease6ModalOpen, setLease6ModalOpen] = useState(false)
+  const [lease6Form, setLease6Form] = useState<Omit<Dhcp6StaticLease, 'id'> & { mac?: string }>(defaultLease6Form)
+  const [lease6Saving, setLease6Saving] = useState(false)
+  const [delete6Id, setDelete6Id] = useState<string | null>(null)
+  const [deleting6, setDeleting6] = useState(false)
   const [configModalOpen, setConfigModalOpen] = useState(false)
   const [configForm, setConfigForm] = useState<Partial<DhcpConfig | DhcpConfigPerInterface>>(defaultConfigForm())
   const [configSaving, setConfigSaving] = useState(false)
+  const [config6ModalOpen, setConfig6ModalOpen] = useState(false)
+  const [config6Form, setConfig6Form] = useState<Partial<Dhcp6Config | Dhcp6ConfigPerInterface>>(defaultConfig6Form())
+  const [config6Saving, setConfig6Saving] = useState(false)
   // DNS servers are edited as a comma-separated string in the input
   const [dnsInput, setDnsInput] = useState('')
+  const [dns6Input, setDns6Input] = useState('')
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
 
   const interfaceLabel = (iface: NetworkInterface): string =>
@@ -172,26 +231,37 @@ export default function DHCP() {
     if (selectedInterface) {
       Promise.all([
         getInterfaceDhcpConfig(selectedInterface),
+        getInterfaceDhcp6Config(selectedInterface),
         getInterfaceStaticLeases(selectedInterface),
         getDhcpLeases(),
+        getDhcp6StaticLeases(),
+        getDhcp6Leases(),
       ])
-        .then(([cfg, statics, active]) => {
+        .then(([cfg, cfg6, statics, active, statics6, active6]) => {
           setInterfaceConfig(cfg.data)
+          setInterfaceConfig6(cfg6.data)
           setConfig(null)
+          setConfig6(null)
           setStaticLeases(statics.data as StaticLeaseRow[])
           setActiveLeases(active.data as ActiveLeaseRow[])
+          setStatic6Leases(statics6.data as Static6LeaseRow[])
+          setActive6Leases(active6.data as Active6LeaseRow[])
         })
         .catch((err: Error) => setError(err.message))
         .finally(() => setLoading(false))
       return
     }
 
-    Promise.all([getDhcpConfig(), getDhcpStaticLeases(), getDhcpLeases()])
-      .then(([cfg, statics, actives]) => {
+    Promise.all([getDhcpConfig(), getDhcp6Config(), getDhcpStaticLeases(), getDhcpLeases(), getDhcp6StaticLeases(), getDhcp6Leases()])
+      .then(([cfg, cfg6, statics, actives, statics6, actives6]) => {
         setConfig(cfg.data)
+        setConfig6(cfg6.data)
         setInterfaceConfig(null)
+        setInterfaceConfig6(null)
         setStaticLeases(statics.data as StaticLeaseRow[])
         setActiveLeases(actives.data as ActiveLeaseRow[])
+        setStatic6Leases(statics6.data as Static6LeaseRow[])
+        setActive6Leases(actives6.data as Active6LeaseRow[])
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))
@@ -318,6 +388,44 @@ export default function DHCP() {
       .finally(() => setConfigSaving(false))
   }
 
+  const openConfig6Modal = () => {
+    if (selectedInterface && interfaceConfig6) {
+      setConfig6Form({ ...interfaceConfig6 })
+      setDns6Input((interfaceConfig6.dnsServers ?? []).join(', '))
+    } else if (config6) {
+      setConfig6Form({ ...config6 })
+      setDns6Input((config6.dnsServers ?? []).join(', '))
+    } else {
+      setConfig6Form(defaultConfig6Form())
+      setDns6Input('')
+    }
+    setConfig6ModalOpen(true)
+  }
+
+  const handleSaveConfig6 = () => {
+    const dnsServers = dns6Input
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    const payload = { ...config6Form, dnsServers }
+    setConfig6Saving(true)
+    const savePromise = selectedInterface
+      ? updateInterfaceDhcp6Config(selectedInterface, payload as Partial<Dhcp6ConfigPerInterface>)
+      : updateDhcp6Config(payload as Partial<Dhcp6Config>)
+
+    savePromise
+      .then((r) => {
+        if (selectedInterface) {
+          setInterfaceConfig6(r.data as Dhcp6ConfigPerInterface)
+        } else {
+          setConfig6(r.data as Dhcp6Config)
+        }
+        setConfig6ModalOpen(false)
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setConfig6Saving(false))
+  }
+
   const handleAddLease = () => {
     setLeaseSaving(true)
     const addPromise = selectedInterface
@@ -360,6 +468,92 @@ export default function DHCP() {
       .finally(() => setDeleting(false))
   }
 
+  const handleAddLease6 = () => {
+    setLease6Saving(true)
+    createDhcp6StaticLease(lease6Form)
+      .then(() => {
+        setLease6ModalOpen(false)
+        setLease6Form(defaultLease6Form)
+        getDhcp6StaticLeases()
+          .then((r) => setStatic6Leases(r.data as Static6LeaseRow[]))
+          .catch((err: Error) => setError(err.message))
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setLease6Saving(false))
+  }
+
+  const handleDeleteLease6 = () => {
+    if (delete6Id === null) return
+    setDeleting6(true)
+    deleteDhcp6StaticLease(delete6Id)
+      .then(() => {
+        setDelete6Id(null)
+        getDhcp6StaticLeases()
+          .then((r) => setStatic6Leases(r.data as Static6LeaseRow[]))
+          .catch((err: Error) => setError(err.message))
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setDeleting6(false))
+  }
+
+  const static6ColumnsWithActions: Column<Static6LeaseRow>[] = [
+    ...static6Columns,
+    {
+      key: 'actions',
+      header: '',
+      className: 'w-16 text-right',
+      render: (row) => (
+        <button
+          onClick={() => setDelete6Id(row.id as string)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+          title="Delete DHCPv6 static lease"
+          aria-label="Delete DHCPv6 static lease"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+          </svg>
+        </button>
+      ),
+    },
+  ]
+
+  const active6Columns: Column<Active6LeaseRow>[] = [
+    { key: 'ipAddress', header: 'IPv6 Address' },
+    { key: 'duid', header: 'DUID', render: (row) => <span className="font-mono text-xs">{row.duid as string || '-'}</span> },
+    { key: 'hostname', header: 'Hostname', render: (row) => (row.hostname as string) || '-' },
+    {
+      key: 'state',
+      header: 'State',
+      render: (row) => {
+        const state = row.state as string
+        const map: Record<string, string> = {
+          active:    'bg-green-100 text-green-700',
+          expired:   'bg-red-100 text-red-700',
+          declined:  'bg-orange-100 text-orange-700',
+          reclaimed: 'bg-gray-100 text-gray-500',
+        }
+        return (
+          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold capitalize ${map[state] ?? 'bg-gray-100 text-gray-500'}`}>
+            {state}
+          </span>
+        )
+      },
+    },
+    {
+      key: 'ends',
+      header: 'Expires',
+      render: (row) => {
+        const raw = row.ends as string
+        if (!raw) return '-'
+        const asNum = Number(raw)
+        const d = Number.isFinite(asNum) && asNum > 1e9
+          ? new Date(asNum * 1000)
+          : new Date(raw)
+        return isNaN(d.getTime()) ? raw : formatDateTime(d)
+      },
+    },
+  ]
+
   const staticColumnsWithActions: Column<StaticLeaseRow>[] = [
     ...staticColumns,
     {
@@ -400,6 +594,9 @@ export default function DHCP() {
         title="DHCP"
         subtitle="Select the interface whose DHCP settings, reservations, and active leases you want to manage"
       >
+        <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+          This page manages DHCPv4 (Kea). IPv6 uplink modes (DHCPv6/SLAAC/track prefix) are configured per interface in Interfaces when IPv6 is enabled in System settings.
+        </div>
         <div className="max-w-md">
           <FormField
             id="dhcp-interface-selector"
@@ -494,6 +691,73 @@ export default function DHCP() {
         )}
       </Card>
 
+      <Card
+        title={selectedInterface ? `DHCPv6: ${selectedInterfaceLabel}` : 'DHCPv6 Server'}
+        subtitle={selectedInterface ? 'Per-interface DHCPv6 scope settings' : 'Kea DHCPv6 configuration'}
+        actions={
+          <button
+            onClick={openConfig6Modal}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            title={selectedInterface ? 'Edit interface DHCPv6 settings' : 'Edit DHCPv6 settings'}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+        }
+      >
+        {loading ? (
+          <p className="text-sm text-gray-400">Loading...</p>
+        ) : (selectedInterface ? interfaceConfig6 : config6) ? (
+          <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+            {!selectedInterface && (
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Interface</dt>
+                <dd className="mt-1 font-medium text-gray-800">{config6?.interface || '-'}</dd>
+              </div>
+            )}
+            <div>
+              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
+              <dd className={`mt-1 font-semibold ${(selectedInterface ? interfaceConfig6?.enabled : config6?.enabled) ? 'text-green-600' : 'text-gray-400'}`}>
+                {(selectedInterface ? interfaceConfig6?.enabled : config6?.enabled) ? 'Enabled' : 'Disabled'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Subnet</dt>
+              <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig6?.subnet : config6?.subnet) || '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Pool Range</dt>
+              <dd className="mt-1 font-medium text-gray-800 font-mono">
+                {(selectedInterface ? interfaceConfig6?.rangeStart : config6?.rangeStart) && (selectedInterface ? interfaceConfig6?.rangeEnd : config6?.rangeEnd)
+                  ? `${selectedInterface ? interfaceConfig6?.rangeStart : config6?.rangeStart} - ${selectedInterface ? interfaceConfig6?.rangeEnd : config6?.rangeEnd}`
+                  : '-'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNS Servers</dt>
+              <dd className="mt-1 font-medium text-gray-800 font-mono">
+                {(selectedInterface ? interfaceConfig6?.dnsServers : config6?.dnsServers)?.length
+                  ? (selectedInterface ? interfaceConfig6?.dnsServers : config6?.dnsServers)?.join(', ')
+                  : '-'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Lease Time</dt>
+              <dd className="mt-1 font-medium text-gray-800">{leaseTimeFmt((selectedInterface ? interfaceConfig6?.leaseTime : config6?.leaseTime) ?? 86400)}</dd>
+            </div>
+            {(selectedInterface ? interfaceConfig6?.domainName : config6?.domainName) && (
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Domain Name</dt>
+                <dd className="mt-1 font-medium text-gray-800 font-mono">{selectedInterface ? interfaceConfig6?.domainName : config6?.domainName}</dd>
+              </div>
+            )}
+          </dl>
+        ) : (
+          <p className="text-sm text-gray-400">No DHCPv6 configuration found.</p>
+        )}
+      </Card>
+
       {/* Static Leases */}
       <Card
         title={selectedInterface ? 'Static IP Reservations' : 'Static Leases'}
@@ -529,6 +793,45 @@ export default function DHCP() {
           keyField="mac"
           loading={loading}
           emptyMessage="No active leases."
+        />
+      </Card>
+
+      {/* DHCPv6 Static Reservations */}
+      <Card
+        title="DHCPv6 Static Reservations"
+        subtitle="DUID → IPv6 address static bindings managed by the Kea DHCPv6 server"
+        actions={
+          <button
+            onClick={() => { setLease6Form(defaultLease6Form); setLease6ModalOpen(true) }}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            title="Add DHCPv6 static reservation"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        }
+      >
+        <Table
+          columns={static6ColumnsWithActions}
+          data={static6Leases}
+          keyField="id"
+          loading={loading}
+          emptyMessage="No DHCPv6 static reservations configured."
+        />
+      </Card>
+
+      {/* DHCPv6 Active Leases */}
+      <Card
+        title="DHCPv6 Active Leases"
+        subtitle="Currently active DHCPv6 address assignments from the Kea lease database"
+      >
+        <Table
+          columns={active6Columns}
+          data={active6Leases}
+          keyField="ipAddress"
+          loading={loading}
+          emptyMessage="No active DHCPv6 leases."
         />
       </Card>
 
@@ -668,6 +971,117 @@ export default function DHCP() {
         </div>
       </Modal>
 
+      {/* Edit DHCPv6 Config Modal */}
+      <Modal
+        open={config6ModalOpen}
+        title={selectedInterface ? `Edit DHCPv6: ${selectedInterfaceLabel}` : 'Edit DHCPv6 Server'}
+        onClose={() => setConfig6ModalOpen(false)}
+        onConfirm={handleSaveConfig6}
+        confirmLabel="Save"
+        loading={config6Saving}
+        size="lg"
+      >
+        <div className="space-y-5">
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              checked={!!config6Form.enabled}
+              onChange={(e) => setConfig6Form((f) => ({ ...f, enabled: e.target.checked }))}
+            />
+            <span className="text-sm font-medium text-gray-700">Enable DHCPv6 server</span>
+          </label>
+
+          <details open className="overflow-hidden rounded border border-gray-200 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
+              Scope & Network
+            </summary>
+            <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+              {!selectedInterface && (
+                <FormField
+                  id="cfg6-iface"
+                  label="LAN Interface"
+                  as="select"
+                  required
+                  value={(config6Form as Partial<Dhcp6Config>).interface ?? ''}
+                  onChange={(e) => setConfig6Form((f) => ({ ...f, interface: e.target.value }))}
+                >
+                  <option value="">Select interface</option>
+                  {selectableInterfaces.map((iface) => (
+                    <option key={iface.name} value={iface.name}>{interfaceLabel(iface)}</option>
+                  ))}
+                </FormField>
+              )}
+
+              <FormField
+                id="cfg6-subnet"
+                label="Subnet (CIDR)"
+                required
+                className="col-span-2"
+                placeholder="e.g. fd00::/64"
+                value={config6Form.subnet ?? ''}
+                onChange={(e) => setConfig6Form((f) => ({ ...f, subnet: e.target.value }))}
+              />
+
+              <FormField
+                id="cfg6-lease"
+                label="Lease Time (seconds)"
+                type="number"
+                placeholder="86400"
+                value={String(config6Form.leaseTime ?? 86400)}
+                onChange={(e) =>
+                  setConfig6Form((f) => ({ ...f, leaseTime: parseInt(e.target.value, 10) || 86400 }))
+                }
+              />
+
+              <div />
+
+              <FormField
+                id="cfg6-start"
+                label="Pool Start"
+                required
+                placeholder="e.g. fd00::100"
+                value={config6Form.rangeStart ?? ''}
+                onChange={(e) => setConfig6Form((f) => ({ ...f, rangeStart: e.target.value }))}
+              />
+
+              <FormField
+                id="cfg6-end"
+                label="Pool End"
+                required
+                placeholder="e.g. fd00::1ff"
+                value={config6Form.rangeEnd ?? ''}
+                onChange={(e) => setConfig6Form((f) => ({ ...f, rangeEnd: e.target.value }))}
+              />
+            </div>
+          </details>
+
+          <details className="overflow-hidden rounded border border-gray-200 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
+              DNS & Domain
+            </summary>
+            <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+              <FormField
+                id="cfg6-dns"
+                label="DNS Servers"
+                className="col-span-2"
+                placeholder="e.g. fd00::1, 2001:4860:4860::8888"
+                value={dns6Input}
+                onChange={(e) => setDns6Input(e.target.value)}
+              />
+              <FormField
+                id="cfg6-domain"
+                label="Domain Name (optional)"
+                className="col-span-2"
+                placeholder="e.g. home.arpa"
+                value={config6Form.domainName ?? ''}
+                onChange={(e) => setConfig6Form((f) => ({ ...f, domainName: e.target.value }))}
+              />
+            </div>
+          </details>
+        </div>
+      </Modal>
+
       {/* Add Static Lease Modal */}
       <Modal
         open={leaseModalOpen}
@@ -724,6 +1138,74 @@ export default function DHCP() {
         size="sm"
       >
         <p className="text-sm text-gray-600">Remove this static DHCP lease?</p>
+      </Modal>
+
+      {/* Add DHCPv6 Static Reservation Modal */}
+      <Modal
+        open={lease6ModalOpen}
+        title="Add DHCPv6 Static Reservation"
+        onClose={() => setLease6ModalOpen(false)}
+        onConfirm={handleAddLease6}
+        confirmLabel="Add"
+        loading={lease6Saving}
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-gray-500">
+            Provide a <strong>DUID</strong> (colon-separated hex, e.g. <span className="font-mono">00:03:00:01:aa:bb:cc:dd:ee:ff</span>)
+            or a <strong>MAC address</strong> — it will be auto-converted to a DUID-LL.
+          </p>
+          <FormField
+            id="l6-duid"
+            label="DUID (optional if MAC provided)"
+            placeholder="00:03:00:01:aa:bb:cc:dd:ee:ff"
+            value={lease6Form.duid ?? ''}
+            onChange={(e) => setLease6Form((f) => ({ ...f, duid: e.target.value }))}
+          />
+          <FormField
+            id="l6-mac"
+            label="MAC Address (optional, auto-converted to DUID-LL)"
+            placeholder="aa:bb:cc:dd:ee:ff"
+            value={lease6Form.mac ?? ''}
+            onChange={(e) => setLease6Form((f) => ({ ...f, mac: e.target.value }))}
+          />
+          <FormField
+            id="l6-ip"
+            label="IPv6 Address"
+            required
+            placeholder="fd00::50"
+            value={lease6Form.ipAddress}
+            onChange={(e) => setLease6Form((f) => ({ ...f, ipAddress: e.target.value }))}
+          />
+          <FormField
+            id="l6-hostname"
+            label="Hostname (optional)"
+            placeholder="mydevice"
+            value={lease6Form.hostname}
+            onChange={(e) => setLease6Form((f) => ({ ...f, hostname: e.target.value }))}
+          />
+          <FormField
+            id="l6-desc"
+            label="Description (optional)"
+            placeholder="e.g. Living room TV"
+            value={lease6Form.description}
+            onChange={(e) => setLease6Form((f) => ({ ...f, description: e.target.value }))}
+          />
+        </div>
+      </Modal>
+
+      {/* DHCPv6 Delete Confirmation Modal */}
+      <Modal
+        open={delete6Id !== null}
+        title="Delete DHCPv6 Reservation"
+        onClose={() => setDelete6Id(null)}
+        onConfirm={handleDeleteLease6}
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        loading={deleting6}
+        size="sm"
+      >
+        <p className="text-sm text-gray-600">Remove this DHCPv6 static reservation?</p>
       </Modal>
     </div>
   )
