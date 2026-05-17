@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { getInterfacesInventory, createInterface, deleteInterface } from '../../api/interfaces'
 import { getSystemConfig } from '../../api/system'
-import type { Ipv6Mode, NetworkInterface } from '../../types'
+import type { Ipv6Mode, Ipv6RaMode, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
@@ -26,6 +26,7 @@ const defaultForm: Partial<NetworkInterface> = {
   trackSourceInterface: '',
   trackPrefixId: undefined,
   delegatedPrefixLen: undefined,
+  raMode: 'unmanaged',
   iaPdHintLen: undefined,
   wanMode: undefined,
   pppoeUsername: '',
@@ -110,6 +111,21 @@ export default function Interfaces() {
     }
   }
 
+  const formatRaMode = (mode: Ipv6RaMode = 'unmanaged'): string => {
+    switch (mode) {
+      case 'router_only':
+        return 'Router Only'
+      case 'managed':
+        return 'Managed'
+      case 'assisted':
+        return 'Assisted'
+      case 'stateless':
+        return 'Stateless'
+      default:
+        return 'Unmanaged'
+    }
+  }
+
   const handleSave = () => {
     if (!form.name?.trim()) {
       setError('Interface name is required.')
@@ -174,9 +190,10 @@ export default function Interfaces() {
               const isTrack = mode === 'track_interface'
               const isDhcp6 = mode === 'dhcp6'
               const isSlaac = mode === 'slaac'
+              const raMode = iface.raMode ?? 'unmanaged'
               const receiveRaText = isSlaac ? 'Enabled' : 'Disabled'
               const advertiseRaText = isTrack
-                ? (iface.resolvedIpv6Prefix ? `Active (${iface.resolvedIpv6Prefix})` : 'Waiting for delegated prefix')
+                ? (iface.resolvedIpv6Prefix ? `Active (${formatRaMode(raMode)})` : `Waiting (${formatRaMode(raMode)})`)
                 : 'Disabled'
 
               return (
@@ -221,6 +238,7 @@ export default function Interfaces() {
                   {isTrack && iface.trackSourceInterface && (
                     <p className="mt-1 text-xs text-gray-500">
                       Tracking source: {interfaceNameLabel(iface.trackSourceInterface)}
+                      {iface.resolvedIpv6Prefix ? `, assigned ${iface.resolvedIpv6Prefix}` : ''}
                     </p>
                   )}
                 </div>
@@ -560,6 +578,7 @@ export default function Interfaces() {
                     trackSourceInterface: mode === 'track_interface' ? (form.trackSourceInterface ?? '') : '',
                     trackPrefixId: mode === 'track_interface' ? form.trackPrefixId : undefined,
                     delegatedPrefixLen: mode === 'track_interface' ? form.delegatedPrefixLen : undefined,
+                    raMode: mode === 'track_interface' ? (form.raMode ?? 'unmanaged') : undefined,
                     iaPdHintLen: mode === 'dhcp6' ? form.iaPdHintLen : undefined,
                     ipv6Address: mode === 'static' ? form.ipv6Address : '',
                     ipv6Prefix: mode === 'static' ? (form.ipv6Prefix ?? 64) : 64,
@@ -633,6 +652,21 @@ export default function Interfaces() {
                       })
                     }
                   />
+                  <FormField
+                    id="iface-ra-mode"
+                    label="Router Advertisement Mode"
+                    className="col-span-2"
+                    as="select"
+                    value={form.raMode ?? 'unmanaged'}
+                    hint="Select which flags to set in Router Advertisements sent from this interface."
+                    onChange={(e) => setForm({ ...form, raMode: e.target.value as Ipv6RaMode })}
+                  >
+                    <option value="router_only">Router Only (no SLAAC or DHCPv6)</option>
+                    <option value="unmanaged">Unmanaged (SLAAC A flag)</option>
+                    <option value="managed">Managed (DHCPv6 M+O flags)</option>
+                    <option value="assisted">Assisted (DHCPv6 + SLAAC M+O+A flags)</option>
+                    <option value="stateless">Stateless (DHCPv6 info + SLAAC O+A flags)</option>
+                  </FormField>
                 </>
               )}
               <FormField

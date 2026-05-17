@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Ipv6Mode, NetworkInterface } from '../../types'
+import type { Ipv6Mode, Ipv6RaMode, NetworkInterface } from '../../types'
 import { updateInterface } from '../../api/interfaces'
 import FormField from '../../components/FormField'
 import Modal from '../../components/Modal'
@@ -29,6 +29,7 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
     trackSourceInterface: iface.trackSourceInterface,
     trackPrefixId: iface.trackPrefixId,
     delegatedPrefixLen: iface.delegatedPrefixLen,
+    raMode: iface.raMode,
     iaPdHintLen: iface.iaPdHintLen,
     wanMode: iface.wanMode,
     pppoeUsername: iface.pppoeUsername,
@@ -100,6 +101,21 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
         return 'Track Interface'
       default:
         return 'Static'
+    }
+  }
+
+  const labelRaMode = (mode: Ipv6RaMode | undefined) => {
+    switch (mode) {
+      case 'router_only':
+        return 'Router Only'
+      case 'managed':
+        return 'Managed'
+      case 'assisted':
+        return 'Assisted'
+      case 'stateless':
+        return 'Stateless'
+      default:
+        return 'Unmanaged'
     }
   }
 
@@ -212,6 +228,11 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
               {iface.ipv6Mode === 'track_interface' && (
                 <p className="mt-1 text-xs text-gray-500">
                   Source: {labelParentInterface(iface.trackSourceInterface)}
+                </p>
+              )}
+              {iface.ipv6Mode === 'track_interface' && (
+                <p className="mt-1 text-xs text-gray-500">
+                  RA Mode: {labelRaMode(iface.raMode)}
                 </p>
               )}
               {iface.resolvedIpv6Prefix && (
@@ -446,6 +467,7 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
                     trackSourceInterface: mode === 'track_interface' ? (form.trackSourceInterface ?? '') : '',
                     trackPrefixId: mode === 'track_interface' ? form.trackPrefixId : undefined,
                     delegatedPrefixLen: mode === 'track_interface' ? form.delegatedPrefixLen : undefined,
+                    raMode: mode === 'track_interface' ? (form.raMode ?? 'unmanaged') : undefined,
                     iaPdHintLen: mode === 'dhcp6' ? form.iaPdHintLen : undefined,
                     ipv6Address: mode === 'static' ? form.ipv6Address : '',
                     ipv6Prefix: mode === 'static' ? (form.ipv6Prefix ?? 64) : 64,
@@ -517,6 +539,21 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
                       })
                     }
                   />
+                  <FormField
+                    id="iface-ra-mode"
+                    label="Router Advertisement Mode"
+                    className="col-span-2"
+                    as="select"
+                    value={form.raMode ?? 'unmanaged'}
+                    hint="Select which flags to set in Router Advertisements sent from this interface."
+                    onChange={(e) => setForm({ ...form, raMode: e.target.value as Ipv6RaMode })}
+                  >
+                    <option value="router_only">Router Only (no SLAAC or DHCPv6)</option>
+                    <option value="unmanaged">Unmanaged (SLAAC A flag)</option>
+                    <option value="managed">Managed (DHCPv6 M+O flags)</option>
+                    <option value="assisted">Assisted (DHCPv6 + SLAAC M+O+A flags)</option>
+                    <option value="stateless">Stateless (DHCPv6 info + SLAAC O+A flags)</option>
+                  </FormField>
                 </>
               )}
               <FormField

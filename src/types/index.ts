@@ -9,6 +9,7 @@ export interface ApiResponse<T> {
 // ── Network interfaces ────────────────────────────────────────────────────────
 
 export type Ipv6Mode = 'static' | 'dhcp6' | 'slaac' | 'track_interface'
+export type Ipv6RaMode = 'router_only' | 'unmanaged' | 'managed' | 'assisted' | 'stateless'
 
 export interface NetworkInterface {
   name: string
@@ -24,6 +25,7 @@ export interface NetworkInterface {
   trackSourceInterface?: string
   trackPrefixId?: number
   delegatedPrefixLen?: number
+  raMode?: Ipv6RaMode
   /** Requested prefix length hint for DHCPv6-PD on WAN interfaces (e.g. 56 for /56) */
   iaPdHintLen?: number
   /** Runtime-resolved IPv6 prefix: delegated (WAN dhcp6) or assigned (LAN track_interface) */

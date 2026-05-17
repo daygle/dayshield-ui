@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, InterfacesInventory, Ipv6Mode, KernelInterface, NetworkInterface } from '../types'
+import type { ApiResponse, InterfacesInventory, Ipv6Mode, Ipv6RaMode, KernelInterface, NetworkInterface } from '../types'
 
 type InterfacesPayload =
   | BackendInterface[]
@@ -22,6 +22,7 @@ type BackendInterface = {
   track_source_interface?: string
   track_prefix_id?: number
   delegated_prefix_len?: number
+  ra_mode?: Ipv6RaMode
   ia_pd_hint_len?: number
   resolved_ipv6_prefix?: string
   wan_mode?: 'dhcp' | 'pppoe'
@@ -53,6 +54,7 @@ type InterfaceUpsertPayload = {
   track_source_interface?: string
   track_prefix_id?: number
   delegated_prefix_len?: number
+  ra_mode?: Ipv6RaMode
   ia_pd_hint_len?: number
   wan_mode?: 'dhcp' | 'pppoe'
   pppoe_username?: string
@@ -83,6 +85,7 @@ function toInterfaceUpsertPayload(iface: NetworkInterface): InterfaceUpsertPaylo
     track_source_interface: iface.trackSourceInterface || undefined,
     track_prefix_id: iface.trackPrefixId,
     delegated_prefix_len: iface.delegatedPrefixLen,
+    ra_mode: ipv6Mode === 'track_interface' ? (iface.raMode ?? 'unmanaged') : undefined,
     ia_pd_hint_len: iface.iaPdHintLen,
     wan_mode: iface.wanMode,
     pppoe_username: iface.pppoeUsername || undefined,
@@ -123,6 +126,7 @@ function toNetworkInterface(raw: BackendInterface): NetworkInterface {
     trackSourceInterface: raw.track_source_interface,
     trackPrefixId: raw.track_prefix_id,
     delegatedPrefixLen: raw.delegated_prefix_len,
+    raMode: raw.ra_mode,
     iaPdHintLen: raw.ia_pd_hint_len,
     resolvedIpv6Prefix: raw.resolved_ipv6_prefix,
     wanMode: raw.wan_mode,
