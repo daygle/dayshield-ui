@@ -309,17 +309,24 @@ export default function DynamicDnsPage() {
                       ))}
                     </FormField>
 
-                    <FormField
-                      id={`ddns-family-${entry.id}`}
-                      label="Address Family"
-                      as="select"
-                      value={entry.addressFamily ?? 'ipv4'}
-                      disabled={busy}
-                      onChange={(e) => upsertEntry(entry.id, { addressFamily: e.target.value as DynamicDnsEntry['addressFamily'] })}
-                    >
-                      <option value="ipv4">IPv4</option>
-                      <option value="ipv6" disabled={!ipv6Enabled}>IPv6</option>
-                    </FormField>
+                    {ipv6Enabled ? (
+                      <FormField
+                        id={`ddns-family-${entry.id}`}
+                        label="Address Family"
+                        as="select"
+                        value={entry.addressFamily ?? 'ipv4'}
+                        disabled={busy}
+                        onChange={(e) => upsertEntry(entry.id, { addressFamily: e.target.value as DynamicDnsEntry['addressFamily'] })}
+                      >
+                        <option value="ipv4">IPv4</option>
+                        <option value="ipv6">IPv6</option>
+                      </FormField>
+                    ) : (
+                      <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Address Family</p>
+                        <p className="mt-1 text-sm text-gray-700">IPv4 only</p>
+                      </div>
+                    )}
 
                     <FormField
                       id={`ddns-host-${entry.id}`}

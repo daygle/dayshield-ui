@@ -354,17 +354,24 @@ export default function OutboundNAT() {
             <option value="udp">UDP</option>
             <option value="tcp_udp">TCP/UDP</option>
           </FormField>
-          <FormField
-            id="nat-family"
-            label="Address Family"
-            as="select"
-            value={ruleForm.address_family ?? 'ipv4'}
-            error={formErrors.address_family}
-            onChange={(e) => setRuleForm({ ...ruleForm, address_family: e.target.value as NatRule['address_family'] })}
-          >
-            <option value="ipv4">IPv4</option>
-            <option value="ipv6" disabled={!ipv6Enabled}>IPv6</option>
-          </FormField>
+          {ipv6Enabled ? (
+            <FormField
+              id="nat-family"
+              label="Address Family"
+              as="select"
+              value={ruleForm.address_family ?? 'ipv4'}
+              error={formErrors.address_family}
+              onChange={(e) => setRuleForm({ ...ruleForm, address_family: e.target.value as NatRule['address_family'] })}
+            >
+              <option value="ipv4">IPv4</option>
+              <option value="ipv6">IPv6</option>
+            </FormField>
+          ) : (
+            <div className="col-span-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Address Family</p>
+              <p className="mt-1 text-sm text-gray-700">IPv4 only</p>
+            </div>
+          )}
           <FormField
             id="nat-priority"
             label="Priority"

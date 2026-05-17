@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, InterfacesInventory, KernelInterface, NetworkInterface } from '../types'
+import type { ApiResponse, InterfacesInventory, Ipv6Mode, KernelInterface, NetworkInterface } from '../types'
 
 type InterfacesPayload =
   | BackendInterface[]
@@ -17,6 +17,13 @@ type BackendInterface = {
   enabled?: boolean
   dhcp4?: boolean
   dhcp6?: boolean
+  accept_ra?: boolean
+  ipv6_mode?: Ipv6Mode
+  track_source_interface?: string
+  track_prefix_id?: number
+  delegated_prefix_len?: number
+  ia_pd_hint_len?: number
+  resolved_ipv6_prefix?: string
   wan_mode?: 'dhcp' | 'pppoe'
   pppoe_username?: string
   pppoe_password?: string
@@ -41,6 +48,12 @@ type InterfaceUpsertPayload = {
   enabled: boolean
   dhcp4?: boolean
   dhcp6?: boolean
+  accept_ra?: boolean
+  ipv6_mode?: Ipv6Mode
+  track_source_interface?: string
+  track_prefix_id?: number
+  delegated_prefix_len?: number
+  ia_pd_hint_len?: number
   wan_mode?: 'dhcp' | 'pppoe'
   pppoe_username?: string
   pppoe_password?: string
@@ -56,13 +69,21 @@ type InterfaceUpsertPayload = {
 }
 
 function toInterfaceUpsertPayload(iface: NetworkInterface): InterfaceUpsertPayload {
+  const ipv6Mode: Ipv6Mode = iface.ipv6Mode ?? (iface.dhcp6 ? 'dhcp6' : iface.acceptRa ? 'slaac' : 'static')
+
   return {
     name: iface.name,
     description: iface.description || undefined,
     type: iface.type,
     enabled: iface.enabled,
     dhcp4: iface.dhcp4,
-    dhcp6: iface.dhcp6,
+    dhcp6: ipv6Mode === 'dhcp6',
+    accept_ra: ipv6Mode === 'slaac',
+    ipv6_mode: ipv6Mode,
+    track_source_interface: iface.trackSourceInterface || undefined,
+    track_prefix_id: iface.trackPrefixId,
+    delegated_prefix_len: iface.delegatedPrefixLen,
+    ia_pd_hint_len: iface.iaPdHintLen,
     wan_mode: iface.wanMode,
     pppoe_username: iface.pppoeUsername || undefined,
     pppoe_password: iface.pppoePassword || undefined,
@@ -78,8 +99,16 @@ function toInterfaceUpsertPayload(iface: NetworkInterface): InterfaceUpsertPaylo
   }
 }
 
+function inferIpv6Mode(raw: BackendInterface): Ipv6Mode {
+  if (raw.ipv6_mode) return raw.ipv6_mode
+  if (raw.dhcp6) return 'dhcp6'
+  if (raw.accept_ra) return 'slaac'
+  return 'static'
+}
+
 function toNetworkInterface(raw: BackendInterface): NetworkInterface {
   const vlanId = raw.vlan ?? raw.vlan_id
+  const ipv6Mode = inferIpv6Mode(raw)
   return {
     name: raw.name,
     description: raw.description ?? '',
@@ -88,7 +117,14 @@ function toNetworkInterface(raw: BackendInterface): NetworkInterface {
     vlanId,
     enabled: raw.enabled ?? true,
     dhcp4: raw.dhcp4,
-    dhcp6: raw.dhcp6,
+    dhcp6: ipv6Mode === 'dhcp6',
+    acceptRa: ipv6Mode === 'slaac',
+    ipv6Mode,
+    trackSourceInterface: raw.track_source_interface,
+    trackPrefixId: raw.track_prefix_id,
+    delegatedPrefixLen: raw.delegated_prefix_len,
+    iaPdHintLen: raw.ia_pd_hint_len,
+    resolvedIpv6Prefix: raw.resolved_ipv6_prefix,
     wanMode: raw.wan_mode,
     pppoeUsername: raw.pppoe_username,
     pppoePassword: raw.pppoe_password,

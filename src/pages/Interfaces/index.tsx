@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { getInterfacesInventory, createInterface, deleteInterface } from '../../api/interfaces'
 import { getSystemConfig } from '../../api/system'
-import type { NetworkInterface } from '../../types'
+import type { Ipv6Mode, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
@@ -21,6 +21,12 @@ const defaultForm: Partial<NetworkInterface> = {
   enabled: true,
   dhcp4: false,
   dhcp6: false,
+  acceptRa: false,
+  ipv6Mode: 'static',
+  trackSourceInterface: '',
+  trackPrefixId: undefined,
+  delegatedPrefixLen: undefined,
+  iaPdHintLen: undefined,
   wanMode: undefined,
   pppoeUsername: '',
   pppoePassword: '',
@@ -82,6 +88,7 @@ export default function Interfaces() {
   useEffect(load, [requestedInterface])
 
   const isVlanForm = form.type === 'vlan'
+  const ipv6Mode: Ipv6Mode = form.ipv6Mode ?? (form.dhcp6 ? 'dhcp6' : form.acceptRa ? 'slaac' : 'static')
   const parentInterfaceOptions = allInterfaceNames
     .filter((name) => name !== 'lo' && name !== form.name && !configuredVlanNames.includes(name))
 
@@ -102,6 +109,10 @@ export default function Interfaces() {
         setError('VLAN ID must be a whole number between 1 and 4094.')
         return
       }
+    }
+    if (ipv6Enabled && ipv6Mode === 'track_interface' && !form.trackSourceInterface?.trim()) {
+      setError('Track Interface mode requires a source interface.')
+      return
     }
 
     setSaving(true)
@@ -444,31 +455,103 @@ export default function Interfaces() {
           </FormField>
           {ipv6Enabled && (
             <>
-              <div className="col-span-2 flex items-center gap-3">
-                <input
-                  id="iface-dhcp6"
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  checked={form.dhcp6 ?? false}
+              <FormField
+                id="iface-ipv6-mode"
+                label="IPv6 Configuration Type"
+                className="col-span-2"
+                as="select"
+                value={ipv6Mode}
+                onChange={(e) => {
+                  const mode = e.target.value as Ipv6Mode
+                  setForm({
+                    ...form,
+                    ipv6Mode: mode,
+                    dhcp6: mode === 'dhcp6',
+                    acceptRa: mode === 'slaac',
+                    trackSourceInterface: mode === 'track_interface' ? (form.trackSourceInterface ?? '') : '',
+                    trackPrefixId: mode === 'track_interface' ? form.trackPrefixId : undefined,
+                    delegatedPrefixLen: mode === 'track_interface' ? form.delegatedPrefixLen : undefined,
+                    iaPdHintLen: mode === 'dhcp6' ? form.iaPdHintLen : undefined,
+                    ipv6Address: mode === 'static' ? form.ipv6Address : '',
+                    ipv6Prefix: mode === 'static' ? (form.ipv6Prefix ?? 64) : 64,
+                  })
+                }}
+              >
+                <option value="static">Static</option>
+                <option value="dhcp6">DHCPv6</option>
+                <option value="slaac">SLAAC (Router Advertisements)</option>
+                <option value="track_interface">Track Interface (Prefix Delegation)</option>
+              </FormField>
+              {ipv6Mode === 'dhcp6' && (
+                <FormField
+                  id="iface-ia-pd-hint-len"
+                  label="Prefix Delegation Size (iaPdHintLen)"
+                  type="number"
+                  min={1}
+                  max={128}
+                  placeholder="e.g. 56 for /56"
+                  value={form.iaPdHintLen != null ? String(form.iaPdHintLen) : ''}
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      dhcp6: e.target.checked,
-                      ipv6Address: e.target.checked ? '' : form.ipv6Address,
-                      ipv6Prefix: e.target.checked ? 64 : form.ipv6Prefix,
+                      iaPdHintLen: e.target.value ? Number(e.target.value) : undefined,
                     })
                   }
                 />
-                <label htmlFor="iface-dhcp6" className="text-sm font-medium text-gray-700">
-                  Obtain IPv6 address via DHCPv6
-                </label>
-              </div>
+              )}
+              {ipv6Mode === 'track_interface' && (
+                <>
+                  <FormField
+                    id="iface-track-source"
+                    label="Track Source Interface"
+                    required
+                    as="select"
+                    value={form.trackSourceInterface ?? ''}
+                    onChange={(e) => setForm({ ...form, trackSourceInterface: e.target.value })}
+                  >
+                    <option value="">Select source interface</option>
+                    {allInterfaceNames
+                      .filter((name) => name !== form.name)
+                      .map((name) => (
+                        <option key={name} value={name}>{interfaceNameLabel(name)}</option>
+                      ))}
+                  </FormField>
+                  <FormField
+                    id="iface-track-prefix-id"
+                    label="Track Prefix ID"
+                    type="number"
+                    min={0}
+                    max={255}
+                    value={form.trackPrefixId != null ? String(form.trackPrefixId) : ''}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        trackPrefixId: e.target.value ? Number(e.target.value) : undefined,
+                      })
+                    }
+                  />
+                  <FormField
+                    id="iface-delegated-prefix-len"
+                    label="Delegated Prefix Length"
+                    type="number"
+                    min={0}
+                    max={128}
+                    value={form.delegatedPrefixLen != null ? String(form.delegatedPrefixLen) : ''}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        delegatedPrefixLen: e.target.value ? Number(e.target.value) : undefined,
+                      })
+                    }
+                  />
+                </>
+              )}
               <FormField
                 id="iface-ipv6"
                 label="IPv6 Address"
                 placeholder="2001:db8::1"
                 value={form.ipv6Address ?? ''}
-                disabled={form.dhcp6 ?? false}
+                disabled={ipv6Mode !== 'static'}
                 onChange={(e) => setForm({ ...form, ipv6Address: e.target.value })}
               />
               <FormField
@@ -478,7 +561,7 @@ export default function Interfaces() {
                 min={0}
                 max={128}
                 value={String(form.ipv6Prefix ?? 64)}
-                disabled={form.dhcp6 ?? false}
+                disabled={ipv6Mode !== 'static'}
                 onChange={(e) => setForm({ ...form, ipv6Prefix: Number(e.target.value) })}
               />
             </>

@@ -269,17 +269,24 @@ export default function PortForwardPage() {
             <option value="tcp_udp">TCP/UDP</option>
             <option value="any">Any</option>
           </FormField>
-          <FormField
-            id="pf-family"
-            label="Address Family"
-            as="select"
-            value={form.address_family ?? 'ipv4'}
-            error={formErrors.address_family}
-            onChange={(e) => setForm({ ...form, address_family: e.target.value as NatRule['address_family'] })}
-          >
-            <option value="ipv4">IPv4</option>
-            <option value="ipv6" disabled={!ipv6Enabled}>IPv6</option>
-          </FormField>
+          {ipv6Enabled ? (
+            <FormField
+              id="pf-family"
+              label="Address Family"
+              as="select"
+              value={form.address_family ?? 'ipv4'}
+              error={formErrors.address_family}
+              onChange={(e) => setForm({ ...form, address_family: e.target.value as NatRule['address_family'] })}
+            >
+              <option value="ipv4">IPv4</option>
+              <option value="ipv6">IPv6</option>
+            </FormField>
+          ) : (
+            <div className="col-span-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Address Family</p>
+              <p className="mt-1 text-sm text-gray-700">IPv4 only</p>
+            </div>
+          )}
           <FormField
             id="pf-ext-port"
             label="External Port"

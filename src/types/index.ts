@@ -8,6 +8,8 @@ export interface ApiResponse<T> {
 
 // ── Network interfaces ────────────────────────────────────────────────────────
 
+export type Ipv6Mode = 'static' | 'dhcp6' | 'slaac' | 'track_interface'
+
 export interface NetworkInterface {
   name: string
   description: string
@@ -17,6 +19,15 @@ export interface NetworkInterface {
   enabled: boolean
   dhcp4?: boolean
   dhcp6?: boolean
+  acceptRa?: boolean
+  ipv6Mode?: Ipv6Mode
+  trackSourceInterface?: string
+  trackPrefixId?: number
+  delegatedPrefixLen?: number
+  /** Requested prefix length hint for DHCPv6-PD on WAN interfaces (e.g. 56 for /56) */
+  iaPdHintLen?: number
+  /** Runtime-resolved IPv6 prefix: delegated (WAN dhcp6) or assigned (LAN track_interface) */
+  resolvedIpv6Prefix?: string
   wanMode?: 'dhcp' | 'pppoe'       // only relevant for WAN-designated interfaces
   pppoeUsername?: string
   pppoePassword?: string
