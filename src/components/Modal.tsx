@@ -50,7 +50,16 @@ export default function Modal({
   useEffect(() => {
     if (!open) return
     window.requestAnimationFrame(() => {
-      panelRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      let el: HTMLElement | null = panelRef.current?.parentElement ?? null
+      while (el) {
+        const { overflowY } = window.getComputedStyle(el)
+        if (overflowY === 'auto' || overflowY === 'scroll') {
+          el.scrollTo({ top: 0, behavior: 'smooth' })
+          return
+        }
+        el = el.parentElement
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     })
   }, [open])
 

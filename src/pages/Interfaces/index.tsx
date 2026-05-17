@@ -177,188 +177,6 @@ export default function Interfaces() {
 
   return (
     <div className="space-y-4">
-      <Card
-        title="IPv6 Services"
-        subtitle="Per-interface IPv6 mode, DHCPv6 client status, and Router Advertisement behavior"
-      >
-        {!ipv6Enabled ? (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            Global IPv6 is disabled in System settings. DHCPv6 and Router Advertisement features are inactive until IPv6 is enabled.
-          </div>
-        ) : ifaces.length === 0 ? (
-          <p className="text-sm text-gray-500">No interfaces available yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {ifaces.map((iface) => {
-              const mode = resolveIpv6Mode(iface)
-              const isTrack = mode === 'track_interface'
-              const isDhcp6 = mode === 'dhcp6'
-              const isSlaac = mode === 'slaac'
-              const raMode = iface.raMode ?? 'unmanaged'
-              const receiveRaText = isSlaac ? 'Enabled' : 'Disabled'
-              const advertiseRaText = isTrack
-                ? (iface.resolvedIpv6Prefix ? `Active (${formatRaMode(raMode)})` : `Waiting (${formatRaMode(raMode)})`)
-                : 'Disabled'
-
-              return (
-                <div key={`ipv6-${iface.name}`} className="rounded-md border border-gray-200 bg-gray-50 p-3">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {formatInterfaceDisplayName(iface.description, iface.name)}
-                      </p>
-                      <p className="mt-0.5 text-xs text-gray-500">{iface.name} • {iface.type}</p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                        {formatIpv6Mode(mode)}
-                      </span>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${iface.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {iface.enabled ? 'Interface Up' : 'Interface Down'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-gray-700 md:grid-cols-3">
-                    <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
-                      <span className="font-medium text-gray-500">DHCPv6 Client:</span>{' '}
-                      <span className={isDhcp6 ? 'text-green-700' : 'text-gray-600'}>{isDhcp6 ? 'Enabled' : 'Disabled'}</span>
-                    </div>
-                    <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
-                      <span className="font-medium text-gray-500">RA Receive:</span>{' '}
-                      <span className={isSlaac ? 'text-green-700' : 'text-gray-600'}>{receiveRaText}</span>
-                    </div>
-                    <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
-                      <span className="font-medium text-gray-500">RA Advertise:</span>{' '}
-                      <span className={advertiseRaText.startsWith('Active') ? 'text-green-700' : 'text-gray-600'}>{advertiseRaText}</span>
-                    </div>
-                  </div>
-
-                  {isDhcp6 && iface.iaPdHintLen != null && (
-                    <p className="mt-2 text-xs text-gray-500">
-                      Requested delegated prefix size: /{iface.iaPdHintLen}
-                    </p>
-                  )}
-                  {isTrack && iface.trackSourceInterface && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Tracking source: {interfaceNameLabel(iface.trackSourceInterface)}
-                      {iface.resolvedIpv6Prefix ? `, assigned ${iface.resolvedIpv6Prefix}` : ''}
-                    </p>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </Card>
-
-      <Card
-        title="Network Interfaces"
-        subtitle="Manage physical and virtual network interfaces"
-        actions={
-          <button
-            onClick={() => setModalOpen(true)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-            title="Add interface"
-            aria-label="Add interface"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        }
-      >
-        {error && (
-          <p className="text-sm text-red-600 mb-3">{error}</p>
-        )}
-
-        {loading ? (
-          <p className="text-gray-500">Loading interfaces...</p>
-        ) : ifaces.length === 0 ? (
-          <p className="text-gray-500">No interfaces found. Add one to get started.</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_1fr]">
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Interfaces</div>
-              <div className="space-y-2">
-                {ifaces.map((iface) => {
-                  const isSelected = expandedInterface === iface.name
-                  return (
-                    <div
-                      key={iface.name}
-                      className={`flex items-start justify-between gap-2 rounded-lg border p-3 transition-colors ${
-                        isSelected
-                          ? 'border-blue-300 bg-blue-50'
-                          : 'border-gray-200 bg-white hover:bg-gray-50'
-                      }`}
-                    >
-                      <button
-                        className="flex-1 text-left"
-                        onClick={() => setExpandedInterface(iface.name)}
-                      >
-                        <h3 className="font-semibold text-gray-900">
-                          {formatInterfaceDisplayName(iface.description, iface.name)}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          {iface.name} • {iface.type}
-                        </p>
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                              iface.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                            }`}
-                          >
-                            <span className={`h-1.5 w-1.5 rounded-full ${iface.enabled ? 'bg-green-500' : 'bg-gray-400'}`} />
-                            {iface.enabled ? 'Up' : 'Down'}
-                          </span>
-                          {iface.type === 'vlan' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                              VLAN {iface.vlanId ?? '?'}
-                            </span>
-                          )}
-                          {iface.wanMode === 'pppoe' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                              PPPoE
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                      <button
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
-                        onClick={() => setDeleteName(iface.name)}
-                        title="Delete interface"
-                        aria-label="Delete interface"
-                      >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-                        </svg>
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-gray-200 bg-white p-3">
-              {selectedInterfaceDetails ? (
-                <InterfaceDetails
-                  key={selectedInterfaceDetails.name}
-                  iface={selectedInterfaceDetails}
-                  ipv6Enabled={ipv6Enabled}
-                  parentInterfaceOptions={parentInterfaceOptions}
-                  parentInterfaceLabel={interfaceNameLabel}
-                  onUpdate={load}
-                />
-              ) : (
-                <div className="rounded border border-dashed border-gray-300 px-4 py-8 text-sm text-gray-500">
-                  Select an interface to view its overview and edit options.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </Card>
-
       {/* Add Interface Modal */}
       <Modal
         open={modalOpen}
@@ -733,6 +551,189 @@ export default function Interfaces() {
           cannot be undone.
         </p>
       </Modal>
+
+      <Card
+        title="IPv6 Services"
+        subtitle="Per-interface IPv6 mode, DHCPv6 client status, and Router Advertisement behavior"
+      >
+        {!ipv6Enabled ? (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Global IPv6 is disabled in System settings. DHCPv6 and Router Advertisement features are inactive until IPv6 is enabled.
+          </div>
+        ) : ifaces.length === 0 ? (
+          <p className="text-sm text-gray-500">No interfaces available yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {ifaces.map((iface) => {
+              const mode = resolveIpv6Mode(iface)
+              const isTrack = mode === 'track_interface'
+              const isDhcp6 = mode === 'dhcp6'
+              const isSlaac = mode === 'slaac'
+              const raMode = iface.raMode ?? 'unmanaged'
+              const receiveRaText = isSlaac ? 'Enabled' : 'Disabled'
+              const advertiseRaText = isTrack
+                ? (iface.resolvedIpv6Prefix ? `Active (${formatRaMode(raMode)})` : `Waiting (${formatRaMode(raMode)})`)
+                : 'Disabled'
+
+              return (
+                <div key={`ipv6-${iface.name}`} className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {formatInterfaceDisplayName(iface.description, iface.name)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-500">{iface.name} • {iface.type}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                        {formatIpv6Mode(mode)}
+                      </span>
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${iface.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {iface.enabled ? 'Interface Up' : 'Interface Down'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-gray-700 md:grid-cols-3">
+                    <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
+                      <span className="font-medium text-gray-500">DHCPv6 Client:</span>{' '}
+                      <span className={isDhcp6 ? 'text-green-700' : 'text-gray-600'}>{isDhcp6 ? 'Enabled' : 'Disabled'}</span>
+                    </div>
+                    <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
+                      <span className="font-medium text-gray-500">RA Receive:</span>{' '}
+                      <span className={isSlaac ? 'text-green-700' : 'text-gray-600'}>{receiveRaText}</span>
+                    </div>
+                    <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
+                      <span className="font-medium text-gray-500">RA Advertise:</span>{' '}
+                      <span className={advertiseRaText.startsWith('Active') ? 'text-green-700' : 'text-gray-600'}>{advertiseRaText}</span>
+                    </div>
+                  </div>
+
+                  {isDhcp6 && iface.iaPdHintLen != null && (
+                    <p className="mt-2 text-xs text-gray-500">
+                      Requested delegated prefix size: /{iface.iaPdHintLen}
+                    </p>
+                  )}
+                  {isTrack && iface.trackSourceInterface && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Tracking source: {interfaceNameLabel(iface.trackSourceInterface)}
+                      {iface.resolvedIpv6Prefix ? `, assigned ${iface.resolvedIpv6Prefix}` : ''}
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </Card>
+
+      <Card
+        title="Network Interfaces"
+        subtitle="Manage physical and virtual network interfaces"
+        actions={
+          <button
+            onClick={() => setModalOpen(true)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            title="Add interface"
+            aria-label="Add interface"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        }
+      >
+        {error && (
+          <p className="text-sm text-red-600 mb-3">{error}</p>
+        )}
+
+        {loading ? (
+          <p className="text-gray-500">Loading interfaces...</p>
+        ) : ifaces.length === 0 ? (
+          <p className="text-gray-500">No interfaces found. Add one to get started.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_1fr]">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Interfaces</div>
+              <div className="space-y-2">
+                {ifaces.map((iface) => {
+                  const isSelected = expandedInterface === iface.name
+                  return (
+                    <div
+                      key={iface.name}
+                      className={`flex items-start justify-between gap-2 rounded-lg border p-3 transition-colors ${
+                        isSelected
+                          ? 'border-blue-300 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:bg-gray-50'
+                      }`}
+                    >
+                      <button
+                        className="flex-1 text-left"
+                        onClick={() => setExpandedInterface(iface.name)}
+                      >
+                        <h3 className="font-semibold text-gray-900">
+                          {formatInterfaceDisplayName(iface.description, iface.name)}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {iface.name} • {iface.type}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                              iface.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                            }`}
+                          >
+                            <span className={`h-1.5 w-1.5 rounded-full ${iface.enabled ? 'bg-green-500' : 'bg-gray-400'}`} />
+                            {iface.enabled ? 'Up' : 'Down'}
+                          </span>
+                          {iface.type === 'vlan' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                              VLAN {iface.vlanId ?? '?'}
+                            </span>
+                          )}
+                          {iface.wanMode === 'pppoe' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                              PPPoE
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                      <button
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+                        onClick={() => setDeleteName(iface.name)}
+                        title="Delete interface"
+                        aria-label="Delete interface"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                        </svg>
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-gray-200 bg-white p-3">
+              {selectedInterfaceDetails ? (
+                <InterfaceDetails
+                  key={selectedInterfaceDetails.name}
+                  iface={selectedInterfaceDetails}
+                  ipv6Enabled={ipv6Enabled}
+                  parentInterfaceOptions={parentInterfaceOptions}
+                  parentInterfaceLabel={interfaceNameLabel}
+                  onUpdate={load}
+                />
+              ) : (
+                <div className="rounded border border-dashed border-gray-300 px-4 py-8 text-sm text-gray-500">
+                  Select an interface to view its overview and edit options.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </Card>
+
     </div>
   )
 }

@@ -218,43 +218,6 @@ export default function Gateways() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Gateways</h1>
-          {defaultIface && (
-            <p className="text-sm text-gray-500 mt-0.5">
-              Default route via: <span className="font-medium text-gray-700">{interfaceLabel(defaultIface)}</span>
-            </p>
-          )}
-        </div>
-        <button
-          onClick={openAdd}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-          title="Add gateway"
-          aria-label="Add gateway"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
-      </div>
-
-      {error && (
-        <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
-      <Card>
-        <Table
-          columns={columns}
-          data={rows}
-          keyField="name"
-          loading={loading}
-          emptyMessage="No gateways configured. Add one to define your upstream routing."
-        />
-      </Card>
-
       {/* Add / Edit modal */}
       <Modal
         open={modalOpen}
@@ -392,6 +355,44 @@ export default function Gateways() {
           from the routing table.
         </p>
       </Modal>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">Gateways</h1>
+          {defaultIface && (
+            <p className="text-sm text-gray-500 mt-0.5">
+              Default route via: <span className="font-medium text-gray-700">{interfaceLabel(defaultIface)}</span>
+            </p>
+          )}
+        </div>
+        <button
+          onClick={openAdd}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+          title="Add gateway"
+          aria-label="Add gateway"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+      </div>
+
+      {error && (
+        <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      <Card>
+        <Table
+          columns={columns}
+          data={rows}
+          keyField="name"
+          loading={loading}
+          emptyMessage="No gateways configured. Add one to define your upstream routing."
+        />
+      </Card>
+
     </div>
   )
 }

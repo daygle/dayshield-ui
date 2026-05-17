@@ -205,31 +205,6 @@ export default function PortForwardPage() {
 
   return (
     <div className="space-y-6">
-      <Card
-        title="Port Forwards"
-        subtitle="Redirect inbound traffic from WAN to internal hosts (Destination NAT / DNAT)"
-        actions={
-          <button
-            onClick={openAdd}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-            title="Add port forward"
-            aria-label="Add port forward"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        }
-      >
-        <Table
-          columns={columns}
-          data={portForwards}
-          keyField="id"
-          loading={isLoading}
-          emptyMessage="No port forwards defined."
-        />
-      </Card>
-
       {/* Add / Edit Modal */}
       <Modal
         open={modalOpen}
@@ -402,6 +377,32 @@ export default function PortForwardPage() {
           Are you sure you want to delete this port forward? This action cannot be undone.
         </p>
       </Modal>
+
+      <Card
+        title="Port Forwards"
+        subtitle="Redirect inbound traffic from WAN to internal hosts (Destination NAT / DNAT)"
+        actions={
+          <button
+            onClick={openAdd}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            title="Add port forward"
+            aria-label="Add port forward"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        }
+      >
+        <Table
+          columns={columns}
+          data={portForwards}
+          keyField="id"
+          loading={isLoading}
+          emptyMessage="No port forwards defined."
+        />
+      </Card>
+
     </div>
   )
 }

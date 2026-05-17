@@ -244,65 +244,6 @@ export default function OutboundNAT() {
 
   return (
     <div className="space-y-6">
-      {/* Mode selector */}
-      <Card title="Outbound NAT Mode" subtitle="Controls how outbound address translation is applied">
-        {configLoading ? (
-          <p className="text-sm text-gray-400">Loadingâ€¦</p>
-        ) : (
-          <div className="flex flex-col sm:flex-row gap-3">
-            {modes.map((m) => {
-              const active = config?.outbound_mode === m.value
-              return (
-                <button
-                  key={m.value}
-                  onClick={() =>
-                    config && configMutation.mutate({ ...config, outbound_mode: m.value })
-                  }
-                  disabled={configMutation.isPending}
-                  className={[
-                    'flex-1 text-left rounded-lg border-2 px-4 py-3 transition-colors',
-                    active
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:border-blue-300',
-                  ].join(' ')}
-                >
-                  <p className={`text-sm font-semibold ${active ? 'text-blue-700' : 'text-gray-800'}`}>
-                    {m.label}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">{m.desc}</p>
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </Card>
-
-      {/* Rules table */}
-      <Card
-        title="Outbound NAT Rules"
-        subtitle="Rules are evaluated top-to-bottom. Manual rules are only active in Hybrid or Manual mode."
-        actions={
-          <button
-            onClick={openAddModal}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-            title="Add rule"
-            aria-label="Add NAT rule"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        }
-      >
-        <Table
-          columns={columns}
-          data={rules}
-          keyField="id"
-          loading={rulesLoading}
-          emptyMessage="No outbound NAT rules defined."
-        />
-      </Card>
-
       {/* Add / Edit Rule Modal */}
       <Modal
         open={ruleModalOpen}
@@ -464,6 +405,66 @@ export default function OutboundNAT() {
           Are you sure you want to delete this NAT rule? This action cannot be undone.
         </p>
       </Modal>
+
+      {/* Mode selector */}
+      <Card title="Outbound NAT Mode" subtitle="Controls how outbound address translation is applied">
+        {configLoading ? (
+          <p className="text-sm text-gray-400">Loadingâ€¦</p>
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-3">
+            {modes.map((m) => {
+              const active = config?.outbound_mode === m.value
+              return (
+                <button
+                  key={m.value}
+                  onClick={() =>
+                    config && configMutation.mutate({ ...config, outbound_mode: m.value })
+                  }
+                  disabled={configMutation.isPending}
+                  className={[
+                    'flex-1 text-left rounded-lg border-2 px-4 py-3 transition-colors',
+                    active
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 bg-white hover:border-blue-300',
+                  ].join(' ')}
+                >
+                  <p className={`text-sm font-semibold ${active ? 'text-blue-700' : 'text-gray-800'}`}>
+                    {m.label}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">{m.desc}</p>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </Card>
+
+      {/* Rules table */}
+      <Card
+        title="Outbound NAT Rules"
+        subtitle="Rules are evaluated top-to-bottom. Manual rules are only active in Hybrid or Manual mode."
+        actions={
+          <button
+            onClick={openAddModal}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            title="Add rule"
+            aria-label="Add NAT rule"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        }
+      >
+        <Table
+          columns={columns}
+          data={rules}
+          keyField="id"
+          loading={rulesLoading}
+          emptyMessage="No outbound NAT rules defined."
+        />
+      </Card>
+
     </div>
   )
 }

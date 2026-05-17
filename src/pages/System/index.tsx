@@ -811,6 +811,303 @@ export default function System() {
 
   return (
     <div className="space-y-6">
+      {/* Edit Config Modal */}
+      <Modal
+        open={editOpen}
+        title="Edit System Configuration"
+        onClose={() => setEditOpen(false)}
+        onConfirm={handleSaveConfig}
+        confirmLabel="Save"
+        loading={saving}
+        size="lg"
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            id="cfg-hostname"
+            label="Hostname"
+            value={editConfig.hostname ?? ''}
+            onChange={(e) => setEditConfig({ ...editConfig, hostname: e.target.value })}
+          />
+          <FormField
+            id="cfg-timezone"
+            label="Timezone"
+            className="col-span-2"
+            as="select"
+            value={editConfig.timezone ?? 'UTC'}
+            onChange={(e) => setEditConfig({ ...editConfig, timezone: e.target.value })}
+          >
+            <option value="">-- Select Timezone --</option>
+            {timezoneOptions.map((tz) => (
+              <option key={tz.name} value={tz.name}>
+                {tz.label}
+              </option>
+            ))}
+            {timezoneOptions.length === 0 && <option value="" disabled>No matching timezones</option>}
+          </FormField>
+          <FormField
+            id="cfg-ntp"
+            label="NTP Servers (comma-separated)"
+            className="col-span-2"
+            placeholder="0.pool.ntp.org, 1.pool.ntp.org"
+            value={(editConfig.ntpServers ?? []).join(', ')}
+            onChange={(e) =>
+              setEditConfig({
+                ...editConfig,
+                ntpServers: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+              })
+            }
+          />
+          <FormField
+            id="cfg-dns"
+            label="DNS Servers (comma-separated)"
+            className="col-span-2"
+            placeholder="8.8.8.8, 8.8.4.4"
+            value={(editConfig.dnsServers ?? []).join(', ')}
+            onChange={(e) =>
+              setEditConfig({
+                ...editConfig,
+                dnsServers: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+              })
+            }
+          />
+          <FormField
+            id="cfg-ssh-port"
+            label="SSH Port"
+            type="number"
+            min={1}
+            max={65535}
+            value={String(editConfig.sshPort ?? 22)}
+            onChange={(e) => setEditConfig({ ...editConfig, sshPort: Number(e.target.value) })}
+          />
+          <FormField
+            id="cfg-web-port"
+            label="Web UI Port"
+            type="number"
+            min={1}
+            max={65535}
+            value={String(editConfig.webPort ?? 8080)}
+            onChange={(e) => setEditConfig({ ...editConfig, webPort: Number(e.target.value) })}
+          />
+          <div className="col-span-2 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+            <input
+              id="cfg-ipv6-enabled"
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              checked={editConfig.ipv6Enabled ?? false}
+              onChange={(e) => setEditConfig({ ...editConfig, ipv6Enabled: e.target.checked })}
+            />
+            <label htmlFor="cfg-ipv6-enabled" className="text-sm font-medium text-gray-700">
+              Enable IPv6
+            </label>
+          </div>
+          <div className="col-span-2">
+            <label htmlFor="cfg-management-tls-domain" className="block text-sm font-medium text-gray-700">
+              Management TLS Certificate (ACME Domain)
+            </label>
+            <select
+              id="cfg-management-tls-domain"
+              className="mt-1 block w-full rounded-md border-gray-300 bg-white py-2 px-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+              value={editConfig.managementTlsAcmeDomain ?? ''}
+              onChange={(e) => setEditConfig({ ...editConfig, managementTlsAcmeDomain: e.target.value || null })}
+            >
+              <option value="">Use default management certificate</option>
+              {acmeDomains.map((domain) => (
+                <option key={domain} value={domain}>
+                  {domain}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500">
+              Select an issued ACME certificate to use for the DayShield management UI.
+            </p>
+          </div>
+          <div className="col-span-2 border-t border-gray-200 pt-3">
+            <p className="text-sm font-semibold text-gray-900">Management Access Controls</p>
+            <p className="text-xs text-gray-500 mt-1">These controls were moved from Firewall Settings to System Settings.</p>
+          </div>
+          <FormField
+            id="cfg-management-interface"
+            className="col-span-2"
+            label="Management Interface (optional)"
+            as="select"
+            value={firewallSettings.management_interface ?? ''}
+            onChange={(e) => setFirewallSettings((prev) => ({ ...prev, management_interface: e.target.value || null }))}
+          >
+            <option value="">Any interface</option>
+            {interfaces.map((iface) => (
+              <option key={iface.name} value={iface.name}>
+                {interfaceLabel(iface)}
+              </option>
+            ))}
+          </FormField>
+          <FormField
+            id="cfg-management-sources"
+            className="col-span-2"
+            label="Management Allowed Sources (comma-separated CIDRs)"
+            placeholder="e.g. 192.168.1.0/24, 10.0.0.0/8"
+            value={managementAllowedSourcesInput}
+            onChange={(e) => setManagementAllowedSourcesInput(e.target.value)}
+          />
+          <FormField
+            id="cfg-management-ports"
+            className="col-span-2"
+            label="Management Ports (comma-separated)"
+            placeholder="e.g. 22, 443, 8443"
+            value={managementPortsInput}
+            onChange={(e) => setManagementPortsInput(e.target.value)}
+          />
+        </div>
+      </Modal>
+
+      {/* Update Settings Modal */}
+      <Modal
+        open={updateSettingsOpen}
+        title="Automatic Update Checks"
+        onClose={() => setUpdateSettingsOpen(false)}
+        onConfirm={handleSaveUpdateSettings}
+        confirmLabel="Save"
+        loading={updateSaving}
+        size="sm"
+      >
+        {updateSettings && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Choose whether DayShield checks for updates automatically and when it runs.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                id="upd-auto"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                checked={updateSettings.autoCheckEnabled}
+                onChange={(e) => setUpdateSettings({ ...updateSettings, autoCheckEnabled: e.target.checked })}
+              />
+              <label htmlFor="upd-auto" className="text-sm font-medium text-gray-700">
+                Check for updates automatically
+              </label>
+            </div>
+            {updateSettings.autoCheckEnabled && (
+              <div className="space-y-4">
+                <FormField
+                  id="upd-frequency"
+                  as="select"
+                  label="Schedule"
+                  hint="Pick whether updates run daily, weekly, or monthly."
+                  value={updateSettings.autoCheckFrequency ?? 'daily'}
+                  onChange={(e) => {
+                    const nextFrequency = e.target.value as UpdateScheduleFrequency
+                    setUpdateSettings({
+                      ...updateSettings,
+                      autoCheckFrequency: nextFrequency,
+                      autoCheckWeekday: nextFrequency === 'weekly' ? updateSettings.autoCheckWeekday ?? 'monday' : updateSettings.autoCheckWeekday,
+                      autoCheckMonthDays: nextFrequency === 'monthly'
+                        ? normalizeUpdateMonthDays(updateSettings.autoCheckMonthDays ?? [1])
+                        : updateSettings.autoCheckMonthDays,
+                    })
+                  }}
+                >
+                  {UPDATE_SCHEDULE_FREQUENCY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </FormField>
+
+                <FormField
+                  id="upd-time"
+                  label="Time"
+                  type="time"
+                  hint="The update check runs at this local time."
+                  value={normalizeUpdateTime(updateSettings.autoCheckTime ?? '03:00')}
+                  onChange={(e) => setUpdateSettings({ ...updateSettings, autoCheckTime: e.target.value })}
+                />
+
+                {updateSettings.autoCheckFrequency === 'weekly' && (
+                  <FormField
+                    id="upd-weekday"
+                    as="select"
+                    label="Day of Week"
+                    hint="Choose the day DayShield checks for updates each week."
+                    value={updateSettings.autoCheckWeekday ?? 'monday'}
+                    onChange={(e) =>
+                      setUpdateSettings({
+                        ...updateSettings,
+                        autoCheckWeekday: e.target.value as UpdateScheduleWeekday,
+                      })
+                    }
+                  >
+                    {UPDATE_WEEKDAY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </FormField>
+                )}
+
+                {updateSettings.autoCheckFrequency === 'monthly' && (
+                  <FormField
+                    id="upd-monthly-day"
+                    as="select"
+                    label="Monthly Day"
+                    hint="Choose whether the monthly check runs on the first or last day of each month."
+                    value={getMonthlyDaySelection(updateSettings.autoCheckMonthDays)}
+                    onChange={(e) =>
+                      setUpdateSettings({
+                        ...updateSettings,
+                        autoCheckMonthDays: toMonthlyDays(e.target.value as UpdateMonthlyDay),
+                      })
+                    }
+                  >
+                    {UPDATE_MONTHLY_DAY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </FormField>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Reboot Confirmation Modal */}
+      <Modal
+        open={rebootOpen}
+        title="Reboot System"
+        onClose={() => setRebootOpen(false)}
+        onConfirm={handleReboot}
+        confirmLabel="Reboot"
+        confirmVariant="danger"
+        loading={rebooting}
+        size="sm"
+      >
+        <p className="text-sm text-gray-600">
+          Are you sure you want to reboot the system? All active connections will be interrupted.
+        </p>
+      </Modal>
+
+      {/* Rollback Confirmation Modal */}
+      <Modal
+        open={rollbackConfirmOpen}
+        title="Confirm Rollback"
+        onClose={() => setRollbackConfirmOpen(false)}
+        onConfirm={handleRollbackConfirm}
+        confirmLabel="Rollback"
+        confirmVariant="danger"
+        loading={updateActionLoading}
+        size="sm"
+      >
+        <div className="space-y-2">
+          <p className="text-sm text-red-700 font-medium">
+            Rolling back will revert both the software and the configuration to their previous state.
+          </p>
+          <p className="text-sm text-gray-700">
+            This action cannot be undone. All changes made since the last update will be lost.
+          </p>
+        </div>
+      </Modal>
+
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {error}
@@ -1271,302 +1568,6 @@ export default function System() {
         </div>
       )}
 
-      {/* Edit Config Modal */}
-      <Modal
-        open={editOpen}
-        title="Edit System Configuration"
-        onClose={() => setEditOpen(false)}
-        onConfirm={handleSaveConfig}
-        confirmLabel="Save"
-        loading={saving}
-        size="lg"
-      >
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            id="cfg-hostname"
-            label="Hostname"
-            value={editConfig.hostname ?? ''}
-            onChange={(e) => setEditConfig({ ...editConfig, hostname: e.target.value })}
-          />
-          <FormField
-            id="cfg-timezone"
-            label="Timezone"
-            className="col-span-2"
-            as="select"
-            value={editConfig.timezone ?? 'UTC'}
-            onChange={(e) => setEditConfig({ ...editConfig, timezone: e.target.value })}
-          >
-            <option value="">-- Select Timezone --</option>
-            {timezoneOptions.map((tz) => (
-              <option key={tz.name} value={tz.name}>
-                {tz.label}
-              </option>
-            ))}
-            {timezoneOptions.length === 0 && <option value="" disabled>No matching timezones</option>}
-          </FormField>
-          <FormField
-            id="cfg-ntp"
-            label="NTP Servers (comma-separated)"
-            className="col-span-2"
-            placeholder="0.pool.ntp.org, 1.pool.ntp.org"
-            value={(editConfig.ntpServers ?? []).join(', ')}
-            onChange={(e) =>
-              setEditConfig({
-                ...editConfig,
-                ntpServers: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
-              })
-            }
-          />
-          <FormField
-            id="cfg-dns"
-            label="DNS Servers (comma-separated)"
-            className="col-span-2"
-            placeholder="8.8.8.8, 8.8.4.4"
-            value={(editConfig.dnsServers ?? []).join(', ')}
-            onChange={(e) =>
-              setEditConfig({
-                ...editConfig,
-                dnsServers: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
-              })
-            }
-          />
-          <FormField
-            id="cfg-ssh-port"
-            label="SSH Port"
-            type="number"
-            min={1}
-            max={65535}
-            value={String(editConfig.sshPort ?? 22)}
-            onChange={(e) => setEditConfig({ ...editConfig, sshPort: Number(e.target.value) })}
-          />
-          <FormField
-            id="cfg-web-port"
-            label="Web UI Port"
-            type="number"
-            min={1}
-            max={65535}
-            value={String(editConfig.webPort ?? 8080)}
-            onChange={(e) => setEditConfig({ ...editConfig, webPort: Number(e.target.value) })}
-          />
-          <div className="col-span-2 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-            <input
-              id="cfg-ipv6-enabled"
-              type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              checked={editConfig.ipv6Enabled ?? false}
-              onChange={(e) => setEditConfig({ ...editConfig, ipv6Enabled: e.target.checked })}
-            />
-            <label htmlFor="cfg-ipv6-enabled" className="text-sm font-medium text-gray-700">
-              Enable IPv6
-            </label>
-          </div>
-          <div className="col-span-2">
-            <label htmlFor="cfg-management-tls-domain" className="block text-sm font-medium text-gray-700">
-              Management TLS Certificate (ACME Domain)
-            </label>
-            <select
-              id="cfg-management-tls-domain"
-              className="mt-1 block w-full rounded-md border-gray-300 bg-white py-2 px-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-              value={editConfig.managementTlsAcmeDomain ?? ''}
-              onChange={(e) => setEditConfig({ ...editConfig, managementTlsAcmeDomain: e.target.value || null })}
-            >
-              <option value="">Use default management certificate</option>
-              {acmeDomains.map((domain) => (
-                <option key={domain} value={domain}>
-                  {domain}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500">
-              Select an issued ACME certificate to use for the DayShield management UI.
-            </p>
-          </div>
-          <div className="col-span-2 border-t border-gray-200 pt-3">
-            <p className="text-sm font-semibold text-gray-900">Management Access Controls</p>
-            <p className="text-xs text-gray-500 mt-1">These controls were moved from Firewall Settings to System Settings.</p>
-          </div>
-          <FormField
-            id="cfg-management-interface"
-            className="col-span-2"
-            label="Management Interface (optional)"
-            as="select"
-            value={firewallSettings.management_interface ?? ''}
-            onChange={(e) => setFirewallSettings((prev) => ({ ...prev, management_interface: e.target.value || null }))}
-          >
-            <option value="">Any interface</option>
-            {interfaces.map((iface) => (
-              <option key={iface.name} value={iface.name}>
-                {interfaceLabel(iface)}
-              </option>
-            ))}
-          </FormField>
-          <FormField
-            id="cfg-management-sources"
-            className="col-span-2"
-            label="Management Allowed Sources (comma-separated CIDRs)"
-            placeholder="e.g. 192.168.1.0/24, 10.0.0.0/8"
-            value={managementAllowedSourcesInput}
-            onChange={(e) => setManagementAllowedSourcesInput(e.target.value)}
-          />
-          <FormField
-            id="cfg-management-ports"
-            className="col-span-2"
-            label="Management Ports (comma-separated)"
-            placeholder="e.g. 22, 443, 8443"
-            value={managementPortsInput}
-            onChange={(e) => setManagementPortsInput(e.target.value)}
-          />
-        </div>
-      </Modal>
-
-      {/* Update Settings Modal */}
-      <Modal
-        open={updateSettingsOpen}
-        title="Automatic Update Checks"
-        onClose={() => setUpdateSettingsOpen(false)}
-        onConfirm={handleSaveUpdateSettings}
-        confirmLabel="Save"
-        loading={updateSaving}
-        size="sm"
-      >
-        {updateSettings && (
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              Choose whether DayShield checks for updates automatically and when it runs.
-            </p>
-            <div className="flex items-center gap-2">
-              <input
-                id="upd-auto"
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-blue-600"
-                checked={updateSettings.autoCheckEnabled}
-                onChange={(e) => setUpdateSettings({ ...updateSettings, autoCheckEnabled: e.target.checked })}
-              />
-              <label htmlFor="upd-auto" className="text-sm font-medium text-gray-700">
-                Check for updates automatically
-              </label>
-            </div>
-            {updateSettings.autoCheckEnabled && (
-              <div className="space-y-4">
-                <FormField
-                  id="upd-frequency"
-                  as="select"
-                  label="Schedule"
-                  hint="Pick whether updates run daily, weekly, or monthly."
-                  value={updateSettings.autoCheckFrequency ?? 'daily'}
-                  onChange={(e) => {
-                    const nextFrequency = e.target.value as UpdateScheduleFrequency
-                    setUpdateSettings({
-                      ...updateSettings,
-                      autoCheckFrequency: nextFrequency,
-                      autoCheckWeekday: nextFrequency === 'weekly' ? updateSettings.autoCheckWeekday ?? 'monday' : updateSettings.autoCheckWeekday,
-                      autoCheckMonthDays: nextFrequency === 'monthly'
-                        ? normalizeUpdateMonthDays(updateSettings.autoCheckMonthDays ?? [1])
-                        : updateSettings.autoCheckMonthDays,
-                    })
-                  }}
-                >
-                  {UPDATE_SCHEDULE_FREQUENCY_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </FormField>
-
-                <FormField
-                  id="upd-time"
-                  label="Time"
-                  type="time"
-                  hint="The update check runs at this local time."
-                  value={normalizeUpdateTime(updateSettings.autoCheckTime ?? '03:00')}
-                  onChange={(e) => setUpdateSettings({ ...updateSettings, autoCheckTime: e.target.value })}
-                />
-
-                {updateSettings.autoCheckFrequency === 'weekly' && (
-                  <FormField
-                    id="upd-weekday"
-                    as="select"
-                    label="Day of Week"
-                    hint="Choose the day DayShield checks for updates each week."
-                    value={updateSettings.autoCheckWeekday ?? 'monday'}
-                    onChange={(e) =>
-                      setUpdateSettings({
-                        ...updateSettings,
-                        autoCheckWeekday: e.target.value as UpdateScheduleWeekday,
-                      })
-                    }
-                  >
-                    {UPDATE_WEEKDAY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </FormField>
-                )}
-
-                {updateSettings.autoCheckFrequency === 'monthly' && (
-                  <FormField
-                    id="upd-monthly-day"
-                    as="select"
-                    label="Monthly Day"
-                    hint="Choose whether the monthly check runs on the first or last day of each month."
-                    value={getMonthlyDaySelection(updateSettings.autoCheckMonthDays)}
-                    onChange={(e) =>
-                      setUpdateSettings({
-                        ...updateSettings,
-                        autoCheckMonthDays: toMonthlyDays(e.target.value as UpdateMonthlyDay),
-                      })
-                    }
-                  >
-                    {UPDATE_MONTHLY_DAY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </FormField>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
-
-      {/* Reboot Confirmation Modal */}
-      <Modal
-        open={rebootOpen}
-        title="Reboot System"
-        onClose={() => setRebootOpen(false)}
-        onConfirm={handleReboot}
-        confirmLabel="Reboot"
-        confirmVariant="danger"
-        loading={rebooting}
-        size="sm"
-      >
-        <p className="text-sm text-gray-600">
-          Are you sure you want to reboot the system? All active connections will be interrupted.
-        </p>
-      </Modal>
-
-      {/* Rollback Confirmation Modal */}
-      <Modal
-        open={rollbackConfirmOpen}
-        title="Confirm Rollback"
-        onClose={() => setRollbackConfirmOpen(false)}
-        onConfirm={handleRollbackConfirm}
-        confirmLabel="Rollback"
-        confirmVariant="danger"
-        loading={updateActionLoading}
-        size="sm"
-      >
-        <div className="space-y-2">
-          <p className="text-sm text-red-700 font-medium">
-            Rolling back will revert both the software and the configuration to their previous state.
-          </p>
-          <p className="text-sm text-gray-700">
-            This action cannot be undone. All changes made since the last update will be lost.
-          </p>
-        </div>
-      </Modal>
     </div>
   )
 }

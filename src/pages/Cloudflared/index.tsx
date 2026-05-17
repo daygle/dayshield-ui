@@ -201,26 +201,40 @@ function CloudflaredPageContent() {
 
   return (
     <div className="space-y-6">
+      <Modal
+        open={disableConfirmOpen}
+        title="Disable running tunnel?"
+        onClose={() => setDisableConfirmOpen(false)}
+        onConfirm={() => {
+          setDisableConfirmOpen(false)
+          setConfig((current) => ({ ...current, enabled: false }))
+        }}
+        confirmLabel="Disable Tunnel"
+        confirmVariant="danger"
+        size="md"
+      >
+        <p className="text-sm text-gray-700">
+          The Cloudflared tunnel is currently running. Disabling it will stop publishing your
+          ingress routes after saving this configuration.
+        </p>
+      </Modal>
+
       <Card
         title="Cloudflared Tunnel"
         subtitle="Publish selected internal services through Cloudflare Tunnel without inbound port forwards."
         actions={statusBadge(status)}
       >
         {loading ? (
-          <div className="space-y-3" role="status" aria-live="polite">
-            <div className="h-4 w-1/3 animate-pulse rounded bg-gray-200" />
-            <div className="h-4 w-2/3 animate-pulse rounded bg-gray-200" />
-            <div className="h-4 w-1/2 animate-pulse rounded bg-gray-200" />
-          </div>
+          <p className="text-sm text-gray-400">Loading...</p>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Service state</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Service</p>
               <p className="mt-1 text-sm text-gray-800">
-                Active state: <span className="font-medium">{formatServiceState(status?.activeState)}</span>
+                State: <span className="font-medium">{formatServiceState(status ? `${status.activeState} ${status.subState}` : null)}</span>
               </p>
               <p className="text-sm text-gray-800">
-                Sub-state: <span className="font-medium">{formatServiceState(status?.subState)}</span>
+                Tunnel enabled: <span className="font-medium">{config.enabled ? 'Yes' : 'No'}</span>
               </p>
               <p className="text-sm text-gray-800">
                 Unit enabled: <span className="font-medium">{status?.unitEnabled ? 'Yes' : 'No'}</span>
@@ -420,22 +434,6 @@ function CloudflaredPageContent() {
         </Button>
       </div>
 
-      <Modal
-        open={disableConfirmOpen}
-        title="Disable running tunnel?"
-        onClose={() => setDisableConfirmOpen(false)}
-        onConfirm={() => {
-          setDisableConfirmOpen(false)
-          setConfig((current) => ({ ...current, enabled: false }))
-        }}
-        confirmLabel="Disable Tunnel"
-        confirmVariant="danger"
-      >
-        <p className="text-sm text-gray-700">
-          The Cloudflared tunnel is currently running. Disabling it will stop publishing your
-          ingress routes after saving this configuration.
-        </p>
-      </Modal>
     </div>
   )
 }

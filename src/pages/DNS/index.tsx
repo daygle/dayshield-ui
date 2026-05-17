@@ -526,252 +526,6 @@ export default function DNS() {
 
   return (
     <div className="space-y-6">
-      {error && (
-        <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-          {error}
-          <button className="ml-3 underline" onClick={() => setError(null)}>Dismiss</button>
-        </div>
-      )}
-
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex gap-1" aria-label="DNS tabs">
-          {sectionTabs.map((tab) => {
-            const isActive = activeSection === tab.id
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveSection(tab.id)}
-                className={[
-                  'px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
-                  isActive
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                ].join(' ')}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                {tab.label}
-              </button>
-            )
-          })}
-        </nav>
-      </div>
-
-      {activeSection === 'settings' && (
-        <>
-          <Card
-            title="DNS Resolver (Unbound)"
-            subtitle="Recursive resolver / forwarder configuration"
-            actions={
-              <button
-                onClick={openConfigModal}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-                title="Edit resolver"
-                aria-label="Edit resolver"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
-            }
-          >
-            {loading ? (
-              <p className="text-sm text-gray-400">Loading…</p>
-            ) : config ? (
-              <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
-                <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
-                  <dd className={`mt-1 font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
-                    {config.enabled ? 'Enabled' : 'Disabled'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Mode</dt>
-                  <dd className="mt-1 font-medium text-gray-800">
-                    {config.forwarders?.length ? 'Forwarder' : 'Full Recursion'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Port</dt>
-                  <dd className="mt-1 font-medium text-gray-800 font-mono">{config.port ?? 53}</dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listen Addresses</dt>
-                  <dd className="mt-1 font-medium text-gray-800 font-mono">
-                    {config.listen_addresses?.length ? config.listen_addresses.join(', ') : 'All Interfaces'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Upstream Forwarders</dt>
-                  <dd className="mt-1 font-medium text-gray-800 font-mono">
-                    {config.forwarders?.length ? config.forwarders.join(', ') : '- (Recursive)'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNSSEC</dt>
-                  <dd className={`mt-1 font-semibold ${config.dnssec ? 'text-green-600' : 'text-gray-400'}`}>
-                    {config.dnssec ? 'Enabled' : 'Disabled'}
-                  </dd>
-                </div>
-              </dl>
-            ) : (
-              <p className="text-sm text-gray-400">No DNS configuration found.</p>
-            )}
-          </Card>
-        </>
-      )}
-
-      {activeSection === 'dot' && (
-        <Card
-          title="DoT"
-          subtitle="Encrypted private DNS listener on the configured DoT port"
-          actions={
-            <Button size="sm" variant="secondary" onClick={openDotModal}>
-              Edit DoT
-            </Button>
-          }
-        >
-          {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
-          ) : config ? (
-            <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm">
-              <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
-                <dd className={`mt-1 font-semibold ${config.dot_enabled ? 'text-green-600' : 'text-gray-400'}`}>
-                  {config.dot_enabled ? 'Enabled' : 'Disabled'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listener</dt>
-                <dd className="mt-1 font-medium text-gray-800 font-mono">TCP/{config.dot_port ?? 853}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Access</dt>
-                <dd className="mt-1 font-medium text-gray-800">
-                  {config.dot_lan_only === false ? 'LAN + external clients' : 'LAN clients only'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Certificate</dt>
-                <dd className="mt-1 font-medium text-gray-800">
-                  {config.dot_acme_domain ? 'ACME: ' + config.dot_acme_domain : 'Not configured'}
-                </dd>
-              </div>
-            </dl>
-          ) : (
-            <p className="text-sm text-gray-400">No DoT configuration found.</p>
-          )}
-        </Card>
-      )}
-
-      {activeSection === 'overrides' && (
-        <>
-          <Card
-            title="Host Overrides"
-            subtitle="Map fully-qualified hostnames to specific IP addresses (local A/AAAA records)"
-            actions={
-              <button
-                onClick={() => setHostModalOpen(true)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-                title="Add host override"
-                aria-label="Add host override"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-            }
-          >
-            <Table
-              columns={hostColumnsWithActions}
-              data={hostOverrides}
-              keyField="hostname"
-              loading={loading}
-              emptyMessage="No host overrides configured."
-            />
-          </Card>
-
-          <Card
-            title="Domain Overrides"
-            subtitle="Forward all DNS queries for a domain to a specific resolver"
-            actions={
-              <button
-                onClick={() => setDomainModalOpen(true)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-                title="Add domain override"
-                aria-label="Add domain override"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-            }
-          >
-            <Table
-              columns={domainColumnsWithActions}
-              data={domainOverrides}
-              keyField="domain"
-              loading={loading}
-              emptyMessage="No domain overrides configured."
-            />
-          </Card>
-        </>
-      )}
-
-      {activeSection === 'blocklists' && (
-        <Card
-          title="DNS Blocklists"
-          subtitle="Attach external DNS blocklist sources per interface"
-          actions={
-            <button
-              onClick={openAddBlocklistModal}
-              disabled={!effectiveInterface}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Add blocklist"
-              aria-label="Add blocklist"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-          }
-        >
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-              <div className="rounded border border-gray-200 p-3 bg-gray-50 md:col-span-2">
-                <label className="block text-gray-500 text-xs font-medium uppercase tracking-wide mb-1">
-                  Interface
-                </label>
-                <select
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  value={effectiveInterface}
-                  onChange={(e) => handleChangeBlocklistInterface(e.target.value)}
-                >
-                  {interfaceOptions.length === 0 && <option value="">No non-WAN interfaces available</option>}
-                  {blocklistInterfaces.map((iface) => (
-                    <option key={iface.name} value={iface.name}>
-                      {interfaceLabel(iface)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="rounded border border-gray-200 p-3 bg-gray-50">
-                <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">Active Interface</p>
-                <p className="mt-1 font-medium text-gray-900">{effectiveInterfaceLabel}</p>
-              </div>
-            </div>
-
-            <Table
-              columns={blocklistColumnsWithActions}
-              data={blocklists}
-              keyField="id"
-              loading={blocklistsLoading}
-              emptyMessage={effectiveInterface ? `No blocklists configured for ${effectiveInterfaceLabel}.` : 'Select an interface to manage blocklists.'}
-            />
-          </div>
-        </Card>
-      )}
-
       {/* Edit DNS Settings Modal */}
       <Modal
         open={configModalOpen}
@@ -1175,6 +929,253 @@ export default function DNS() {
           Remove this blocklist from <strong>{effectiveInterfaceLabel}</strong>?
         </p>
       </Modal>
+
+      {error && (
+        <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          {error}
+          <button className="ml-3 underline" onClick={() => setError(null)}>Dismiss</button>
+        </div>
+      )}
+
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex gap-1" aria-label="DNS tabs">
+          {sectionTabs.map((tab) => {
+            const isActive = activeSection === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveSection(tab.id)}
+                className={[
+                  'px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
+                  isActive
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                ].join(' ')}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </nav>
+      </div>
+
+      {activeSection === 'settings' && (
+        <>
+          <Card
+            title="DNS Resolver (Unbound)"
+            subtitle="Recursive resolver / forwarder configuration"
+            actions={
+              <button
+                onClick={openConfigModal}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                title="Edit resolver"
+                aria-label="Edit resolver"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+            }
+          >
+            {loading ? (
+              <p className="text-sm text-gray-400">Loading…</p>
+            ) : config ? (
+              <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
+                  <dd className={`mt-1 font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
+                    {config.enabled ? 'Enabled' : 'Disabled'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Mode</dt>
+                  <dd className="mt-1 font-medium text-gray-800">
+                    {config.forwarders?.length ? 'Forwarder' : 'Full Recursion'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Port</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">{config.port ?? 53}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listen Addresses</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">
+                    {config.listen_addresses?.length ? config.listen_addresses.join(', ') : 'All Interfaces'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Upstream Forwarders</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">
+                    {config.forwarders?.length ? config.forwarders.join(', ') : '- (Recursive)'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNSSEC</dt>
+                  <dd className={`mt-1 font-semibold ${config.dnssec ? 'text-green-600' : 'text-gray-400'}`}>
+                    {config.dnssec ? 'Enabled' : 'Disabled'}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="text-sm text-gray-400">No DNS configuration found.</p>
+            )}
+          </Card>
+        </>
+      )}
+
+      {activeSection === 'dot' && (
+        <Card
+          title="DoT"
+          subtitle="Encrypted private DNS listener on the configured DoT port"
+          actions={
+            <Button size="sm" variant="secondary" onClick={openDotModal}>
+              Edit DoT
+            </Button>
+          }
+        >
+          {loading ? (
+            <p className="text-sm text-gray-400">Loading…</p>
+          ) : config ? (
+            <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm">
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
+                <dd className={`mt-1 font-semibold ${config.dot_enabled ? 'text-green-600' : 'text-gray-400'}`}>
+                  {config.dot_enabled ? 'Enabled' : 'Disabled'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listener</dt>
+                <dd className="mt-1 font-medium text-gray-800 font-mono">TCP/{config.dot_port ?? 853}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Access</dt>
+                <dd className="mt-1 font-medium text-gray-800">
+                  {config.dot_lan_only === false ? 'LAN + external clients' : 'LAN clients only'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Certificate</dt>
+                <dd className="mt-1 font-medium text-gray-800">
+                  {config.dot_acme_domain ? 'ACME: ' + config.dot_acme_domain : 'Not configured'}
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-sm text-gray-400">No DoT configuration found.</p>
+          )}
+        </Card>
+      )}
+
+      {activeSection === 'overrides' && (
+        <>
+          <Card
+            title="Host Overrides"
+            subtitle="Map fully-qualified hostnames to specific IP addresses (local A/AAAA records)"
+            actions={
+              <button
+                onClick={() => setHostModalOpen(true)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                title="Add host override"
+                aria-label="Add host override"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            }
+          >
+            <Table
+              columns={hostColumnsWithActions}
+              data={hostOverrides}
+              keyField="hostname"
+              loading={loading}
+              emptyMessage="No host overrides configured."
+            />
+          </Card>
+
+          <Card
+            title="Domain Overrides"
+            subtitle="Forward all DNS queries for a domain to a specific resolver"
+            actions={
+              <button
+                onClick={() => setDomainModalOpen(true)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                title="Add domain override"
+                aria-label="Add domain override"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            }
+          >
+            <Table
+              columns={domainColumnsWithActions}
+              data={domainOverrides}
+              keyField="domain"
+              loading={loading}
+              emptyMessage="No domain overrides configured."
+            />
+          </Card>
+        </>
+      )}
+
+      {activeSection === 'blocklists' && (
+        <Card
+          title="DNS Blocklists"
+          subtitle="Attach external DNS blocklist sources per interface"
+          actions={
+            <button
+              onClick={openAddBlocklistModal}
+              disabled={!effectiveInterface}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Add blocklist"
+              aria-label="Add blocklist"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          }
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              <div className="rounded border border-gray-200 p-3 bg-gray-50 md:col-span-2">
+                <label className="block text-gray-500 text-xs font-medium uppercase tracking-wide mb-1">
+                  Interface
+                </label>
+                <select
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  value={effectiveInterface}
+                  onChange={(e) => handleChangeBlocklistInterface(e.target.value)}
+                >
+                  {interfaceOptions.length === 0 && <option value="">No non-WAN interfaces available</option>}
+                  {blocklistInterfaces.map((iface) => (
+                    <option key={iface.name} value={iface.name}>
+                      {interfaceLabel(iface)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="rounded border border-gray-200 p-3 bg-gray-50">
+                <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">Active Interface</p>
+                <p className="mt-1 font-medium text-gray-900">{effectiveInterfaceLabel}</p>
+              </div>
+            </div>
+
+            <Table
+              columns={blocklistColumnsWithActions}
+              data={blocklists}
+              keyField="id"
+              loading={blocklistsLoading}
+              emptyMessage={effectiveInterface ? `No blocklists configured for ${effectiveInterfaceLabel}.` : 'Select an interface to manage blocklists.'}
+            />
+          </div>
+        </Card>
+      )}
+
     </div>
   )
 }

@@ -162,6 +162,97 @@ function CrowdSecContent() {
 
   return (
     <div className="space-y-6">
+      {/* Edit CrowdSec Config Modal */}
+      <Modal
+        open={configModalOpen}
+        title="Edit CrowdSec Settings"
+        onClose={() => setConfigModalOpen(false)}
+        onConfirm={handleSaveConfig}
+        confirmLabel="Save"
+        loading={saving}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              aria-label="Enable CrowdSec integration"
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              checked={!!configForm.enabled}
+              onChange={(e) => setConfigForm((f) => ({ ...f, enabled: e.target.checked }))}
+            />
+            <span className="text-sm font-medium text-gray-700">Enable CrowdSec integration</span>
+          </label>
+
+          <FormField
+            id="crowdsec-lapi-url"
+            label="LAPI URL"
+            required
+            placeholder="http://127.0.0.1:8080"
+            aria-label="CrowdSec local API URL"
+            error={validation.lapiUrlError || undefined}
+            value={configForm.lapi_url ?? ''}
+            onChange={(e) => setConfigForm((f) => ({ ...f, lapi_url: e.target.value }))}
+          />
+
+          <FormField
+            id="crowdsec-api-key"
+            label="API Key"
+            placeholder="Paste CrowdSec API key"
+            aria-label="CrowdSec API key"
+            value={configForm.api_key ?? ''}
+            onChange={(e) => setConfigForm((f) => ({ ...f, api_key: e.target.value }))}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              id="crowdsec-update-interval"
+              label="Update Interval (seconds)"
+              type="number"
+              min={1}
+              required
+              aria-label="CrowdSec decision update interval seconds"
+              error={validation.updateIntervalError || undefined}
+              value={String(configForm.update_interval ?? 60)}
+              onChange={(e) =>
+                setConfigForm((f) => ({
+                  ...f,
+                  update_interval: Math.max(1, Number(e.target.value) || 60),
+                }))
+              }
+            />
+
+            <FormField
+              id="crowdsec-ban-alias-name"
+              label="Ban Alias Name"
+              required
+              placeholder="crowdsec_bans"
+              aria-label="CrowdSec ban alias name"
+              error={validation.banAliasError || undefined}
+              value={configForm.ban_alias_name ?? ''}
+              onChange={(e) => setConfigForm((f) => ({ ...f, ban_alias_name: e.target.value }))}
+            />
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={enableConfirmOpen}
+        title="Enable CrowdSec integration?"
+        onClose={() => setEnableConfirmOpen(false)}
+        onConfirm={() => {
+          setEnableConfirmOpen(false)
+          saveConfig()
+        }}
+        confirmLabel="Enable and Save"
+        size="md"
+      >
+        <p className="text-sm text-gray-700">
+          Enabling CrowdSec starts decision synchronization with the configured LAPI endpoint.
+          Continue with the current configuration?
+        </p>
+      </Modal>
+
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700" role="alert" aria-live="assertive">
           {error}
@@ -244,96 +335,6 @@ function CrowdSecContent() {
         />
       </Card>
 
-      {/* Edit CrowdSec Config Modal */}
-      <Modal
-        open={configModalOpen}
-        title="Edit CrowdSec Settings"
-        onClose={() => setConfigModalOpen(false)}
-        onConfirm={handleSaveConfig}
-        confirmLabel="Save"
-        loading={saving}
-        size="lg"
-      >
-        <div className="space-y-4">
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <input
-              aria-label="Enable CrowdSec integration"
-              type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              checked={!!configForm.enabled}
-              onChange={(e) => setConfigForm((f) => ({ ...f, enabled: e.target.checked }))}
-            />
-            <span className="text-sm font-medium text-gray-700">Enable CrowdSec integration</span>
-          </label>
-
-          <FormField
-            id="crowdsec-lapi-url"
-            label="LAPI URL"
-            required
-            placeholder="http://127.0.0.1:8080"
-            aria-label="CrowdSec local API URL"
-            error={validation.lapiUrlError || undefined}
-            value={configForm.lapi_url ?? ''}
-            onChange={(e) => setConfigForm((f) => ({ ...f, lapi_url: e.target.value }))}
-          />
-
-          <FormField
-            id="crowdsec-api-key"
-            label="API Key"
-            placeholder="Paste CrowdSec API key"
-            aria-label="CrowdSec API key"
-            value={configForm.api_key ?? ''}
-            onChange={(e) => setConfigForm((f) => ({ ...f, api_key: e.target.value }))}
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              id="crowdsec-update-interval"
-                label="Update Interval (seconds)"
-                type="number"
-                min={1}
-                required
-                aria-label="CrowdSec decision update interval seconds"
-                error={validation.updateIntervalError || undefined}
-                value={String(configForm.update_interval ?? 60)}
-                onChange={(e) =>
-                  setConfigForm((f) => ({
-                  ...f,
-                  update_interval: Math.max(1, Number(e.target.value) || 60),
-                }))
-              }
-            />
-
-            <FormField
-              id="crowdsec-ban-alias-name"
-              label="Ban Alias Name"
-                required
-                placeholder="crowdsec_bans"
-                aria-label="CrowdSec ban alias name"
-                error={validation.banAliasError || undefined}
-                value={configForm.ban_alias_name ?? ''}
-                onChange={(e) => setConfigForm((f) => ({ ...f, ban_alias_name: e.target.value }))}
-              />
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
-        open={enableConfirmOpen}
-        title="Enable CrowdSec integration?"
-        onClose={() => setEnableConfirmOpen(false)}
-        onConfirm={() => {
-          setEnableConfirmOpen(false)
-          saveConfig()
-        }}
-        confirmLabel="Enable and Save"
-        size="md"
-      >
-        <p className="text-sm text-gray-700">
-          Enabling CrowdSec starts decision synchronization with the configured LAPI endpoint.
-          Continue with the current configuration?
-        </p>
-      </Modal>
     </div>
   )
 }

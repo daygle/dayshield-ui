@@ -154,135 +154,6 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
 
   return (
     <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
-      {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between rounded border border-gray-200 bg-white p-3">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900">{interfaceDisplayName}</h3>
-          <p className="mt-0.5 text-xs text-gray-500">
-            {iface.name} • {iface.type.toUpperCase()} • {ipv4ConfigurationType}
-          </p>
-          {iface.type === 'vlan' && (
-            <p className="mt-0.5 text-xs text-gray-500">
-              Parent: {labelParentInterface(iface.parentInterface)} • VLAN {iface.vlanId ?? '-'}
-            </p>
-          )}
-        </div>
-        <button
-          onClick={() => setEditOpen(true)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-          title="Edit interface settings"
-          aria-label="Edit interface settings"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-        </button>
-      </div>
-
-      <div className="rounded border border-gray-200 bg-white p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-gray-900">Overview</h4>
-          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}>
-            {statusText}
-          </span>
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded border border-gray-100 bg-gray-50 p-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Identity</p>
-            <p className="mt-1 text-sm text-gray-900">{interfaceDisplayName}</p>
-            <p className="mt-1 font-mono text-xs text-gray-500">{iface.name}</p>
-          </div>
-          <div className="rounded border border-gray-100 bg-gray-50 p-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Mode</p>
-            <p className="mt-1 text-sm text-gray-900">{ipv4ConfigurationType}</p>
-            <p className="mt-1 text-xs text-gray-500">Type: {iface.type}</p>
-          </div>
-          <div className="rounded border border-gray-100 bg-gray-50 p-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Link</p>
-            <p className="mt-1 font-mono text-sm text-gray-900">{iface.mac ?? '-'}</p>
-            <p className="mt-1 text-xs text-gray-500">MTU: {iface.mtu ?? 'Default'}</p>
-          </div>
-          <div className="rounded border border-gray-100 bg-gray-50 p-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv4</p>
-            <p className="mt-1 font-mono text-sm text-gray-900">
-              {iface.ipv4Address ? `${iface.ipv4Address}/${iface.ipv4Prefix ?? '-'}` : '-'}
-            </p>
-            {kernelIpv4.length > 0 && (
-              <p className="mt-1 text-xs text-gray-500">Runtime: {kernelIpv4.join(', ')}</p>
-            )}
-          </div>
-          {ipv6Enabled && (
-            <div className="rounded border border-gray-100 bg-gray-50 p-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv6</p>
-              <p className="mt-1 font-mono text-sm text-gray-900">
-                {iface.ipv6Address ? `${iface.ipv6Address}/${iface.ipv6Prefix ?? '-'}` : kernelIpv6.length > 0 ? kernelIpv6.join(', ') : '-'}
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                Mode: {labelIpv6Mode(iface.ipv6Mode ?? (iface.dhcp6 ? 'dhcp6' : iface.acceptRa ? 'slaac' : 'static'))}
-              </p>
-              {iface.ipv6Mode === 'track_interface' && (
-                <p className="mt-1 text-xs text-gray-500">
-                  Source: {labelParentInterface(iface.trackSourceInterface)}
-                </p>
-              )}
-              {iface.ipv6Mode === 'track_interface' && (
-                <p className="mt-1 text-xs text-gray-500">
-                  RA Mode: {labelRaMode(iface.raMode)}
-                </p>
-              )}
-              {iface.resolvedIpv6Prefix && (
-                <p className="mt-1 text-xs text-gray-500">
-                  {iface.ipv6Mode === 'dhcp6' ? 'Delegated' : 'Assigned'}: <span className="font-mono">{iface.resolvedIpv6Prefix}</span>
-                </p>
-              )}
-              {kernelIpv6.length > 0 && iface.ipv6Address && (
-                <p className="mt-1 text-xs text-gray-500">Runtime: {kernelIpv6.join(', ')}</p>
-              )}
-            </div>
-          )}
-          <div className="rounded border border-gray-100 bg-gray-50 p-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Routing</p>
-            <p className="mt-1 font-mono text-sm text-gray-900">{iface.gateway ?? '-'}</p>
-            <p className="mt-1 text-xs text-gray-500">MSS: {iface.mss ?? '-'}</p>
-          </div>
-          <div className="rounded border border-gray-100 bg-gray-50 p-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Counters</p>
-            <p className="mt-1 text-xs text-gray-700">
-              RX Packets: <span className="font-mono">{formatCount(iface.kernelRxPackets)}</span>
-            </p>
-            <p className="mt-1 text-xs text-gray-700">
-              TX Packets: <span className="font-mono">{formatCount(iface.kernelTxPackets)}</span>
-            </p>
-            <p className="mt-1 text-xs text-gray-700">
-              RX Bytes: <span className="font-mono">{formatBytes(iface.kernelRxBytes)}</span>
-            </p>
-            <p className="mt-1 text-xs text-gray-700">
-              TX Bytes: <span className="font-mono">{formatBytes(iface.kernelTxBytes)}</span>
-            </p>
-          </div>
-          <div className="rounded border border-gray-100 bg-gray-50 p-3 md:col-span-2 lg:col-span-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Kernel Flags</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {(iface.kernelFlags && iface.kernelFlags.length > 0) ? iface.kernelFlags.map((flag) => (
-                <span
-                  key={flag}
-                  className="inline-flex items-center rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] font-medium text-gray-700"
-                >
-                  {flag}
-                </span>
-              )) : (
-                <span className="text-xs text-gray-500">No runtime flags available.</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
       <Modal
         open={editOpen}
         title={`Edit Interface: ${iface.description || iface.name}`}
@@ -578,6 +449,136 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
           )}
         </div>
       </Modal>
+
+      {error && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between rounded border border-gray-200 bg-white p-3">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">{interfaceDisplayName}</h3>
+          <p className="mt-0.5 text-xs text-gray-500">
+            {iface.name} • {iface.type.toUpperCase()} • {ipv4ConfigurationType}
+          </p>
+          {iface.type === 'vlan' && (
+            <p className="mt-0.5 text-xs text-gray-500">
+              Parent: {labelParentInterface(iface.parentInterface)} • VLAN {iface.vlanId ?? '-'}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => setEditOpen(true)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+          title="Edit interface settings"
+          aria-label="Edit interface settings"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="rounded border border-gray-200 bg-white p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-gray-900">Overview</h4>
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}>
+            {statusText}
+          </span>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded border border-gray-100 bg-gray-50 p-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Identity</p>
+            <p className="mt-1 text-sm text-gray-900">{interfaceDisplayName}</p>
+            <p className="mt-1 font-mono text-xs text-gray-500">{iface.name}</p>
+          </div>
+          <div className="rounded border border-gray-100 bg-gray-50 p-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Mode</p>
+            <p className="mt-1 text-sm text-gray-900">{ipv4ConfigurationType}</p>
+            <p className="mt-1 text-xs text-gray-500">Type: {iface.type}</p>
+          </div>
+          <div className="rounded border border-gray-100 bg-gray-50 p-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Link</p>
+            <p className="mt-1 font-mono text-sm text-gray-900">{iface.mac ?? '-'}</p>
+            <p className="mt-1 text-xs text-gray-500">MTU: {iface.mtu ?? 'Default'}</p>
+          </div>
+          <div className="rounded border border-gray-100 bg-gray-50 p-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv4</p>
+            <p className="mt-1 font-mono text-sm text-gray-900">
+              {iface.ipv4Address ? `${iface.ipv4Address}/${iface.ipv4Prefix ?? '-'}` : '-'}
+            </p>
+            {kernelIpv4.length > 0 && (
+              <p className="mt-1 text-xs text-gray-500">Runtime: {kernelIpv4.join(', ')}</p>
+            )}
+          </div>
+          {ipv6Enabled && (
+            <div className="rounded border border-gray-100 bg-gray-50 p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv6</p>
+              <p className="mt-1 font-mono text-sm text-gray-900">
+                {iface.ipv6Address ? `${iface.ipv6Address}/${iface.ipv6Prefix ?? '-'}` : kernelIpv6.length > 0 ? kernelIpv6.join(', ') : '-'}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                Mode: {labelIpv6Mode(iface.ipv6Mode ?? (iface.dhcp6 ? 'dhcp6' : iface.acceptRa ? 'slaac' : 'static'))}
+              </p>
+              {iface.ipv6Mode === 'track_interface' && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Source: {labelParentInterface(iface.trackSourceInterface)}
+                </p>
+              )}
+              {iface.ipv6Mode === 'track_interface' && (
+                <p className="mt-1 text-xs text-gray-500">
+                  RA Mode: {labelRaMode(iface.raMode)}
+                </p>
+              )}
+              {iface.resolvedIpv6Prefix && (
+                <p className="mt-1 text-xs text-gray-500">
+                  {iface.ipv6Mode === 'dhcp6' ? 'Delegated' : 'Assigned'}: <span className="font-mono">{iface.resolvedIpv6Prefix}</span>
+                </p>
+              )}
+              {kernelIpv6.length > 0 && iface.ipv6Address && (
+                <p className="mt-1 text-xs text-gray-500">Runtime: {kernelIpv6.join(', ')}</p>
+              )}
+            </div>
+          )}
+          <div className="rounded border border-gray-100 bg-gray-50 p-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Routing</p>
+            <p className="mt-1 font-mono text-sm text-gray-900">{iface.gateway ?? '-'}</p>
+            <p className="mt-1 text-xs text-gray-500">MSS: {iface.mss ?? '-'}</p>
+          </div>
+          <div className="rounded border border-gray-100 bg-gray-50 p-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Counters</p>
+            <p className="mt-1 text-xs text-gray-700">
+              RX Packets: <span className="font-mono">{formatCount(iface.kernelRxPackets)}</span>
+            </p>
+            <p className="mt-1 text-xs text-gray-700">
+              TX Packets: <span className="font-mono">{formatCount(iface.kernelTxPackets)}</span>
+            </p>
+            <p className="mt-1 text-xs text-gray-700">
+              RX Bytes: <span className="font-mono">{formatBytes(iface.kernelRxBytes)}</span>
+            </p>
+            <p className="mt-1 text-xs text-gray-700">
+              TX Bytes: <span className="font-mono">{formatBytes(iface.kernelTxBytes)}</span>
+            </p>
+          </div>
+          <div className="rounded border border-gray-100 bg-gray-50 p-3 md:col-span-2 lg:col-span-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Kernel Flags</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {(iface.kernelFlags && iface.kernelFlags.length > 0) ? iface.kernelFlags.map((flag) => (
+                <span
+                  key={flag}
+                  className="inline-flex items-center rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] font-medium text-gray-700"
+                >
+                  {flag}
+                </span>
+              )) : (
+                <span className="text-xs text-gray-500">No runtime flags available.</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   )
 }

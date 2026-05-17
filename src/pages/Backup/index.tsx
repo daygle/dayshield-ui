@@ -254,6 +254,46 @@ export default function BackupRestorePage() {
 
   return (
     <div className="space-y-6">
+      <CreateBackupDialog
+        open={createOpen}
+        loading={creating}
+        onClose={() => setCreateOpen(false)}
+        onConfirm={handleCreate}
+      />
+
+      <RestoreBackupDialog
+        open={restoreOpen}
+        loading={restoring}
+        entry={restoreEntry}
+        onClose={handleRestoreClose}
+        onConfirm={handleRestoreConfirm}
+      />
+
+      <EncryptionPasswordDialog
+        open={encOpen}
+        loading={restoring}
+        filename={restoreEntry?.filename ?? ''}
+        onClose={handlePasswordClose}
+        onConfirm={handlePasswordConfirm}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        open={deleteEntry !== null}
+        title="Delete Backup"
+        onClose={() => setDeleteEntry(null)}
+        onConfirm={handleDeleteConfirm}
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        loading={deleting}
+        size="sm"
+      >
+        <p className="text-sm text-gray-600">
+          Delete backup <span className="font-semibold">{deleteEntry?.filename}</span>? This action
+          cannot be undone.
+        </p>
+      </Modal>
+
       {/* Restore in-progress banner */}
       {restoring && (
         <div className="flex items-center gap-3 rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700">
@@ -357,47 +397,6 @@ export default function BackupRestorePage() {
           />
         )}
       </Card>
-
-      {/* Dialogs */}
-      <CreateBackupDialog
-        open={createOpen}
-        loading={creating}
-        onClose={() => setCreateOpen(false)}
-        onConfirm={handleCreate}
-      />
-
-      <RestoreBackupDialog
-        open={restoreOpen}
-        loading={restoring}
-        entry={restoreEntry}
-        onClose={handleRestoreClose}
-        onConfirm={handleRestoreConfirm}
-      />
-
-      <EncryptionPasswordDialog
-        open={encOpen}
-        loading={restoring}
-        filename={restoreEntry?.filename ?? ''}
-        onClose={handlePasswordClose}
-        onConfirm={handlePasswordConfirm}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        open={deleteEntry !== null}
-        title="Delete Backup"
-        onClose={() => setDeleteEntry(null)}
-        onConfirm={handleDeleteConfirm}
-        confirmLabel="Delete"
-        confirmVariant="danger"
-        loading={deleting}
-        size="sm"
-      >
-        <p className="text-sm text-gray-600">
-          Delete backup <span className="font-semibold">{deleteEntry?.filename}</span>? This action
-          cannot be undone.
-        </p>
-      </Modal>
 
       {/* Toasts */}
       <Toast messages={toasts} />

@@ -439,6 +439,69 @@ function AIThreatsContent() {
 
   return (
     <div className="space-y-6">
+      <Modal
+        open={Boolean(selectedThreat)}
+        title="Threat Event Details"
+        onClose={() => setSelectedThreat(null)}
+        size="lg"
+      >
+        {selectedThreat && (
+          <div className="space-y-4 text-sm">
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-2">
+              <Detail label="ID" value={<span className="font-mono break-all">{selectedThreat.id}</span>} />
+              <Detail label="Timestamp" value={formatUnixDateTime(selectedThreat.timestamp)} />
+              <Detail label="Source IP" value={<span className="font-mono">{selectedThreat.src_ip}</span>} />
+              <Detail label="Destination IP" value={<span className="font-mono">{selectedThreat.dst_ip}</span>} />
+              <Detail label="Source Port" value={selectedThreat.src_port === null ? '-' : String(selectedThreat.src_port)} />
+              <Detail label="Destination Port" value={selectedThreat.dst_port === null ? '-' : String(selectedThreat.dst_port)} />
+              <Detail label="Protocol" value={selectedThreat.protocol} />
+              <Detail label="Source" value={selectedThreat.event_source} />
+              <Detail label="Action" value={selectedThreat.action ?? '-'} />
+              <Detail label="Signature" value={selectedThreat.signature ?? '-'} />
+              <Detail label="Alert Severity" value={selectedThreat.alert_severity === undefined ? '-' : String(selectedThreat.alert_severity)} />
+              <Detail label="Model Label" value={selectedThreat.label === undefined ? '-' : String(selectedThreat.label)} />
+              <Detail label="Risk Score" value={`${Math.round(selectedThreat.risk_score * 100)}%`} />
+              <Detail label="Blocked" value={selectedThreat.blocked ? 'Yes' : 'No'} />
+              <Detail label="Block Expires" value={selectedThreat.block_expires_at === null ? 'Permanent' : formatUnixDateTime(selectedThreat.block_expires_at)} />
+              <Detail label="Escalated" value={selectedThreat.escalated ? 'Yes' : 'No'} />
+              <Detail label="Quarantine" value={selectedThreat.quarantine ? 'Yes' : 'No'} />
+              <Detail label="Manually Unblocked" value={selectedThreat.manually_unblocked ? 'Yes' : 'No'} />
+              <Detail label="Feedback" value={selectedThreat.feedback ?? 'None'} />
+            </dl>
+            <div>
+              <p className="mb-1 text-sm font-medium text-gray-700">Reasons</p>
+              {selectedThreat.reasons.length > 0 ? (
+                <ul className="list-disc space-y-1 pl-5 text-gray-700">
+                  {selectedThreat.reasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500">No reasons provided.</p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3 pt-4">
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={feedbackInProgress === `${selectedThreat.id}:false_positive`}
+                onClick={() => void handleFeedback(selectedThreat.id, 'false_positive')}
+              >
+                Mark false positive
+              </Button>
+              <Button
+                size="sm"
+                variant="primary"
+                loading={feedbackInProgress === `${selectedThreat.id}:confirmed_malicious`}
+                onClick={() => void handleFeedback(selectedThreat.id, 'confirmed_malicious')}
+              >
+                Confirm malicious
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {error}
@@ -776,68 +839,6 @@ function AIThreatsContent() {
         />
       </Card>
 
-      <Modal
-        open={Boolean(selectedThreat)}
-        title="Threat Event Details"
-        onClose={() => setSelectedThreat(null)}
-        size="lg"
-      >
-        {selectedThreat && (
-          <div className="space-y-4 text-sm">
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-2">
-              <Detail label="ID" value={<span className="font-mono break-all">{selectedThreat.id}</span>} />
-              <Detail label="Timestamp" value={formatUnixDateTime(selectedThreat.timestamp)} />
-              <Detail label="Source IP" value={<span className="font-mono">{selectedThreat.src_ip}</span>} />
-              <Detail label="Destination IP" value={<span className="font-mono">{selectedThreat.dst_ip}</span>} />
-              <Detail label="Source Port" value={selectedThreat.src_port === null ? '-' : String(selectedThreat.src_port)} />
-              <Detail label="Destination Port" value={selectedThreat.dst_port === null ? '-' : String(selectedThreat.dst_port)} />
-              <Detail label="Protocol" value={selectedThreat.protocol} />
-              <Detail label="Source" value={selectedThreat.event_source} />
-              <Detail label="Action" value={selectedThreat.action ?? '-'} />
-              <Detail label="Signature" value={selectedThreat.signature ?? '-'} />
-              <Detail label="Alert Severity" value={selectedThreat.alert_severity === undefined ? '-' : String(selectedThreat.alert_severity)} />
-              <Detail label="Model Label" value={selectedThreat.label === undefined ? '-' : String(selectedThreat.label)} />
-              <Detail label="Risk Score" value={`${Math.round(selectedThreat.risk_score * 100)}%`} />
-              <Detail label="Blocked" value={selectedThreat.blocked ? 'Yes' : 'No'} />
-              <Detail label="Block Expires" value={selectedThreat.block_expires_at === null ? 'Permanent' : formatUnixDateTime(selectedThreat.block_expires_at)} />
-              <Detail label="Escalated" value={selectedThreat.escalated ? 'Yes' : 'No'} />
-              <Detail label="Quarantine" value={selectedThreat.quarantine ? 'Yes' : 'No'} />
-              <Detail label="Manually Unblocked" value={selectedThreat.manually_unblocked ? 'Yes' : 'No'} />
-              <Detail label="Feedback" value={selectedThreat.feedback ?? 'None'} />
-            </dl>
-            <div>
-              <p className="mb-1 text-sm font-medium text-gray-700">Reasons</p>
-              {selectedThreat.reasons.length > 0 ? (
-                <ul className="list-disc space-y-1 pl-5 text-gray-700">
-                  {selectedThreat.reasons.map((reason) => (
-                    <li key={reason}>{reason}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-500">No reasons provided.</p>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-3 pt-4">
-              <Button
-                size="sm"
-                variant="secondary"
-                loading={feedbackInProgress === `${selectedThreat.id}:false_positive`}
-                onClick={() => void handleFeedback(selectedThreat.id, 'false_positive')}
-              >
-                Mark false positive
-              </Button>
-              <Button
-                size="sm"
-                variant="primary"
-                loading={feedbackInProgress === `${selectedThreat.id}:confirmed_malicious`}
-                onClick={() => void handleFeedback(selectedThreat.id, 'confirmed_malicious')}
-              >
-                Confirm malicious
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   )
 }

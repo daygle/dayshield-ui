@@ -143,6 +143,68 @@ export default function ACME() {
 
   return (
     <div className="space-y-6">
+      {/* Edit Account Modal */}
+      <Modal
+        open={accountEditOpen}
+        title="Edit ACME Account"
+        onClose={() => setAccountEditOpen(false)}
+        onConfirm={handleSaveAccount}
+        confirmLabel="Save"
+        loading={accountSaving}
+        size="lg"
+      >
+        <div className="grid grid-cols-1 gap-4">
+          <FormField
+            id="acme-email"
+            label="Email"
+            type="email"
+            placeholder="admin@example.com"
+            value={accountForm.email ?? ''}
+            onChange={(e) => setAccountForm({ ...accountForm, email: e.target.value })}
+          />
+          <FormField
+            id="acme-server"
+            label="ACME Directory URL"
+            placeholder="https://acme-v02.api.letsencrypt.org/directory"
+            value={accountForm.directory_url ?? ''}
+            onChange={(e) => setAccountForm({ ...accountForm, directory_url: e.target.value })}
+          />
+          <p className="text-xs text-gray-500">
+            Use <code className="font-mono">https://acme-staging-v02.api.letsencrypt.org/directory</code> for
+            testing to avoid Let&apos;s Encrypt rate limits.
+          </p>
+        </div>
+      </Modal>
+
+      {/* Issue Certificate Modal */}
+      <Modal
+        open={issueOpen}
+        title="Issue Certificate"
+        onClose={() => setIssueOpen(false)}
+        onConfirm={handleIssueCert}
+        confirmLabel="Issue"
+        loading={issueSaving}
+        size="lg"
+      >
+        <div className="grid grid-cols-1 gap-4">
+          <FormField
+            id="cert-domain"
+            label="Primary Domain"
+            required
+            placeholder="example.com"
+            value={certForm.domain}
+            onChange={(e) => setCertForm({ ...certForm, domain: e.target.value })}
+          />
+          <FormField
+            id="cert-sans"
+            label="Subject Alternative Names (comma-separated)"
+            placeholder="www.example.com, api.example.com"
+            value={certForm.sans}
+            onChange={(e) => setCertForm({ ...certForm, sans: e.target.value })}
+          />
+        </div>
+      </Modal>
+
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {error}
@@ -217,67 +279,6 @@ export default function ACME() {
         />
       </Card>
 
-      {/* Edit Account Modal */}
-      <Modal
-        open={accountEditOpen}
-        title="Edit ACME Account"
-        onClose={() => setAccountEditOpen(false)}
-        onConfirm={handleSaveAccount}
-        confirmLabel="Save"
-        loading={accountSaving}
-        size="lg"
-      >
-        <div className="grid grid-cols-1 gap-4">
-          <FormField
-            id="acme-email"
-            label="Email"
-            type="email"
-            placeholder="admin@example.com"
-            value={accountForm.email ?? ''}
-            onChange={(e) => setAccountForm({ ...accountForm, email: e.target.value })}
-          />
-          <FormField
-            id="acme-server"
-            label="ACME Directory URL"
-            placeholder="https://acme-v02.api.letsencrypt.org/directory"
-            value={accountForm.directory_url ?? ''}
-            onChange={(e) => setAccountForm({ ...accountForm, directory_url: e.target.value })}
-          />
-          <p className="text-xs text-gray-500">
-            Use <code className="font-mono">https://acme-staging-v02.api.letsencrypt.org/directory</code> for
-            testing to avoid Let&apos;s Encrypt rate limits.
-          </p>
-        </div>
-      </Modal>
-
-      {/* Issue Certificate Modal */}
-      <Modal
-        open={issueOpen}
-        title="Issue Certificate"
-        onClose={() => setIssueOpen(false)}
-        onConfirm={handleIssueCert}
-        confirmLabel="Issue"
-        loading={issueSaving}
-        size="lg"
-      >
-        <div className="grid grid-cols-1 gap-4">
-          <FormField
-            id="cert-domain"
-            label="Primary Domain"
-            required
-            placeholder="example.com"
-            value={certForm.domain}
-            onChange={(e) => setCertForm({ ...certForm, domain: e.target.value })}
-          />
-          <FormField
-            id="cert-sans"
-            label="Subject Alternative Names (comma-separated)"
-            placeholder="www.example.com, api.example.com"
-            value={certForm.sans}
-            onChange={(e) => setCertForm({ ...certForm, sans: e.target.value })}
-          />
-        </div>
-      </Modal>
     </div>
   )
 }
