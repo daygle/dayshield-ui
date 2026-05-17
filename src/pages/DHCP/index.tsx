@@ -157,6 +157,7 @@ export default function DHCP() {
   const { formatDateTime } = useDisplayPreferences()
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedInterface = searchParams.get('iface')
+  const selectedSection = searchParams.get('section')
   const [config, setConfig] = useState<DhcpConfig | null>(null)
   const [config6, setConfig6] = useState<Dhcp6Config | null>(null)
   const [interfaceConfig, setInterfaceConfig] = useState<DhcpConfigPerInterface | null>(null)
@@ -206,6 +207,24 @@ export default function DHCP() {
   const selectedInterfaceLabel = selectedInterfaceMeta
     ? interfaceLabel(selectedInterfaceMeta)
     : selectedInterface || ''
+
+  const activeSection =
+    selectedSection === 'dhcp' || selectedSection === 'dhcp6'
+      ? selectedSection
+      : 'dhcp'
+  const showDhcpSection = activeSection === 'dhcp'
+  const showDhcp6Section = activeSection === 'dhcp6'
+
+  const sectionTabs: Array<{ id: 'dhcp' | 'dhcp6'; label: string }> = [
+    { id: 'dhcp', label: 'DHCP' },
+    { id: 'dhcp6', label: 'DHCPv6' },
+  ]
+
+  const setActiveSection = (section: 'dhcp' | 'dhcp6') => {
+    const next = new URLSearchParams(searchParams)
+    next.set('section', section)
+    setSearchParams(next)
+  }
 
   const globalConfigInterfaceLabel = useMemo(() => {
     const name = config?.interface
@@ -1061,12 +1080,36 @@ export default function DHCP() {
         </div>
       )}
 
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex gap-1" aria-label="DHCP tabs">
+          {sectionTabs.map((tab) => {
+            const isActive = activeSection === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveSection(tab.id)}
+                className={[
+                  'px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
+                  isActive
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                ].join(' ')}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </nav>
+      </div>
+
       <Card
-        title="DHCP"
+        title="DHCP Services"
         subtitle="Select the interface whose DHCP settings, reservations, and active leases you want to manage"
       >
         <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
-          This page manages DHCPv4 (Kea). IPv6 uplink modes (DHCPv6/SLAAC/track prefix) are configured per interface in Interfaces when IPv6 is enabled in System settings.
+          Use tabs to switch between DHCPv4 and DHCPv6 configuration, reservations, and active leases.
         </div>
         <div className="max-w-md">
           <FormField
@@ -1086,224 +1129,232 @@ export default function DHCP() {
         </div>
       </Card>
 
-      {/* DHCP Config summary */}
-      <Card
-        title={selectedInterface ? `DHCP: ${selectedInterfaceLabel}` : 'DHCP Server'}
-        subtitle={selectedInterface ? 'Per-interface DHCPv4 scope and reservation settings' : 'Kea DHCPv4 configuration'}
-        actions={
-          <button
-            onClick={openConfigModal}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-            title={selectedInterface ? 'Edit interface DHCP settings' : 'Edit DHCP settings'}
+      {showDhcpSection && (
+        <>
+          {/* DHCP Config summary */}
+          <Card
+            title={selectedInterface ? `DHCP: ${selectedInterfaceLabel}` : 'DHCP Server'}
+            subtitle={selectedInterface ? 'Per-interface DHCPv4 scope and reservation settings' : 'Kea DHCPv4 configuration'}
+            actions={
+              <button
+                onClick={openConfigModal}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                title={selectedInterface ? 'Edit interface DHCP settings' : 'Edit DHCP settings'}
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+            }
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
-        }
-      >
-        {loading ? (
-          <p className="text-sm text-gray-400">Loading...</p>
-        ) : (selectedInterface ? interfaceConfig : config) ? (
-          <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
-            {!selectedInterface && (
-              <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Interface</dt>
-                <dd className="mt-1 font-medium text-gray-800">{globalConfigInterfaceLabel}</dd>
-              </div>
+            {loading ? (
+              <p className="text-sm text-gray-400">Loading...</p>
+            ) : (selectedInterface ? interfaceConfig : config) ? (
+              <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+                {!selectedInterface && (
+                  <div>
+                    <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Interface</dt>
+                    <dd className="mt-1 font-medium text-gray-800">{globalConfigInterfaceLabel}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
+                  <dd className={`mt-1 font-semibold ${(selectedInterface ? interfaceConfig?.enabled : config?.enabled) ? 'text-green-600' : 'text-gray-400'}`}>
+                    {(selectedInterface ? interfaceConfig?.enabled : config?.enabled) ? 'Enabled' : 'Disabled'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Subnet</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.subnet : config?.subnet) || '-'}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Pool Range</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">
+                    {(selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart) && (selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd)
+                      ? `${selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart} - ${selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd}`
+                      : '-'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Default Gateway</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.gateway : config?.gateway) || '-'}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNS Servers</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">
+                    {(selectedInterface ? interfaceConfig?.dnsServers : config?.dnsServers)?.length
+                      ? (selectedInterface ? interfaceConfig?.dnsServers : config?.dnsServers)?.join(', ')
+                      : '-'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Lease Time</dt>
+                  <dd className="mt-1 font-medium text-gray-800">{leaseTimeFmt((selectedInterface ? interfaceConfig?.leaseTime : config?.leaseTime) ?? 86400)}</dd>
+                </div>
+                {(selectedInterface ? interfaceConfig?.domainName : config?.domainName) && (
+                  <div>
+                    <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Domain Name</dt>
+                    <dd className="mt-1 font-medium text-gray-800 font-mono">{selectedInterface ? interfaceConfig?.domainName : config?.domainName}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Subnet Mask</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.subnetMask : config?.subnetMask) || '-'}</dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="text-sm text-gray-400">No DHCP configuration found.</p>
             )}
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
-              <dd className={`mt-1 font-semibold ${(selectedInterface ? interfaceConfig?.enabled : config?.enabled) ? 'text-green-600' : 'text-gray-400'}`}>
-                {(selectedInterface ? interfaceConfig?.enabled : config?.enabled) ? 'Enabled' : 'Disabled'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Subnet</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.subnet : config?.subnet) || '-'}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Pool Range</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">
-                {(selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart) && (selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd)
-                  ? `${selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart} - ${selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd}`
-                  : '-'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Default Gateway</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.gateway : config?.gateway) || '-'}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNS Servers</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">
-                {(selectedInterface ? interfaceConfig?.dnsServers : config?.dnsServers)?.length
-                  ? (selectedInterface ? interfaceConfig?.dnsServers : config?.dnsServers)?.join(', ')
-                  : '-'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Lease Time</dt>
-              <dd className="mt-1 font-medium text-gray-800">{leaseTimeFmt((selectedInterface ? interfaceConfig?.leaseTime : config?.leaseTime) ?? 86400)}</dd>
-            </div>
-            {(selectedInterface ? interfaceConfig?.domainName : config?.domainName) && (
-              <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Domain Name</dt>
-                <dd className="mt-1 font-medium text-gray-800 font-mono">{selectedInterface ? interfaceConfig?.domainName : config?.domainName}</dd>
-              </div>
-            )}
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Subnet Mask</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.subnetMask : config?.subnetMask) || '-'}</dd>
-            </div>
-          </dl>
-        ) : (
-          <p className="text-sm text-gray-400">No DHCP configuration found.</p>
-        )}
-      </Card>
+          </Card>
 
-      <Card
-        title={selectedInterface ? 'Static IP Reservations' : 'Static Leases'}
-        subtitle={selectedInterface ? `Reservations for ${selectedInterfaceLabel}` : 'MAC to IP address reservations (always assigned the same IP)'}
-        actions={
-          <button
-            onClick={() => setLeaseModalOpen(true)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-            title="Add new lease"
+          <Card
+            title={selectedInterface ? 'Static IP Reservations' : 'Static Leases'}
+            subtitle={selectedInterface ? `Reservations for ${selectedInterfaceLabel}` : 'MAC to IP address reservations (always assigned the same IP)'}
+            actions={
+              <button
+                onClick={() => setLeaseModalOpen(true)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                title="Add new lease"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            }
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        }
-      >
-        <Table
-          columns={staticColumnsWithActions}
-          data={staticLeases}
-          keyField="id"
-          loading={loading}
-          emptyMessage="No static leases configured."
-        />
-      </Card>
+            <Table
+              columns={staticColumnsWithActions}
+              data={staticLeases}
+              keyField="id"
+              loading={loading}
+              emptyMessage="No static leases configured."
+            />
+          </Card>
 
-      <Card
-        title="Active Leases"
-        subtitle={selectedInterface ? `Active leases within ${selectedInterfaceLabel}` : 'Currently assigned DHCP leases'}
-      >
-        <Table
-          columns={activeColumns}
-          data={activeLeasesForSelectedInterface}
-          keyField="mac"
-          loading={loading}
-          emptyMessage="No active leases."
-        />
-      </Card>
-
-      {/* DHCPv6 Static Reservations */}
-      <Card
-        title="DHCPv6 Static Reservations"
-        subtitle="DUID → IPv6 address static bindings managed by the Kea DHCPv6 server"
-        actions={
-          <button
-            onClick={() => { setLease6Form(defaultLease6Form); setLease6ModalOpen(true) }}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-            title="Add DHCPv6 static reservation"
+          <Card
+            title="Active Leases"
+            subtitle={selectedInterface ? `Active leases within ${selectedInterfaceLabel}` : 'Currently assigned DHCP leases'}
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        }
-      >
-        <Table
-          columns={static6ColumnsWithActions}
-          data={static6Leases}
-          keyField="id"
-          loading={loading}
-          emptyMessage="No DHCPv6 static reservations configured."
-        />
-      </Card>
+            <Table
+              columns={activeColumns}
+              data={activeLeasesForSelectedInterface}
+              keyField="mac"
+              loading={loading}
+              emptyMessage="No active leases."
+            />
+          </Card>
+        </>
+      )}
 
-      {/* DHCPv6 Active Leases */}
-      <Card
-        title="DHCPv6 Active Leases"
-        subtitle="Currently active DHCPv6 address assignments from the Kea lease database"
-      >
-        <Table
-          columns={active6Columns}
-          data={active6LeasesForSelectedInterface}
-          keyField="ipAddress"
-          loading={loading}
-          emptyMessage="No active DHCPv6 leases."
-        />
-      </Card>
-
-      <Card
-        title={selectedInterface ? `DHCPv6: ${selectedInterfaceLabel}` : 'DHCPv6 Server'}
-        subtitle={selectedInterface ? 'Per-interface DHCPv6 scope settings' : 'Kea DHCPv6 configuration'}
-        actions={
-          <button
-            onClick={openConfig6Modal}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-            title={selectedInterface ? 'Edit interface DHCPv6 settings' : 'Edit DHCPv6 settings'}
+      {showDhcp6Section && (
+        <>
+          <Card
+            title={selectedInterface ? `DHCPv6: ${selectedInterfaceLabel}` : 'DHCPv6 Server'}
+            subtitle={selectedInterface ? 'Per-interface DHCPv6 scope settings' : 'Kea DHCPv6 configuration'}
+            actions={
+              <button
+                onClick={openConfig6Modal}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                title={selectedInterface ? 'Edit interface DHCPv6 settings' : 'Edit DHCPv6 settings'}
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+            }
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
-        }
-      >
-        {loading ? (
-          <p className="text-sm text-gray-400">Loading...</p>
-        ) : (selectedInterface ? interfaceConfig6 : config6) ? (
-          <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
-            {!selectedInterface && (
-              <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Interface</dt>
-                <dd className="mt-1 font-medium text-gray-800">{config6?.interface || '-'}</dd>
-              </div>
+            {loading ? (
+              <p className="text-sm text-gray-400">Loading...</p>
+            ) : (selectedInterface ? interfaceConfig6 : config6) ? (
+              <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+                {!selectedInterface && (
+                  <div>
+                    <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Interface</dt>
+                    <dd className="mt-1 font-medium text-gray-800">{config6?.interface || '-'}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
+                  <dd className={`mt-1 font-semibold ${(selectedInterface ? interfaceConfig6?.enabled : config6?.enabled) ? 'text-green-600' : 'text-gray-400'}`}>
+                    {(selectedInterface ? interfaceConfig6?.enabled : config6?.enabled) ? 'Enabled' : 'Disabled'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Subnet</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig6?.subnet : config6?.subnet) || '-'}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Pool Range</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">
+                    {(selectedInterface ? interfaceConfig6?.rangeStart : config6?.rangeStart) && (selectedInterface ? interfaceConfig6?.rangeEnd : config6?.rangeEnd)
+                      ? `${selectedInterface ? interfaceConfig6?.rangeStart : config6?.rangeStart} - ${selectedInterface ? interfaceConfig6?.rangeEnd : config6?.rangeEnd}`
+                      : '-'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNS Servers</dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">
+                    {(selectedInterface ? interfaceConfig6?.dnsServers : config6?.dnsServers)?.length
+                      ? (selectedInterface ? interfaceConfig6?.dnsServers : config6?.dnsServers)?.join(', ')
+                      : '-'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Lease Time</dt>
+                  <dd className="mt-1 font-medium text-gray-800">{leaseTimeFmt((selectedInterface ? interfaceConfig6?.leaseTime : config6?.leaseTime) ?? 86400)}</dd>
+                </div>
+                {(selectedInterface ? interfaceConfig6?.domainName : config6?.domainName) && (
+                  <div>
+                    <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Domain Name</dt>
+                    <dd className="mt-1 font-medium text-gray-800 font-mono">{selectedInterface ? interfaceConfig6?.domainName : config6?.domainName}</dd>
+                  </div>
+                )}
+              </dl>
+            ) : (
+              <p className="text-sm text-gray-400">No DHCPv6 configuration found.</p>
             )}
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
-              <dd className={`mt-1 font-semibold ${(selectedInterface ? interfaceConfig6?.enabled : config6?.enabled) ? 'text-green-600' : 'text-gray-400'}`}>
-                {(selectedInterface ? interfaceConfig6?.enabled : config6?.enabled) ? 'Enabled' : 'Disabled'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Subnet</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig6?.subnet : config6?.subnet) || '-'}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Pool Range</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">
-                {(selectedInterface ? interfaceConfig6?.rangeStart : config6?.rangeStart) && (selectedInterface ? interfaceConfig6?.rangeEnd : config6?.rangeEnd)
-                  ? `${selectedInterface ? interfaceConfig6?.rangeStart : config6?.rangeStart} - ${selectedInterface ? interfaceConfig6?.rangeEnd : config6?.rangeEnd}`
-                  : '-'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNS Servers</dt>
-              <dd className="mt-1 font-medium text-gray-800 font-mono">
-                {(selectedInterface ? interfaceConfig6?.dnsServers : config6?.dnsServers)?.length
-                  ? (selectedInterface ? interfaceConfig6?.dnsServers : config6?.dnsServers)?.join(', ')
-                  : '-'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Lease Time</dt>
-              <dd className="mt-1 font-medium text-gray-800">{leaseTimeFmt((selectedInterface ? interfaceConfig6?.leaseTime : config6?.leaseTime) ?? 86400)}</dd>
-            </div>
-            {(selectedInterface ? interfaceConfig6?.domainName : config6?.domainName) && (
-              <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Domain Name</dt>
-                <dd className="mt-1 font-medium text-gray-800 font-mono">{selectedInterface ? interfaceConfig6?.domainName : config6?.domainName}</dd>
-              </div>
-            )}
-          </dl>
-        ) : (
-          <p className="text-sm text-gray-400">No DHCPv6 configuration found.</p>
-        )}
-      </Card>
+          </Card>
+
+          {/* DHCPv6 Static Reservations */}
+          <Card
+            title="DHCPv6 Static Reservations"
+            subtitle="DUID → IPv6 address static bindings managed by the Kea DHCPv6 server"
+            actions={
+              <button
+                onClick={() => { setLease6Form(defaultLease6Form); setLease6ModalOpen(true) }}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                title="Add DHCPv6 static reservation"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            }
+          >
+            <Table
+              columns={static6ColumnsWithActions}
+              data={static6Leases}
+              keyField="id"
+              loading={loading}
+              emptyMessage="No DHCPv6 static reservations configured."
+            />
+          </Card>
+
+          {/* DHCPv6 Active Leases */}
+          <Card
+            title="DHCPv6 Active Leases"
+            subtitle="Currently active DHCPv6 address assignments from the Kea lease database"
+          >
+            <Table
+              columns={active6Columns}
+              data={active6LeasesForSelectedInterface}
+              keyField="ipAddress"
+              loading={loading}
+              emptyMessage="No active DHCPv6 leases."
+            />
+          </Card>
+        </>
+      )}
     </div>
   )
 }
