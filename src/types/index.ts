@@ -885,6 +885,75 @@ export interface CloudflaredActionResponse {
   message: string
 }
 
+// ── Captive Portal ──────────────────────────────────────────────────────────
+
+export type CaptivePortalAuthMode = 'clickThrough' | 'voucher'
+
+export interface CaptivePortalVoucher {
+  id: string
+  code: string
+  description?: string | null
+  enabled: boolean
+  expiresAt?: string | null
+  maxUses?: number | null
+  uses: number
+}
+
+export interface CaptivePortalConfig {
+  enabled: boolean
+  interfaces: string[]
+  authMode: CaptivePortalAuthMode
+  listenAddress: string
+  listenPort: number
+  redirectHttp: boolean
+  sessionTtlSeconds: number
+  idleTimeoutSeconds: number
+  portalTitle: string
+  portalMessage: string
+  termsRequired: boolean
+  successRedirectUrl?: string | null
+  walledGardenIps: string[]
+  bypassMacs: string[]
+  vouchers: CaptivePortalVoucher[]
+}
+
+export interface CaptivePortalStatus {
+  enabled: boolean
+  interfaces: string[]
+  listenAddress: string
+  listenPort: number
+  redirectHttp: boolean
+  authMode: CaptivePortalAuthMode
+  sessionsTotal: number
+  sessionsActive: number
+  sessionsExpired: number
+}
+
+export interface CaptivePortalSession {
+  id: string
+  clientIp: string
+  clientMac?: string | null
+  authorizedAt: string
+  lastSeenAt: string
+  expiresAt: string
+  voucherId?: string | null
+  userAgent?: string | null
+}
+
+export interface CaptivePortalSessionRow extends CaptivePortalSession {
+  active: boolean
+}
+
+export interface CaptivePortalSessionsResponse {
+  sessions: CaptivePortalSessionRow[]
+}
+
+export interface CreateCaptivePortalSessionRequest {
+  clientIp: string
+  clientMac?: string
+  ttlSeconds?: number
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 export interface AuthUser {

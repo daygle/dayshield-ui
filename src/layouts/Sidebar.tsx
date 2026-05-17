@@ -103,6 +103,17 @@ const navEntries: NavEntry[] = [
     ),
   },
   {
+    to: '/captive-portal',
+    label: 'Captive Portal',
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 11c1.657 0 3-1.343 3-3V7a3 3 0 10-6 0v1c0 1.657 1.343 3 3 3z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 19a7 7 0 0114 0" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20 12a8 8 0 11-16 0 8 8 0 0116 0z" />
+      </svg>
+    ),
+  },
+  {
     to: '/ntp',
     label: 'NTP',
     icon: (

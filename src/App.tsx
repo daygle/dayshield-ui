@@ -11,6 +11,7 @@ import VPN from './pages/VPN'
 import DNS from './pages/DNS'
 import DynamicDNS from './pages/DynamicDNS'
 import DHCP from './pages/DHCP'
+import CaptivePortal from './pages/CaptivePortal'
 import Suricata from './pages/Suricata'
 import SuricataRulesetsPage from './pages/Suricata/RulesetsPage'
 import CrowdSec from './pages/CrowdSec'
@@ -53,6 +54,7 @@ function App() {
           <Route path="dns" element={<DNS />} />
           <Route path="dynamic-dns" element={<DynamicDNS />} />
           <Route path="dhcp" element={<DHCP />} />
+          <Route path="captive-portal" element={<CaptivePortal />} />
           <Route path="suricata" element={<Suricata />} />
           <Route path="suricata/rulesets" element={<SuricataRulesetsPage />} />
           <Route path="crowdsec" element={<CrowdSec />} />

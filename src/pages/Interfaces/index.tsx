@@ -624,14 +624,6 @@ export default function Interfaces() {
           )}
         </Card>
       )}
-                    </p>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </Card>
 
       <Card
         title="Network Interfaces"

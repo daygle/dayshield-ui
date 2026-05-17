@@ -10,6 +10,7 @@ const pageTitles: Record<string, string> = {
   '/vpn': 'VPN',
   '/dns': 'DNS',
   '/dhcp': 'DHCP',
+  '/captive-portal': 'Captive Portal',
   '/system': 'System',
   '/change-password': 'Change Password',
 }
