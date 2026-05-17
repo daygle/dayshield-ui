@@ -26,11 +26,11 @@ import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 const DEFAULT_CONFIG: CaptivePortalConfig = {
   enabled: false,
   interfaces: [],
-  authMode: 'clickThrough',
+  authMode: 'click_through',
   listenAddress: '0.0.0.0',
   listenPort: 8080,
   redirectHttp: true,
-  sessionTtlSeconds: 3600,
+  sessionTtlSeconds: 86400,
   idleTimeoutSeconds: 0,
   portalTitle: 'Internet Access',
   portalMessage: 'Please authorize to continue browsing.',
@@ -89,18 +89,28 @@ function fromDatetimeLocal(value: string): string | null {
   return date.toISOString()
 }
 
+function isHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 function normalizeVoucher(voucher: CaptivePortalVoucher): CaptivePortalVoucher {
   const code = voucher.code.trim()
+  const maxUses =
+    typeof voucher.maxUses === 'number' && Number.isFinite(voucher.maxUses) && voucher.maxUses > 0
+      ? Math.floor(voucher.maxUses)
+      : undefined
   return {
     ...voucher,
     id: voucher.id || `voucher-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     code,
     description: voucher.description?.trim() || undefined,
     expiresAt: voucher.expiresAt || undefined,
-    maxUses:
-      typeof voucher.maxUses === 'number' && Number.isFinite(voucher.maxUses)
-        ? Math.max(0, Math.floor(voucher.maxUses))
-        : undefined,
+    maxUses,
   }
 }
 
@@ -138,9 +148,31 @@ const sessionColumns = (
     render: (row) => formatDateTime(row.authorizedAt),
   },
   {
+    key: 'lastSeenAt',
+    header: 'Last Seen',
+    render: (row) => formatDateTime(row.lastSeenAt),
+  },
+  {
     key: 'expiresAt',
     header: 'Expires',
     render: (row) => formatDateTime(row.expiresAt),
+  },
+  {
+    key: 'voucherId',
+    header: 'Voucher',
+    render: (row) => (
+      <span className="font-mono text-xs">{row.voucherId ? String(row.voucherId).slice(0, 8) : '-'}</span>
+    ),
+  },
+  {
+    key: 'userAgent',
+    header: 'User Agent',
+    className: 'max-w-xs',
+    render: (row) => (
+      <span className="block truncate" title={row.userAgent || undefined}>
+        {row.userAgent || '-'}
+      </span>
+    ),
   },
   {
     key: 'actions',
@@ -287,13 +319,31 @@ export default function CaptivePortalPage() {
       return 'Portal title is required.'
     }
 
+    if (config.successRedirectUrl?.trim() && !isHttpUrl(config.successRedirectUrl.trim())) {
+      return 'Success redirect URL must be a valid HTTP or HTTPS URL.'
+    }
+
     if (config.authMode === 'voucher') {
       const enabledVouchers = config.vouchers.filter((voucher) => voucher.enabled)
       if (enabledVouchers.length === 0) {
         return 'Voucher mode requires at least one enabled voucher.'
       }
-      if (enabledVouchers.some((voucher) => !voucher.code.trim())) {
-        return 'Each enabled voucher must have a code.'
+      const voucherCodes = enabledVouchers.map((voucher) => voucher.code.trim())
+      if (voucherCodes.some((code) => code.length < 4 || code.length > 128)) {
+        return 'Each enabled voucher code must be 4 to 128 characters.'
+      }
+      if (voucherCodes.some((code) => /\s/.test(code))) {
+        return 'Voucher codes cannot contain whitespace.'
+      }
+      if (new Set(voucherCodes).size !== voucherCodes.length) {
+        return 'Voucher codes must be unique.'
+      }
+      const invalidMaxUses = enabledVouchers.some((voucher) =>
+        voucher.maxUses != null &&
+        (!Number.isFinite(voucher.maxUses) || voucher.maxUses <= 0 || voucher.uses > voucher.maxUses),
+      )
+      if (invalidMaxUses) {
+        return 'Voucher max uses must be greater than current uses.'
       }
     }
 
@@ -467,7 +517,7 @@ export default function CaptivePortalPage() {
               disabled={busy}
               onChange={(e) => setConfig((current) => ({ ...current, authMode: e.target.value as CaptivePortalConfig['authMode'] }))}
             >
-              <option value="clickThrough">Click-through</option>
+              <option value="click_through">Click-through</option>
               <option value="voucher">Voucher</option>
             </FormField>
             <FormField
@@ -640,14 +690,14 @@ export default function CaptivePortalPage() {
                           id={`voucher-max-uses-${voucher.id}`}
                           label="Max uses"
                           type="number"
-                          min={0}
+                          min={1}
                           value={voucher.maxUses ?? ''}
                           hint="Leave empty for unlimited uses"
                           disabled={busy}
                           onChange={(e) => {
                             const next = e.target.value.trim()
                             handleUpdateVoucher(voucher.id, {
-                              maxUses: next.length > 0 ? Math.max(0, Number(next) || 0) : null,
+                              maxUses: next.length > 0 ? Math.max(1, Number(next) || 1) : null,
                             })
                           }}
                         />

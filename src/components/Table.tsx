@@ -71,7 +71,7 @@ export default function Table<T extends Record<string, unknown>>({
                       d="M4 12a8 8 0 018-8v8H4z"
                     />
                   </svg>
-                  Loading…
+                  Loading...
                 </span>
               </td>
             </tr>

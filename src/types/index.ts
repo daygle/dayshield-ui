@@ -606,6 +606,8 @@ export interface UpdateSettings {
   updateMode?: string
   registryUrl?: string
   verifyArtifactSignatures?: boolean
+  encryptUpdateConfigBackups?: boolean
+  enableRootfsAbUpdates?: boolean
   requireSignedCommits: boolean
   verifyRootfsManifest: boolean
   trustedSignersFile: string
@@ -656,10 +658,33 @@ export interface UpdatesStatus {
   pendingApplianceRebuild: boolean
   applianceRebuildReason?: string
   applianceRebuildMarkedAt?: string
+  rootfsSlotStatus?: RootfsSlotStatus
+  rootfsUpdate?: RootfsUpdateState
   components: ComponentUpdateStatus[]
   /** Number of components with available updates (read-only, computed server-side) */
   availableUpdateCount?: number
   operationLogs?: UpdateLogEntry[]
+}
+
+export interface RootfsSlotStatus {
+  supported: boolean
+  activeSlot?: string
+  inactiveSlot?: string
+  bootUuid?: string
+  slotAUuid?: string
+  slotBUuid?: string
+  reason?: string
+}
+
+export interface RootfsUpdateState {
+  status: string
+  targetSlot?: string
+  previousSlot?: string
+  targetVersion?: string
+  preparedAt?: string
+  bootedAt?: string
+  confirmedAt?: string
+  lastError?: string
 }
 
 export interface UpdatesActionResult {
@@ -887,7 +912,7 @@ export interface CloudflaredActionResponse {
 
 // ── Captive Portal ──────────────────────────────────────────────────────────
 
-export type CaptivePortalAuthMode = 'clickThrough' | 'voucher'
+export type CaptivePortalAuthMode = 'click_through' | 'voucher'
 
 export interface CaptivePortalVoucher {
   id: string
