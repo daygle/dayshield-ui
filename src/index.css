@@ -53,3 +53,21 @@
     color: #f8fafc;
   }
 }
+
+@media (max-width: 639px) {
+  .grid.grid-cols-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .grid > .col-span-2 {
+    grid-column: auto;
+  }
+
+  .fixed.bottom-5.right-5.w-80,
+  .fixed.bottom-4.right-4 {
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+    max-width: calc(100vw - 2rem);
+  }
+}

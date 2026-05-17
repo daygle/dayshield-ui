@@ -20,8 +20,8 @@ export default function Card({
       className={`bg-white rounded-lg border border-gray-200 shadow-sm ${className}`}
     >
       {(title || actions) && (
-        <div className="flex items-start justify-between px-6 py-4 border-b border-gray-200">
-          <div>
+        <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
+          <div className="min-w-0">
             {title && (
               <h3 className="text-base font-semibold text-gray-900">{title}</h3>
             )}
@@ -29,10 +29,10 @@ export default function Card({
               <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>
             )}
           </div>
-          {actions && <div className="flex items-center gap-2">{actions}</div>}
+          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </div>
       )}
-      <div className="px-6 py-4">{children}</div>
+      <div className="px-4 py-4 sm:px-6">{children}</div>
     </div>
   )
 }

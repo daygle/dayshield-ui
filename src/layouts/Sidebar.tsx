@@ -188,7 +188,12 @@ const navEntries: NavEntry[] = [
   },
 ]
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation()
   const isSecurityRoute =
     location.pathname.startsWith('/security') ||
@@ -197,52 +202,79 @@ export default function Sidebar() {
     location.pathname.startsWith('/ai-threats')
 
   return (
-    <aside className="flex flex-col h-full w-60 bg-[#0f172a] shrink-0">
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-        <img src="/shield.svg" alt="DayShield" className="h-8 w-8" />
-        <div>
-          <span className="text-white font-bold text-base leading-none">DayShield</span>
-          <span className="block text-[10px] text-blue-400 mt-0.5 tracking-widest uppercase">Firewall</span>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {navEntries.map((entry, idx) => {
-          if (entry.type === 'section') {
-            return (
-              <p
-                key={`section-${idx}`}
-                className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500"
-              >
-                {entry.label}
-              </p>
-            )
-          }
-          const item = entry as NavItem
-          const level = item.level ?? 0
-          const itemClassName = level === 0 ? 'sidebar-link' : level === 2 ? 'sidebar-sub-link-nested' : 'sidebar-sub-link'
-          return (
-            <div key={item.to}>
-              <NavLink
-                to={item.to}
-                className={({ isActive }) =>
-                  [itemClassName, isActive || (item.to === '/security' && isSecurityRoute) ? 'active' : ''].join(' ')
-                }
-              >
-                {item.icon}
-                {item.label}
-              </NavLink>
+    <>
+      <button
+        type="button"
+        aria-label="Close navigation"
+        className={`fixed inset-0 z-30 bg-slate-950/60 transition-opacity lg:hidden ${
+          isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        onClick={onClose}
+      />
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex h-full w-72 max-w-[86vw] shrink-0 flex-col bg-[#0f172a] transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-60 lg:max-w-none lg:translate-x-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {/* Logo */}
+        <div className="flex items-center justify-between gap-3 px-5 py-5 border-b border-white/10">
+          <div className="flex min-w-0 items-center gap-3">
+            <img src="/shield.svg" alt="DayShield" className="h-8 w-8 shrink-0" />
+            <div className="min-w-0">
+              <span className="block truncate text-base font-bold leading-none text-white">DayShield</span>
+              <span className="block text-[10px] text-blue-400 mt-0.5 tracking-widest uppercase">Firewall</span>
             </div>
-          )
-        })}
-      </nav>
+          </div>
+          <button
+            type="button"
+            aria-label="Close navigation"
+            className="rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+            onClick={onClose}
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
 
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-white/10 text-xs text-slate-500">
-        {appVersionLabel}
-      </div>
-    </aside>
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+          {navEntries.map((entry, idx) => {
+            if (entry.type === 'section') {
+              return (
+                <p
+                  key={`section-${idx}`}
+                  className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500"
+                >
+                  {entry.label}
+                </p>
+              )
+            }
+            const item = entry as NavItem
+            const level = item.level ?? 0
+            const itemClassName = level === 0 ? 'sidebar-link' : level === 2 ? 'sidebar-sub-link-nested' : 'sidebar-sub-link'
+            return (
+              <div key={item.to}>
+                <NavLink
+                  to={item.to}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    [itemClassName, isActive || (item.to === '/security' && isSecurityRoute) ? 'active' : ''].join(' ')
+                  }
+                >
+                  {item.icon}
+                  <span className="truncate">{item.label}</span>
+                </NavLink>
+              </div>
+            )
+          })}
+        </nav>
+
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-white/10 text-xs text-slate-500">
+          {appVersionLabel}
+        </div>
+      </aside>
+    </>
   )
 }
