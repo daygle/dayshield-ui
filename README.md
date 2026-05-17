@@ -1,8 +1,8 @@
-# DayShield UI
+# DayShield Firewall UI
 
-React + Vite frontend for DayShield management.
+React + Vite frontend for DayShield Firewall management.
 
-This package produces the static management UI bundle used by DayShield.
+This package produces the static management UI bundle used by DayShield Firewall.
 GitHub Actions builds the release artifact automatically; local builds are for
 development validation only.
 
