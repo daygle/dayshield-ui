@@ -552,72 +552,78 @@ export default function Interfaces() {
         </p>
       </Modal>
 
-      <Card
-        title="IPv6 Services"
-        subtitle="Per-interface IPv6 mode, DHCPv6 client status, and Router Advertisement behavior"
-      >
-        {!ipv6Enabled ? (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            Global IPv6 is disabled in System settings. DHCPv6 and Router Advertisement features are inactive until IPv6 is enabled.
-          </div>
-        ) : ifaces.length === 0 ? (
-          <p className="text-sm text-gray-500">No interfaces available yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {ifaces.map((iface) => {
-              const mode = resolveIpv6Mode(iface)
-              const isTrack = mode === 'track_interface'
-              const isDhcp6 = mode === 'dhcp6'
-              const isSlaac = mode === 'slaac'
-              const raMode = iface.raMode ?? 'unmanaged'
-              const receiveRaText = isSlaac ? 'Enabled' : 'Disabled'
-              const advertiseRaText = isTrack
-                ? (iface.resolvedIpv6Prefix ? `Active (${formatRaMode(raMode)})` : `Waiting (${formatRaMode(raMode)})`)
-                : 'Disabled'
+      {ipv6Enabled && (
+        <Card
+          title="IPv6 Services"
+          subtitle="Per-interface IPv6 mode, DHCPv6 client status, and Router Advertisement behavior"
+        >
+          {ifaces.length === 0 ? (
+            <p className="text-sm text-gray-500">No interfaces available yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {ifaces.map((iface) => {
+                const mode = resolveIpv6Mode(iface)
+                const isTrack = mode === 'track_interface'
+                const isDhcp6 = mode === 'dhcp6'
+                const isSlaac = mode === 'slaac'
+                const raMode = iface.raMode ?? 'unmanaged'
+                const receiveRaText = isSlaac ? 'Enabled' : 'Disabled'
+                const advertiseRaText = isTrack
+                  ? (iface.resolvedIpv6Prefix ? `Active (${formatRaMode(raMode)})` : `Waiting (${formatRaMode(raMode)})`)
+                  : 'Disabled'
 
-              return (
-                <div key={`ipv6-${iface.name}`} className="rounded-md border border-gray-200 bg-gray-50 p-3">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {formatInterfaceDisplayName(iface.description, iface.name)}
+                return (
+                  <div key={`ipv6-${iface.name}`} className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {formatInterfaceDisplayName(iface.description, iface.name)}
+                        </p>
+                        <p className="mt-0.5 text-xs text-gray-500">{iface.name} • {iface.type}</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                          {formatIpv6Mode(mode)}
+                        </span>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${iface.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {iface.enabled ? 'Interface Up' : 'Interface Down'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-gray-700 md:grid-cols-3">
+                      <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
+                        <span className="font-medium text-gray-500">DHCPv6 Client:</span>{' '}
+                        <span className={isDhcp6 ? 'text-green-700' : 'text-gray-600'}>{isDhcp6 ? 'Enabled' : 'Disabled'}</span>
+                      </div>
+                      <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
+                        <span className="font-medium text-gray-500">RA Receive:</span>{' '}
+                        <span className={isSlaac ? 'text-green-700' : 'text-gray-600'}>{receiveRaText}</span>
+                      </div>
+                      <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
+                        <span className="font-medium text-gray-500">RA Advertise:</span>{' '}
+                        <span className={advertiseRaText.startsWith('Active') ? 'text-green-700' : 'text-gray-600'}>{advertiseRaText}</span>
+                      </div>
+                    </div>
+
+                    {isDhcp6 && iface.iaPdHintLen != null && (
+                      <p className="mt-2 text-xs text-gray-500">
+                        Requested delegated prefix size: /{iface.iaPdHintLen}
                       </p>
-                      <p className="mt-0.5 text-xs text-gray-500">{iface.name} • {iface.type}</p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                        {formatIpv6Mode(mode)}
-                      </span>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${iface.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {iface.enabled ? 'Interface Up' : 'Interface Down'}
-                      </span>
-                    </div>
+                    )}
+                    {isTrack && iface.trackSourceInterface && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Tracking source: {interfaceNameLabel(iface.trackSourceInterface)}
+                        {iface.resolvedIpv6Prefix ? `, assigned ${iface.resolvedIpv6Prefix}` : ''}
+                      </p>
+                    )}
                   </div>
-
-                  <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-gray-700 md:grid-cols-3">
-                    <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
-                      <span className="font-medium text-gray-500">DHCPv6 Client:</span>{' '}
-                      <span className={isDhcp6 ? 'text-green-700' : 'text-gray-600'}>{isDhcp6 ? 'Enabled' : 'Disabled'}</span>
-                    </div>
-                    <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
-                      <span className="font-medium text-gray-500">RA Receive:</span>{' '}
-                      <span className={isSlaac ? 'text-green-700' : 'text-gray-600'}>{receiveRaText}</span>
-                    </div>
-                    <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
-                      <span className="font-medium text-gray-500">RA Advertise:</span>{' '}
-                      <span className={advertiseRaText.startsWith('Active') ? 'text-green-700' : 'text-gray-600'}>{advertiseRaText}</span>
-                    </div>
-                  </div>
-
-                  {isDhcp6 && iface.iaPdHintLen != null && (
-                    <p className="mt-2 text-xs text-gray-500">
-                      Requested delegated prefix size: /{iface.iaPdHintLen}
-                    </p>
-                  )}
-                  {isTrack && iface.trackSourceInterface && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Tracking source: {interfaceNameLabel(iface.trackSourceInterface)}
-                      {iface.resolvedIpv6Prefix ? `, assigned ${iface.resolvedIpv6Prefix}` : ''}
+                )
+              })}
+            </div>
+          )}
+        </Card>
+      )}
                     </p>
                   )}
                 </div>

@@ -783,7 +783,7 @@ export interface NatRule {
   translation: NatTranslation | null
   nat_reflection: boolean
   address_family: AddressFamily
-  priority: number
+  priority?: number
   log: boolean
   auto_firewall_rule: boolean       // auto-generate companion forward accept for DNAT
 }

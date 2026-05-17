@@ -64,7 +64,7 @@ export default function PortForwardPage() {
   const wanInterfaces = (interfacesData?.data ?? []).filter((iface) => iface.enabled !== false && isWanInterface(iface))
   const ipv6Enabled = Boolean(systemData?.data.ipv6Enabled)
 
-  // â”€â”€ Form state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ---- Form state ----------------------------------------------------------
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<NatRule | null>(null)
   const [form, setForm] = useState<Omit<NatRule, 'id'>>(defaultForm())
@@ -101,7 +101,7 @@ export default function PortForwardPage() {
     return Object.keys(errors).length === 0
   }
 
-  // â”€â”€ Mutations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ---- Mutations -----------------------------------------------------------
   const createMutation = useMutation({
     mutationFn: createPortForward,
     onSuccess: () => {
@@ -153,22 +153,22 @@ export default function PortForwardPage() {
       header: 'Enabled',
       render: (row) => (
         <span className={row.enabled ? 'text-green-600' : 'text-gray-400'}>
-          {row.enabled ? 'âœ“' : 'âœ-'}
+          {row.enabled ? 'Yes' : 'No'}
         </span>
       ),
     },
     { key: 'interface', header: 'WAN Interface' },
     { key: 'address_family', header: 'Family', render: (row) => ((row as NatRule).address_family ?? 'ipv4').toUpperCase() },
-    { key: 'destination_port', header: 'Ext. Port', render: (row) => (row as NatRule).destination_port ?? 'â€”' },
+    { key: 'destination_port', header: 'Ext. Port', render: (row) => (row as NatRule).destination_port ?? '-' },
     {
       key: 'translation_address',
       header: 'Internal Host',
-      render: (row) => (row as NatRule).translation?.address ?? 'â€”',
+      render: (row) => (row as NatRule).translation?.address ?? '-',
     },
     {
       key: 'translation_port',
       header: 'Int. Port',
-      render: (row) => (row as NatRule).translation?.port ?? 'â€”',
+      render: (row) => (row as NatRule).translation?.port ?? '-',
     },
     { key: 'protocol', header: 'Protocol' },
     { key: 'description', header: 'Description', render: (row) => (row as NatRule).description ?? '' },
@@ -335,7 +335,7 @@ export default function PortForwardPage() {
                 onChange={(e) => setForm({ ...form, auto_firewall_rule: e.target.checked })}
               />
               <span className="text-sm font-medium text-gray-700">
-                Auto-create companion forward accept rule (recommended)
+                Automatically allow forwarded traffic in the firewall (recommended)
               </span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -356,7 +356,7 @@ export default function PortForwardPage() {
                 checked={form.enabled}
                 onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
               />
-              <span className="text-sm font-medium text-gray-700">Enable this rule</span>
+              <span className="text-sm font-medium text-gray-700">Enable Rule</span>
             </label>
           </div>
         </div>

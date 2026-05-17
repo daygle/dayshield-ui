@@ -26,7 +26,6 @@ const defaultRuleForm = (): Omit<NatRule, 'id'> => ({
   translation: null,
   nat_reflection: false,
   address_family: 'ipv4',
-  priority: 100,
   log: false,
   auto_firewall_rule: true,
 })
@@ -314,13 +313,6 @@ export default function OutboundNAT() {
             </div>
           )}
           <FormField
-            id="nat-priority"
-            label="Priority"
-            type="number"
-            value={ruleForm.priority}
-            onChange={(e) => setRuleForm({ ...ruleForm, priority: Number(e.target.value) })}
-          />
-          <FormField
             id="nat-src"
             label="Source"
             placeholder="leave blank for any (CIDR, e.g. 192.168.1.0/24)"
@@ -372,7 +364,7 @@ export default function OutboundNAT() {
               onChange={(e) => setRuleForm({ ...ruleForm, enabled: e.target.checked })}
             />
             <label htmlFor="nat-enabled" className="text-sm font-medium text-gray-700">
-              Enable this rule
+              Enable Rule
             </label>
           </div>
           <div className="col-span-2 flex items-center gap-2">

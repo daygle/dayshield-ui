@@ -641,15 +641,25 @@ export default function Dashboard() {
             variant={layoutLocked ? 'secondary' : 'primary'}
             onClick={() => setLayoutLocked((v) => !v)}
             aria-pressed={!layoutLocked}
+            title={layoutLocked ? 'Unlock layout for customization' : 'Lock layout'}
           >
             {layoutLocked ? (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m0 0l-4-4m4 4H7" />
-              </svg>
+              <>
+                <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 17a2 2 0 002-2v-2a2 2 0 00-2-2 2 2 0 00-2 2v2a2 2 0 002 2zm6-6V9a6 6 0 10-12 0v2" />
+                  <rect x="6" y="11" width="12" height="7" rx="2" />
+                </svg>
+                <span className="hidden sm:inline">Unlock Layout</span>
+              </>
             ) : (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12l-2-2-4 4m0 0l4 4m-4-4h8" />
-              </svg>
+              <>
+                <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 17a2 2 0 002-2v-2a2 2 0 00-2-2 2 2 0 00-2 2v2a2 2 0 002 2zm6-6V9a6 6 0 10-12 0v2" />
+                  <rect x="6" y="11" width="12" height="7" rx="2" />
+                  <line x1="6" y1="11" x2="18" y2="18" stroke="currentColor" strokeWidth="2" />
+                </svg>
+                <span className="hidden sm:inline">Lock Layout</span>
+              </>
             )}
           </Button>
           <button
