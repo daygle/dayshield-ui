@@ -286,7 +286,7 @@ export default function DNS() {
     getInterfacesInventory()
       .then((res) => {
         const kernel = Array.isArray(res.data?.kernel) ? res.data.kernel : []
-        setDnsInterfaces(kernel.filter((i) => i.name !== 'lo'))
+        setDnsInterfaces(kernel)
       })
       .catch(() => {
         setDnsInterfaces([])
@@ -623,7 +623,7 @@ export default function DNS() {
               id="dns-listen"
               type="text"
               className="block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="e.g. 192.168.1.1, 127.0.0.1 (leave blank to listen on all interfaces)"
+              placeholder="e.g. 192.168.1.1, 127.0.0.1, ::1 (leave blank to listen on all interfaces)"
               value={listenInput}
               onChange={(e) => setListenInput(e.target.value)}
             />
