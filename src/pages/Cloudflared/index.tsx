@@ -197,7 +197,7 @@ function CloudflaredPageContent() {
     setConfig((current) => ({ ...current, enabled: !current.enabled }))
   }
 
-  const busy = loading || saving
+  const busy = loading || saving || restarting
 
   return (
     <div className="space-y-6">
@@ -220,9 +220,69 @@ function CloudflaredPageContent() {
       </Modal>
 
       <Card
-        title="Cloudflared Tunnel"
+        title="Cloudflared Tunnel Overview"
         subtitle="Publish selected internal services through Cloudflare Tunnel without inbound port forwards."
-        actions={statusBadge(status)}
+        actions={
+          <div className="flex items-center gap-2">
+            {statusBadge(status)}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={toggleEnabled}
+              title={config.enabled ? 'Disable Cloudflared tunnel' : 'Enable Cloudflared tunnel'}
+              aria-label={config.enabled ? 'Disable Cloudflared tunnel' : 'Enable Cloudflared tunnel'}
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                config.enabled
+                  ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-900'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={handleRestart}
+              title={restarting ? 'Restarting Cloudflared service' : 'Restart Cloudflared service'}
+              aria-label={restarting ? 'Restarting Cloudflared service' : 'Restart Cloudflared service'}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {restarting ? (
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0L12 12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 12V8h4" />
+                </svg>
+              )}
+            </button>
+            <button
+              type="button"
+              disabled={busy || hasIngressErrors}
+              onClick={handleSave}
+              title={saving ? 'Saving Cloudflared configuration' : 'Save Cloudflared configuration'}
+              aria-label={saving ? 'Saving Cloudflared configuration' : 'Save Cloudflared configuration'}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {saving ? (
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14" />
+                </svg>
+              )}
+            </button>
+          </div>
+        }
       >
         {loading ? (
           <p className="text-sm text-gray-400">Loading...</p>
@@ -264,16 +324,6 @@ function CloudflaredPageContent() {
       <Card
         title="Configuration"
         subtitle="Store the tunnel token and define which hostnames should map to which internal services."
-        actions={
-          <Button
-            variant={config.enabled ? 'danger' : 'primary'}
-            aria-label={config.enabled ? 'Disable Cloudflared tunnel' : 'Enable Cloudflared tunnel'}
-            disabled={busy}
-            onClick={toggleEnabled}
-          >
-            {config.enabled ? 'Disable tunnel' : 'Enable tunnel'}
-          </Button>
-        }
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField
@@ -425,14 +475,6 @@ function CloudflaredPageContent() {
         </div>
       </Card>
 
-      <div className="flex items-center justify-between">
-        <Button variant="secondary" loading={restarting} onClick={handleRestart}>
-          Restart Service
-        </Button>
-        <Button aria-label="Save Cloudflared configuration" loading={saving} disabled={busy} onClick={handleSave}>
-          Save
-        </Button>
-      </div>
 
     </div>
   )

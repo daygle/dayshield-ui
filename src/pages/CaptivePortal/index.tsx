@@ -350,7 +350,7 @@ export default function CaptivePortalPage() {
     return null
   }
 
-  const handleSave = () => {
+  const performSave = (successMessage: string) => {
     const validationError = validateBeforeSave()
     if (validationError) {
       addToast(validationError, 'error')
@@ -379,7 +379,7 @@ export default function CaptivePortalPage() {
         setConfig(res.data)
         setWalledGardenText(toTextAreaList(res.data.walledGardenIps))
         setBypassMacsText(toTextAreaList(res.data.bypassMacs))
-        addToast('Captive portal configuration saved.', 'success')
+        addToast(successMessage, 'success')
         return Promise.all([getCaptivePortalStatus(), getCaptivePortalSessions()])
       })
       .then(([stat, sess]) => {
@@ -388,6 +388,14 @@ export default function CaptivePortalPage() {
       })
       .catch((err: Error) => addToast(`Failed to save captive portal config: ${err.message}`, 'error'))
       .finally(() => setSaving(false))
+  }
+
+  const handleSave = () => {
+    performSave('Captive portal configuration saved.')
+  }
+
+  const handleRestart = () => {
+    performSave('Captive portal service restart requested.')
   }
 
   const handleAuthorizeSession = () => {
@@ -446,9 +454,74 @@ export default function CaptivePortalPage() {
         actions={
           <div className="flex items-center gap-2">
             {statusBadge}
-            <Button variant="secondary" onClick={loadAll} disabled={loading}>
-              Refresh
-            </Button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setConfig((current) => ({ ...current, enabled: !current.enabled }))}
+              title={config.enabled ? 'Disable captive portal' : 'Enable captive portal'}
+              aria-label={config.enabled ? 'Disable captive portal' : 'Enable captive portal'}
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                config.enabled
+                  ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-900'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v5m0 8a4 4 0 100-8 4 4 0 000 8z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={handleRestart}
+              title={saving ? 'Restarting captive portal service' : 'Restart captive portal service'}
+              aria-label={saving ? 'Restarting captive portal service' : 'Restart captive portal service'}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {saving ? (
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0L12 12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 12V8h4" />
+                </svg>
+              )}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={loadAll}
+              title={loading ? 'Refreshing captive portal status' : 'Refresh captive portal status'}
+              aria-label={loading ? 'Refreshing captive portal status' : 'Refresh captive portal status'}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m0 12v4" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={handleSave}
+              title={saving ? 'Saving captive portal configuration' : 'Save captive portal configuration'}
+              aria-label={saving ? 'Saving captive portal configuration' : 'Save captive portal configuration'}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {saving ? (
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 5v14h14V5H5zm0 0l6 6m0-6v6" />
+                </svg>
+              )}
+            </button>
           </div>
         }
       >
@@ -490,11 +563,6 @@ export default function CaptivePortalPage() {
       <Card
         title="Configuration"
         subtitle="Define listener behavior, interface scope, and authorization mode."
-        actions={
-          <Button onClick={handleSave} loading={saving} disabled={busy}>
-            Save
-          </Button>
-        }
       >
         <div className="space-y-5">
           <label className="flex items-center gap-2 text-sm text-gray-700">

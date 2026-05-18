@@ -4,7 +4,6 @@ import { getInterfacesInventory } from '../../api/interfaces'
 import { getSystemConfig } from '../../api/system'
 import type { NtpConfig, NtpStatus, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
-import Button from '../../components/Button'
 import FormField from '../../components/FormField'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
@@ -308,8 +307,8 @@ export default function NtpPage() {
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
               disabled={busy || resyncing}
               onClick={handleResync}
-              title={resyncing ? 'Resyncing time' : 'Manual resync'}
-              aria-label={resyncing ? 'Resyncing time' : 'Manual resync'}
+              title={resyncing ? 'Restarting NTP service' : 'Restart NTP service'}
+              aria-label={resyncing ? 'Restarting NTP service' : 'Restart NTP service'}
             >
               {resyncing ? (
                 <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -318,18 +317,39 @@ export default function NtpPage() {
                 </svg>
               ) : (
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 4.5v6h6M19.5 19.5v-6h-6" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.7 14.3A8 8 0 0012 20a8 8 0 007.5-5M18.3 9.7A8 8 0 0012 4a8 8 0 00-7.5 5" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0L12 12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 12V8h4" />
                 </svg>
               )}
             </button>
-            <Button
-              variant={config.enabled ? 'danger' : 'primary'}
+            <button
+              type="button"
               disabled={busy}
               onClick={() => setConfig((c) => ({ ...c, enabled: !c.enabled }))}
+              title={config.enabled ? 'Disable NTP' : 'Enable NTP'}
+              aria-label={config.enabled ? 'Disable NTP' : 'Enable NTP'}
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                config.enabled
+                  ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-900'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+              }`}
             >
-              {config.enabled ? 'Disable NTP' : 'Enable NTP'}
-            </Button>
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v5m0 8a4 4 0 100-8 4 4 0 000 8z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={handleSave}
+              title="Save NTP configuration"
+              aria-label="Save NTP configuration"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.5 7.5H18.5M5.5 7.5V18.5H18.5V7.5M9.5 7.5V4.5H14.5V7.5" />
+              </svg>
+            </button>
           </div>
         }
       >
@@ -393,11 +413,6 @@ export default function NtpPage() {
       <Card
         title="NTP Configuration"
         subtitle="Manage upstream time servers and LAN interfaces that are allowed to serve NTP"
-        actions={
-          <Button loading={saving} disabled={busy} onClick={handleSave}>
-            Save
-          </Button>
-        }
       >
         <div className="space-y-4">
           <div>

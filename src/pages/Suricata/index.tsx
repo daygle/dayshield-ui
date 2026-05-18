@@ -333,22 +333,36 @@ function SuricataContent() {
           subtitle="Global IDS/IPS configuration and settings"
           actions={
             <div className="flex items-center gap-2">
-              <Button
-                variant={config.mode === 'ips' ? 'danger' : 'secondary'}
-                size="sm"
-                aria-label="Toggle Suricata mode between IDS and IPS"
+              <button
+                type="button"
+                disabled={loading}
                 onClick={handleToggleMode}
+                title={`Switch Suricata to ${config.mode === 'ips' ? 'IDS' : 'IPS'} mode`}
+                aria-label={`Switch Suricata to ${config.mode === 'ips' ? 'IDS' : 'IPS'} mode`}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Mode: {config.mode.toUpperCase()}
-              </Button>
-              <Button
-                variant={config.enabled ? 'danger' : 'primary'}
-                size="sm"
-                aria-label={config.enabled ? 'Stop Suricata' : 'Start Suricata'}
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0L12 12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20 12a8 8 0 11-8-8" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                disabled={loading}
                 onClick={handleToggleEnabled}
+                title={config.enabled ? 'Stop Suricata' : 'Start Suricata'}
+                aria-label={config.enabled ? 'Stop Suricata' : 'Start Suricata'}
+                className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  config.enabled
+                    ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-900'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                }`}
               >
-                {config.enabled ? 'Stop' : 'Start'}
-              </Button>
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v6" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12a3 3 0 006 0" />
+                </svg>
+              </button>
             </div>
           }
         >
@@ -489,9 +503,26 @@ function SuricataContent() {
       <Card
         title="Recent Alerts"
         actions={
-          <Button variant="primary" size="sm" onClick={loadAll}>
-            Refresh Alerts
-          </Button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={loadAll}
+            title={loading ? 'Refreshing alerts' : 'Refresh alerts'}
+            aria-label={loading ? 'Refreshing alerts' : 'Refresh alerts'}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+            ) : (
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m0 12v4" />
+              </svg>
+            )}
+          </button>
         }
       >
         <Table
