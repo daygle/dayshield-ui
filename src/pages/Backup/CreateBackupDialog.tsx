@@ -52,7 +52,10 @@ export default function CreateBackupDialog({
     setPwError('')
     const req: CreateBackupRequest = { type }
     if (type === 'selective') req.components = components
-    if (encrypt && password) req.password = password
+    if (encrypt) {
+      req.encrypt = true
+      if (password) req.password = password
+    }
     onConfirm(req)
   }
 
