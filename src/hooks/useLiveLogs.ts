@@ -136,7 +136,8 @@ function buildWsUrl(): string {
   return `${proto}//${window.location.host}/logs/ws${suffix}`
 }
 
-export function useLiveLogs() {
+export function useLiveLogs(options?: { autoConnect?: boolean }) {
+  const autoConnect = options?.autoConnect ?? true
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [status, setStatus] = useState<WsStatus>('disconnected')
   const [filter, setFilter] = useState<LiveLogsFilter>({
@@ -206,13 +207,15 @@ export function useLiveLogs() {
 
   useEffect(() => {
     unmountedRef.current = false
-    connect()
+    if (autoConnect) {
+      connect()
+    }
     return () => {
       unmountedRef.current = true
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
       wsRef.current?.close()
     }
-  }, [connect])
+  }, [autoConnect, connect])
 
   const clearLogs = useCallback(() => setLogs([]), [])
 

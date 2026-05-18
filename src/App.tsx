@@ -19,7 +19,7 @@ import AIThreats from './pages/AIThreats'
 import Security from './pages/Security'
 import ACME from './pages/ACME'
 import System from './pages/System'
-import LiveLogs from './pages/LiveLogs'
+import Logs from './pages/Logs'
 import Backup from './pages/Backup'
 import Notifications from './pages/Notifications'
 import NTP from './pages/NTP'
@@ -62,7 +62,8 @@ function App() {
           <Route path="security" element={<Security />} />
           <Route path="acme" element={<ACME />} />
           <Route path="system" element={<System />} />
-          <Route path="live-logs" element={<LiveLogs />} />
+          <Route path="logs" element={<Logs />} />
+          <Route path="live-logs" element={<Navigate to="/logs?tab=live" replace />} />
           <Route path="backup" element={<Backup />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="ntp" element={<NTP />} />

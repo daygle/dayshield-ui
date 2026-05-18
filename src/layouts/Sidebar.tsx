@@ -150,8 +150,8 @@ const navEntries: NavEntry[] = [
     ),
   },
   {
-    to: '/live-logs',
-    label: 'Live Logs',
+    to: '/logs',
+    label: 'Logs',
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5M3.75 6.75h16.5M3.75 17.25h10.5" />

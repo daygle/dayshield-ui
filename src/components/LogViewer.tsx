@@ -18,6 +18,7 @@ interface LogViewerProps {
   onAutoScrollChange: (v: boolean) => void
   onClear: () => void
   onReconnect: () => void
+  showLiveControls?: boolean
 }
 
 const STATUS_LABEL: Record<string, { label: string; dot: string }> = {
@@ -65,6 +66,7 @@ export default function LogViewer({
   onAutoScrollChange,
   onClear,
   onReconnect,
+  showLiveControls = true,
 }: LogViewerProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -91,40 +93,45 @@ export default function LogViewer({
       {/* ── Toolbar ── */}
       <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-slate-700 bg-slate-900/80 shrink-0">
         {/* Status indicator */}
-        <div className="flex items-center gap-1.5 text-xs text-slate-400 min-w-[100px]">
-          <span className={`h-2 w-2 rounded-full shrink-0 ${statusInfo.dot}`} />
-          {statusInfo.label}
-        </div>
+        {showLiveControls && (
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 min-w-[100px]">
+            <span className={`h-2 w-2 rounded-full shrink-0 ${statusInfo.dot}`} />
+            {statusInfo.label}
+          </div>
+        )}
 
         <LogFilters filter={filter} onChange={onFilterChange} />
         <LogSearch value={filter.search} onChange={(s) => onFilterChange({ search: s })} />
 
         <div className="flex items-center gap-2 ml-auto">
-          <AutoScrollToggle enabled={autoScroll} onToggle={onAutoScrollChange} />
+          {showLiveControls && (
+            <AutoScrollToggle enabled={autoScroll} onToggle={onAutoScrollChange} />
+          )}
 
-          {/* Pause / Resume */}
-          <button
-            type="button"
-            onClick={() => onPausedChange(!paused)}
-            className={[
-              'flex items-center gap-1.5 h-7 rounded px-2 text-xs border transition-colors',
-              paused
-                ? 'bg-yellow-900/50 border-yellow-600/50 text-yellow-300 hover:bg-yellow-900/70'
-                : 'bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-200',
-            ].join(' ')}
-          >
-            {paused ? (
-              <>
-                <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                Resume
-              </>
-            ) : (
-              <>
-                <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                Pause
-              </>
-            )}
-          </button>
+          {showLiveControls && (
+            <button
+              type="button"
+              onClick={() => onPausedChange(!paused)}
+              className={[
+                'flex items-center gap-1.5 h-7 rounded px-2 text-xs border transition-colors',
+                paused
+                  ? 'bg-yellow-900/50 border-yellow-600/50 text-yellow-300 hover:bg-yellow-900/70'
+                  : 'bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-200',
+              ].join(' ')}
+            >
+              {paused ? (
+                <>
+                  <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  Resume
+                </>
+              ) : (
+                <>
+                  <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                  Pause
+                </>
+              )}
+            </button>
+          )}
 
           {/* Clear */}
           <button
@@ -139,7 +146,7 @@ export default function LogViewer({
           </button>
 
           {/* Reconnect (only when not connected) */}
-          {status !== 'connected' && (
+          {showLiveControls && status !== 'connected' && (
             <button
               type="button"
               onClick={onReconnect}
@@ -184,7 +191,7 @@ export default function LogViewer({
       {/* ── Footer counter ── */}
       <div className="shrink-0 border-t border-slate-700 px-3 py-1 text-[10px] text-slate-500 flex items-center gap-2">
         <span>{logs.length.toLocaleString()} entries{filter.source !== 'all' || filter.level !== 'all' || filter.search ? ' (filtered)' : ''}</span>
-        {paused && (
+        {showLiveControls && paused && (
           <span className="text-yellow-400 font-medium">⏸ Stream paused</span>
         )}
       </div>
