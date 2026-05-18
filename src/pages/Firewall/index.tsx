@@ -23,6 +23,7 @@ import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
 type RuleRow = FirewallRule & Record<string, unknown>
 type AliasRow = Alias & Record<string, unknown>
+const SYSTEM_RULES_FILTER = '__system__'
 
 const defaultRuleForm: Partial<FirewallRule> = {
   description: '',
@@ -373,17 +374,22 @@ export default function Firewall() {
   }
 
   const selectedInterfaceDisplay = selectedInterface
-    ? (() => {
+    ? selectedInterface === SYSTEM_RULES_FILTER
+      ? 'System'
+      : (() => {
         const iface = interfaces.find((item) => item.name === selectedInterface)
         return iface ? interfaceLabel(iface) : selectedInterface
       })()
     : ''
+  const showingSystemRules = selectedInterface === SYSTEM_RULES_FILTER
 
   const visibleRules = useMemo(
     () => {
-      const filtered = selectedInterface
-        ? rules.filter((rule) => (rule.interface as string | null) === selectedInterface)
-        : rules
+      const filtered = selectedInterface === SYSTEM_RULES_FILTER
+        ? rules.filter((rule) => Boolean(rule.system))
+        : selectedInterface
+          ? rules.filter((rule) => !rule.system && (rule.interface as string | null) === selectedInterface)
+          : rules
       return [...filtered].sort((a, b) => ((a.priority as number) ?? 100) - ((b.priority as number) ?? 100))
     },
     [rules, selectedInterface],
@@ -425,6 +431,7 @@ export default function Firewall() {
   }
 
   const openAddRuleModal = () => {
+    if (showingSystemRules) return
     const nextPriority = rules.length > 0
       ? Math.max(...rules.map((rule) => (rule.priority as number) ?? 100)) + 10
       : 100
@@ -446,6 +453,7 @@ export default function Firewall() {
   }
 
   const openEditRulePanel = (rule: FirewallRule) => {
+    if (rule.system) return
     const editableRule: Partial<FirewallRule> = { ...rule }
     delete editableRule.id
     const sourceParts = splitAddressValue(rule.source)
@@ -665,12 +673,14 @@ export default function Firewall() {
   }
 
   const handleToggleRule = (rule: FirewallRule) => {
+    if (rule.system) return
     updateFirewallRule(rule.id, { ...rule, enabled: !rule.enabled })
       .then(() => loadRules())
       .catch((err: Error) => setRulesError(err.message))
   }
 
   const handleToggleRuleLog = (rule: FirewallRule) => {
+    if (rule.system) return
     updateFirewallRule(rule.id, { ...rule, log: !rule.log })
       .then(() => loadRules())
       .catch((err: Error) => setRulesError(err.message))
@@ -689,11 +699,13 @@ export default function Firewall() {
   }
 
   const handleReorderRule = (rule: FirewallRule, direction: 'earlier' | 'later') => {
+    if (rule.system) return
     const currentIndex = visibleRules.findIndex((item) => item.id === rule.id)
     const targetIndex = direction === 'earlier' ? currentIndex - 1 : currentIndex + 1
     if (currentIndex === -1 || targetIndex < 0 || targetIndex >= visibleRules.length) return
 
     const targetRule = visibleRules[targetIndex] as unknown as FirewallRule
+    if (targetRule.system) return
     const currentPriority = Number(rule.priority) || 100
     const targetPriority = Number(targetRule.priority) || 100
     const nextCurrentPriority = currentPriority === targetPriority
@@ -755,16 +767,18 @@ export default function Firewall() {
       className: 'w-12',
       render: (row) => {
         const enabled = Boolean(row.enabled)
+        const system = Boolean(row.system)
         return (
           <button
-            title={enabled ? 'Disable rule' : 'Enable rule'}
-            aria-label={enabled ? 'Disable firewall rule' : 'Enable firewall rule'}
+            title={system ? 'System rules are managed automatically' : enabled ? 'Disable rule' : 'Enable rule'}
+            aria-label={system ? 'System rule managed automatically' : enabled ? 'Disable firewall rule' : 'Enable firewall rule'}
             onClick={() => handleToggleRule(row as unknown as FirewallRule)}
+            disabled={system}
             className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors ${
               enabled
                 ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-900'
                 : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-800'
-            }`}
+            } disabled:cursor-not-allowed disabled:opacity-60`}
           >
             {enabled ? (
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -785,6 +799,7 @@ export default function Firewall() {
       className: 'w-36',
       render: (row) => {
         const ruleData = row as unknown as FirewallRule
+        const system = Boolean(row.system)
         const rowIndex = visibleRules.findIndex((item) => item.id === row.id)
         const isFirst = rowIndex <= 0
         const isLast = rowIndex === -1 || rowIndex >= visibleRules.length - 1
@@ -797,7 +812,7 @@ export default function Firewall() {
                 title="Run earlier"
                 aria-label="Move rule earlier"
                 onClick={() => handleReorderRule(ruleData, 'earlier')}
-                disabled={ruleSaving || isFirst}
+                disabled={ruleSaving || isFirst || system}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-l-md border border-gray-300 bg-white transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -808,7 +823,7 @@ export default function Firewall() {
                 title="Run later"
                 aria-label="Move rule later"
                 onClick={() => handleReorderRule(ruleData, 'later')}
-                disabled={ruleSaving || isLast}
+                disabled={ruleSaving || isLast || system}
                 className="-ml-px inline-flex h-8 w-8 items-center justify-center rounded-r-md border border-gray-300 bg-white transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -821,7 +836,20 @@ export default function Firewall() {
         )
       },
     },
-    { key: 'description', header: 'Description' },
+    {
+      key: 'description',
+      header: 'Description',
+      render: (row) => (
+        <div>
+          <span>{(row.description as string | null) ?? ''}</span>
+          {row.system && (
+            <span className="ml-2 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-xs font-semibold text-gray-600">
+              System
+            </span>
+          )}
+        </div>
+      ),
+    },
     { key: 'action', header: 'Action', render: (row) => actionBadge(row.action as FirewallRule['action']) },
     {
       key: 'log',
@@ -829,16 +857,18 @@ export default function Firewall() {
       className: 'w-12',
       render: (row) => {
         const logging = Boolean(row.log)
+        const system = Boolean(row.system)
         return (
           <button
-            title={logging ? 'Disable match logging' : 'Log matches to Live Logs'}
-            aria-label={logging ? 'Disable firewall rule match logging' : 'Enable firewall rule match logging'}
+            title={system ? 'System rules are managed automatically' : logging ? 'Disable match logging' : 'Log matches to Live Logs'}
+            aria-label={system ? 'System rule logging managed automatically' : logging ? 'Disable firewall rule match logging' : 'Enable firewall rule match logging'}
             onClick={() => handleToggleRuleLog(row as unknown as FirewallRule)}
+            disabled={system}
             className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors ${
               logging
                 ? 'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-900'
                 : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-800'
-            }`}
+            } disabled:cursor-not-allowed disabled:opacity-60`}
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3.75h6m-6 3.75h3M6.75 3.75h10.5A2.25 2.25 0 0119.5 6v12A2.25 2.25 0 0117.25 20.25H6.75A2.25 2.25 0 014.5 18V6a2.25 2.25 0 012.25-2.25z" />
@@ -911,6 +941,9 @@ export default function Firewall() {
       className: 'w-24 text-right',
       render: (row) => {
         const ruleData = row as unknown as FirewallRule
+        if (ruleData.system) {
+          return <span className="text-xs text-gray-400">Read-only</span>
+        }
         return (
           <div className="flex justify-end gap-1">
             <button
@@ -1561,8 +1594,9 @@ export default function Firewall() {
               </button>
               <button
                 onClick={openAddRuleModal}
+                disabled={showingSystemRules}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-                title="Add rule"
+                title={showingSystemRules ? 'System rules are managed automatically' : 'Add rule'}
                 aria-label="Add firewall rule"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1582,6 +1616,7 @@ export default function Firewall() {
                 onChange={(e) => updateRulesInterfaceFilter(e.target.value)}
               >
                 <option value="">All interfaces</option>
+                <option value={SYSTEM_RULES_FILTER}>System</option>
                 {interfaces.map((iface) => (
                   <option key={iface.name} value={iface.name}>
                     {interfaceLabel(iface)}
@@ -1590,7 +1625,9 @@ export default function Firewall() {
               </FormField>
             </div>
             <p className="text-xs text-gray-500">
-              Select an interface to show only that interface's firewall rules.
+              {showingSystemRules
+                ? 'System firewall rules are generated automatically from interface settings and cannot be edited here.'
+                : "Select an interface to show only that interface's firewall rules."}
             </p>
           </div>
           {rulesError && <p className="text-sm text-red-600 mb-3">{rulesError}</p>}

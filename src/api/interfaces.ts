@@ -28,6 +28,8 @@ type BackendInterface = {
   wan_mode?: 'dhcp' | 'pppoe'
   pppoe_username?: string
   pppoe_password?: string
+  block_private_networks?: boolean
+  block_bogon_networks?: boolean
   ipv4_address?: string
   ipv4_prefix?: number
   ipv6_address?: string
@@ -59,6 +61,8 @@ type InterfaceUpsertPayload = {
   wan_mode?: 'dhcp' | 'pppoe'
   pppoe_username?: string
   pppoe_password?: string
+  block_private_networks?: boolean
+  block_bogon_networks?: boolean
   ipv4_address?: string
   ipv4_prefix?: number
   ipv6_address?: string
@@ -90,6 +94,8 @@ function toInterfaceUpsertPayload(iface: NetworkInterface): InterfaceUpsertPaylo
     wan_mode: iface.wanMode,
     pppoe_username: iface.pppoeUsername || undefined,
     pppoe_password: iface.pppoePassword || undefined,
+    block_private_networks: Boolean(iface.blockPrivateNetworks),
+    block_bogon_networks: Boolean(iface.blockBogonNetworks),
     ipv4_address: iface.ipv4Address || undefined,
     ipv4_prefix: iface.ipv4Prefix,
     ipv6_address: iface.ipv6Address || undefined,
@@ -132,6 +138,8 @@ function toNetworkInterface(raw: BackendInterface): NetworkInterface {
     wanMode: raw.wan_mode,
     pppoeUsername: raw.pppoe_username,
     pppoePassword: raw.pppoe_password,
+    blockPrivateNetworks: Boolean(raw.block_private_networks),
+    blockBogonNetworks: Boolean(raw.block_bogon_networks),
     ipv4Address: raw.ipv4_address,
     ipv4Prefix: raw.ipv4_prefix,
     ipv6Address: raw.ipv6_address,

@@ -31,6 +31,8 @@ const defaultForm: Partial<NetworkInterface> = {
   wanMode: undefined,
   pppoeUsername: '',
   pppoePassword: '',
+  blockPrivateNetworks: false,
+  blockBogonNetworks: false,
   ipv4Address: '',
   ipv4Prefix: 24,
   ipv6Address: '',
@@ -93,6 +95,7 @@ export default function Interfaces() {
   useEffect(load, [requestedInterface])
 
   const isVlanForm = form.type === 'vlan'
+  const isWanForm = Boolean(form.wanMode || form.gateway)
   const ipv6Mode: Ipv6Mode = form.ipv6Mode ?? (form.dhcp6 ? 'dhcp6' : form.acceptRa ? 'slaac' : 'static')
   const parentInterfaceOptions = allInterfaceNames
     .filter((name) => name !== 'lo' && name !== form.name && !configuredVlanNames.includes(name))
@@ -152,7 +155,11 @@ export default function Interfaces() {
     }
 
     setSaving(true)
-    createInterface(form as NetworkInterface)
+    createInterface({
+      ...form,
+      blockPrivateNetworks: isWanForm ? Boolean(form.blockPrivateNetworks) : false,
+      blockBogonNetworks: isWanForm ? Boolean(form.blockBogonNetworks) : false,
+    } as NetworkInterface)
       .then(() => {
         setModalOpen(false)
         setForm(defaultForm)
@@ -306,6 +313,8 @@ export default function Interfaces() {
                   ...form,
                   dhcp4: e.target.checked,
                   wanMode: undefined,
+                  blockPrivateNetworks: false,
+                  blockBogonNetworks: false,
                   ipv4Address: '',
                   ipv4Prefix: 24,
                 })
@@ -331,6 +340,8 @@ export default function Interfaces() {
                   pppoeUsername: '',
                   pppoePassword: '',
                   mtu: v === 'pppoe' ? (form.mtu ?? 1492) : form.mtu,
+                  blockPrivateNetworks: v ? form.blockPrivateNetworks : false,
+                  blockBogonNetworks: v ? form.blockBogonNetworks : false,
                 })
               }}
             >
@@ -388,6 +399,37 @@ export default function Interfaces() {
               ))}
             </select>
           </FormField>
+          {isWanForm && (
+            <div className="col-span-2 rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
+              <p className="mb-3 text-sm font-semibold text-gray-900">WAN Source Protection</p>
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={Boolean(form.blockPrivateNetworks)}
+                    onChange={(e) => setForm({ ...form, blockPrivateNetworks: e.target.checked })}
+                  />
+                  <span>
+                    <span className="block font-medium text-gray-900">Block private networks</span>
+                    <span className="text-xs text-gray-500">Drop inbound WAN traffic sourced from RFC1918 or IPv6 unique-local ranges.</span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-3 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={Boolean(form.blockBogonNetworks)}
+                    onChange={(e) => setForm({ ...form, blockBogonNetworks: e.target.checked })}
+                  />
+                  <span>
+                    <span className="block font-medium text-gray-900">Block bogon networks</span>
+                    <span className="text-xs text-gray-500">Drop inbound WAN traffic sourced from invalid, reserved, or documentation ranges.</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          )}
           {ipv6Enabled && (
             <>
               <FormField

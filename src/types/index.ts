@@ -33,6 +33,8 @@ export interface NetworkInterface {
   wanMode?: 'dhcp' | 'pppoe'       // only relevant for WAN-designated interfaces
   pppoeUsername?: string
   pppoePassword?: string
+  blockPrivateNetworks?: boolean
+  blockBogonNetworks?: boolean
   ipv4Address?: string
   ipv4Prefix?: number
   ipv6Address?: string
@@ -145,6 +147,7 @@ export interface FirewallRule {
   enabled: boolean
   schedule: FirewallSchedule | null
   state_limits?: FirewallStateLimits
+  system?: boolean
 }
 
 /** Per-rule hit counter returned by GET /firewall/stats. */

@@ -24,7 +24,6 @@ import type {
 } from '../../types'
 import Card from '../../components/Card'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
-import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
@@ -110,6 +109,7 @@ export default function DNS() {
   // Host overrides
   const [hostModalOpen, setHostModalOpen] = useState(false)
   const [hostForm, setHostForm] = useState({ hostname: '', address: '' })
+  const [editingHostName, setEditingHostName] = useState<string | null>(null)
   const [hostSaving, setHostSaving] = useState(false)
   const [hostDeleteName, setHostDeleteName] = useState<string | null>(null)
   const [hostDeleting, setHostDeleting] = useState(false)
@@ -117,6 +117,7 @@ export default function DNS() {
   // Domain overrides
   const [domainModalOpen, setDomainModalOpen] = useState(false)
   const [domainForm, setDomainForm] = useState({ domain: '', forward_to: '' })
+  const [editingDomainName, setEditingDomainName] = useState<string | null>(null)
   const [domainSaving, setDomainSaving] = useState(false)
   const [domainDeleteName, setDomainDeleteName] = useState<string | null>(null)
   const [domainDeleting, setDomainDeleting] = useState(false)
@@ -124,6 +125,7 @@ export default function DNS() {
   // Blocklists
   const [blocklistModalOpen, setBlocklistModalOpen] = useState(false)
   const [blocklistForm, setBlocklistForm] = useState({ name: '', url: '', enabled: true })
+  const [editingBlocklistId, setEditingBlocklistId] = useState<string | null>(null)
   const [selectedPreset, setSelectedPreset] = useState('')
   const [blocklistSaving, setBlocklistSaving] = useState(false)
   const [blocklistDeleteId, setBlocklistDeleteId] = useState<string | null>(null)
@@ -239,6 +241,26 @@ export default function DNS() {
     [dnsInterfaces, interfaceLabelByName],
   )
 
+  const listenInterfaceLabels = useMemo(() => {
+    const allCandidates = dnsListenCandidates.map((entry) => entry.interfaceLabel)
+    if (!config || allCandidates.length === 0) return []
+    if (!config.listen_addresses?.length) {
+      return Array.from(new Set(allCandidates))
+    }
+
+    const seen = new Set<string>()
+    return listenEntries
+      .map((ip) => {
+        const entry = dnsListenCandidates.find((candidate) => candidate.ip === ip)
+        return entry ? entry.interfaceLabel : ip
+      })
+      .filter((label): label is string => {
+        if (seen.has(label)) return false
+        seen.add(label)
+        return true
+      })
+  }, [config, dnsListenCandidates, listenEntries])
+
   useEffect(() => {
     if (activeSection !== 'blocklists') return
     if (selectedInterface || interfaceOptions.length === 0) return
@@ -344,15 +366,37 @@ export default function DNS() {
 
   const handleAddHost = () => {
     setHostSaving(true)
-    createDnsHostOverride(hostForm.hostname, hostForm.address)
-      .then(() => getDnsOverrides())
-      .then((r) => {
-        setHostModalOpen(false)
-        setHostForm({ hostname: '', address: '' })
-        setHostOverrides(r.data.host_overrides as HostRow[])
-      })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setHostSaving(false))
+    const hostname = hostForm.hostname.trim()
+    const address = hostForm.address.trim()
+    const existingHostNames = hostOverrides.map((host) => host.hostname)
+
+    const saveHost = () =>
+      createDnsHostOverride(hostname, address)
+        .then(() => getDnsOverrides())
+        .then((r) => {
+          setHostModalOpen(false)
+          setEditingHostName(null)
+          setHostForm({ hostname: '', address: '' })
+          setHostOverrides(r.data.host_overrides as HostRow[])
+        })
+        .catch((err: Error) => setError(err.message))
+        .finally(() => setHostSaving(false))
+
+    if (editingHostName) {
+      if (editingHostName !== hostname && existingHostNames.includes(hostname)) {
+        setError(`Host override for ${hostname} already exists`)
+        setHostSaving(false)
+        return
+      }
+      deleteDnsHostOverride(editingHostName)
+        .then(() => saveHost())
+        .catch((err: Error) => {
+          setError(err.message)
+          setHostSaving(false)
+        })
+    } else {
+      saveHost()
+    }
   }
 
   const handleDeleteHost = () => {
@@ -370,15 +414,37 @@ export default function DNS() {
 
   const handleAddDomain = () => {
     setDomainSaving(true)
-    createDnsDomainOverride(domainForm.domain, domainForm.forward_to)
-      .then(() => getDnsOverrides())
-      .then((r) => {
-        setDomainModalOpen(false)
-        setDomainForm({ domain: '', forward_to: '' })
-        setDomainOverrides(r.data.domain_overrides as DomainRow[])
-      })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setDomainSaving(false))
+    const domain = domainForm.domain.trim()
+    const forwardTo = domainForm.forward_to.trim()
+    const existingDomainNames = domainOverrides.map((entry) => entry.domain)
+
+    const saveDomain = () =>
+      createDnsDomainOverride(domain, forwardTo)
+        .then(() => getDnsOverrides())
+        .then((r) => {
+          setDomainModalOpen(false)
+          setEditingDomainName(null)
+          setDomainForm({ domain: '', forward_to: '' })
+          setDomainOverrides(r.data.domain_overrides as DomainRow[])
+        })
+        .catch((err: Error) => setError(err.message))
+        .finally(() => setDomainSaving(false))
+
+    if (editingDomainName) {
+      if (editingDomainName !== domain && existingDomainNames.includes(domain)) {
+        setError(`Domain override for ${domain} already exists`)
+        setDomainSaving(false)
+        return
+      }
+      deleteDnsDomainOverride(editingDomainName)
+        .then(() => saveDomain())
+        .catch((err: Error) => {
+          setError(err.message)
+          setDomainSaving(false)
+        })
+    } else {
+      saveDomain()
+    }
   }
 
   const handleDeleteDomain = () => {
@@ -395,6 +461,7 @@ export default function DNS() {
   }
 
   const openAddBlocklistModal = () => {
+    setEditingBlocklistId(null)
     setSelectedPreset('')
     setBlocklistForm({ name: '', url: '', enabled: true })
     setBlocklistModalOpen(true)
@@ -410,17 +477,31 @@ export default function DNS() {
       return
     }
     setBlocklistSaving(true)
-    createInterfaceDnsBlocklist(effectiveInterface, {
-      name: blocklistForm.name.trim() || undefined,
-      url: blocklistForm.url.trim(),
-      enabled: blocklistForm.enabled,
-    })
-      .then(() => {
-        setBlocklistModalOpen(false)
-        loadInterfaceBlocklists(effectiveInterface)
+
+    const saveBlocklist = () =>
+      createInterfaceDnsBlocklist(effectiveInterface, {
+        name: blocklistForm.name.trim() || undefined,
+        url: blocklistForm.url.trim(),
+        enabled: blocklistForm.enabled,
       })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setBlocklistSaving(false))
+        .then(() => {
+          setBlocklistModalOpen(false)
+          setEditingBlocklistId(null)
+          loadInterfaceBlocklists(effectiveInterface)
+        })
+        .catch((err: Error) => setError(err.message))
+        .finally(() => setBlocklistSaving(false))
+
+    if (editingBlocklistId) {
+      deleteInterfaceDnsBlocklist(effectiveInterface, editingBlocklistId)
+        .then(() => saveBlocklist())
+        .catch((err: Error) => {
+          setError(err.message)
+          setBlocklistSaving(false)
+        })
+    } else {
+      saveBlocklist()
+    }
   }
 
   const handleDeleteBlocklist = () => {
@@ -440,18 +521,34 @@ export default function DNS() {
     {
       key: 'actions',
       header: '',
-      className: 'w-16 text-right',
+      className: 'w-24 text-right',
       render: (row) => (
-        <button
-          onClick={() => setHostDeleteName(row.hostname as string)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
-          title="Delete host override"
-          aria-label="Delete host override"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-          </svg>
-        </button>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => {
+              setEditingHostName(row.hostname as string)
+              setHostForm({ hostname: row.hostname as string, address: row.address as string })
+              setHostModalOpen(true)
+            }}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            title="Edit host override"
+            aria-label="Edit host override"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setHostDeleteName(row.hostname as string)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+            title="Delete host override"
+            aria-label="Delete host override"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
+          </button>
+        </div>
       ),
     },
   ]
@@ -461,18 +558,34 @@ export default function DNS() {
     {
       key: 'actions',
       header: '',
-      className: 'w-16 text-right',
+      className: 'w-24 text-right',
       render: (row) => (
-        <button
-          onClick={() => setDomainDeleteName(row.domain as string)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
-          title="Delete domain override"
-          aria-label="Delete domain override"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-          </svg>
-        </button>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => {
+              setEditingDomainName(row.domain as string)
+              setDomainForm({ domain: row.domain as string, forward_to: row.forward_to as string })
+              setDomainModalOpen(true)
+            }}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            title="Edit domain override"
+            aria-label="Edit domain override"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setDomainDeleteName(row.domain as string)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+            title="Delete domain override"
+            aria-label="Delete domain override"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
+          </button>
+        </div>
       ),
     },
   ]
@@ -500,18 +613,39 @@ export default function DNS() {
     {
       key: 'actions',
       header: '',
-      className: 'w-16 text-right',
+      className: 'w-28 text-right',
       render: (row) => (
-        <button
-          onClick={() => setBlocklistDeleteId(String(row.id))}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
-          title="Delete blocklist"
-          aria-label="Delete blocklist"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-          </svg>
-        </button>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => {
+              setEditingBlocklistId(String(row.id))
+              setBlocklistForm({
+                name: (row.name as string) || '',
+                url: row.url as string,
+                enabled: row.enabled as boolean,
+              })
+              setSelectedPreset('')
+              setBlocklistModalOpen(true)
+            }}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            title="Edit blocklist"
+            aria-label="Edit blocklist"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setBlocklistDeleteId(String(row.id))}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+            title="Delete blocklist"
+            aria-label="Delete blocklist"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
+          </button>
+        </div>
       ),
     },
   ]
@@ -743,10 +877,13 @@ export default function DNS() {
       {/* Add Host Override Modal */}
       <Modal
         open={hostModalOpen}
-        title="Add Host Override"
-        onClose={() => setHostModalOpen(false)}
+        title={editingHostName ? 'Edit Host Override' : 'Add Host Override'}
+        onClose={() => {
+          setHostModalOpen(false)
+          setEditingHostName(null)
+        }}
         onConfirm={handleAddHost}
-        confirmLabel="Add"
+        confirmLabel={editingHostName ? 'Save' : 'Add'}
         loading={hostSaving}
         size="md"
       >
@@ -791,10 +928,13 @@ export default function DNS() {
       {/* Add Domain Override Modal */}
       <Modal
         open={domainModalOpen}
-        title="Add Domain Override"
-        onClose={() => setDomainModalOpen(false)}
+        title={editingDomainName ? 'Edit Domain Override' : 'Add Domain Override'}
+        onClose={() => {
+          setDomainModalOpen(false)
+          setEditingDomainName(null)
+        }}
         onConfirm={handleAddDomain}
-        confirmLabel="Add"
+        confirmLabel={editingDomainName ? 'Save' : 'Add'}
         loading={domainSaving}
         size="md"
       >
@@ -839,10 +979,13 @@ export default function DNS() {
       {/* Add Blocklist Modal */}
       <Modal
         open={blocklistModalOpen}
-        title="Add DNS Blocklist"
-        onClose={() => setBlocklistModalOpen(false)}
+        title={editingBlocklistId ? 'Edit DNS Blocklist' : 'Add DNS Blocklist'}
+        onClose={() => {
+          setBlocklistModalOpen(false)
+          setEditingBlocklistId(null)
+        }}
         onConfirm={handleAddBlocklist}
-        confirmLabel="Add"
+        confirmLabel={editingBlocklistId ? 'Save' : 'Add'}
         loading={blocklistSaving}
         size="lg"
       >
@@ -1006,6 +1149,12 @@ export default function DNS() {
                   </dd>
                 </div>
                 <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listen Interfaces</dt>
+                  <dd className="mt-1 font-medium text-gray-800">
+                    {listenInterfaceLabels.length ? listenInterfaceLabels.join(', ') : 'All Interfaces'}
+                  </dd>
+                </div>
+                <div>
                   <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Upstream Forwarders</dt>
                   <dd className="mt-1 font-medium text-gray-800 font-mono">
                     {config.forwarders?.length ? config.forwarders.join(', ') : '- (Recursive)'}
@@ -1030,9 +1179,17 @@ export default function DNS() {
           title="DoT"
           subtitle="Encrypted private DNS listener on the configured DoT port"
           actions={
-            <Button size="sm" variant="secondary" onClick={openDotModal}>
-              Edit DoT
-            </Button>
+            <button
+              type="button"
+              onClick={openDotModal}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              title="Edit DoT"
+              aria-label="Edit DoT"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
           }
         >
           {loading ? (
@@ -1075,7 +1232,11 @@ export default function DNS() {
             subtitle="Map fully-qualified hostnames to specific IP addresses (local A/AAAA records)"
             actions={
               <button
-                onClick={() => setHostModalOpen(true)}
+                onClick={() => {
+                  setEditingHostName(null)
+                  setHostForm({ hostname: '', address: '' })
+                  setHostModalOpen(true)
+                }}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                 title="Add host override"
                 aria-label="Add host override"
@@ -1100,7 +1261,11 @@ export default function DNS() {
             subtitle="Forward all DNS queries for a domain to a specific resolver"
             actions={
               <button
-                onClick={() => setDomainModalOpen(true)}
+                onClick={() => {
+                  setEditingDomainName(null)
+                  setDomainForm({ domain: '', forward_to: '' })
+                  setDomainModalOpen(true)
+                }}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                 title="Add domain override"
                 aria-label="Add domain override"
