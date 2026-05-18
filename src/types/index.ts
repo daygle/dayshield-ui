@@ -726,6 +726,7 @@ export interface BackupEntry {
 export interface CreateBackupRequest {
   type: 'full' | 'selective'
   components?: string[] // used when type === 'selective'
+  encrypt?: boolean     // whether to encrypt the backup
   password?: string     // set to encrypt the backup
 }
 

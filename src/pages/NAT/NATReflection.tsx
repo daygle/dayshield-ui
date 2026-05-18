@@ -68,12 +68,12 @@ export default function NATReflection() {
       </Card>
 
       <Card title="About NAT Reflection">
-        <div className="prose prose-sm text-gray-600 max-w-none">
+        <div className="text-sm text-gray-600 max-w-none space-y-2">
           <p>
             NAT reflection (also called NAT loopback or hairpin NAT) allows local interfaces to
             connect to servers on internal networks using the firewall's WAN IP address or hostname.
           </p>
-          <p className="mt-2">
+          <p>
             Without NAT reflection, traffic from local interfaces connecting to your public IP for a port-forwarded
             service will be routed to the WAN gateway instead of the internal server. Enabling NAT
             reflection inserts additional rules so these connections are redirected correctly.

@@ -201,15 +201,19 @@ const loadDashboardCardConfig = (): DashboardCardConfig[] => {
     if (!Array.isArray(parsed)) return defaultDashboardCardConfigs
 
     const validIds = new Set(defaultDashboardCardConfigs.map((card) => card.id))
-    const loaded = parsed
-      .filter((card) => validIds.has(card.id))
-      .map((card) => ({
+    const seen = new Set<string>()
+    const loaded = parsed.reduce<DashboardCardConfig[]>((acc, card) => {
+      if (!validIds.has(card.id) || seen.has(card.id)) return acc
+      seen.add(card.id)
+      acc.push({
         ...defaultDashboardCardConfigs.find((d) => d.id === card.id)!,
         visible: typeof card.visible === 'boolean' ? card.visible : true,
         width: card.width === 1 || card.width === 2 || card.width === 3 ? card.width : 1,
-      }))
+      })
+      return acc
+    }, [])
 
-    const missing = defaultDashboardCardConfigs.filter((card) => !loaded.some((item) => item.id === card.id))
+    const missing = defaultDashboardCardConfigs.filter((card) => !seen.has(card.id))
     return [...loaded, ...missing]
   } catch {
     return defaultDashboardCardConfigs
@@ -636,13 +640,17 @@ export default function Dashboard() {
           )}
         </div>
         <div className="flex gap-2 items-center">
-          <Button
-            size="sm"
-            variant={layoutLocked ? 'secondary' : 'primary'}
+          <button
+            type="button"
             onClick={() => setLayoutLocked((v) => !v)}
             aria-pressed={!layoutLocked}
             title={layoutLocked ? 'Unlock layout for customization' : 'Lock layout'}
             aria-label={layoutLocked ? 'Unlock layout' : 'Lock layout'}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+              layoutLocked
+                ? 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                : 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700'
+            }`}
           >
             {layoutLocked ? (
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -656,7 +664,7 @@ export default function Dashboard() {
                 <line x1="6" y1="11" x2="18" y2="18" stroke="currentColor" strokeWidth="2" />
               </svg>
             )}
-          </Button>
+          </button>
           {!layoutLocked && (
             <button
               onClick={() => setCustomizeOpen(true)}
@@ -677,6 +685,30 @@ export default function Dashboard() {
           No dashboard cards are visible. Open Customize Dashboard to restore card visibility.
         </div>
       )}
+
+      <CardLayoutManager
+        open={customizeOpen}
+        title="Dashboard Layout"
+        subtitle="Toggle cards, drag to reorder, and choose sizes without leaving the page."
+        onClose={() => setCustomizeOpen(false)}
+        items={cardConfig.map((card) => ({
+          id: card.id,
+          title: dashboardCardTitles[card.id],
+          description: dashboardCardDescriptions[card.id],
+          visible: card.visible,
+          width: card.width,
+        }))}
+        onChange={(items) => {
+          setCardConfig(
+            items.map((item) => ({
+              id: item.id as DashboardCardId,
+              visible: item.visible,
+              width: item.width,
+            })),
+          )
+        }}
+        onReset={() => setCardConfig(defaultDashboardCardConfigs)}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {cardConfig.map((card) =>
@@ -741,30 +773,6 @@ export default function Dashboard() {
           ) : null,
         )}
       </div>
-
-      <CardLayoutManager
-        open={customizeOpen}
-        title="Dashboard Layout"
-        subtitle="Toggle cards, drag to reorder, and choose sizes without leaving the page."
-        onClose={() => setCustomizeOpen(false)}
-        items={cardConfig.map((card) => ({
-          id: card.id,
-          title: dashboardCardTitles[card.id],
-          description: dashboardCardDescriptions[card.id],
-          visible: card.visible,
-          width: card.width,
-        }))}
-        onChange={(items) => {
-          setCardConfig(
-            items.map((item) => ({
-              id: item.id as DashboardCardId,
-              visible: item.visible,
-              width: item.width,
-            })),
-          )
-        }}
-        onReset={() => setCardConfig(defaultDashboardCardConfigs)}
-      />
     </div>
   )
 }

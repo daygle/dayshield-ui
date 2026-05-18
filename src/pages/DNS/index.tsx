@@ -793,10 +793,6 @@ export default function DNS() {
         size="lg"
       >
         <div className="space-y-5">
-          <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-            DNS-over-TLS encrypts DNS traffic between clients and DayShield on port {configForm.dot_port ?? 853}.
-          </div>
-
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Step 1: Turn on encrypted DNS</h3>

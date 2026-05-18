@@ -9,6 +9,7 @@ import {
 } from '../../api/wireguard'
 import type { WgServer, WgPeer } from '../../types'
 import Button from '../../components/Button'
+import Card from '../../components/Card'
 import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
@@ -46,7 +47,6 @@ export default function VPN() {
   const [peers, setPeers] = useState<PeerRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [expandedSection, setExpandedSection] = useState<'config' | 'peers' | null>(null)
 
   const [peerModalOpen, setPeerModalOpen] = useState(false)
   const [peerForm, setPeerForm] = useState(defaultPeerForm)
@@ -96,12 +96,16 @@ export default function VPN() {
 
   useEffect(loadAll, [])
 
-  const handleExpandSection = (section: 'config' | 'peers') => {
-    if (expandedSection === section) {
-      setExpandedSection(null)
-    } else {
-      setExpandedSection(section)
-    }
+  const handleToggleEnabled = () => {
+    if (!server) return
+    setServerSaving(true)
+    createWgInterface({
+      ...server,
+      enabled: !server.enabled,
+    })
+      .then(() => loadAll())
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setServerSaving(false))
   }
 
   const openServerModal = () => {
@@ -521,165 +525,185 @@ export default function VPN() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="border-b border-gray-200 px-6 py-5 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">VPN</h3>
-            <p className="text-sm text-gray-500 mt-1">{vpnDisplayName}</p>
-          </div>
+      <Card
+        title="VPN Overview"
+        subtitle="Service status and tunnel details"
+        actions={
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={loadAll}
+              disabled={loading || serverSaving}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Refresh VPN status"
+              aria-label="Refresh VPN status"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14 10 10 0 01-14.14 0" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m8 6h-4" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={handleToggleEnabled}
+              disabled={!server || serverSaving}
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                server?.enabled
+                  ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-900'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+              title={server?.enabled ? 'Disable VPN' : 'Enable VPN'}
+              aria-label={server?.enabled ? 'Disable VPN' : 'Enable VPN'}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 0112.728 12.728" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={openServerModal}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Edit VPN"
+              aria-label="Edit VPN"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v4m0 6v4m7-7h-4M5 12H1" />
+              </svg>
+            </button>
+          </div>
+        }
+      >
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+          <div>
+            <dt className="text-gray-500 mb-1">Status</dt>
+            <dd className="text-gray-900">{server.enabled ? 'Enabled' : 'Disabled'}</dd>
+          </div>
+          <div>
+            <dt className="text-gray-500 mb-1">Interface</dt>
+            <dd className="font-mono text-gray-900">{server.interface}</dd>
+          </div>
+          <div>
+            <dt className="text-gray-500 mb-1">Listen Port</dt>
+            <dd className="font-mono text-gray-900">{listenPortLabel}</dd>
+          </div>
+          <div>
+            <dt className="text-gray-500 mb-1">Peers</dt>
+            <dd className="text-gray-900">{peers.length}</dd>
+          </div>
+          <div className="sm:col-span-2 lg:col-span-1">
+            <dt className="text-gray-500 mb-1">Tunnel Addresses</dt>
+            <dd className="font-mono text-gray-900">
+              {server.addresses.length ? server.addresses.join(', ') : 'None configured'}
+            </dd>
+          </div>
+          <div className="sm:col-span-2 lg:col-span-1">
+            <dt className="text-gray-500 mb-1">Public Key</dt>
+            <dd className="font-mono text-xs text-gray-900 break-all p-2 bg-gray-50 rounded border border-gray-200">
+              {server.publicKey || 'Not available'}
+            </dd>
+          </div>
+        </dl>
+      </Card>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card
+          title="Server Configuration"
+          subtitle="Edit your WireGuard VPN server settings"
+          actions={
             <Button size="sm" variant="secondary" onClick={openServerModal}>
               Edit VPN
             </Button>
-            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-              server.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-            }`}>
-              <span className={`h-2 w-2 rounded-full ${server.enabled ? 'bg-green-500' : 'bg-gray-400'}`} />
-              {server.enabled ? 'Enabled' : 'Disabled'}
-            </span>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-              UDP {listenPortLabel}
-            </span>
-          </div>
-        </div>
+          }
+        >
+          <dl className="grid grid-cols-1 gap-4 text-sm">
+            <div>
+              <dt className="text-gray-500 mb-1">Name</dt>
+              <dd className="text-gray-900">{server.description?.trim() || 'Not set'}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500 mb-1">Interface</dt>
+              <dd className="font-mono text-gray-900">{server.interface}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500 mb-1">Listen Port</dt>
+              <dd className="font-mono text-gray-900">{listenPortLabel}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500 mb-1">Tunnel Addresses</dt>
+              <dd className="font-mono text-gray-900">{server.addresses.length ? server.addresses.join(', ') : 'None configured'}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500 mb-1">Public Key</dt>
+              <dd className="font-mono text-xs text-gray-900 break-all p-2 bg-gray-50 rounded border border-gray-200">
+                {server.publicKey || 'Not available'}
+              </dd>
+            </div>
+          </dl>
+        </Card>
 
-        <div className="divide-y">
-          <div>
-            <button
-              className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-              onClick={() => handleExpandSection('config')}
-            >
-              <span className="font-medium text-gray-800">Server Configuration</span>
-              <span className={`text-gray-500 transition-transform ${
-                expandedSection === 'config' ? 'rotate-180' : ''
-              }`}>
-                ▼
-              </span>
-            </button>
-            {expandedSection === 'config' && (
-              <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-                <dl className="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm">
-                  <div>
-                    <dt className="text-gray-500 mb-1">Name</dt>
-                    <dd className="text-gray-900">{server.description?.trim() || 'Not set'}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500 mb-1">Interface</dt>
-                    <dd className="font-mono text-gray-900">{server.interface}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500 mb-1">Listen Port</dt>
-                    <dd className="font-mono text-gray-900">{listenPortLabel}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500 mb-1">Peer Count</dt>
-                    <dd className="text-gray-900">{peers.length}</dd>
-                  </div>
-                  <div className="col-span-2 md:col-span-3">
-                    <dt className="text-gray-500 mb-1">Tunnel Addresses</dt>
-                    <dd className="font-mono text-gray-900">
-                      {server.addresses.length ? server.addresses.join(', ') : 'None configured'}
-                    </dd>
-                  </div>
-                  <div className="col-span-2 md:col-span-3">
-                    <dt className="text-gray-500 mb-1">Public Key</dt>
-                    <dd className="font-mono text-xs text-gray-900 break-all p-2 bg-white rounded border border-gray-200">
-                      {server.publicKey || 'Not available'}
-                    </dd>
-                  </div>
-                </dl>
+        <Card
+          title={`Peers (${peers.length})`}
+          subtitle="Manage VPN peers and view their status"
+          actions={
+            <Button size="sm" onClick={() => setPeerModalOpen(true)}>
+              Add Peer
+            </Button>
+          }
+        >
+          <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="text-gray-500">Total</p>
+                <p className="text-lg font-semibold text-gray-900">{peers.length}</p>
               </div>
-            )}
-          </div>
+              <div>
+                <p className="text-gray-500">Active</p>
+                <p className="text-lg font-semibold text-green-600">{peers.filter((p) => p.enabled).length}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">RX / TX</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {formatBytes(peers.reduce((s, p) => s + ((p.transferRx as number) || 0), 0))} / {formatBytes(peers.reduce((s, p) => s + ((p.transferTx as number) || 0), 0))}
+                </p>
+              </div>
+            </div>
 
-          <div>
-            <button
-              className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-              onClick={() => handleExpandSection('peers')}
-            >
-              <span className="font-medium text-gray-800">Peers ({peers.length})</span>
-              <span className={`text-gray-500 transition-transform ${
-                expandedSection === 'peers' ? 'rotate-180' : ''
-              }`}>
-                ▼
-              </span>
-            </button>
-            {expandedSection === 'peers' && (
-              <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 space-y-4">
-                <div className="flex justify-between items-center">
-                  <div className="flex gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-500">Total</p>
-                      <p className="text-2xl font-bold text-gray-900">{peers.length}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Active</p>
-                      <p className="text-2xl font-bold text-green-600">{peers.filter((p) => p.enabled).length}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">RX / TX</p>
-                      <p className="text-lg font-bold text-gray-900">
-                        {formatBytes(peers.reduce((s, p) => s + ((p.transferRx as number) || 0), 0))} /{' '}
-                        {formatBytes(peers.reduce((s, p) => s + ((p.transferTx as number) || 0), 0))}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setPeerModalOpen(true)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-                    title="Add peer"
-                    aria-label="Add VPN peer"
+            {peers.length > 0 ? (
+              <div className="space-y-3 max-h-[32rem] overflow-y-auto">
+                {peers.map((peer) => (
+                  <div
+                    key={peer.id}
+                    className="rounded-lg border border-gray-200 bg-white p-4 flex items-start justify-between gap-4"
                   >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                    </svg>
-                  </button>
-                </div>
-
-                {peers.length > 0 ? (
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {peers.map((peer) => (
-                      <div
-                        key={peer.id}
-                        className="bg-white p-3 rounded border border-gray-200 flex items-start justify-between"
-                      >
-                        <div className="flex-1 text-sm">
-                          <div className="font-medium text-gray-800">
-                            {peer.name}
-                            {!peer.enabled && <span className="text-gray-400 ml-2">○ Disabled</span>}
-                          </div>
-                          <p className="text-gray-600 text-xs font-mono mt-1">
-                            {peer.publicKey?.slice(0, 24)}…
-                          </p>
-                          <p className="text-gray-500 text-xs mt-1">
-                            IPs: {(peer.allowedIPs as string[]).join(', ')}
-                          </p>
-                          {peer.endpoint && (
-                            <p className="text-gray-500 text-xs">Endpoint: {peer.endpoint}</p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => setDeleteId(peer.id as number)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
-                          title="Delete peer"
-                          aria-label="Delete peer"
-                        >
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-                          </svg>
-                        </button>
+                    <div className="min-w-0 text-sm">
+                      <div className="font-medium text-gray-900">
+                        {peer.name}
+                        {!peer.enabled && <span className="ml-2 text-gray-400">○ Disabled</span>}
                       </div>
-                    ))}
+                      <p className="mt-1 text-xs font-mono text-gray-600">{peer.publicKey?.slice(0, 24)}…</p>
+                      <p className="mt-1 text-xs text-gray-500">IPs: {(peer.allowedIPs as string[]).join(', ')}</p>
+                      {peer.endpoint && <p className="mt-1 text-xs text-gray-500">Endpoint: {peer.endpoint}</p>}
+                    </div>
+                    <button
+                      onClick={() => setDeleteId(peer.id as number)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                      title="Delete peer"
+                      aria-label="Delete peer"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                      </svg>
+                    </button>
                   </div>
-                ) : (
-                  <p className="text-sm text-gray-500">No peers configured.</p>
-                )}
+                ))}
               </div>
+            ) : (
+              <p className="text-sm text-gray-500">No peers configured.</p>
             )}
           </div>
-        </div>
+        </Card>
       </div>
-
     </div>
   )
 }

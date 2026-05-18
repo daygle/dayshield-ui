@@ -28,8 +28,15 @@ const PROVIDERS: Array<{ value: DynamicDnsProvider; label: string }> = [
   { value: 'custom', label: 'Custom URL' },
 ]
 
+const createEntryId = (): string => {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID()
+  }
+  return `ddns-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 const DEFAULT_ENTRY = (iface: string): DynamicDnsEntry => ({
-  id: crypto.randomUUID(),
+  id: createEntryId(),
   enabled: true,
   provider: 'duck_dns',
   interface: iface,

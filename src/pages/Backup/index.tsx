@@ -286,7 +286,7 @@ export default function BackupRestorePage() {
         confirmLabel="Delete"
         confirmVariant="danger"
         loading={deleting}
-        size="sm"
+        size="lg"
       >
         <p className="text-sm text-gray-600">
           Delete backup <span className="font-semibold">{deleteEntry?.filename}</span>? This action
