@@ -1108,9 +1108,6 @@ export default function DHCP() {
         title="DHCP Services"
         subtitle="Select the interface whose DHCP settings, reservations, and active leases you want to manage"
       >
-        <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
-          Use tabs to switch between DHCPv4 and DHCPv6 configuration, reservations, and active leases.
-        </div>
         <div className="max-w-md">
           <FormField
             id="dhcp-interface-selector"
