@@ -27,6 +27,8 @@ import { useDisplayPreferences, type DateFormatPreference, type TimeFormatPrefer
 import type { UpdateScheduleFrequency, UpdateScheduleWeekday } from '../../types'
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
 
+// Registry manifest endpoint — the updater resolves per-component artifact versions
+// from this URL rather than assuming all components share the same release tag.
 const DEFAULT_GITHUB_REGISTRY_URL = 'https://api.github.com/repos/daygle/dayshield-core'
 const STATUS_REFRESH_INTERVAL_MS = 15000
 const UPDATES_REFRESH_INTERVAL_MS = 5000
@@ -380,6 +382,9 @@ function normalizeRegistryUrl(input?: string): string {
 function inferUpdateStatusLabel(validRepo: boolean, lastError?: string): string {
   if (validRepo) return 'Up to Date'
   const err = (lastError ?? '').toLowerCase()
+  // A component absent from the current manifest means no release was published for
+  // it yet — that is not an error; it simply means this component is already current.
+  if (err.includes('missing from registry manifest') || err.includes('missing from manifest')) return 'Not in current release'
   if (err.includes('http 404')) return 'Update not available'
   if (err.includes('http 401') || err.includes('http 403')) return 'Cannot access update server'
   if (err.includes('timed out') || err.includes('dns') || err.includes('connection')) return 'Update server unreachable'
@@ -392,7 +397,13 @@ function simplifyErrorMessage(error: string): string {
     .replace(/^FAILED TO QUERY REGISTRY:\s*/i, '')
     .replace(/^UPDATE ERROR:\s*/i, '')
     .replace(/^failed to query registry:\s*/i, '')
-  
+
+  // A component not present in the manifest is not an error — it means no new release
+  // was published for this component in the latest manifest check.
+  if (/missing from (registry )?manifest/i.test(simplified)) {
+    return 'No new release for this component in the current manifest.'
+  }
+
   // For HTTP errors, provide context
   if (simplified.includes('HTTP 401') || simplified.includes('HTTP 403')) {
     return 'Authentication failed. Check if the update source URL is correct.'
@@ -425,7 +436,12 @@ function simplifyErrorMessage(error: string): string {
 }
 
 function detectUpdateNotFoundHint(components: UpdatesStatus['components']): string | null {
-  const with404 = components.find((comp) => (comp.lastError ?? '').toLowerCase().includes('http 404'))
+  // Only flag genuine 404 errors, not "missing from manifest" which is expected when
+  // a component has no new release in the current manifest cycle.
+  const with404 = components.find((comp) => {
+    const err = (comp.lastError ?? '').toLowerCase()
+    return err.includes('http 404') && !err.includes('missing from')
+  })
   if (!with404) return null
   return with404.lastError ?? null
 }
@@ -807,7 +823,7 @@ export default function System() {
             },
           }
         })
-        setUpdateActionMessage('Registry URL updated to the default GitHub releases repository. Run Check Now to retry.')
+        setUpdateActionMessage('Registry URL reset to the default manifest endpoint. Run Check Now to retry.')
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateSaving(false))
@@ -1010,7 +1026,7 @@ export default function System() {
             <FormField
               id="upd-registry-url"
               label="Update Source"
-              hint="GitHub repository URL or API repository endpoint."
+              hint="Registry manifest endpoint (GitHub repository URL or API endpoint). Each component resolves its version independently through this manifest."
               value={updateSettings.registryUrl ?? ''}
               onChange={(e) => setUpdateSettings({ ...updateSettings, registryUrl: e.target.value })}
             />
@@ -1338,7 +1354,7 @@ export default function System() {
       {activeSection === 'updates' && updates && (
         <Card
           title="Software Updates"
-          subtitle="Manage runtime core/UI updates and A/B rootfs slot updates"
+          subtitle="Core, Web UI, and Root Filesystem are versioned independently — each component resolves its latest release through the update registry manifest"
           actions={
             <Button
               size="sm"
@@ -1386,6 +1402,7 @@ export default function System() {
                 <div key={comp.component} className="rounded border border-gray-200 p-3">
                   {(() => {
                     const isRootfs = comp.component === 'rootfs'
+                    const isMissingFromManifest = /missing from (registry )?manifest/i.test(comp.lastError ?? '')
                     const statusLabel = inferUpdateStatusLabel(comp.validRepo, comp.lastError)
                     const statusClass = comp.validRepo
                       ? isRootfs && comp.updateAvailable
@@ -1393,7 +1410,9 @@ export default function System() {
                         : comp.updateAvailable
                         ? 'bg-amber-100 text-amber-700'
                         : 'bg-green-100 text-green-700'
-                      : 'bg-red-100 text-red-700'
+                      : isMissingFromManifest
+                        ? 'bg-gray-100 text-gray-600'
+                        : 'bg-red-100 text-red-700'
 
                     return (
                   <div className="flex items-center justify-between">
@@ -1454,6 +1473,14 @@ export default function System() {
                     {comp.lastError && (() => {
                       const parsed = parseComponentError(comp.lastError)
                       const simplified = simplifyErrorMessage(parsed.message)
+                      const isMissingFromManifest = /missing from (registry )?manifest/i.test(comp.lastError)
+                      if (isMissingFromManifest) {
+                        return (
+                          <div className="mt-2 rounded bg-gray-50 border border-gray-200 p-2">
+                            <div className="text-xs text-gray-500">{simplified}</div>
+                          </div>
+                        )
+                      }
                       return (
                         <div className="mt-2 rounded bg-red-50 border border-red-200 p-2">
                           <div className="text-xs font-medium text-red-700">Update Check Failed</div>
@@ -1496,7 +1523,7 @@ export default function System() {
                     {updates.applianceRebuildReason ?? 'Rootfs changes require rebuilding the appliance rootfs and installer ISO artifacts.'}
                   </p>
                   <p className="mt-1 text-xs text-orange-700">
-                    Rebuild and publish a new rootfs-vX.Y.Z.tar.zst and installer ISO from the build environment, then clear this status.
+                    Build and publish a new rootfs artifact from the build environment using the current rootfs, core, and UI inputs, then clear this status.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

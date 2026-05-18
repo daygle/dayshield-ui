@@ -646,6 +646,18 @@ export interface ComponentUpdateStatus {
   remoteCommit?: string
   currentVersion?: string
   remoteVersion?: string
+  /**
+   * Version recorded for this component in the registry manifest.
+   * Each component may carry an independent version/tag rather than
+   * matching the release tag of other components.
+   */
+  registryVersion?: string
+  /**
+   * Whether this component was found in the latest registry manifest.
+   * A component absent from the current manifest is not an error — it
+   * simply means no new release has been published for it yet.
+   */
+  presentInManifest?: boolean
   updateAvailable: boolean
   rollbackCommit?: string
   lastAppliedCommit?: string
@@ -677,6 +689,11 @@ export interface UpdatesStatus {
   /** Number of components with available updates (read-only, computed server-side) */
   availableUpdateCount?: number
   operationLogs?: UpdateLogEntry[]
+  /**
+   * The manifest URL that was resolved during the last update check.
+   * Components are versioned independently through this registry manifest.
+   */
+  manifestUrl?: string
 }
 
 export interface RootfsSlotStatus {
