@@ -117,6 +117,8 @@ export interface FirewallSchedule {
   date_end: string | null
 }
 
+export type FirewallAddressFamily = 'ipv4' | 'ipv6' | 'ipv4_ipv6'
+
 export interface FirewallStateLimits {
   max_states?: number | null
   max_source_nodes?: number | null
@@ -130,6 +132,7 @@ export interface FirewallRule {
   id: string               // UUID
   description: string | null
   priority: number         // lower = higher priority; rules are sorted ascending
+  ip_family: FirewallAddressFamily
   source: string | null    // CIDR or null for any
   destination: string | null
   protocol: FirewallProtocol | null

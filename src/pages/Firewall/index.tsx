@@ -12,7 +12,7 @@ import {
 import { getAliases, createAlias, deleteAlias } from '../../api/aliases'
 import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
 import { getWgInterfaces } from '../../api/wireguard'
-import type { Alias, AliasType, FirewallRule, FirewallRuleStats, FirewallSchedule, FirewallSettings, NetworkInterface } from '../../types'
+import type { Alias, AliasType, FirewallAddressFamily, FirewallRule, FirewallRuleStats, FirewallSchedule, FirewallSettings, NetworkInterface } from '../../types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Table, { Column } from '../../components/Table'
@@ -29,6 +29,7 @@ const defaultRuleForm: Partial<FirewallRule> = {
   action: 'accept',
   direction: 'forward',
   protocol: 'tcp',
+  ip_family: 'ipv4_ipv6',
   source: null,
   source_port: null,
   destination: null,
@@ -130,10 +131,25 @@ function protocolLabel(protocol: FirewallRule['protocol']) {
   }
 }
 
+function ipFamilyLabel(ipFamily: FirewallAddressFamily) {
+  switch (ipFamily) {
+    case 'ipv4':
+      return 'IPv4 only'
+    case 'ipv6':
+      return 'IPv6 only'
+    case 'ipv4_ipv6':
+      return 'IPv4 / IPv6'
+    default:
+      return ipFamily
+  }
+}
+
+const FIREWALL_ADDRESS_FAMILY_OPTIONS: FirewallAddressFamily[] = ['ipv4', 'ipv6', 'ipv4_ipv6']
+
 function interfaceFieldLabel(direction: FirewallRule['direction']) {
   if (direction === 'output') return 'Egress Interface'
   if (direction === 'both') return 'Interface'
-  return 'Ingress Interface'
+  return 'Interface'
 }
 
 function interfaceFieldHint(direction: FirewallRule['direction']) {
@@ -177,6 +193,34 @@ function toIpv4NetworkCidr(address?: string, prefix?: number): string | null {
     net & 0xff,
   ]
   return `${octets.join('.')}/${prefix}`
+}
+
+const IPV4_ADDRESS_PATTERN = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/
+const CIDR_PREFIX_OPTIONS = Array.from({ length: 33 }, (_, prefix) => String(32 - prefix))
+
+function isIpv4Address(value: string): boolean {
+  return IPV4_ADDRESS_PATTERN.test(value.trim())
+}
+
+function splitAddressValue(value: string | null | undefined): { address: string; subnet: string } {
+  const trimmed = (value ?? '').trim()
+  if (!trimmed) return { address: '', subnet: '' }
+
+  const [address, subnet] = trimmed.split('/', 2)
+  if (subnet !== undefined) {
+    return { address, subnet }
+  }
+
+  return isIpv4Address(trimmed) ? { address: trimmed, subnet: '32' } : { address: trimmed, subnet: '' }
+}
+
+function buildAddressValue(address: string, subnet: string): string | null {
+  const trimmedAddress = address.trim()
+  if (!trimmedAddress) return null
+  if (isIpv4Address(trimmedAddress)) {
+    return `${trimmedAddress}/${subnet || '32'}`
+  }
+  return trimmedAddress
 }
 
 function toNumber(value: unknown): number | null {
@@ -270,6 +314,10 @@ export default function Firewall() {
   const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null)
   const [deletingRule, setDeletingRule] = useState(false)
   const [editRule, setEditRule] = useState<FirewallRule | null>(null)
+  const [sourceAddressInput, setSourceAddressInput] = useState('')
+  const [sourceSubnetInput, setSourceSubnetInput] = useState('32')
+  const [destinationAddressInput, setDestinationAddressInput] = useState('')
+  const [destinationSubnetInput, setDestinationSubnetInput] = useState('32')
 
   const [aliases, setAliases] = useState<AliasRow[]>([])
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
@@ -380,12 +428,18 @@ export default function Firewall() {
     const nextPriority = rules.length > 0
       ? Math.max(...rules.map((rule) => (rule.priority as number) ?? 100)) + 10
       : 100
+    const sourceParts = splitAddressValue(defaultRuleForm.source)
+    const destinationParts = splitAddressValue(defaultRuleForm.destination)
 
     setRuleForm({
       ...defaultRuleForm,
       interface: selectedInterface || null,
       priority: nextPriority,
     })
+    setSourceAddressInput(sourceParts.address)
+    setSourceSubnetInput(sourceParts.subnet || '32')
+    setDestinationAddressInput(destinationParts.address)
+    setDestinationSubnetInput(destinationParts.subnet || '32')
     setRuleFormError(null)
     setEditRule(null)
     setRuleModalOpen(true)
@@ -394,10 +448,53 @@ export default function Firewall() {
   const openEditRulePanel = (rule: FirewallRule) => {
     const editableRule: Partial<FirewallRule> = { ...rule }
     delete editableRule.id
-    setRuleForm(editableRule)
+    const sourceParts = splitAddressValue(rule.source)
+    const destinationParts = splitAddressValue(rule.destination)
+    setRuleForm({
+      ...editableRule,
+      ip_family: editableRule.ip_family ?? 'ipv4_ipv6',
+    })
+    setSourceAddressInput(sourceParts.address)
+    setSourceSubnetInput(sourceParts.subnet || '32')
+    setDestinationAddressInput(destinationParts.address)
+    setDestinationSubnetInput(destinationParts.subnet || '32')
     setRuleFormError(null)
     setEditRule(rule)
     setRuleModalOpen(true)
+  }
+
+  const applySourceValue = (value: string) => {
+    const parts = splitAddressValue(value)
+    setSourceAddressInput(parts.address)
+    setSourceSubnetInput(parts.subnet || '32')
+    setRuleForm((current) => ({ ...current, source: value || null }))
+  }
+
+  const applyDestinationValue = (value: string) => {
+    const parts = splitAddressValue(value)
+    setDestinationAddressInput(parts.address)
+    setDestinationSubnetInput(parts.subnet || '32')
+    setRuleForm((current) => ({ ...current, destination: value || null }))
+  }
+
+  const updateSourceAddress = (value: string) => {
+    setSourceAddressInput(value)
+    setRuleForm((current) => ({ ...current, source: buildAddressValue(value, sourceSubnetInput) }))
+  }
+
+  const updateSourceSubnet = (value: string) => {
+    setSourceSubnetInput(value)
+    setRuleForm((current) => ({ ...current, source: buildAddressValue(sourceAddressInput, value) }))
+  }
+
+  const updateDestinationAddress = (value: string) => {
+    setDestinationAddressInput(value)
+    setRuleForm((current) => ({ ...current, destination: buildAddressValue(value, destinationSubnetInput) }))
+  }
+
+  const updateDestinationSubnet = (value: string) => {
+    setDestinationSubnetInput(value)
+    setRuleForm((current) => ({ ...current, destination: buildAddressValue(destinationAddressInput, value) }))
   }
 
   const loadRules = () => {
@@ -1144,6 +1241,19 @@ export default function Firewall() {
                     <option value="icmpv6">ICMPv6</option>
                   </FormField>
                   <FormField
+                    id="rule-ip-family"
+                    label="IP Family"
+                    as="select"
+                    value={ruleForm.ip_family ?? 'ipv4_ipv6'}
+                    onChange={(e) => setRuleForm({ ...ruleForm, ip_family: e.target.value as FirewallAddressFamily })}
+                  >
+                    {FIREWALL_ADDRESS_FAMILY_OPTIONS.map((family) => (
+                      <option key={family} value={family}>
+                        {ipFamilyLabel(family)}
+                      </option>
+                    ))}
+                  </FormField>
+                  <FormField
                     id="rule-iface"
                     label={interfaceFieldLabel(ruleForm.direction ?? 'forward')}
                     hint={interfaceFieldHint(ruleForm.direction ?? 'forward')}
@@ -1161,20 +1271,39 @@ export default function Firewall() {
                   <FormField
                     id="rule-src-preset"
                     label="Source Preset"
+                    hint="Choose an alias or network preset, or use the custom field below."
                     as="select"
                     value={ruleForm.source ?? ''}
-                    onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
+                    onChange={(e) => applySourceValue(e.target.value)}
                   >
                     {addressPresetOptions.map((opt) => (
                       <option key={`src-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
                     ))}
                   </FormField>
-                  <FormField
-                    id="rule-src"
-                    label="Source (custom CIDR/IP/Alias)"
-                    value={ruleForm.source ?? ''}
-                    onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
-                  />
+                  <div className="col-span-2 grid gap-4 lg:grid-cols-[minmax(0,1fr)_10rem]">
+                    <FormField
+                      id="rule-src"
+                      label="Source (custom CIDR/IP/Alias)"
+                      value={sourceAddressInput}
+                      onChange={(e) => updateSourceAddress(e.target.value)}
+                    />
+                    <FormField
+                      id="rule-src-subnet"
+                      label="Subnet"
+                      as="select"
+                      value={isIpv4Address(sourceAddressInput) ? sourceSubnetInput : ''}
+                      onChange={(e) => updateSourceSubnet(e.target.value)}
+                      disabled={!isIpv4Address(sourceAddressInput)}
+                      hint={isIpv4Address(sourceAddressInput) ? 'Used for IPv4 addresses.' : 'Available after entering an IPv4 address.'}
+                    >
+                      <option value="">/32</option>
+                      {CIDR_PREFIX_OPTIONS.filter((prefix) => prefix !== '32').map((prefix) => (
+                        <option key={prefix} value={prefix}>
+                          /{prefix}
+                        </option>
+                      ))}
+                    </FormField>
+                  </div>
                   <FormField
                     id="rule-src-port"
                     label="Source Port"
@@ -1185,20 +1314,42 @@ export default function Firewall() {
                   <FormField
                     id="rule-dst-preset"
                     label="Destination Preset"
+                    hint="Choose an alias or network preset, or use the custom field below."
                     as="select"
                     value={ruleForm.destination ?? ''}
-                    onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
+                    onChange={(e) => applyDestinationValue(e.target.value)}
                   >
                     {addressPresetOptions.map((opt) => (
                       <option key={`dst-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
                     ))}
                   </FormField>
-                  <FormField
-                    id="rule-dst"
-                    label="Destination (custom CIDR/IP/Alias)"
-                    value={ruleForm.destination ?? ''}
-                    onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
-                  />
+                  <div className="col-span-2 grid gap-4 lg:grid-cols-[minmax(0,1fr)_10rem]">
+                    <FormField
+                      id="rule-dst"
+                      label="Destination (custom CIDR/IP/Alias)"
+                      value={destinationAddressInput}
+                      onChange={(e) => updateDestinationAddress(e.target.value)}
+                    />
+                    <FormField
+                      id="rule-dst-subnet"
+                      label="Subnet"
+                      as="select"
+                      value={isIpv4Address(destinationAddressInput) ? destinationSubnetInput : ''}
+                      onChange={(e) => updateDestinationSubnet(e.target.value)}
+                      disabled={!isIpv4Address(destinationAddressInput)}
+                      hint={isIpv4Address(destinationAddressInput) ? 'Used for IPv4 addresses.' : 'Available after entering an IPv4 address.'}
+                    >
+                      <option value="">/32</option>
+                      {CIDR_PREFIX_OPTIONS.filter((prefix) => prefix !== '32').map((prefix) => (
+                        <option key={prefix} value={prefix}>
+                          /{prefix}
+                        </option>
+                      ))}
+                    </FormField>
+                  </div>
+                  <p className="col-span-2 -mt-1 text-xs text-gray-500">
+                    Aliases can be used in presets or typed directly; IPv4 / IPv6 limits only apply to literal addresses and CIDRs.
+                  </p>
                   <FormField
                     id="rule-dst-port"
                     label="Destination Port"
