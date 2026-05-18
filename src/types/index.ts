@@ -117,6 +117,15 @@ export interface FirewallSchedule {
   date_end: string | null
 }
 
+export interface FirewallStateLimits {
+  max_states?: number | null
+  max_source_nodes?: number | null
+  max_source_states?: number | null
+  max_source_connections?: number | null
+  max_new_connections?: number | null
+  max_new_connections_seconds?: number | null
+}
+
 export interface FirewallRule {
   id: string               // UUID
   description: string | null
@@ -132,6 +141,7 @@ export interface FirewallRule {
   log: boolean
   enabled: boolean
   schedule: FirewallSchedule | null
+  state_limits?: FirewallStateLimits
 }
 
 /** Per-rule hit counter returned by GET /firewall/stats. */

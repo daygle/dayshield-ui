@@ -38,6 +38,14 @@ const defaultRuleForm: Partial<FirewallRule> = {
   priority: 100,
   enabled: true,
   schedule: null,
+  state_limits: {
+    max_states: null,
+    max_source_nodes: null,
+    max_source_states: null,
+    max_source_connections: null,
+    max_new_connections: null,
+    max_new_connections_seconds: null,
+  },
 }
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -194,6 +202,23 @@ function validateFirewallRuleForm(rule: Partial<FirewallRule>): string | null {
 
   if (rule.destination_port != null && !isPort(rule.destination_port)) {
     return 'Destination port must be a valid port number between 1 and 65535.'
+  }
+
+  const limits = rule.state_limits
+  if (limits) {
+    const entries: Array<[string, number | null | undefined]> = [
+      ['Max states', limits.max_states],
+      ['Max source nodes', limits.max_source_nodes],
+      ['Max source states', limits.max_source_states],
+      ['Max source connections', limits.max_source_connections],
+      ['Max new connections [c]', limits.max_new_connections],
+      ['Max new connections [s]', limits.max_new_connections_seconds],
+    ]
+    for (const [label, value] of entries) {
+      if (value != null && (!Number.isInteger(value) || value < 1)) {
+        return `${label} must be a positive integer.`
+      }
+    }
   }
 
   if (rule.schedule) {
@@ -1133,58 +1158,143 @@ export default function Firewall() {
                       </option>
                     ))}
                   </FormField>
+                  <FormField
+                    id="rule-src-preset"
+                    label="Source Preset"
+                    as="select"
+                    value={ruleForm.source ?? ''}
+                    onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
+                  >
+                    {addressPresetOptions.map((opt) => (
+                      <option key={`src-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </FormField>
+                  <FormField
+                    id="rule-src"
+                    label="Source (custom CIDR/IP/Alias)"
+                    value={ruleForm.source ?? ''}
+                    onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
+                  />
+                  <FormField
+                    id="rule-src-port"
+                    label="Source Port"
+                    type="number"
+                    value={ruleForm.source_port != null ? String(ruleForm.source_port) : ''}
+                    onChange={(e) => setRuleForm({ ...ruleForm, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+                  />
+                  <FormField
+                    id="rule-dst-preset"
+                    label="Destination Preset"
+                    as="select"
+                    value={ruleForm.destination ?? ''}
+                    onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
+                  >
+                    {addressPresetOptions.map((opt) => (
+                      <option key={`dst-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </FormField>
+                  <FormField
+                    id="rule-dst"
+                    label="Destination (custom CIDR/IP/Alias)"
+                    value={ruleForm.destination ?? ''}
+                    onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
+                  />
+                  <FormField
+                    id="rule-dst-port"
+                    label="Destination Port"
+                    type="number"
+                    value={ruleForm.destination_port != null ? String(ruleForm.destination_port) : ''}
+                    onChange={(e) => setRuleForm({ ...ruleForm, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+                  />
+
                   <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
                     <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
-                      Advanced Match
+                      Advanced Match Limits
                     </summary>
                     <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
                       <FormField
-                        id="rule-src-preset"
-                        label="Source Preset"
-                        as="select"
-                        value={ruleForm.source ?? ''}
-                        onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
-                      >
-                        {addressPresetOptions.map((opt) => (
-                          <option key={`src-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </FormField>
-                      <FormField
-                        id="rule-src"
-                        label="Source (custom CIDR/IP/Alias)"
-                        value={ruleForm.source ?? ''}
-                        onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
-                      />
-                      <FormField
-                        id="rule-src-port"
-                        label="Source Port"
+                        id="rule-max-states"
+                        label="Max states"
                         type="number"
-                        value={ruleForm.source_port != null ? String(ruleForm.source_port) : ''}
-                        onChange={(e) => setRuleForm({ ...ruleForm, source_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+                        min={1}
+                        value={ruleForm.state_limits?.max_states != null ? String(ruleForm.state_limits.max_states) : ''}
+                        onChange={(e) => setRuleForm({
+                          ...ruleForm,
+                          state_limits: {
+                            ...(ruleForm.state_limits ?? {}),
+                            max_states: e.target.value ? parseInt(e.target.value, 10) : null,
+                          },
+                        })}
                       />
                       <FormField
-                        id="rule-dst-preset"
-                        label="Destination Preset"
-                        as="select"
-                        value={ruleForm.destination ?? ''}
-                        onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
-                      >
-                        {addressPresetOptions.map((opt) => (
-                          <option key={`dst-${opt.value || 'any'}`} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </FormField>
-                      <FormField
-                        id="rule-dst"
-                        label="Destination (custom CIDR/IP/Alias)"
-                        value={ruleForm.destination ?? ''}
-                        onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
-                      />
-                      <FormField
-                        id="rule-dst-port"
-                        label="Destination Port"
+                        id="rule-max-source-nodes"
+                        label="Max source nodes"
                         type="number"
-                        value={ruleForm.destination_port != null ? String(ruleForm.destination_port) : ''}
-                        onChange={(e) => setRuleForm({ ...ruleForm, destination_port: e.target.value ? parseInt(e.target.value, 10) : null })}
+                        min={1}
+                        value={ruleForm.state_limits?.max_source_nodes != null ? String(ruleForm.state_limits.max_source_nodes) : ''}
+                        onChange={(e) => setRuleForm({
+                          ...ruleForm,
+                          state_limits: {
+                            ...(ruleForm.state_limits ?? {}),
+                            max_source_nodes: e.target.value ? parseInt(e.target.value, 10) : null,
+                          },
+                        })}
+                      />
+                      <FormField
+                        id="rule-max-source-states"
+                        label="Max source states"
+                        type="number"
+                        min={1}
+                        value={ruleForm.state_limits?.max_source_states != null ? String(ruleForm.state_limits.max_source_states) : ''}
+                        onChange={(e) => setRuleForm({
+                          ...ruleForm,
+                          state_limits: {
+                            ...(ruleForm.state_limits ?? {}),
+                            max_source_states: e.target.value ? parseInt(e.target.value, 10) : null,
+                          },
+                        })}
+                      />
+                      <FormField
+                        id="rule-max-source-connections"
+                        label="Max source connections"
+                        type="number"
+                        min={1}
+                        value={ruleForm.state_limits?.max_source_connections != null ? String(ruleForm.state_limits.max_source_connections) : ''}
+                        onChange={(e) => setRuleForm({
+                          ...ruleForm,
+                          state_limits: {
+                            ...(ruleForm.state_limits ?? {}),
+                            max_source_connections: e.target.value ? parseInt(e.target.value, 10) : null,
+                          },
+                        })}
+                      />
+                      <FormField
+                        id="rule-max-new-connections"
+                        label="Max new connections [c]"
+                        type="number"
+                        min={1}
+                        value={ruleForm.state_limits?.max_new_connections != null ? String(ruleForm.state_limits.max_new_connections) : ''}
+                        onChange={(e) => setRuleForm({
+                          ...ruleForm,
+                          state_limits: {
+                            ...(ruleForm.state_limits ?? {}),
+                            max_new_connections: e.target.value ? parseInt(e.target.value, 10) : null,
+                          },
+                        })}
+                      />
+                      <FormField
+                        id="rule-max-new-connections-seconds"
+                        label="Max new connections [s]"
+                        type="number"
+                        min={1}
+                        value={ruleForm.state_limits?.max_new_connections_seconds != null ? String(ruleForm.state_limits.max_new_connections_seconds) : ''}
+                        onChange={(e) => setRuleForm({
+                          ...ruleForm,
+                          state_limits: {
+                            ...(ruleForm.state_limits ?? {}),
+                            max_new_connections_seconds: e.target.value ? parseInt(e.target.value, 10) : null,
+                          },
+                        })}
                       />
                     </div>
                   </details>
