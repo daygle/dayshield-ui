@@ -1,20 +1,20 @@
-import { ReactNode } from 'react'
+import { ReactNode } from 'react';
 
 export interface Column<T> {
-  key: keyof T | string
-  header: string
-  render?: (row: T) => ReactNode
-  className?: string
+  key: keyof T | string;
+  header: string;
+  render?: (row: T) => ReactNode;
+  className?: string;
 }
 
 interface TableProps<T> {
-  columns: Column<T>[]
-  data: T[]
-  keyField: keyof T
-  loading?: boolean
-  emptyMessage?: string
-  className?: string
-  onRowClick?: (row: T) => void
+  columns: Column<T>[];
+  data: T[];
+  keyField: keyof T;
+  loading?: boolean;
+  emptyMessage?: string;
+  className?: string;
+  onRowClick?: (row: T) => void;
 }
 
 export default function Table<T extends Record<string, unknown>>({
@@ -45,10 +45,7 @@ export default function Table<T extends Record<string, unknown>>({
         <tbody className="divide-y divide-gray-100 bg-white">
           {loading ? (
             <tr>
-              <td
-                colSpan={columns.length}
-                className="py-10 text-center text-gray-400"
-              >
+              <td colSpan={columns.length} className="py-10 text-center text-gray-400">
                 <span className="inline-flex items-center gap-2">
                   <svg
                     className="animate-spin h-4 w-4"
@@ -65,11 +62,7 @@ export default function Table<T extends Record<string, unknown>>({
                       stroke="currentColor"
                       strokeWidth="4"
                     />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8H4z"
-                    />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
                   Loading...
                 </span>
@@ -77,10 +70,7 @@ export default function Table<T extends Record<string, unknown>>({
             </tr>
           ) : data.length === 0 ? (
             <tr>
-              <td
-                colSpan={columns.length}
-                className="py-10 text-center text-gray-400"
-              >
+              <td colSpan={columns.length} className="py-10 text-center text-gray-400">
                 {emptyMessage}
               </td>
             </tr>
@@ -96,9 +86,7 @@ export default function Table<T extends Record<string, unknown>>({
                     key={String(col.key)}
                     className={`px-4 py-3 text-gray-700 ${col.className ?? ''}`}
                   >
-                    {col.render
-                      ? col.render(row)
-                      : String(row[col.key as keyof T] ?? '')}
+                    {col.render ? col.render(row) : String(row[col.key as keyof T] ?? '')}
                   </td>
                 ))}
               </tr>
@@ -107,5 +95,5 @@ export default function Table<T extends Record<string, unknown>>({
         </tbody>
       </table>
     </div>
-  )
+  );
 }

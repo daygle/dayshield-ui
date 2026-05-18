@@ -1,21 +1,21 @@
-import { useToast, type Toast } from '../context/ToastContext'
+import { useToast, type Toast } from '../context/ToastContext';
 
 const variantStyles: Record<Toast['variant'], string> = {
   success: 'bg-green-600 text-white',
   error: 'bg-red-600 text-white',
   warning: 'bg-yellow-500 text-white',
   info: 'bg-blue-600 text-white',
-}
+};
 
 const variantIcons: Record<Toast['variant'], string> = {
   success: '✓',
   error: '✕',
   warning: '⚠',
   info: 'ℹ',
-}
+};
 
 function ToastItem({ toast }: { toast: Toast }) {
-  const { removeToast } = useToast()
+  const { removeToast } = useToast();
   return (
     <div
       role="alert"
@@ -36,13 +36,13 @@ function ToastItem({ toast }: { toast: Toast }) {
         ✕
       </button>
     </div>
-  )
+  );
 }
 
 export default function ToastContainer() {
-  const { toasts } = useToast()
+  const { toasts } = useToast();
 
-  if (toasts.length === 0) return null
+  if (toasts.length === 0) return null;
 
   return (
     <div
@@ -54,5 +54,5 @@ export default function ToastContainer() {
         <ToastItem key={t.id} toast={t} />
       ))}
     </div>
-  )
+  );
 }

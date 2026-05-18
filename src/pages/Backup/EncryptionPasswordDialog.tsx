@@ -1,13 +1,13 @@
-import { useState } from 'react'
-import Modal from '../../components/Modal'
-import FormField from '../../components/FormField'
+import { useState } from 'react';
+import Modal from '../../components/Modal';
+import FormField from '../../components/FormField';
 
 interface EncryptionPasswordDialogProps {
-  open: boolean
-  loading: boolean
-  filename: string
-  onClose: () => void
-  onConfirm: (password: string) => void
+  open: boolean;
+  loading: boolean;
+  filename: string;
+  onClose: () => void;
+  onConfirm: (password: string) => void;
 }
 
 export default function EncryptionPasswordDialog({
@@ -17,23 +17,23 @@ export default function EncryptionPasswordDialog({
   onClose,
   onConfirm,
 }: EncryptionPasswordDialogProps) {
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const handleConfirm = () => {
     if (!password) {
-      setError('Password is required.')
-      return
+      setError('Password is required.');
+      return;
     }
-    setError('')
-    onConfirm(password)
-  }
+    setError('');
+    onConfirm(password);
+  };
 
   const handleClose = () => {
-    setPassword('')
-    setError('')
-    onClose()
-  }
+    setPassword('');
+    setError('');
+    onClose();
+  };
 
   return (
     <Modal
@@ -57,13 +57,13 @@ export default function EncryptionPasswordDialog({
           required
           value={password}
           onChange={(e) => {
-            setPassword(e.target.value)
-            setError('')
+            setPassword(e.target.value);
+            setError('');
           }}
           autoComplete="current-password"
           error={error}
         />
       </div>
     </Modal>
-  )
+  );
 }

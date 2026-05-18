@@ -1,28 +1,23 @@
-import type { BackupSchedule, BackupScheduleFrequency } from '../../types'
-import FormField from '../../components/FormField'
-import Button from '../../components/Button'
+import type { BackupSchedule, BackupScheduleFrequency } from '../../types';
+import FormField from '../../components/FormField';
+import Button from '../../components/Button';
 
 interface ScheduleFormProps {
-  schedule: BackupSchedule
-  saving: boolean
-  onChange: (s: BackupSchedule) => void
-  onSave: () => void
+  schedule: BackupSchedule;
+  saving: boolean;
+  onChange: (s: BackupSchedule) => void;
+  onSave: () => void;
 }
 
 const FREQUENCIES: { value: BackupScheduleFrequency; label: string }[] = [
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
-]
+];
 
-export default function ScheduleForm({
-  schedule,
-  saving,
-  onChange,
-  onSave,
-}: ScheduleFormProps) {
+export default function ScheduleForm({ schedule, saving, onChange, onSave }: ScheduleFormProps) {
   const set = <K extends keyof BackupSchedule>(key: K, value: BackupSchedule[K]) =>
-    onChange({ ...schedule, [key]: value })
+    onChange({ ...schedule, [key]: value });
 
   return (
     <div className="space-y-4">
@@ -105,5 +100,5 @@ export default function ScheduleForm({
         </Button>
       </div>
     </div>
-  )
+  );
 }

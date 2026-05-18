@@ -1,43 +1,43 @@
-import apiClient from './client'
+import apiClient from './client';
 import type {
   ApiResponse,
   NotifyCategory,
   NotifyConfig,
   NotifyTestRequest,
   NotifyTestResult,
-} from '../types'
+} from '../types';
 
-type BackendNotifyCategory = 'suricata' | 'crowd_sec' | 'crowdsec' | 'acme' | 'system'
+type BackendNotifyCategory = 'suricata' | 'crowd_sec' | 'crowdsec' | 'acme' | 'system';
 
 interface BackendNotifyConfig {
-  enabled?: boolean
-  smtp_server?: string
-  smtp_port?: number
-  smtp_username?: string
-  smtp_password?: string
-  from_address?: string
-  to_addresses?: string[]
-  categories?: BackendNotifyCategory[]
-  rate_limit_per_minute?: number
-  digest_mode?: boolean
+  enabled?: boolean;
+  smtp_server?: string;
+  smtp_port?: number;
+  smtp_username?: string;
+  smtp_password?: string;
+  from_address?: string;
+  to_addresses?: string[];
+  categories?: BackendNotifyCategory[];
+  rate_limit_per_minute?: number;
+  digest_mode?: boolean;
 }
 
 function mapBackendCategoryToUi(cat: BackendNotifyCategory): NotifyCategory {
-  if (cat === 'suricata') return 'ids'
-  if (cat === 'crowd_sec' || cat === 'crowdsec') return 'crowdsec'
-  if (cat === 'acme') return 'acme'
-  return 'system'
+  if (cat === 'suricata') return 'ids';
+  if (cat === 'crowd_sec' || cat === 'crowdsec') return 'crowdsec';
+  if (cat === 'acme') return 'acme';
+  return 'system';
 }
 
 function mapUiCategoryToBackend(cat: NotifyCategory): BackendNotifyCategory {
-  if (cat === 'ids') return 'suricata'
-  if (cat === 'crowdsec') return 'crowd_sec'
-  if (cat === 'acme') return 'acme'
-  return 'system'
+  if (cat === 'ids') return 'suricata';
+  if (cat === 'crowdsec') return 'crowd_sec';
+  if (cat === 'acme') return 'acme';
+  return 'system';
 }
 
 function normalizeNotifyConfig(raw: unknown): NotifyConfig {
-  const value = (raw ?? {}) as Record<string, unknown>
+  const value = (raw ?? {}) as Record<string, unknown>;
 
   // Newer UI/native shape
   if (
@@ -45,8 +45,8 @@ function normalizeNotifyConfig(raw: unknown): NotifyConfig {
     typeof value.smtp === 'object' &&
     Array.isArray(value.recipients)
   ) {
-    const cfg = value as Partial<NotifyConfig>
-    const smtp = (cfg.smtp ?? {}) as Partial<NotifyConfig['smtp']>
+    const cfg = value as Partial<NotifyConfig>;
+    const smtp = (cfg.smtp ?? {}) as Partial<NotifyConfig['smtp']>;
     return {
       enabled: Boolean(cfg.enabled),
       smtp: {
@@ -62,14 +62,13 @@ function normalizeNotifyConfig(raw: unknown): NotifyConfig {
       categories: Array.isArray(cfg.categories)
         ? cfg.categories
         : ['ids', 'crowdsec', 'acme', 'system'],
-      rateLimitMinutes:
-        typeof cfg.rateLimitMinutes === 'number' ? cfg.rateLimitMinutes : 10,
+      rateLimitMinutes: typeof cfg.rateLimitMinutes === 'number' ? cfg.rateLimitMinutes : 10,
       digestMode: Boolean(cfg.digestMode),
-    }
+    };
   }
 
   // Backend snake_case shape
-  const cfg = value as BackendNotifyConfig
+  const cfg = value as BackendNotifyConfig;
   return {
     enabled: Boolean(cfg.enabled),
     smtp: {
@@ -88,7 +87,7 @@ function normalizeNotifyConfig(raw: unknown): NotifyConfig {
     rateLimitMinutes:
       typeof cfg.rate_limit_per_minute === 'number' ? cfg.rate_limit_per_minute : 10,
     digestMode: Boolean(cfg.digest_mode),
-  }
+  };
 }
 
 function toBackendNotifyConfig(config: NotifyConfig): BackendNotifyConfig {
@@ -103,29 +102,21 @@ function toBackendNotifyConfig(config: NotifyConfig): BackendNotifyConfig {
     categories: Array.from(new Set(config.categories.map(mapUiCategoryToBackend))),
     rate_limit_per_minute: config.rateLimitMinutes,
     digest_mode: config.digestMode,
-  }
+  };
 }
 
 export const getNotifyConfig = (): Promise<ApiResponse<NotifyConfig>> =>
   apiClient
     .get<ApiResponse<unknown>>('/notify/config')
-    .then((r) => ({ ...r.data, data: normalizeNotifyConfig(r.data.data) }))
+    .then((r) => ({ ...r.data, data: normalizeNotifyConfig(r.data.data) }));
 
-export const saveNotifyConfig = (
-  config: NotifyConfig,
-): Promise<ApiResponse<NotifyConfig>> =>
+export const saveNotifyConfig = (config: NotifyConfig): Promise<ApiResponse<NotifyConfig>> =>
   apiClient
     .post<ApiResponse<unknown>>('/notify/config', toBackendNotifyConfig(config))
-    .then((r) => ({ ...r.data, data: normalizeNotifyConfig(r.data.data) }))
+    .then((r) => ({ ...r.data, data: normalizeNotifyConfig(r.data.data) }));
 
-export const sendTestEmail = (
-  req: NotifyTestRequest,
-): Promise<ApiResponse<NotifyTestResult>> =>
-  apiClient
-    .post<ApiResponse<NotifyTestResult>>('/notify/test', req)
-    .then((r) => r.data)
+export const sendTestEmail = (req: NotifyTestRequest): Promise<ApiResponse<NotifyTestResult>> =>
+  apiClient.post<ApiResponse<NotifyTestResult>>('/notify/test', req).then((r) => r.data);
 
 export const getNotifyCategories = (): Promise<ApiResponse<string[]>> =>
-  apiClient
-    .get<ApiResponse<string[]>>('/notify/categories')
-    .then((r) => r.data)
+  apiClient.get<ApiResponse<string[]>>('/notify/categories').then((r) => r.data);

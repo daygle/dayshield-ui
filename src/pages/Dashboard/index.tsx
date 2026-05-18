@@ -1,51 +1,51 @@
-import { useEffect, useRef, useState } from 'react'
-import { useSystemStatus } from '../../hooks/useSystemStatus'
-import { useNetworkStatus } from '../../hooks/useNetworkStatus'
-import { useSecurityStatus } from '../../hooks/useSecurityStatus'
-import { useAcmeStatus } from '../../hooks/useAcmeStatus'
-import { useAiEngineStatus } from '../../hooks/useAiEngineStatus'
-import { useMetrics } from '../../hooks/useMetrics'
-import { useMetricsHistory } from '../../hooks/useMetricsHistory'
-import Card from '../../components/Card'
-import ErrorBanner from '../../components/ErrorBanner'
-import Sparkline from '../../components/Sparkline'
-import CardLayoutManager from '../../components/CardLayoutManager'
-import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
+import { useEffect, useRef, useState } from 'react';
+import { useSystemStatus } from '../../hooks/useSystemStatus';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+import { useSecurityStatus } from '../../hooks/useSecurityStatus';
+import { useAcmeStatus } from '../../hooks/useAcmeStatus';
+import { useAiEngineStatus } from '../../hooks/useAiEngineStatus';
+import { useMetrics } from '../../hooks/useMetrics';
+import { useMetricsHistory } from '../../hooks/useMetricsHistory';
+import Card from '../../components/Card';
+import ErrorBanner from '../../components/ErrorBanner';
+import Sparkline from '../../components/Sparkline';
+import CardLayoutManager from '../../components/CardLayoutManager';
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function formatUptime(seconds: number): string {
-  const d = Math.floor(seconds / 86400)
-  const h = Math.floor((seconds % 86400) / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  return `${d}d ${h}h ${m}m`
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `${d}d ${h}h ${m}m`;
 }
 
 function formatBps(bps: number): string {
-  if (bps < 1000) return `${bps.toFixed(0)} B/s`
-  if (bps < 1_000_000) return `${(bps / 1000).toFixed(1)} KB/s`
-  if (bps < 1_000_000_000) return `${(bps / 1_000_000).toFixed(1)} MB/s`
-  return `${(bps / 1_000_000_000).toFixed(2)} GB/s`
+  if (bps < 1000) return `${bps.toFixed(0)} B/s`;
+  if (bps < 1_000_000) return `${(bps / 1000).toFixed(1)} KB/s`;
+  if (bps < 1_000_000_000) return `${(bps / 1_000_000).toFixed(1)} MB/s`;
+  return `${(bps / 1_000_000_000).toFixed(2)} GB/s`;
 }
 
 function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes.toFixed(0)} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+  if (bytes < 1024) return `${bytes.toFixed(0)} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
 function toFiniteNumber(value: unknown, fallback = 0): number {
-  if (typeof value !== 'number') return fallback
-  return Number.isFinite(value) ? value : fallback
+  if (typeof value !== 'number') return fallback;
+  return Number.isFinite(value) ? value : fallback;
 }
 
 function formatPercent(value: unknown, digits = 1): string {
-  return `${toFiniteNumber(value).toFixed(digits)}%`
+  return `${toFiniteNumber(value).toFixed(digits)}%`;
 }
 
 function ProgressBar({ value, warn = 80 }: { value: number; warn?: number }) {
-  const clamped = Math.min(100, Math.max(0, value))
+  const clamped = Math.min(100, Math.max(0, value));
   return (
     <div className="w-full bg-gray-200 rounded-full h-1.5">
       <div
@@ -53,15 +53,15 @@ function ProgressBar({ value, warn = 80 }: { value: number; warn?: number }) {
         style={{ width: `${clamped}%` }}
       />
     </div>
-  )
+  );
 }
 
 function Badge({
   variant,
   children,
 }: {
-  variant: 'green' | 'red' | 'yellow' | 'gray' | 'blue'
-  children: React.ReactNode
+  variant: 'green' | 'red' | 'yellow' | 'gray' | 'blue';
+  children: React.ReactNode;
 }) {
   const cls = {
     green: 'bg-green-100 text-green-700 border-green-200',
@@ -69,12 +69,14 @@ function Badge({
     yellow: 'bg-yellow-100 text-yellow-700 border-yellow-200',
     gray: 'bg-gray-100 text-gray-600 border-gray-200',
     blue: 'bg-blue-100 text-blue-700 border-blue-200',
-  }[variant]
+  }[variant];
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${cls}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${cls}`}
+    >
       {children}
     </span>
-  )
+  );
 }
 
 function MetricRow({
@@ -83,10 +85,10 @@ function MetricRow({
   bar,
   warn,
 }: {
-  label: string
-  value: string
-  bar?: number
-  warn?: number
+  label: string;
+  value: string;
+  bar?: number;
+  warn?: number;
 }) {
   return (
     <div className="space-y-1">
@@ -96,26 +98,26 @@ function MetricRow({
       </div>
       {bar !== undefined && <ProgressBar value={bar} warn={warn} />}
     </div>
-  )
+  );
 }
 
 // ── Throughput sparkline buffer hook ─────────────────────────────────────────
 
 function useThroughputBuffer(rx: number | undefined, tx: number | undefined, size = 30) {
-  const rxBuf = useRef<number[]>([])
-  const txBuf = useRef<number[]>([])
-  const [, forceRender] = useState(0)
+  const rxBuf = useRef<number[]>([]);
+  const txBuf = useRef<number[]>([]);
+  const [, forceRender] = useState(0);
 
   useEffect(() => {
     const id = setInterval(() => {
-      rxBuf.current = [...rxBuf.current.slice(-(size - 1)), rx ?? 0]
-      txBuf.current = [...txBuf.current.slice(-(size - 1)), tx ?? 0]
-      forceRender((n) => n + 1)
-    }, 1000)
-    return () => clearInterval(id)
-  }, [rx, tx, size])
+      rxBuf.current = [...rxBuf.current.slice(-(size - 1)), rx ?? 0];
+      txBuf.current = [...txBuf.current.slice(-(size - 1)), tx ?? 0];
+      forceRender((n) => n + 1);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [rx, tx, size]);
 
-  return { rxHistory: rxBuf.current, txHistory: txBuf.current }
+  return { rxHistory: rxBuf.current, txHistory: txBuf.current };
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -130,13 +132,13 @@ type DashboardCardId =
   | 'suricata'
   | 'crowdsec'
   | 'firewall'
-  | 'interface'
+  | 'interface';
 
 type DashboardCardConfig = {
-  id: DashboardCardId
-  visible: boolean
-  width: 1 | 2 | 3
-}
+  id: DashboardCardId;
+  visible: boolean;
+  width: 1 | 2 | 3;
+};
 
 const defaultDashboardCardConfigs: DashboardCardConfig[] = [
   { id: 'metrics', visible: true, width: 2 },
@@ -149,7 +151,7 @@ const defaultDashboardCardConfigs: DashboardCardConfig[] = [
   { id: 'crowdsec', visible: true, width: 1 },
   { id: 'firewall', visible: true, width: 1 },
   { id: 'interface', visible: true, width: 1 },
-]
+];
 
 const dashboardCardTitles: Record<DashboardCardId, string> = {
   metrics: 'Live Metrics',
@@ -162,7 +164,7 @@ const dashboardCardTitles: Record<DashboardCardId, string> = {
   crowdsec: 'CrowdSec Decisions',
   firewall: 'Firewall Summary',
   interface: 'Interface Summary',
-}
+};
 
 const dashboardCardDescriptions: Record<DashboardCardId, string> = {
   metrics: 'Live CPU, memory, throughput, firewall, and security snapshot.',
@@ -175,102 +177,105 @@ const dashboardCardDescriptions: Record<DashboardCardId, string> = {
   crowdsec: 'Active CrowdSec decisions summary.',
   firewall: 'Firewall rule and state counts.',
   interface: 'Interface link and IP status overview.',
-}
+};
 
 const cardWidthClass = (width: number) => {
-  if (width === 2) return 'md:col-span-2'
-  if (width === 3) return 'md:col-span-3'
-  return 'md:col-span-1'
-}
+  if (width === 2) return 'md:col-span-2';
+  if (width === 3) return 'md:col-span-3';
+  return 'md:col-span-1';
+};
 
 const formatInterfaceDisplayName = (friendlyName: string | undefined, nicName: string): string => {
-  const friendly = friendlyName?.trim()
-  if (!friendly) return nicName
-  if (friendly.toLowerCase() === nicName.trim().toLowerCase()) return friendly
-  return `${friendly} (${nicName})`
-}
+  const friendly = friendlyName?.trim();
+  if (!friendly) return nicName;
+  if (friendly.toLowerCase() === nicName.trim().toLowerCase()) return friendly;
+  return `${friendly} (${nicName})`;
+};
 
-const formatDashboardInterfaceName = (friendlyName: string | undefined, nicName: string, fallback: string): string => {
-  const friendly = friendlyName?.trim() || fallback
-  return formatInterfaceDisplayName(friendly, nicName)
-}
+const formatDashboardInterfaceName = (
+  friendlyName: string | undefined,
+  nicName: string,
+  fallback: string
+): string => {
+  const friendly = friendlyName?.trim() || fallback;
+  return formatInterfaceDisplayName(friendly, nicName);
+};
 
 const loadDashboardCardConfig = (): DashboardCardConfig[] => {
-  if (typeof window === 'undefined') return defaultDashboardCardConfigs
+  if (typeof window === 'undefined') return defaultDashboardCardConfigs;
   try {
-    const raw = window.localStorage.getItem('dashboardCardConfig')
-    if (!raw) return defaultDashboardCardConfigs
-    const parsed = JSON.parse(raw) as DashboardCardConfig[]
-    if (!Array.isArray(parsed)) return defaultDashboardCardConfigs
+    const raw = window.localStorage.getItem('dashboardCardConfig');
+    if (!raw) return defaultDashboardCardConfigs;
+    const parsed = JSON.parse(raw) as DashboardCardConfig[];
+    if (!Array.isArray(parsed)) return defaultDashboardCardConfigs;
 
-    const validIds = new Set(defaultDashboardCardConfigs.map((card) => card.id))
-    const seen = new Set<string>()
+    const validIds = new Set(defaultDashboardCardConfigs.map((card) => card.id));
+    const seen = new Set<string>();
     const loaded = parsed.reduce<DashboardCardConfig[]>((acc, card) => {
-      if (!validIds.has(card.id) || seen.has(card.id)) return acc
-      seen.add(card.id)
+      if (!validIds.has(card.id) || seen.has(card.id)) return acc;
+      seen.add(card.id);
       acc.push({
         ...defaultDashboardCardConfigs.find((d) => d.id === card.id)!,
         visible: typeof card.visible === 'boolean' ? card.visible : true,
         width: card.width === 1 || card.width === 2 || card.width === 3 ? card.width : 1,
-      })
-      return acc
-    }, [])
+      });
+      return acc;
+    }, []);
 
-    const missing = defaultDashboardCardConfigs.filter((card) => !seen.has(card.id))
-    return [...loaded, ...missing]
+    const missing = defaultDashboardCardConfigs.filter((card) => !seen.has(card.id));
+    return [...loaded, ...missing];
   } catch {
-    return defaultDashboardCardConfigs
+    return defaultDashboardCardConfigs;
   }
-}
+};
 
 export default function Dashboard() {
-  const { formatDate } = useDisplayPreferences()
-  const metrics = useMetrics()
-  const metricsHistory = useMetricsHistory(180)
-  const sys = useSystemStatus()
-  const net = useNetworkStatus()
-  const sec = useSecurityStatus()
-  const acme = useAcmeStatus()
-  const ai = useAiEngineStatus()
+  const { formatDate } = useDisplayPreferences();
+  const metrics = useMetrics();
+  const metricsHistory = useMetricsHistory(180);
+  const sys = useSystemStatus();
+  const net = useNetworkStatus();
+  const sec = useSecurityStatus();
+  const acme = useAcmeStatus();
+  const ai = useAiEngineStatus();
 
-  const [customizeOpen, setCustomizeOpen] = useState(false)
-  const [layoutLocked, setLayoutLocked] = useState(true)
-  const [cardConfig, setCardConfig] = useState<DashboardCardConfig[]>(loadDashboardCardConfig)
-  const [dragCardId, setDragCardId] = useState<DashboardCardId | null>(null)
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [layoutLocked, setLayoutLocked] = useState(true);
+  const [cardConfig, setCardConfig] = useState<DashboardCardConfig[]>(loadDashboardCardConfig);
+  const [dragCardId, setDragCardId] = useState<DashboardCardId | null>(null);
 
   useEffect(() => {
-    window.localStorage.setItem('dashboardCardConfig', JSON.stringify(cardConfig))
-  }, [cardConfig])
+    window.localStorage.setItem('dashboardCardConfig', JSON.stringify(cardConfig));
+  }, [cardConfig]);
 
-  const { rxHistory, txHistory } = useThroughputBuffer(
-    net.data?.wan_rx_bps,
-    net.data?.wan_tx_bps,
-  )
+  const { rxHistory, txHistory } = useThroughputBuffer(net.data?.wan_rx_bps, net.data?.wan_tx_bps);
 
-  const alertRate = toFiniteNumber(sec.data?.suricata_alert_rate)
-  const hasWarningAlerts = alertRate >= 1 && alertRate < 5
-  const hasCriticalAlerts = alertRate >= 5
+  const alertRate = toFiniteNumber(sec.data?.suricata_alert_rate);
+  const hasWarningAlerts = alertRate >= 1 && alertRate < 5;
+  const hasCriticalAlerts = alertRate >= 5;
 
   const reorderCards = (sourceId: DashboardCardId, targetId: DashboardCardId) => {
-    if (sourceId === targetId) return
+    if (sourceId === targetId) return;
     setCardConfig((current) => {
-      const sourceIndex = current.findIndex((card) => card.id === sourceId)
-      const targetIndex = current.findIndex((card) => card.id === targetId)
-      if (sourceIndex < 0 || targetIndex < 0) return current
+      const sourceIndex = current.findIndex((card) => card.id === sourceId);
+      const targetIndex = current.findIndex((card) => card.id === targetId);
+      if (sourceIndex < 0 || targetIndex < 0) return current;
 
-      const next = [...current]
-      const [moved] = next.splice(sourceIndex, 1)
-      next.splice(targetIndex, 0, moved)
-      return next
-    })
-  }
+      const next = [...current];
+      const [moved] = next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  };
 
   const renderCardBody = (id: DashboardCardId) => {
     switch (id) {
       case 'metrics':
         return (
           <>
-            {metrics.isError && <ErrorBanner message={metrics.error?.message ?? 'Failed to load metrics'} />}
+            {metrics.isError && (
+              <ErrorBanner message={metrics.error?.message ?? 'Failed to load metrics'} />
+            )}
             {metrics.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
             {metrics.data && (
               <div className="space-y-4">
@@ -281,7 +286,10 @@ export default function Dashboard() {
                       {formatPercent(metrics.data.cpu_percent)}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Load {metrics.data.loadavg.map((value) => toFiniteNumber(value).toFixed(2)).join(' / ')}
+                      Load{' '}
+                      {metrics.data.loadavg
+                        .map((value) => toFiniteNumber(value).toFixed(2))
+                        .join(' / ')}
                     </p>
                   </div>
                   <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
@@ -290,7 +298,8 @@ export default function Dashboard() {
                       {formatPercent(metrics.data.ram_percent)}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {formatBytes(metrics.data.ram_used_bytes)} / {formatBytes(metrics.data.ram_total_bytes)} used
+                      {formatBytes(metrics.data.ram_used_bytes)} /{' '}
+                      {formatBytes(metrics.data.ram_total_bytes)} used
                     </p>
                   </div>
                 </div>
@@ -301,12 +310,21 @@ export default function Dashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <MetricRow label="Firewall States" value={metrics.data.firewall_state_count.toString()} />
-                  <MetricRow label="Suricata Alerts" value={`${metrics.data.suricata_alert_rate.toFixed(1)} / min`} />
+                  <MetricRow
+                    label="Firewall States"
+                    value={metrics.data.firewall_state_count.toString()}
+                  />
+                  <MetricRow
+                    label="Suricata Alerts"
+                    value={`${metrics.data.suricata_alert_rate.toFixed(1)} / min`}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <MetricRow label="CrowdSec Decisions" value={`${metrics.data.crowdsec_decision_rate.toFixed(1)} / min`} />
+                  <MetricRow
+                    label="CrowdSec Decisions"
+                    value={`${metrics.data.crowdsec_decision_rate.toFixed(1)} / min`}
+                  />
                   <MetricRow label="Uptime" value={formatUptime(metrics.data.uptime)} />
                 </div>
 
@@ -335,11 +353,13 @@ export default function Dashboard() {
               </div>
             )}
           </>
-        )
+        );
       case 'system':
         return (
           <>
-            {sys.isError && <ErrorBanner message={sys.error?.message ?? 'Failed to load system status'} />}
+            {sys.isError && (
+              <ErrorBanner message={sys.error?.message ?? 'Failed to load system status'} />
+            )}
             {sys.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
             {sys.data && (
               <div className="space-y-3">
@@ -373,17 +393,23 @@ export default function Dashboard() {
               </div>
             )}
           </>
-        )
+        );
       case 'network':
         return (
           <>
-            {net.isError && <ErrorBanner message={net.error?.message ?? 'Failed to load network status'} />}
+            {net.isError && (
+              <ErrorBanner message={net.error?.message ?? 'Failed to load network status'} />
+            )}
             {net.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
             {net.data && (
               <div className="space-y-3">
                 <MetricRow
                   label="WAN Interface"
-                  value={formatDashboardInterfaceName(net.data.wan_iface_description, net.data.wan_iface, 'WAN')}
+                  value={formatDashboardInterfaceName(
+                    net.data.wan_iface_description,
+                    net.data.wan_iface,
+                    'WAN'
+                  )}
                 />
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500">WAN IPv4</span>
@@ -424,7 +450,9 @@ export default function Dashboard() {
                           <span className="font-medium text-gray-700">
                             {formatDashboardInterfaceName(iface.description, iface.name, 'LAN')}
                           </span>
-                          <span className="text-gray-500">{[iface.ip, iface.ipv6].filter(Boolean).join(' / ') || '-'}</span>
+                          <span className="text-gray-500">
+                            {[iface.ip, iface.ipv6].filter(Boolean).join(' / ') || '-'}
+                          </span>
                           {iface.enabled ? (
                             <Badge variant="green">Up</Badge>
                           ) : (
@@ -438,11 +466,13 @@ export default function Dashboard() {
               </div>
             )}
           </>
-        )
+        );
       case 'interface_traffic':
         return (
           <>
-            {net.isError && <ErrorBanner message={net.error?.message ?? 'Failed to load network status'} />}
+            {net.isError && (
+              <ErrorBanner message={net.error?.message ?? 'Failed to load network status'} />
+            )}
             {net.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
             {net.data && (
               <div className="space-y-4">
@@ -450,14 +480,24 @@ export default function Dashboard() {
                   <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                     <p className="text-xs uppercase tracking-wide text-gray-500">WAN Interface</p>
                     <p className="mt-1 text-base font-semibold text-gray-900">
-                      {formatDashboardInterfaceName(net.data.wan_iface_description, net.data.wan_iface, 'WAN')}
+                      {formatDashboardInterfaceName(
+                        net.data.wan_iface_description,
+                        net.data.wan_iface,
+                        'WAN'
+                      )}
                     </p>
                     <p className="text-sm text-gray-500">{net.data.wan_ip ?? '-'}</p>
                   </div>
                   <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                     <p className="text-xs uppercase tracking-wide text-gray-500">Gateway</p>
                     <div className="mt-1 flex items-center gap-2">
-                      <span className="font-medium text-gray-900">{net.data.gateway_status === 'up' ? 'Online' : net.data.gateway_status === 'down' ? 'Offline' : 'Unknown'}</span>
+                      <span className="font-medium text-gray-900">
+                        {net.data.gateway_status === 'up'
+                          ? 'Online'
+                          : net.data.gateway_status === 'down'
+                            ? 'Offline'
+                            : 'Unknown'}
+                      </span>
                       {net.data.gateway_status === 'up' ? (
                         <Badge variant="green">Online</Badge>
                       ) : net.data.gateway_status === 'down' ? (
@@ -486,20 +526,35 @@ export default function Dashboard() {
                     <div className="rounded-lg border border-gray-100 bg-white p-3 text-sm">
                       <div className="flex items-center justify-between gap-4">
                         <div>
-                          <p className="font-semibold text-gray-900">{formatDashboardInterfaceName(net.data.wan_iface_description, net.data.wan_iface, 'WAN')}</p>
+                          <p className="font-semibold text-gray-900">
+                            {formatDashboardInterfaceName(
+                              net.data.wan_iface_description,
+                              net.data.wan_iface,
+                              'WAN'
+                            )}
+                          </p>
                           <p className="text-xs text-gray-500">{net.data.wan_ip ?? '-'}</p>
                         </div>
                         <Badge variant="green">WAN</Badge>
                       </div>
                     </div>
                     {net.data.lan_ifaces.map((iface) => (
-                      <div key={iface.name} className="rounded-lg border border-gray-100 bg-white p-3 text-sm">
+                      <div
+                        key={iface.name}
+                        className="rounded-lg border border-gray-100 bg-white p-3 text-sm"
+                      >
                         <div className="flex items-center justify-between gap-4">
                           <div>
-                            <p className="font-semibold text-gray-900">{formatDashboardInterfaceName(iface.description, iface.name, 'LAN')}</p>
-                            <p className="text-xs text-gray-500">{[iface.ip, iface.ipv6].filter(Boolean).join(' / ') || '-'}</p>
+                            <p className="font-semibold text-gray-900">
+                              {formatDashboardInterfaceName(iface.description, iface.name, 'LAN')}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {[iface.ip, iface.ipv6].filter(Boolean).join(' / ') || '-'}
+                            </p>
                           </div>
-                          <Badge variant={iface.enabled ? 'green' : 'red'}>{iface.enabled ? 'Up' : 'Down'}</Badge>
+                          <Badge variant={iface.enabled ? 'green' : 'red'}>
+                            {iface.enabled ? 'Up' : 'Down'}
+                          </Badge>
                         </div>
                       </div>
                     ))}
@@ -508,11 +563,13 @@ export default function Dashboard() {
               </div>
             )}
           </>
-        )
+        );
       case 'acme':
         return (
           <>
-            {acme.isError && <ErrorBanner message={acme.error?.message ?? 'Failed to load ACME status'} />}
+            {acme.isError && (
+              <ErrorBanner message={acme.error?.message ?? 'Failed to load ACME status'} />
+            )}
             {acme.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
             {acme.data && (
               <div className="space-y-3">
@@ -537,10 +594,7 @@ export default function Dashboard() {
                   <div className="space-y-3">
                     <MetricRow label="Expires in" value={`${acme.data.expires_in_days} days`} />
                     {acme.data.next_renewal && (
-                      <MetricRow
-                        label="Next Renewal"
-                        value={formatDate(acme.data.next_renewal)}
-                      />
+                      <MetricRow label="Next Renewal" value={formatDate(acme.data.next_renewal)} />
                     )}
                   </div>
                 ) : (
@@ -566,41 +620,61 @@ export default function Dashboard() {
               </div>
             )}
           </>
-        )
+        );
       case 'suricata':
         return (
           <>
-            {sec.isError && <ErrorBanner message={sec.error?.message ?? 'Failed to load security status'} />}
+            {sec.isError && (
+              <ErrorBanner message={sec.error?.message ?? 'Failed to load security status'} />
+            )}
             {sec.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
             {sec.data && (
               <div className="space-y-3">
                 <div className="text-sm text-gray-500">Suricata alert rate</div>
-                <div className="text-2xl font-semibold text-gray-900">{alertRate.toFixed(1)} alerts/sec</div>
-                <p className="text-sm text-gray-500">Detailed alert data is unavailable in this version.</p>
+                <div className="text-2xl font-semibold text-gray-900">
+                  {alertRate.toFixed(1)} alerts/sec
+                </div>
+                <p className="text-sm text-gray-500">
+                  Detailed alert data is unavailable in this version.
+                </p>
                 {hasWarningAlerts && !hasCriticalAlerts && (
-                  <p className="text-xs text-yellow-700">High alert rate detected; investigate Suricata alerts page.</p>
+                  <p className="text-xs text-yellow-700">
+                    High alert rate detected; investigate Suricata alerts page.
+                  </p>
                 )}
                 {hasCriticalAlerts && (
-                  <p className="text-xs text-red-700">Critical alert flood detected; check Suricata immediately.</p>
+                  <p className="text-xs text-red-700">
+                    Critical alert flood detected; check Suricata immediately.
+                  </p>
                 )}
               </div>
             )}
           </>
-        )
+        );
       case 'ai':
         return (
           <>
-            {ai.isError && <ErrorBanner message={ai.error?.message ?? 'Failed to load AI status'} />}
+            {ai.isError && (
+              <ErrorBanner message={ai.error?.message ?? 'Failed to load AI status'} />
+            )}
             {ai.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
             {ai.data && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Engine</span>
-                  {ai.data.enabled ? <Badge variant="green">Enabled</Badge> : <Badge variant="gray">Disabled</Badge>}
+                  {ai.data.enabled ? (
+                    <Badge variant="green">Enabled</Badge>
+                  ) : (
+                    <Badge variant="gray">Disabled</Badge>
+                  )}
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Automatic Blocking</span>
-                  {ai.data.automatic_blocking ? <Badge variant="red">Enabled</Badge> : <Badge variant="gray">Disabled</Badge>}
+                  {ai.data.automatic_blocking ? (
+                    <Badge variant="red">Enabled</Badge>
+                  ) : (
+                    <Badge variant="gray">Disabled</Badge>
+                  )}
                 </div>
                 <MetricRow
                   label="Block Threshold"
@@ -615,25 +689,33 @@ export default function Dashboard() {
               </div>
             )}
           </>
-        )
+        );
       case 'crowdsec':
         return (
           <>
-            {sec.isError && <ErrorBanner message={sec.error?.message ?? 'Failed to load security status'} />}
+            {sec.isError && (
+              <ErrorBanner message={sec.error?.message ?? 'Failed to load security status'} />
+            )}
             {sec.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
             {sec.data && (
               <div className="space-y-3">
                 <div className="text-sm text-gray-500">Active CrowdSec decisions</div>
-                <div className="text-2xl font-semibold text-gray-900">{sec.data.crowdsec_active_decisions}</div>
-                <p className="text-sm text-gray-500">Detailed decision rows are unavailable in this version.</p>
+                <div className="text-2xl font-semibold text-gray-900">
+                  {sec.data.crowdsec_active_decisions}
+                </div>
+                <p className="text-sm text-gray-500">
+                  Detailed decision rows are unavailable in this version.
+                </p>
               </div>
             )}
           </>
-        )
+        );
       case 'firewall':
         return (
           <>
-            {sec.isError && <ErrorBanner message={sec.error?.message ?? 'Failed to load security status'} />}
+            {sec.isError && (
+              <ErrorBanner message={sec.error?.message ?? 'Failed to load security status'} />
+            )}
             {sec.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
             {sec.data && (
               <div className="grid grid-cols-2 gap-4">
@@ -642,27 +724,37 @@ export default function Dashboard() {
                   <p className="text-sm text-gray-500 mt-1">Configured firewall rules</p>
                 </div>
                 <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-100">
-                  <p className="text-3xl font-bold text-blue-600">{sec.data.firewall_state_count}</p>
+                  <p className="text-3xl font-bold text-blue-600">
+                    {sec.data.firewall_state_count}
+                  </p>
                   <p className="text-sm text-gray-500 mt-1">Active connection tracking states</p>
                 </div>
               </div>
             )}
           </>
-        )
+        );
       case 'interface':
         return (
           <>
-            {net.isError && <ErrorBanner message={net.error?.message ?? 'Failed to load network status'} />}
+            {net.isError && (
+              <ErrorBanner message={net.error?.message ?? 'Failed to load network status'} />
+            )}
             {net.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
             {net.data && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between py-2 border-b border-gray-100">
                   <div>
                     <p className="text-sm font-medium text-gray-800">
-                      {formatDashboardInterfaceName(net.data.wan_iface_description, net.data.wan_iface, 'WAN')}
+                      {formatDashboardInterfaceName(
+                        net.data.wan_iface_description,
+                        net.data.wan_iface,
+                        'WAN'
+                      )}
                     </p>
                     <p className="text-xs text-gray-500">{net.data.wan_ip ?? '-'}</p>
-                    {net.data.wan_ipv6 && <p className="text-xs text-gray-500">{net.data.wan_ipv6}</p>}
+                    {net.data.wan_ipv6 && (
+                      <p className="text-xs text-gray-500">{net.data.wan_ipv6}</p>
+                    )}
                   </div>
                   <div className="flex items-center">
                     {net.data.gateway_status === 'up' ? (
@@ -673,12 +765,17 @@ export default function Dashboard() {
                   </div>
                 </div>
                 {net.data.lan_ifaces.map((iface) => (
-                  <div key={iface.name} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                  <div
+                    key={iface.name}
+                    className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+                  >
                     <div>
                       <p className="text-sm font-medium text-gray-800">
                         {formatDashboardInterfaceName(iface.description, iface.name, 'LAN')}
                       </p>
-                      <p className="text-xs text-gray-500">{[iface.ip, iface.ipv6].filter(Boolean).join(' / ') || '-'}</p>
+                      <p className="text-xs text-gray-500">
+                        {[iface.ip, iface.ipv6].filter(Boolean).join(' / ') || '-'}
+                      </p>
                     </div>
                     <div className="flex items-center">
                       {iface.enabled ? (
@@ -692,11 +789,11 @@ export default function Dashboard() {
               </div>
             )}
           </>
-        )
+        );
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -706,9 +803,12 @@ export default function Dashboard() {
           {!layoutLocked && (
             <>
               <p className="text-sm text-gray-500 max-w-2xl">
-                Customize which cards appear, rearrange their order, and resize the layout to suit your workflow.
+                Customize which cards appear, rearrange their order, and resize the layout to suit
+                your workflow.
               </p>
-              <p className="mt-1 text-xs text-gray-400">Tip: drag cards directly in the grid to reorder.</p>
+              <p className="mt-1 text-xs text-gray-400">
+                Tip: drag cards directly in the grid to reorder.
+              </p>
             </>
           )}
         </div>
@@ -726,13 +826,35 @@ export default function Dashboard() {
             }`}
           >
             {layoutLocked ? (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 17a2 2 0 002-2v-2a2 2 0 00-2-2 2 2 0 00-2 2v2a2 2 0 002 2zm6-6V9a6 6 0 10-12 0v2" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 17a2 2 0 002-2v-2a2 2 0 00-2-2 2 2 0 00-2 2v2a2 2 0 002 2zm6-6V9a6 6 0 10-12 0v2"
+                />
                 <rect x="6" y="11" width="12" height="7" rx="2" />
               </svg>
             ) : (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 17a2 2 0 002-2v-2a2 2 0 00-2-2 2 2 0 00-2 2v2a2 2 0 002 2zm6-6V9a6 6 0 10-12 0v2" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 17a2 2 0 002-2v-2a2 2 0 00-2-2 2 2 0 00-2 2v2a2 2 0 002 2zm6-6V9a6 6 0 10-12 0v2"
+                />
                 <rect x="6" y="11" width="12" height="7" rx="2" />
                 <line x1="6" y1="11" x2="18" y2="18" stroke="currentColor" strokeWidth="2" />
               </svg>
@@ -745,8 +867,18 @@ export default function Dashboard() {
               title="Edit layout"
               aria-label="Edit layout"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
               </svg>
             </button>
           )}
@@ -777,8 +909,8 @@ export default function Dashboard() {
               id: item.id as DashboardCardId,
               visible: item.visible,
               width: item.width,
-            })),
-          )
+            }))
+          );
         }}
         onReset={() => setCardConfig(defaultDashboardCardConfigs)}
       />
@@ -791,11 +923,15 @@ export default function Dashboard() {
               draggable={!layoutLocked}
               onDragStart={layoutLocked ? undefined : () => setDragCardId(card.id)}
               onDragOver={layoutLocked ? undefined : (event) => event.preventDefault()}
-              onDrop={layoutLocked ? undefined : () => {
-                if (!dragCardId || dragCardId === card.id) return
-                reorderCards(dragCardId, card.id)
-                setDragCardId(null)
-              }}
+              onDrop={
+                layoutLocked
+                  ? undefined
+                  : () => {
+                      if (!dragCardId || dragCardId === card.id) return;
+                      reorderCards(dragCardId, card.id);
+                      setDragCardId(null);
+                    }
+              }
               onDragEnd={layoutLocked ? undefined : () => setDragCardId(null)}
               className={`col-span-1 ${cardWidthClass(card.width)} ${dragCardId === card.id ? 'opacity-60' : ''}`}
             >
@@ -812,7 +948,12 @@ export default function Dashboard() {
                         tabIndex={-1}
                         style={{ pointerEvents: 'none' }}
                       >
-                        <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
+                        <svg
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="h-3.5 w-3.5"
+                          aria-hidden="true"
+                        >
                           <circle cx="6" cy="5" r="1.2" />
                           <circle cx="6" cy="10" r="1.2" />
                           <circle cx="6" cy="15" r="1.2" />
@@ -828,10 +969,12 @@ export default function Dashboard() {
                         aria-label={`Hide ${dashboardCardTitles[card.id]} card`}
                         onMouseDown={(event) => event.stopPropagation()}
                         onClick={(event) => {
-                          event.stopPropagation()
+                          event.stopPropagation();
                           setCardConfig((current) =>
-                            current.map((item) => (item.id === card.id ? { ...item, visible: false } : item)),
-                          )
+                            current.map((item) =>
+                              item.id === card.id ? { ...item, visible: false } : item
+                            )
+                          );
                         }}
                       >
                         Hide
@@ -843,10 +986,9 @@ export default function Dashboard() {
                 {renderCardBody(card.id)}
               </Card>
             </div>
-          ) : null,
+          ) : null
         )}
       </div>
     </div>
-  )
+  );
 }
-

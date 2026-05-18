@@ -1,25 +1,25 @@
-import { useState } from 'react'
-import Suricata from '../Suricata'
-import CrowdSec from '../CrowdSec'
-import AIThreats from '../AIThreats'
+import { useState } from 'react';
+import Suricata from '../Suricata';
+import CrowdSec from '../CrowdSec';
+import AIThreats from '../AIThreats';
 
-type Tab = 'suricata' | 'crowdsec' | 'ai'
+type Tab = 'suricata' | 'crowdsec' | 'ai';
 
 const tabs: Array<{ id: Tab; label: string }> = [
   { id: 'suricata', label: 'Suricata' },
   { id: 'crowdsec', label: 'CrowdSec' },
   { id: 'ai', label: 'AI Threat Engine' },
-]
+];
 
 export default function Security() {
-  const [activeTab, setActiveTab] = useState<Tab>('suricata')
+  const [activeTab, setActiveTab] = useState<Tab>('suricata');
 
   return (
     <div className="space-y-4">
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex gap-1" aria-label="Security tabs">
           {tabs.map((tab) => {
-            const isActive = activeTab === tab.id
+            const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
@@ -35,7 +35,7 @@ export default function Security() {
               >
                 {tab.label}
               </button>
-            )
+            );
           })}
         </nav>
       </div>
@@ -44,5 +44,5 @@ export default function Security() {
       {activeTab === 'crowdsec' && <CrowdSec />}
       {activeTab === 'ai' && <AIThreats />}
     </div>
-  )
+  );
 }

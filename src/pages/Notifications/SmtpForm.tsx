@@ -1,22 +1,22 @@
-import type { SmtpConfig } from '../../types'
-import FormField from '../../components/FormField'
+import type { SmtpConfig } from '../../types';
+import FormField from '../../components/FormField';
 
 interface SmtpErrors {
-  host?: string
-  port?: string
-  fromAddress?: string
+  host?: string;
+  port?: string;
+  fromAddress?: string;
 }
 
 interface SmtpFormProps {
-  smtp: SmtpConfig
-  errors: SmtpErrors
-  disabled: boolean
-  onChange: (smtp: SmtpConfig) => void
+  smtp: SmtpConfig;
+  errors: SmtpErrors;
+  disabled: boolean;
+  onChange: (smtp: SmtpConfig) => void;
 }
 
 export default function SmtpForm({ smtp, errors, disabled, onChange }: SmtpFormProps) {
   const set = <K extends keyof SmtpConfig>(key: K, value: SmtpConfig[K]) =>
-    onChange({ ...smtp, [key]: value })
+    onChange({ ...smtp, [key]: value });
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -43,12 +43,12 @@ export default function SmtpForm({ smtp, errors, disabled, onChange }: SmtpFormP
         error={errors.port}
         disabled={disabled}
         onChange={(e) => {
-          const raw = e.target.value
+          const raw = e.target.value;
           if (raw === '') {
-            set('port', 0)
+            set('port', 0);
           } else {
-            const v = parseInt(raw, 10)
-            if (!isNaN(v)) set('port', v)
+            const v = parseInt(raw, 10);
+            if (!isNaN(v)) set('port', v);
           }
         }}
       />
@@ -107,5 +107,5 @@ export default function SmtpForm({ smtp, errors, disabled, onChange }: SmtpFormP
         </label>
       </div>
     </div>
-  )
+  );
 }

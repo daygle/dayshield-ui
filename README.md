@@ -54,10 +54,10 @@ field.
 
 ### Artifact naming convention
 
-| Asset | Description |
-|---|---|
-| `ui-vX.Y.Z.tar.zst` | zstd-compressed tarball of the production build |
-| `ui-vX.Y.Z.tar.zst.sha256` | SHA-256 checksum of the tarball |
+| Asset                      | Description                                     |
+| -------------------------- | ----------------------------------------------- |
+| `ui-vX.Y.Z.tar.zst`        | zstd-compressed tarball of the production build |
+| `ui-vX.Y.Z.tar.zst.sha256` | SHA-256 checksum of the tarball                 |
 
 The on-device updater fetches the artifact URL from the central update manifest. The
 manifest maps each component (`core`, `ui`, `rootfs`) to its own latest release

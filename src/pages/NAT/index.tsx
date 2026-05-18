@@ -1,18 +1,18 @@
-import { useState } from 'react'
-import OutboundNAT from './OutboundNAT'
-import PortForward from './PortForward'
-import NATReflection from './NATReflection'
+import { useState } from 'react';
+import OutboundNAT from './OutboundNAT';
+import PortForward from './PortForward';
+import NATReflection from './NATReflection';
 
-type Tab = 'outbound' | 'portforward' | 'reflection'
+type Tab = 'outbound' | 'portforward' | 'reflection';
 
 const tabs: { id: Tab; label: string }[] = [
   { id: 'outbound', label: 'Outbound NAT' },
   { id: 'portforward', label: 'Port Forward' },
   { id: 'reflection', label: 'NAT Reflection' },
-]
+];
 
 export default function NAT() {
-  const [activeTab, setActiveTab] = useState<Tab>('outbound')
+  const [activeTab, setActiveTab] = useState<Tab>('outbound');
 
   return (
     <div className="space-y-4">
@@ -20,7 +20,7 @@ export default function NAT() {
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex gap-1" aria-label="NAT tabs">
           {tabs.map((tab) => {
-            const isActive = activeTab === tab.id
+            const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
@@ -35,7 +35,7 @@ export default function NAT() {
               >
                 {tab.label}
               </button>
-            )
+            );
           })}
         </nav>
       </div>
@@ -45,5 +45,5 @@ export default function NAT() {
       {activeTab === 'portforward' && <PortForward />}
       {activeTab === 'reflection' && <NATReflection />}
     </div>
-  )
+  );
 }

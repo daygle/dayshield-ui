@@ -1,25 +1,25 @@
-import apiClient from './client'
-import type { ApiResponse, WgPeer, WgServer } from '../types'
+import apiClient from './client';
+import type { ApiResponse, WgPeer, WgServer } from '../types';
 
 type BackendWgPeer = {
-  name?: string
-  public_key?: string
-  preshared_key?: string
-  allowed_ips?: string[]
-  endpoint?: string
-  persistent_keepalive?: number
-}
+  name?: string;
+  public_key?: string;
+  preshared_key?: string;
+  allowed_ips?: string[];
+  endpoint?: string;
+  persistent_keepalive?: number;
+};
 
 type BackendWgInterface = {
-  name?: string
-  description?: string
-  private_key?: string
-  public_key?: string
-  listen_port?: number
-  addresses?: string[]
-  peers?: BackendWgPeer[]
-  enabled?: boolean
-}
+  name?: string;
+  description?: string;
+  private_key?: string;
+  public_key?: string;
+  listen_port?: number;
+  addresses?: string[];
+  peers?: BackendWgPeer[];
+  enabled?: boolean;
+};
 
 function toUiPeer(raw: BackendWgPeer, idx: number): WgPeer {
   return {
@@ -31,11 +31,11 @@ function toUiPeer(raw: BackendWgPeer, idx: number): WgPeer {
     endpoint: raw.endpoint,
     persistentKeepalive: raw.persistent_keepalive ?? 0,
     enabled: true,
-  }
+  };
 }
 
 function toUiInterface(raw: BackendWgInterface): WgServer {
-  const peers = Array.isArray(raw.peers) ? raw.peers.map(toUiPeer) : []
+  const peers = Array.isArray(raw.peers) ? raw.peers.map(toUiPeer) : [];
   return {
     interface: raw.name ?? '',
     description: raw.description ?? '',
@@ -45,7 +45,7 @@ function toUiInterface(raw: BackendWgInterface): WgServer {
     addresses: Array.isArray(raw.addresses) ? raw.addresses : [],
     peers,
     enabled: raw.enabled ?? false,
-  }
+  };
 }
 
 function toBackendInterface(iface: WgServer): BackendWgInterface {
@@ -65,7 +65,7 @@ function toBackendInterface(iface: WgServer): BackendWgInterface {
       persistent_keepalive: peer.persistentKeepalive,
     })),
     enabled: iface.enabled,
-  }
+  };
 }
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
@@ -74,36 +74,32 @@ function toBackendInterface(iface: WgServer): BackendWgInterface {
 // DELETE /wireguard/interfaces/{name}, POST /wireguard/interfaces/{name}/generate-keys
 
 export const getWgInterfaces = (): Promise<ApiResponse<WgServer[]>> =>
-  apiClient
-    .get<ApiResponse<BackendWgInterface[]>>('/wireguard/interfaces')
-    .then((r) => ({
-      ...r.data,
-      data: Array.isArray(r.data.data) ? r.data.data.map(toUiInterface) : [],
-    }))
+  apiClient.get<ApiResponse<BackendWgInterface[]>>('/wireguard/interfaces').then((r) => ({
+    ...r.data,
+    data: Array.isArray(r.data.data) ? r.data.data.map(toUiInterface) : [],
+  }));
 
-export const createWgInterface = (
-  iface: WgServer,
-): Promise<ApiResponse<WgServer>> =>
+export const createWgInterface = (iface: WgServer): Promise<ApiResponse<WgServer>> =>
   apiClient
     .post<ApiResponse<BackendWgInterface>>('/wireguard/interfaces', toBackendInterface(iface))
     .then((r) => ({
       ...r.data,
       data: toUiInterface(r.data.data),
-    }))
+    }));
 
 export const deleteWgInterface = (name: string): Promise<ApiResponse<void>> =>
   apiClient
     .delete<ApiResponse<void>>(`/wireguard/interfaces/${encodeURIComponent(name)}`)
-    .then((r) => r.data)
+    .then((r) => r.data);
 
 export const generateWgKeys = (
-  name: string,
+  name: string
 ): Promise<ApiResponse<{ private_key: string; public_key: string }>> =>
   apiClient
-    .post<ApiResponse<{ private_key: string; public_key: string }>>(
-      `/wireguard/interfaces/${encodeURIComponent(name)}/generate-keys`,
-    )
-    .then((r) => r.data)
+    .post<
+      ApiResponse<{ private_key: string; public_key: string }>
+    >(`/wireguard/interfaces/${encodeURIComponent(name)}/generate-keys`)
+    .then((r) => r.data);
 
 export const getWgServer = (): Promise<ApiResponse<WgServer>> =>
   getWgInterfaces().then((r) => ({
@@ -118,7 +114,7 @@ export const getWgServer = (): Promise<ApiResponse<WgServer>> =>
       peers: [],
       enabled: false,
     },
-  }))
+  }));
 
 export const getWgPeers = (): Promise<ApiResponse<WgPeer[]>> =>
   getWgServer().then((r) => ({
@@ -126,12 +122,18 @@ export const getWgPeers = (): Promise<ApiResponse<WgPeer[]>> =>
     data: r.data?.peers ?? [],
     message: r.message,
     error: r.error,
-  }))
+  }));
 
-export const createWgPeer = (
-  _peer: Omit<WgPeer, 'id'>,
-): Promise<ApiResponse<WgPeer>> =>
-  Promise.reject(new Error('WireGuard peer management is not yet available. Manage peers via the interface configuration.'))
+export const createWgPeer = (_peer: Omit<WgPeer, 'id'>): Promise<ApiResponse<WgPeer>> =>
+  Promise.reject(
+    new Error(
+      'WireGuard peer management is not yet available. Manage peers via the interface configuration.'
+    )
+  );
 
 export const deleteWgPeer = (_id: number): Promise<ApiResponse<void>> =>
-  Promise.reject(new Error('WireGuard peer management is not yet available. Manage peers via the interface configuration.'))
+  Promise.reject(
+    new Error(
+      'WireGuard peer management is not yet available. Manage peers via the interface configuration.'
+    )
+  );

@@ -1,30 +1,30 @@
-import { useCallback, useEffect, useState } from 'react'
-import { getNotifyConfig, saveNotifyConfig } from '../../api/notifications'
-import type { NotifyConfig, NotifyCategory, SmtpConfig } from '../../types'
-import Card from '../../components/Card'
-import Button from '../../components/Button'
-import SmtpForm from './SmtpForm'
-import RecipientList from './RecipientList'
-import CategorySelector from './CategorySelector'
-import RateLimitInput from './RateLimitInput'
-import DigestToggle from './DigestToggle'
-import TestEmailButton from './TestEmailButton'
-import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
+import { useCallback, useEffect, useState } from 'react';
+import { getNotifyConfig, saveNotifyConfig } from '../../api/notifications';
+import type { NotifyConfig, NotifyCategory, SmtpConfig } from '../../types';
+import Card from '../../components/Card';
+import Button from '../../components/Button';
+import SmtpForm from './SmtpForm';
+import RecipientList from './RecipientList';
+import CategorySelector from './CategorySelector';
+import RateLimitInput from './RateLimitInput';
+import DigestToggle from './DigestToggle';
+import TestEmailButton from './TestEmailButton';
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
-type ToastKind = 'success' | 'error'
+type ToastKind = 'success' | 'error';
 
 interface ToastMessage {
-  id: number
-  kind: ToastKind
-  text: string
+  id: number;
+  kind: ToastKind;
+  text: string;
 }
 
-let toastSeq = 0
+let toastSeq = 0;
 
 function Toast({ messages }: { messages: ToastMessage[] }) {
-  if (messages.length === 0) return null
+  if (messages.length === 0) return null;
   return (
     <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 w-80">
       {messages.map((m) => (
@@ -36,19 +36,37 @@ function Toast({ messages }: { messages: ToastMessage[] }) {
           }`}
         >
           {m.kind === 'success' ? (
-            <svg className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 111.414-1.414L8.414 12.172l7.879-7.879a1 1 0 011.414 0z" clipRule="evenodd" />
+            <svg
+              className="h-4 w-4 shrink-0 mt-0.5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 111.414-1.414L8.414 12.172l7.879-7.879a1 1 0 011.414 0z"
+                clipRule="evenodd"
+              />
             </svg>
           ) : (
-            <svg className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zm-1 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            <svg
+              className="h-4 w-4 shrink-0 mt-0.5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zm-1 8a1 1 0 100-2 1 1 0 000 2z"
+                clipRule="evenodd"
+              />
             </svg>
           )}
           <span>{m.text}</span>
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
@@ -61,7 +79,7 @@ const DEFAULT_SMTP: SmtpConfig = {
   tls: true,
   fromAddress: '',
   fromName: 'DayShield Alerts',
-}
+};
 
 const DEFAULT_CONFIG: NotifyConfig = {
   enabled: false,
@@ -70,43 +88,44 @@ const DEFAULT_CONFIG: NotifyConfig = {
   categories: [],
   rateLimitMinutes: 15,
   digestMode: false,
-}
+};
 
 // ── SMTP validation ───────────────────────────────────────────────────────────
 
 interface SmtpErrors {
-  host?: string
-  port?: string
-  fromAddress?: string
+  host?: string;
+  port?: string;
+  fromAddress?: string;
 }
 
 function validateSmtp(smtp: SmtpConfig): SmtpErrors {
-  const errors: SmtpErrors = {}
-  if (!smtp.host.trim()) errors.host = 'Host is required.'
-  if (!smtp.port || smtp.port < 1 || smtp.port > 65535) errors.port = 'Enter a valid port (1–65535).'
+  const errors: SmtpErrors = {};
+  if (!smtp.host.trim()) errors.host = 'Host is required.';
+  if (!smtp.port || smtp.port < 1 || smtp.port > 65535)
+    errors.port = 'Enter a valid port (1–65535).';
   if (!smtp.fromAddress.trim()) {
-    errors.fromAddress = 'From address is required.'
+    errors.fromAddress = 'From address is required.';
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(smtp.fromAddress)) {
-    errors.fromAddress = 'Enter a valid email address.'
+    errors.fromAddress = 'Enter a valid email address.';
   }
-  return errors
+  return errors;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
-  const { formatDateTime } = useDisplayPreferences()
-  const [config, setConfig] = useState<NotifyConfig>(DEFAULT_CONFIG)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [smtpErrors, setSmtpErrors] = useState<SmtpErrors>({})
-  const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const { formatDateTime } = useDisplayPreferences();
+  const [config, setConfig] = useState<NotifyConfig>(DEFAULT_CONFIG);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [smtpErrors, setSmtpErrors] = useState<SmtpErrors>({});
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const addToast = useCallback((kind: ToastKind, text: string) => {
-    const id = toastSeq++
-    setToasts((prev) => [...prev, { id, kind, text }])
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000)
-  }, [])
+    const id = toastSeq++;
+    setToasts((prev) => [...prev, { id, kind, text }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  }, []);
 
   useEffect(() => {
     getNotifyConfig()
@@ -114,32 +133,31 @@ export default function NotificationsPage() {
       .catch(() => {
         // Backend may not have config yet; use defaults silently
       })
-      .finally(() => setLoading(false))
-  }, [])
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleSave = () => {
-    const errors = validateSmtp(config.smtp)
+    const errors = validateSmtp(config.smtp);
     if (Object.keys(errors).length > 0) {
-      setSmtpErrors(errors)
-      addToast('error', 'Please fix the SMTP validation errors before saving.')
-      return
+      setSmtpErrors(errors);
+      addToast('error', 'Please fix the SMTP validation errors before saving.');
+      return;
     }
-    setSmtpErrors({})
-    setSaving(true)
+    setSmtpErrors({});
+    setSaving(true);
     saveNotifyConfig(config)
       .then((res) => {
-        setConfig(res.data)
-        addToast('success', 'Notification settings saved.')
+        setConfig(res.data);
+        addToast('success', 'Notification settings saved.');
       })
       .catch((err: Error) => addToast('error', `Save failed: ${err.message}`))
-      .finally(() => setSaving(false))
-  }
+      .finally(() => setSaving(false));
+  };
 
-  const busy = loading || saving
+  const busy = loading || saving;
 
   return (
     <div className="space-y-6">
-
       {/* Enable / disable banner */}
       <Card
         title="Notifications"
@@ -158,9 +176,7 @@ export default function NotificationsPage() {
           <LastStatusBanner status={config.lastStatus} formatDateTime={formatDateTime} />
         )}
         {!config.lastStatus && (
-          <p className="text-sm text-gray-500">
-            No notification has been sent yet.
-          </p>
+          <p className="text-sm text-gray-500">No notification has been sent yet.</p>
         )}
       </Card>
 
@@ -182,10 +198,7 @@ export default function NotificationsPage() {
       </Card>
 
       {/* Recipients */}
-      <Card
-        title="Recipients"
-        subtitle="Email addresses that will receive alert notifications."
-      >
+      <Card title="Recipients" subtitle="Email addresses that will receive alert notifications.">
         {loading ? (
           <p className="text-sm text-gray-400">Loading…</p>
         ) : (
@@ -244,9 +257,7 @@ export default function NotificationsPage() {
           <TestEmailButton
             defaultRecipient={config.recipients[0] ?? ''}
             disabled={busy || !config.enabled}
-            onResult={(success, message) =>
-              addToast(success ? 'success' : 'error', message)
-            }
+            onResult={(success, message) => addToast(success ? 'success' : 'error', message)}
           />
         )}
       </Card>
@@ -260,18 +271,18 @@ export default function NotificationsPage() {
 
       <Toast messages={toasts} />
     </div>
-  )
+  );
 }
 
 // ── Last Status Banner ────────────────────────────────────────────────────────
 
 interface LastStatusBannerProps {
-  status: NonNullable<NotifyConfig['lastStatus']>
-  formatDateTime: (value?: Date | string | number | null) => string
+  status: NonNullable<NotifyConfig['lastStatus']>;
+  formatDateTime: (value?: Date | string | number | null) => string;
 }
 
 function LastStatusBanner({ status, formatDateTime }: LastStatusBannerProps) {
-  const sentAt = formatDateTime(status.sentAt)
+  const sentAt = formatDateTime(status.sentAt);
   return (
     <div
       className={[
@@ -282,12 +293,30 @@ function LastStatusBanner({ status, formatDateTime }: LastStatusBannerProps) {
       ].join(' ')}
     >
       {status.success ? (
-        <svg className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 111.414-1.414L8.414 12.172l7.879-7.879a1 1 0 011.414 0z" clipRule="evenodd" />
+        <svg
+          className="h-4 w-4 shrink-0 mt-0.5"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 111.414-1.414L8.414 12.172l7.879-7.879a1 1 0 011.414 0z"
+            clipRule="evenodd"
+          />
         </svg>
       ) : (
-        <svg className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zm-1 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+        <svg
+          className="h-4 w-4 shrink-0 mt-0.5"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zm-1 8a1 1 0 100-2 1 1 0 000 2z"
+            clipRule="evenodd"
+          />
         </svg>
       )}
       <span>
@@ -295,5 +324,5 @@ function LastStatusBanner({ status, formatDateTime }: LastStatusBannerProps) {
         {status.message && ` ${status.message}`}
       </span>
     </div>
-  )
+  );
 }

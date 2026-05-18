@@ -1,26 +1,22 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   getCloudflaredConfig,
   getCloudflaredStatus,
   restartCloudflared,
   updateCloudflaredConfig,
-} from '../../api/cloudflared'
-import type {
-  CloudflaredConfig,
-  CloudflaredIngressRule,
-  CloudflaredStatus,
-} from '../../types'
-import Card from '../../components/Card'
-import Button from '../../components/Button'
-import FormField from '../../components/FormField'
-import ErrorBoundary from '../../components/ErrorBoundary'
-import { useToast } from '../../context/ToastContext'
-import Modal from '../../components/Modal'
+} from '../../api/cloudflared';
+import type { CloudflaredConfig, CloudflaredIngressRule, CloudflaredStatus } from '../../types';
+import Card from '../../components/Card';
+import Button from '../../components/Button';
+import FormField from '../../components/FormField';
+import ErrorBoundary from '../../components/ErrorBoundary';
+import { useToast } from '../../context/ToastContext';
+import Modal from '../../components/Modal';
 
 const DEFAULT_INGRESS: CloudflaredIngressRule = {
   hostname: '',
   service: 'http://127.0.0.1:8080',
-}
+};
 
 const DEFAULT_CONFIG: CloudflaredConfig = {
   enabled: false,
@@ -30,174 +26,180 @@ const DEFAULT_CONFIG: CloudflaredConfig = {
   metricsAddress: '127.0.0.1:60123',
   logLevel: 'info',
   ingress: [],
-}
+};
 
 const HOSTNAME_PATTERN =
-  /^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(?:\.(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*$/
+  /^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(?:\.(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*$/;
 
 function formatServiceState(value: string | null | undefined): string {
-  const raw = value?.trim()
-  if (!raw) return 'Unknown'
+  const raw = value?.trim();
+  if (!raw) return 'Unknown';
   return raw
     .replace(/[_-]+/g, ' ')
     .split(' ')
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(' ')
+    .join(' ');
 }
 
 function statusBadge(status: CloudflaredStatus | null) {
-  if (!status) return null
+  if (!status) return null;
 
   const tone = status.running
     ? 'bg-green-100 text-green-700'
     : status.enabled
       ? 'bg-amber-100 text-amber-700'
-      : 'bg-gray-100 text-gray-600'
+      : 'bg-gray-100 text-gray-600';
 
-  const label = status.running ? 'Running' : status.enabled ? 'Configured / stopped' : 'Disabled'
+  const label = status.running ? 'Running' : status.enabled ? 'Configured / stopped' : 'Disabled';
 
-  return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${tone}`}>{label}</span>
+  return (
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${tone}`}>
+      {label}
+    </span>
+  );
 }
 
 function CloudflaredPageContent() {
-  const [config, setConfig] = useState<CloudflaredConfig>(DEFAULT_CONFIG)
-  const [status, setStatus] = useState<CloudflaredStatus | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [restarting, setRestarting] = useState(false)
-  const [disableConfirmOpen, setDisableConfirmOpen] = useState(false)
-  const { addToast } = useToast()
+  const [config, setConfig] = useState<CloudflaredConfig>(DEFAULT_CONFIG);
+  const [status, setStatus] = useState<CloudflaredStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [restarting, setRestarting] = useState(false);
+  const [disableConfirmOpen, setDisableConfirmOpen] = useState(false);
+  const { addToast } = useToast();
 
-  const notifySuccess = useCallback((text: string) => addToast(text, 'success'), [addToast])
-  const notifyError = useCallback((text: string) => addToast(text, 'error'), [addToast])
+  const notifySuccess = useCallback((text: string) => addToast(text, 'success'), [addToast]);
+  const notifyError = useCallback((text: string) => addToast(text, 'error'), [addToast]);
 
   const loadAll = useCallback(() => {
-    setLoading(true)
+    setLoading(true);
     Promise.all([getCloudflaredConfig(), getCloudflaredStatus()])
       .then(([cfg, stat]) => {
-        setConfig(cfg.data)
-        setStatus(stat.data)
+        setConfig(cfg.data);
+        setStatus(stat.data);
       })
       .catch((err: Error) => notifyError(`Failed to load Cloudflared data: ${err.message}`))
-      .finally(() => setLoading(false))
-  }, [notifyError])
+      .finally(() => setLoading(false));
+  }, [notifyError]);
 
   useEffect(() => {
-    loadAll()
-  }, [loadAll])
+    loadAll();
+  }, [loadAll]);
 
   const ingressValidation = React.useMemo(
     () =>
       config.ingress.map((rule) => {
-        const hostname = rule.hostname.trim()
-        const service = rule.service.trim()
-        let hostnameError = ''
-        let serviceError = ''
+        const hostname = rule.hostname.trim();
+        const service = rule.service.trim();
+        let hostnameError = '';
+        let serviceError = '';
 
         if (!hostname) {
-          hostnameError = 'Hostname is required.'
+          hostnameError = 'Hostname is required.';
         } else if (!HOSTNAME_PATTERN.test(hostname)) {
-          hostnameError = 'Hostname must be a valid domain name (example: app.example.com).'
+          hostnameError = 'Hostname must be a valid domain name (example: app.example.com).';
         }
 
         if (!service) {
-          serviceError = 'Service URL is required.'
+          serviceError = 'Service URL is required.';
         } else {
           try {
-            const parsed = new URL(service)
+            const parsed = new URL(service);
             if (!['http:', 'https:'].includes(parsed.protocol)) {
-              serviceError = 'Service URL must start with http:// or https://.'
+              serviceError = 'Service URL must start with http:// or https://.';
             }
           } catch {
-            serviceError = 'Service URL must be a valid URL.'
+            serviceError = 'Service URL must be a valid URL.';
           }
         }
 
-        return { hostnameError, serviceError }
+        return { hostnameError, serviceError };
       }),
-    [config.ingress],
-  )
+    [config.ingress]
+  );
 
-  const hasIngressErrors = ingressValidation.some((entry) => entry.hostnameError || entry.serviceError)
-  const tunnelTokenHint = `${config.tunnelTokenConfigured ? 'A tunnel token is already stored. Leave blank to keep the existing token. ' : ''}Treat tunnel tokens as sensitive credentials.`
+  const hasIngressErrors = ingressValidation.some(
+    (entry) => entry.hostnameError || entry.serviceError
+  );
+  const tunnelTokenHint = `${config.tunnelTokenConfigured ? 'A tunnel token is already stored. Leave blank to keep the existing token. ' : ''}Treat tunnel tokens as sensitive credentials.`;
 
   const moveIngress = (index: number, direction: -1 | 1) => {
     setConfig((current) => {
-      const nextIndex = index + direction
-      if (nextIndex < 0 || nextIndex >= current.ingress.length) return current
-      const nextIngress = [...current.ingress]
-      const [rule] = nextIngress.splice(index, 1)
-      nextIngress.splice(nextIndex, 0, rule)
-      return { ...current, ingress: nextIngress }
-    })
-  }
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= current.ingress.length) return current;
+      const nextIngress = [...current.ingress];
+      const [rule] = nextIngress.splice(index, 1);
+      nextIngress.splice(nextIndex, 0, rule);
+      return { ...current, ingress: nextIngress };
+    });
+  };
 
   const handleSave = () => {
     if (hasIngressErrors) {
-      notifyError('Fix invalid ingress hostname/service values before saving.')
-      return
+      notifyError('Fix invalid ingress hostname/service values before saving.');
+      return;
     }
 
-    setSaving(true)
+    setSaving(true);
     updateCloudflaredConfig(config)
       .then((res) => {
         setConfig((current) => ({
           ...res.data,
           tunnelToken: current.tunnelToken,
-        }))
-        notifySuccess('Cloudflared configuration saved.')
-        return getCloudflaredStatus()
+        }));
+        notifySuccess('Cloudflared configuration saved.');
+        return getCloudflaredStatus();
       })
       .then((stat) => {
-        setStatus(stat.data)
+        setStatus(stat.data);
       })
       .catch((err: Error) => notifyError(`Save failed: ${err.message}`))
-      .finally(() => setSaving(false))
-  }
+      .finally(() => setSaving(false));
+  };
 
   const handleRestart = () => {
-    setRestarting(true)
+    setRestarting(true);
     restartCloudflared()
       .then(() => {
-        notifySuccess('Cloudflared service restarted.')
-        return getCloudflaredStatus()
+        notifySuccess('Cloudflared service restarted.');
+        return getCloudflaredStatus();
       })
       .then((stat) => {
-        setStatus(stat.data)
+        setStatus(stat.data);
       })
       .catch((err: Error) => notifyError(`Restart failed: ${err.message}`))
-      .finally(() => setRestarting(false))
-  }
+      .finally(() => setRestarting(false));
+  };
 
   const updateIngress = (index: number, next: CloudflaredIngressRule) => {
     setConfig((current) => ({
       ...current,
       ingress: current.ingress.map((rule, ruleIndex) => (ruleIndex === index ? next : rule)),
-    }))
-  }
+    }));
+  };
 
   const addIngress = () => {
-    setConfig((current) => ({ ...current, ingress: [...current.ingress, { ...DEFAULT_INGRESS }] }))
-  }
+    setConfig((current) => ({ ...current, ingress: [...current.ingress, { ...DEFAULT_INGRESS }] }));
+  };
 
   const removeIngress = (index: number) => {
     setConfig((current) => ({
       ...current,
       ingress: current.ingress.filter((_, ruleIndex) => ruleIndex !== index),
-    }))
-  }
+    }));
+  };
 
   const toggleEnabled = () => {
     if (config.enabled && status?.running) {
-      setDisableConfirmOpen(true)
-      return
+      setDisableConfirmOpen(true);
+      return;
     }
 
-    setConfig((current) => ({ ...current, enabled: !current.enabled }))
-  }
+    setConfig((current) => ({ ...current, enabled: !current.enabled }));
+  };
 
-  const busy = loading || saving || restarting
+  const busy = loading || saving || restarting;
 
   return (
     <div className="space-y-6">
@@ -206,8 +208,8 @@ function CloudflaredPageContent() {
         title="Disable running tunnel?"
         onClose={() => setDisableConfirmOpen(false)}
         onConfirm={() => {
-          setDisableConfirmOpen(false)
-          setConfig((current) => ({ ...current, enabled: false }))
+          setDisableConfirmOpen(false);
+          setConfig((current) => ({ ...current, enabled: false }));
         }}
         confirmLabel="Disable Tunnel"
         confirmVariant="danger"
@@ -230,14 +232,22 @@ function CloudflaredPageContent() {
               disabled={busy}
               onClick={toggleEnabled}
               title={config.enabled ? 'Disable Cloudflared tunnel' : 'Enable Cloudflared tunnel'}
-              aria-label={config.enabled ? 'Disable Cloudflared tunnel' : 'Enable Cloudflared tunnel'}
+              aria-label={
+                config.enabled ? 'Disable Cloudflared tunnel' : 'Enable Cloudflared tunnel'
+              }
               className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 config.enabled
                   ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-900'
                   : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
             </button>
@@ -246,17 +256,42 @@ function CloudflaredPageContent() {
               disabled={busy}
               onClick={handleRestart}
               title={restarting ? 'Restarting Cloudflared service' : 'Restart Cloudflared service'}
-              aria-label={restarting ? 'Restarting Cloudflared service' : 'Restart Cloudflared service'}
+              aria-label={
+                restarting ? 'Restarting Cloudflared service' : 'Restart Cloudflared service'
+              }
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {restarting ? (
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                 </svg>
               ) : (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0L12 12" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4.93 4.93a10 10 0 0114.14 0L12 12"
+                  />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 12V8h4" />
                 </svg>
               )}
@@ -266,16 +301,37 @@ function CloudflaredPageContent() {
               disabled={busy || hasIngressErrors}
               onClick={handleSave}
               title={saving ? 'Saving Cloudflared configuration' : 'Save Cloudflared configuration'}
-              aria-label={saving ? 'Saving Cloudflared configuration' : 'Save Cloudflared configuration'}
+              aria-label={
+                saving ? 'Saving Cloudflared configuration' : 'Save Cloudflared configuration'
+              }
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {saving ? (
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                 </svg>
               ) : (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14" />
                 </svg>
@@ -291,19 +347,26 @@ function CloudflaredPageContent() {
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Service</p>
               <p className="mt-1 text-sm text-gray-800">
-                State: <span className="font-medium">{formatServiceState(status ? `${status.activeState} ${status.subState}` : null)}</span>
+                State:{' '}
+                <span className="font-medium">
+                  {formatServiceState(status ? `${status.activeState} ${status.subState}` : null)}
+                </span>
               </p>
               <p className="text-sm text-gray-800">
                 Tunnel enabled: <span className="font-medium">{config.enabled ? 'Yes' : 'No'}</span>
               </p>
               <p className="text-sm text-gray-800">
-                Unit enabled: <span className="font-medium">{status?.unitEnabled ? 'Yes' : 'No'}</span>
+                Unit enabled:{' '}
+                <span className="font-medium">{status?.unitEnabled ? 'Yes' : 'No'}</span>
               </p>
             </div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Environment</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Environment
+              </p>
               <p className="mt-1 text-sm text-gray-800">
-                Binary present: <span className="font-medium">{status?.binaryPresent ? 'Yes' : 'No'}</span>
+                Binary present:{' '}
+                <span className="font-medium">{status?.binaryPresent ? 'Yes' : 'No'}</span>
               </p>
               <p className="text-sm text-gray-800">
                 Version: <span className="font-medium">{status?.version ?? 'Unavailable'}</span>
@@ -353,7 +416,11 @@ function CloudflaredPageContent() {
             label="Tunnel Token"
             className="md:col-span-2"
             type="password"
-            placeholder={config.tunnelTokenConfigured ? 'Stored token present. Enter a new token to replace it.' : 'Paste the Cloudflare tunnel token'}
+            placeholder={
+              config.tunnelTokenConfigured
+                ? 'Stored token present. Enter a new token to replace it.'
+                : 'Paste the Cloudflare tunnel token'
+            }
             value={config.tunnelToken}
             aria-label="Cloudflared tunnel token"
             disabled={busy}
@@ -366,7 +433,9 @@ function CloudflaredPageContent() {
             aria-label="Cloudflared metrics address"
             value={config.metricsAddress}
             disabled={busy}
-            onChange={(e) => setConfig((current) => ({ ...current, metricsAddress: e.target.value }))}
+            onChange={(e) =>
+              setConfig((current) => ({ ...current, metricsAddress: e.target.value }))
+            }
             hint="Example: 127.0.0.1:60123"
           />
         </div>
@@ -382,7 +451,13 @@ function CloudflaredPageContent() {
             className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             title="Add new route"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
           </button>
@@ -390,7 +465,10 @@ function CloudflaredPageContent() {
       >
         <div className="space-y-4">
           {hasIngressErrors && (
-            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+            <p
+              className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+              role="alert"
+            >
               One or more ingress rules are invalid. Fix the highlighted fields before saving.
             </p>
           )}
@@ -408,12 +486,12 @@ function CloudflaredPageContent() {
                 aria-describedby="cloudflared-ingress-keyboard-hint"
                 onKeyDown={(e) => {
                   if (e.altKey && e.key === 'ArrowUp') {
-                    e.preventDefault()
-                    moveIngress(index, -1)
+                    e.preventDefault();
+                    moveIngress(index, -1);
                   }
                   if (e.altKey && e.key === 'ArrowDown') {
-                    e.preventDefault()
-                    moveIngress(index, 1)
+                    e.preventDefault();
+                    moveIngress(index, 1);
                   }
                 }}
                 aria-label={`Ingress rule ${index + 1}`}
@@ -464,8 +542,18 @@ function CloudflaredPageContent() {
                     onClick={() => removeIngress(index)}
                     title="Remove rule"
                   >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -474,10 +562,8 @@ function CloudflaredPageContent() {
           )}
         </div>
       </Card>
-
-
     </div>
-  )
+  );
 }
 
 export default function CloudflaredPage() {
@@ -485,5 +571,5 @@ export default function CloudflaredPage() {
     <ErrorBoundary fallbackMessage="The Cloudflared page failed to render. Please refresh and try again.">
       <CloudflaredPageContent />
     </ErrorBoundary>
-  )
+  );
 }

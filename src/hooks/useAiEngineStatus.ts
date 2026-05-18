@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
-import { getAiEngineConfig } from '../api/ai'
+import { useQuery } from '@tanstack/react-query';
+import { getAiEngineConfig } from '../api/ai';
 
 export function useAiEngineStatus() {
   return useQuery({
@@ -7,5 +7,5 @@ export function useAiEngineStatus() {
     queryFn: () => getAiEngineConfig().then((r) => r.data),
     refetchInterval: 5000,
     retry: 2,
-  })
+  });
 }

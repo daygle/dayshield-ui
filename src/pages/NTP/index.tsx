@@ -1,98 +1,98 @@
-import { useCallback, useEffect, useState } from 'react'
-import { getNtpConfig, updateNtpConfig, getNtpStatus, postNtpResync } from '../../api/ntp'
-import { getInterfacesInventory } from '../../api/interfaces'
-import { getSystemConfig } from '../../api/system'
-import type { NtpConfig, NtpStatus, NetworkInterface } from '../../types'
-import Card from '../../components/Card'
-import FormField from '../../components/FormField'
-import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
+import { useCallback, useEffect, useState } from 'react';
+import { getNtpConfig, updateNtpConfig, getNtpStatus, postNtpResync } from '../../api/ntp';
+import { getInterfacesInventory } from '../../api/interfaces';
+import { getSystemConfig } from '../../api/system';
+import type { NtpConfig, NtpStatus, NetworkInterface } from '../../types';
+import Card from '../../components/Card';
+import FormField from '../../components/FormField';
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
 // ── NTP server validation ───────────────────────────────────────────────────
 
-const IPV4_RE = /^(\d{1,3}\.){3}\d{1,3}$/
+const IPV4_RE = /^(\d{1,3}\.){3}\d{1,3}$/;
 
-const DEFAULT_NTP_SERVERS = ['0.pool.ntp.org', '1.pool.ntp.org']
+const DEFAULT_NTP_SERVERS = ['0.pool.ntp.org', '1.pool.ntp.org'];
 
 function isValidIPv4(val: string): boolean {
-  if (!IPV4_RE.test(val)) return false
+  if (!IPV4_RE.test(val)) return false;
   return val.split('.').every((octet) => {
-    const n = Number(octet)
-    return n >= 0 && n <= 255
-  })
+    const n = Number(octet);
+    return n >= 0 && n <= 255;
+  });
 }
 
 function isValidHostname(hostname: string): boolean {
-  const normalized = hostname.endsWith('.') ? hostname.slice(0, -1) : hostname
-  if (!normalized || normalized.length > 253) return false
+  const normalized = hostname.endsWith('.') ? hostname.slice(0, -1) : hostname;
+  if (!normalized || normalized.length > 253) return false;
   return normalized.split('.').every((label) => {
-    if (!label || label.length > 63) return false
-    if (label.startsWith('-') || label.endsWith('-')) return false
-    return /^[A-Za-z0-9-]+$/.test(label)
-  })
+    if (!label || label.length > 63) return false;
+    if (label.startsWith('-') || label.endsWith('-')) return false;
+    return /^[A-Za-z0-9-]+$/.test(label);
+  });
 }
 
 function isValidIPv6(value: string): boolean {
-  if (!value.includes(':') || value.includes('/')) return false
+  if (!value.includes(':') || value.includes('/')) return false;
   try {
-    new URL(`http://[${value}]/`)
-    return true
+    new URL(`http://[${value}]/`);
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
 
 function isValidNtpServer(value: string, ipv6Enabled: boolean): boolean {
-  if (value.startsWith('[')) return false
-  if (isValidIPv4(value)) return true
-  if (isValidIPv6(value)) return ipv6Enabled
-  return isValidHostname(value)
+  if (value.startsWith('[')) return false;
+  if (isValidIPv4(value)) return true;
+  if (isValidIPv6(value)) return ipv6Enabled;
+  return isValidHostname(value);
 }
 
 function normalizeNtpServerInput(value: string): string {
-  const trimmed = value.trim()
-  if (!trimmed) return ''
+  const trimmed = value.trim();
+  if (!trimmed) return '';
 
-  const parts = trimmed.split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return ''
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
 
-  const directive = parts[0].toLowerCase()
+  const directive = parts[0].toLowerCase();
   if (['server', 'pool', 'peer'].includes(directive)) {
-    return parts[1] ?? ''
+    return parts[1] ?? '';
   }
 
-  return parts[0]
+  return parts[0];
 }
 
 function firstKernelIpv4Cidr(addresses: string[] | undefined): string | undefined {
-  return addresses?.find((addr) => addr.includes('.') && addr.includes('/'))
+  return addresses?.find((addr) => addr.includes('.') && addr.includes('/'));
 }
 
 function isWanInterface(iface: NetworkInterface): boolean {
-  const desc = iface.description?.trim().toLowerCase() ?? ''
-  return Boolean(iface.wanMode) || desc.includes('wan') || iface.name.toLowerCase() === 'wan'
+  const desc = iface.description?.trim().toLowerCase() ?? '';
+  return Boolean(iface.wanMode) || desc.includes('wan') || iface.name.toLowerCase() === 'wan';
 }
 
 function hasDefaultNtpServers(servers: string[]): boolean {
-  if (servers.length !== DEFAULT_NTP_SERVERS.length) return false
-  const normalized = [...servers].map((s) => s.trim().toLowerCase()).sort()
-  const defaults = [...DEFAULT_NTP_SERVERS].sort()
-  return normalized.every((server, idx) => server === defaults[idx])
+  if (servers.length !== DEFAULT_NTP_SERVERS.length) return false;
+  const normalized = [...servers].map((s) => s.trim().toLowerCase()).sort();
+  const defaults = [...DEFAULT_NTP_SERVERS].sort();
+  return normalized.every((server, idx) => server === defaults[idx]);
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
-type ToastKind = 'success' | 'error'
+type ToastKind = 'success' | 'error';
 
 interface ToastMessage {
-  id: number
-  kind: ToastKind
-  text: string
+  id: number;
+  kind: ToastKind;
+  text: string;
 }
 
-let toastSeq = 0
+let toastSeq = 0;
 
 function Toast({ messages }: { messages: ToastMessage[] }) {
-  if (messages.length === 0) return null
+  if (messages.length === 0) return null;
   return (
     <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 w-80">
       {messages.map((m) => (
@@ -104,19 +104,37 @@ function Toast({ messages }: { messages: ToastMessage[] }) {
           }`}
         >
           {m.kind === 'success' ? (
-            <svg className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 111.414-1.414L8.414 12.172l7.879-7.879a1 1 0 011.414 0z" clipRule="evenodd" />
+            <svg
+              className="h-4 w-4 shrink-0 mt-0.5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 111.414-1.414L8.414 12.172l7.879-7.879a1 1 0 011.414 0z"
+                clipRule="evenodd"
+              />
             </svg>
           ) : (
-            <svg className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zm-1 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            <svg
+              className="h-4 w-4 shrink-0 mt-0.5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zm-1 8a1 1 0 100-2 1 1 0 000 2z"
+                clipRule="evenodd"
+              />
             </svg>
           )}
           <span>{m.text}</span>
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
@@ -126,51 +144,55 @@ const DEFAULT_CONFIG: NtpConfig = {
   servers: [],
   serveLan: false,
   listenInterfaces: [],
-}
+};
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function NtpPage() {
-  const [config, setConfig] = useState<NtpConfig>(DEFAULT_CONFIG)
-  const [status, setStatus] = useState<NtpStatus | null>(null)
-  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
-  const [ipv6Enabled, setIpv6Enabled] = useState(false)
+  const [config, setConfig] = useState<NtpConfig>(DEFAULT_CONFIG);
+  const [status, setStatus] = useState<NtpStatus | null>(null);
+  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
+  const [ipv6Enabled, setIpv6Enabled] = useState(false);
 
   const interfaceLabel = (iface: NetworkInterface): string =>
-    formatInterfaceDisplayName(iface.description, iface.name)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [resyncing, setResyncing] = useState(false)
-  const [toasts, setToasts] = useState<ToastMessage[]>([])
+    formatInterfaceDisplayName(iface.description, iface.name);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [resyncing, setResyncing] = useState(false);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // Server input state
-  const [serverInput, setServerInput] = useState('')
-  const [serverError, setServerError] = useState('')
+  const [serverInput, setServerInput] = useState('');
+  const [serverError, setServerError] = useState('');
 
   const addToast = useCallback((kind: ToastKind, text: string) => {
-    const id = toastSeq++
-    setToasts((prev) => [...prev, { id, kind, text }])
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000)
-  }, [])
+    const id = toastSeq++;
+    setToasts((prev) => [...prev, { id, kind, text }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  }, []);
 
   useEffect(() => {
-    setLoading(true)
+    setLoading(true);
     Promise.all([getNtpConfig(), getNtpStatus(), getInterfacesInventory(), getSystemConfig()])
       .then(([cfg, stat, inventory, system]) => {
-        setConfig(cfg.data)
-        setStatus(stat.data)
-        setIpv6Enabled(Boolean(system.data.ipv6Enabled))
+        setConfig(cfg.data);
+        setStatus(stat.data);
+        setIpv6Enabled(Boolean(system.data.ipv6Enabled));
         const configured = Array.isArray(inventory.data?.configured)
           ? inventory.data.configured.filter((i) => i.type !== 'loopback')
-          : []
-        const kernelByName = new Map((inventory.data?.kernel ?? []).map((iface) => [iface.name, iface]))
-        const known = new Set(configured.map((i) => i.name))
+          : [];
+        const kernelByName = new Map(
+          (inventory.data?.kernel ?? []).map((iface) => [iface.name, iface])
+        );
+        const known = new Set(configured.map((i) => i.name));
         const extras = (inventory.data?.names ?? [])
           .filter((name) => name !== 'lo' && !known.has(name))
           .map((name) => {
-            const kernelIface = kernelByName.get(name)
-            const ipv4Cidr = firstKernelIpv4Cidr(kernelIface?.addresses)
-            const [ipv4Address, ipv4Prefix] = ipv4Cidr ? ipv4Cidr.split('/') : [undefined, undefined]
+            const kernelIface = kernelByName.get(name);
+            const ipv4Cidr = firstKernelIpv4Cidr(kernelIface?.addresses);
+            const [ipv4Address, ipv4Prefix] = ipv4Cidr
+              ? ipv4Cidr.split('/')
+              : [undefined, undefined];
             return {
               name,
               description: '',
@@ -178,24 +200,22 @@ export default function NtpPage() {
               enabled: true,
               ipv4Address,
               ipv4Prefix: ipv4Prefix ? Number(ipv4Prefix) : undefined,
-            }
-          })
+            };
+          });
 
-        setInterfaces([...configured, ...extras])
+        setInterfaces([...configured, ...extras]);
       })
       .catch((err: Error) => addToast('error', `Failed to load NTP data: ${err.message}`))
-      .finally(() => setLoading(false))
-  }, [addToast])
+      .finally(() => setLoading(false));
+  }, [addToast]);
 
   useEffect(() => {
     const defaultNonWan = interfaces
       .filter((iface) => !isWanInterface(iface))
-      .map((iface) => iface.name)
+      .map((iface) => iface.name);
 
     const looksLikeCleanInstallDefaults =
-      config.enabled &&
-      !config.serveLan &&
-      hasDefaultNtpServers(config.servers)
+      config.enabled && !config.serveLan && hasDefaultNtpServers(config.servers);
 
     if (
       !loading &&
@@ -208,94 +228,96 @@ export default function NtpPage() {
         ...prev,
         listenInterfaces: defaultNonWan,
         serveLan: true,
-      }))
+      }));
     }
-  }, [loading, interfaces, config])
+  }, [loading, interfaces, config]);
 
   const handleSave = () => {
-    setSaving(true)
-    const payload = { ...config, serveLan: config.listenInterfaces.length > 0 }
+    setSaving(true);
+    const payload = { ...config, serveLan: config.listenInterfaces.length > 0 };
     updateNtpConfig(payload)
       .then((res) => {
-        setConfig(res.data)
-        addToast('success', 'NTP configuration saved.')
+        setConfig(res.data);
+        addToast('success', 'NTP configuration saved.');
       })
       .catch((err: Error) => addToast('error', `Save failed: ${err.message}`))
-      .finally(() => setSaving(false))
-  }
+      .finally(() => setSaving(false));
+  };
 
   const handleResync = () => {
-    setResyncing(true)
+    setResyncing(true);
     postNtpResync()
       .then(() => {
-        addToast('success', 'NTP resync triggered.')
-        return getNtpStatus()
+        addToast('success', 'NTP resync triggered.');
+        return getNtpStatus();
       })
       .then((res) => setStatus(res.data))
       .catch((err: Error) => addToast('error', `Resync failed: ${err.message}`))
-      .finally(() => setResyncing(false))
-  }
+      .finally(() => setResyncing(false));
+  };
 
   const handleAddServer = () => {
-    const normalized = normalizeNtpServerInput(serverInput)
+    const normalized = normalizeNtpServerInput(serverInput);
     if (!normalized) {
-      setServerError(ipv6Enabled ? 'Enter an IP address or hostname.' : 'Enter an IPv4 address or hostname.')
-      return
+      setServerError(
+        ipv6Enabled ? 'Enter an IP address or hostname.' : 'Enter an IPv4 address or hostname.'
+      );
+      return;
     }
     if (!isValidNtpServer(normalized, ipv6Enabled)) {
       if (isValidIPv6(normalized) && !ipv6Enabled) {
-        setServerError('IPv6 NTP servers require IPv6 to be enabled in System settings.')
+        setServerError('IPv6 NTP servers require IPv6 to be enabled in System settings.');
       } else {
-        setServerError(ipv6Enabled ? 'Only valid IP addresses or hostnames are accepted.' : 'Only valid IPv4 addresses or hostnames are accepted.')
+        setServerError(
+          ipv6Enabled
+            ? 'Only valid IP addresses or hostnames are accepted.'
+            : 'Only valid IPv4 addresses or hostnames are accepted.'
+        );
       }
-      return
+      return;
     }
     if (config.servers.includes(normalized)) {
-      setServerError('This server is already in the list.')
-      return
+      setServerError('This server is already in the list.');
+      return;
     }
-    setConfig((c) => ({ ...c, servers: [...c.servers, normalized] }))
-    setServerInput('')
-    setServerError('')
-  }
+    setConfig((c) => ({ ...c, servers: [...c.servers, normalized] }));
+    setServerInput('');
+    setServerError('');
+  };
 
   const handleRemoveServer = (server: string) => {
-    setConfig((c) => ({ ...c, servers: c.servers.filter((s) => s !== server) }))
-  }
+    setConfig((c) => ({ ...c, servers: c.servers.filter((s) => s !== server) }));
+  };
 
   const handleToggleInterface = (name: string) => {
     setConfig((c) => {
       const selected = c.listenInterfaces.includes(name)
         ? c.listenInterfaces.filter((i) => i !== name)
-        : [...c.listenInterfaces, name]
-      return { ...c, listenInterfaces: selected, serveLan: selected.length > 0 }
-    })
-  }
+        : [...c.listenInterfaces, name];
+      return { ...c, listenInterfaces: selected, serveLan: selected.length > 0 };
+    });
+  };
 
-  const busy = loading || saving
-  const ntpIsSynchronizing =
-    config.enabled &&
-    Boolean(status?.upstream) &&
-    !status?.synced
+  const busy = loading || saving;
+  const ntpIsSynchronizing = config.enabled && Boolean(status?.upstream) && !status?.synced;
   const syncLabel = status?.synced
     ? 'Synchronized'
     : ntpIsSynchronizing
       ? 'Synchronizing'
-      : 'Not synchronized'
+      : 'Not synchronized';
   const syncTextClass = status?.synced
     ? 'text-green-600'
     : ntpIsSynchronizing
       ? 'text-amber-600'
-      : 'text-red-500'
+      : 'text-red-500';
   const syncDotClass = status?.synced
     ? 'bg-green-500'
     : ntpIsSynchronizing
       ? 'bg-amber-500'
-      : 'bg-red-500'
+      : 'bg-red-500';
 
   return (
     <div className="space-y-6">
-
       {/* NTP Overview */}
       <Card
         title="NTP Overview"
@@ -311,13 +333,33 @@ export default function NtpPage() {
               aria-label={resyncing ? 'Restarting NTP service' : 'Restart NTP service'}
             >
               {resyncing ? (
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14 10 10 0 01-14.14 0" />
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14 10 10 0 01-14.14 0"
+                  />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m8 6h-4" />
                 </svg>
               ) : (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0L12 12" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4.93 4.93a10 10 0 0114.14 0L12 12"
+                  />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 12V8h4" />
                 </svg>
               )}
@@ -334,8 +376,18 @@ export default function NtpPage() {
                   : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v5m0 8a4 4 0 100-8 4 4 0 000 8z" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 3v5m0 8a4 4 0 100-8 4 4 0 000 8z"
+                />
               </svg>
             </button>
             <button
@@ -346,8 +398,18 @@ export default function NtpPage() {
               aria-label="Save NTP configuration"
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5.5 7.5H18.5M5.5 7.5V18.5H18.5V7.5M9.5 7.5V4.5H14.5V7.5" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5.5 7.5H18.5M5.5 7.5V18.5H18.5V7.5M9.5 7.5V4.5H14.5V7.5"
+                />
               </svg>
             </button>
           </div>
@@ -366,9 +428,7 @@ export default function NtpPage() {
             <div>
               <dt className="text-gray-500">Sync</dt>
               <dd>
-                <span
-                  className={`inline-flex items-center gap-1.5 font-medium ${syncTextClass}`}
-                >
+                <span className={`inline-flex items-center gap-1.5 font-medium ${syncTextClass}`}>
                   <span className={`inline-block h-2 w-2 rounded-full ${syncDotClass}`} />
                   {syncLabel}
                 </span>
@@ -418,7 +478,8 @@ export default function NtpPage() {
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Upstream Servers</h3>
             <p className="mt-1 text-xs text-gray-500">
-              {ipv6Enabled ? 'IP addresses or hostnames' : 'IPv4 addresses or hostnames'} used for time synchronization. Pasted entries like server pool.ntp.org are also accepted.
+              {ipv6Enabled ? 'IP addresses or hostnames' : 'IPv4 addresses or hostnames'} used for
+              time synchronization. Pasted entries like server pool.ntp.org are also accepted.
             </p>
           </div>
 
@@ -436,8 +497,18 @@ export default function NtpPage() {
                     onClick={() => handleRemoveServer(server)}
                     title="Remove server"
                   >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+                      />
                     </svg>
                   </button>
                 </li>
@@ -450,19 +521,23 @@ export default function NtpPage() {
             <FormField
               id="ntp-server-input"
               label={ipv6Enabled ? 'Add Server (IP or hostname)' : 'Add Server (IPv4 or hostname)'}
-              placeholder={ipv6Enabled ? '0.pool.ntp.org, 203.0.113.1, 2001:db8::123, or server 0.pool.ntp.org' : '0.pool.ntp.org, 203.0.113.1, or server 0.pool.ntp.org'}
+              placeholder={
+                ipv6Enabled
+                  ? '0.pool.ntp.org, 203.0.113.1, 2001:db8::123, or server 0.pool.ntp.org'
+                  : '0.pool.ntp.org, 203.0.113.1, or server 0.pool.ntp.org'
+              }
               className="flex-1"
               value={serverInput}
               error={serverError}
               disabled={busy}
               onChange={(e) => {
-                setServerInput(e.target.value)
-                if (serverError) setServerError('')
+                setServerInput(e.target.value);
+                if (serverError) setServerError('');
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  e.preventDefault()
-                  handleAddServer()
+                  e.preventDefault();
+                  handleAddServer();
                 }
               }}
             />
@@ -472,7 +547,13 @@ export default function NtpPage() {
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
               title="Add server"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
             </button>
@@ -481,7 +562,8 @@ export default function NtpPage() {
           <div className="border-t border-gray-200 pt-4">
             <h3 className="text-sm font-semibold text-gray-900">NTP Server Interfaces</h3>
             <p className="mt-1 text-xs text-gray-500">
-              Select which interfaces should serve NTP to clients. If none are selected, the device will not serve NTP.
+              Select which interfaces should serve NTP to clients. If none are selected, the device
+              will not serve NTP.
             </p>
           </div>
 
@@ -492,7 +574,7 @@ export default function NtpPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {interfaces.map((iface) => {
-                const checked = config.listenInterfaces.includes(iface.name)
+                const checked = config.listenInterfaces.includes(iface.name);
                 return (
                   <label
                     key={iface.name}
@@ -518,7 +600,7 @@ export default function NtpPage() {
                       )}
                     </div>
                   </label>
-                )
+                );
               })}
             </div>
           )}
@@ -527,5 +609,5 @@ export default function NtpPage() {
 
       <Toast messages={toasts} />
     </div>
-  )
+  );
 }

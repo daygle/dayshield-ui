@@ -1,32 +1,32 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getNatConfig, updateNatConfig } from '../../api/nat'
-import { useToast } from '../../context/ToastContext'
-import Card from '../../components/Card'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getNatConfig, updateNatConfig } from '../../api/nat';
+import { useToast } from '../../context/ToastContext';
+import Card from '../../components/Card';
 
 export default function NATReflection() {
-  const qc = useQueryClient()
-  const { addToast } = useToast()
+  const qc = useQueryClient();
+  const { addToast } = useToast();
 
   const { data, isLoading } = useQuery({
     queryKey: ['nat', 'config'],
     queryFn: getNatConfig,
-  })
+  });
 
-  const config = data?.data
+  const config = data?.data;
 
   const mutation = useMutation({
     mutationFn: updateNatConfig,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['nat', 'config'] })
-      addToast('NAT reflection setting updated', 'success')
+      qc.invalidateQueries({ queryKey: ['nat', 'config'] });
+      addToast('NAT reflection setting updated', 'success');
     },
     onError: (err: Error) => addToast(err.message, 'error'),
-  })
+  });
 
   const toggle = () => {
-    if (!config) return
-    mutation.mutate({ ...config, nat_reflection: !config.nat_reflection })
-  }
+    if (!config) return;
+    mutation.mutate({ ...config, nat_reflection: !config.nat_reflection });
+  };
 
   return (
     <div className="space-y-6">
@@ -74,12 +74,13 @@ export default function NATReflection() {
             connect to servers on internal networks using the firewall's WAN IP address or hostname.
           </p>
           <p>
-            Without NAT reflection, traffic from local interfaces connecting to your public IP for a port-forwarded
-            service will be routed to the WAN gateway instead of the internal server. Enabling NAT
-            reflection inserts additional rules so these connections are redirected correctly.
+            Without NAT reflection, traffic from local interfaces connecting to your public IP for a
+            port-forwarded service will be routed to the WAN gateway instead of the internal server.
+            Enabling NAT reflection inserts additional rules so these connections are redirected
+            correctly.
           </p>
         </div>
       </Card>
     </div>
-  )
+  );
 }

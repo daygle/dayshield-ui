@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   createInterfaceDnsBlocklist,
   getDnsConfig,
@@ -11,9 +11,9 @@ import {
   deleteDnsHostOverride,
   createDnsDomainOverride,
   deleteDnsDomainOverride,
-} from '../../api/dns'
-import { getAcmeConfig } from '../../api/acme'
-import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
+} from '../../api/dns';
+import { getAcmeConfig } from '../../api/acme';
+import { getInterfaces, getInterfacesInventory } from '../../api/interfaces';
 import type {
   DnsBlocklistEntry,
   DnsConfig,
@@ -21,40 +21,46 @@ import type {
   DnsDomainOverride,
   KernelInterface,
   NetworkInterface,
-} from '../../types'
-import Card from '../../components/Card'
-import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
-import Table, { Column } from '../../components/Table'
-import Modal from '../../components/Modal'
-import FormField from '../../components/FormField'
+} from '../../types';
+import Card from '../../components/Card';
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
+import Table, { Column } from '../../components/Table';
+import Modal from '../../components/Modal';
+import FormField from '../../components/FormField';
 
-type HostRow = DnsHostOverride & Record<string, unknown>
-type DomainRow = DnsDomainOverride & Record<string, unknown>
-type BlocklistRow = DnsBlocklistEntry & Record<string, unknown>
+type HostRow = DnsHostOverride & Record<string, unknown>;
+type DomainRow = DnsDomainOverride & Record<string, unknown>;
+type BlocklistRow = DnsBlocklistEntry & Record<string, unknown>;
 type DnsListenCandidate = {
-  key: string
-  ip: string
-  interfaceName: string
-  interfaceLabel: string
-}
+  key: string;
+  ip: string;
+  interfaceName: string;
+  interfaceLabel: string;
+};
 
 const hostColumns: Column<HostRow>[] = [
   { key: 'hostname', header: 'Hostname (FQDN)' },
   { key: 'address', header: 'IP Address' },
-]
+];
 
 const domainColumns: Column<DomainRow>[] = [
   { key: 'domain', header: 'Domain' },
   { key: 'forward_to', header: 'Forward To (DNS IP)' },
-]
+];
 
 const BLOCKLIST_PRESETS: Array<{ name: string; url: string }> = [
-  { name: 'StevenBlack Unified Hosts', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
+  {
+    name: 'StevenBlack Unified Hosts',
+    url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts',
+  },
   { name: 'OISD Small', url: 'https://small.oisd.nl/' },
-  { name: 'AdGuard DNS Filter', url: 'https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt' },
+  {
+    name: 'AdGuard DNS Filter',
+    url: 'https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt',
+  },
   { name: 'EasyList', url: 'https://easylist.to/easylist/easylist.txt' },
   { name: 'EasyPrivacy', url: 'https://easylist.to/easylist/easyprivacy.txt' },
-]
+];
 
 const defaultConfigForm = (): Partial<DnsConfig> => ({
   enabled: true,
@@ -69,87 +75,87 @@ const defaultConfigForm = (): Partial<DnsConfig> => ({
   dot_private_key: '',
   dot_acme_domain: '',
   local_records: [],
-})
+});
 
 function isHttpUrl(value: string): boolean {
-  if (!/^https?:\/\//i.test(value)) return false
+  if (!/^https?:\/\//i.test(value)) return false;
   try {
-    const parsed = new URL(value)
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
   } catch {
-    return false
+    return false;
   }
 }
 
 function isWanInterface(iface: NetworkInterface): boolean {
-  const desc = iface.description?.trim().toLowerCase() ?? ''
-  return Boolean(iface.wanMode) || desc.includes('wan') || iface.name.toLowerCase() === 'wan'
+  const desc = iface.description?.trim().toLowerCase() ?? '';
+  return Boolean(iface.wanMode) || desc.includes('wan') || iface.name.toLowerCase() === 'wan';
 }
 
 export default function DNS() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [config, setConfig] = useState<DnsConfig | null>(null)
-  const [hostOverrides, setHostOverrides] = useState<HostRow[]>([])
-  const [domainOverrides, setDomainOverrides] = useState<DomainRow[]>([])
-  const [blocklists, setBlocklists] = useState<BlocklistRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [config, setConfig] = useState<DnsConfig | null>(null);
+  const [hostOverrides, setHostOverrides] = useState<HostRow[]>([]);
+  const [domainOverrides, setDomainOverrides] = useState<DomainRow[]>([]);
+  const [blocklists, setBlocklists] = useState<BlocklistRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Config edit
-  const [configModalOpen, setConfigModalOpen] = useState(false)
-  const [dotModalOpen, setDotModalOpen] = useState(false)
-  const [configForm, setConfigForm] = useState<Partial<DnsConfig>>(defaultConfigForm())
-  const [listenInput, setListenInput] = useState('')
-  const [forwardersInput, setForwardersInput] = useState('')
-  const [configSaving, setConfigSaving] = useState(false)
-  const [dnsInterfaces, setDnsInterfaces] = useState<KernelInterface[]>([])
-  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
-  const [acmeDomains, setAcmeDomains] = useState<string[]>([])
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [dotModalOpen, setDotModalOpen] = useState(false);
+  const [configForm, setConfigForm] = useState<Partial<DnsConfig>>(defaultConfigForm());
+  const [listenInput, setListenInput] = useState('');
+  const [forwardersInput, setForwardersInput] = useState('');
+  const [configSaving, setConfigSaving] = useState(false);
+  const [dnsInterfaces, setDnsInterfaces] = useState<KernelInterface[]>([]);
+  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
+  const [acmeDomains, setAcmeDomains] = useState<string[]>([]);
 
   // Host overrides
-  const [hostModalOpen, setHostModalOpen] = useState(false)
-  const [hostForm, setHostForm] = useState({ hostname: '', address: '' })
-  const [editingHostName, setEditingHostName] = useState<string | null>(null)
-  const [hostSaving, setHostSaving] = useState(false)
-  const [hostDeleteName, setHostDeleteName] = useState<string | null>(null)
-  const [hostDeleting, setHostDeleting] = useState(false)
+  const [hostModalOpen, setHostModalOpen] = useState(false);
+  const [hostForm, setHostForm] = useState({ hostname: '', address: '' });
+  const [editingHostName, setEditingHostName] = useState<string | null>(null);
+  const [hostSaving, setHostSaving] = useState(false);
+  const [hostDeleteName, setHostDeleteName] = useState<string | null>(null);
+  const [hostDeleting, setHostDeleting] = useState(false);
 
   // Domain overrides
-  const [domainModalOpen, setDomainModalOpen] = useState(false)
-  const [domainForm, setDomainForm] = useState({ domain: '', forward_to: '' })
-  const [editingDomainName, setEditingDomainName] = useState<string | null>(null)
-  const [domainSaving, setDomainSaving] = useState(false)
-  const [domainDeleteName, setDomainDeleteName] = useState<string | null>(null)
-  const [domainDeleting, setDomainDeleting] = useState(false)
+  const [domainModalOpen, setDomainModalOpen] = useState(false);
+  const [domainForm, setDomainForm] = useState({ domain: '', forward_to: '' });
+  const [editingDomainName, setEditingDomainName] = useState<string | null>(null);
+  const [domainSaving, setDomainSaving] = useState(false);
+  const [domainDeleteName, setDomainDeleteName] = useState<string | null>(null);
+  const [domainDeleting, setDomainDeleting] = useState(false);
 
   // Blocklists
-  const [blocklistModalOpen, setBlocklistModalOpen] = useState(false)
-  const [blocklistForm, setBlocklistForm] = useState({ name: '', url: '', enabled: true })
-  const [editingBlocklistId, setEditingBlocklistId] = useState<string | null>(null)
-  const [selectedPreset, setSelectedPreset] = useState('')
-  const [blocklistSaving, setBlocklistSaving] = useState(false)
-  const [blocklistDeleteId, setBlocklistDeleteId] = useState<string | null>(null)
-  const [blocklistDeleting, setBlocklistDeleting] = useState(false)
-  const [blocklistsLoading, setBlocklistsLoading] = useState(false)
+  const [blocklistModalOpen, setBlocklistModalOpen] = useState(false);
+  const [blocklistForm, setBlocklistForm] = useState({ name: '', url: '', enabled: true });
+  const [editingBlocklistId, setEditingBlocklistId] = useState<string | null>(null);
+  const [selectedPreset, setSelectedPreset] = useState('');
+  const [blocklistSaving, setBlocklistSaving] = useState(false);
+  const [blocklistDeleteId, setBlocklistDeleteId] = useState<string | null>(null);
+  const [blocklistDeleting, setBlocklistDeleting] = useState(false);
+  const [blocklistsLoading, setBlocklistsLoading] = useState(false);
 
   const loadAll = () => {
-    setLoading(true)
+    setLoading(true);
     Promise.all([getDnsConfig(), getAcmeConfig(), getDnsOverrides()])
       .then(([cfg, acmeCfg, overrides]) => {
-        setConfig(cfg.data)
-        setAcmeDomains(acmeCfg.data.domains ?? [])
-        setHostOverrides(overrides.data.host_overrides as HostRow[])
-        setDomainOverrides(overrides.data.domain_overrides as DomainRow[])
+        setConfig(cfg.data);
+        setAcmeDomains(acmeCfg.data.domains ?? []);
+        setHostOverrides(overrides.data.host_overrides as HostRow[]);
+        setDomainOverrides(overrides.data.domain_overrides as DomainRow[]);
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false))
-  }
+      .finally(() => setLoading(false));
+  };
 
   const loadInterfaces = () => {
     Promise.all([getInterfaces(), getInterfacesInventory()])
       .then(([configuredRes, inventoryRes]) => {
-        const configured = (configuredRes.data ?? []).filter((iface) => iface.enabled !== false)
-        const known = new Set(configured.map((iface) => iface.name))
+        const configured = (configuredRes.data ?? []).filter((iface) => iface.enabled !== false);
+        const known = new Set(configured.map((iface) => iface.name));
         const extras = (inventoryRes.data?.names ?? [])
           .filter((name) => name !== 'lo' && !known.has(name))
           .map((name) => ({
@@ -157,135 +163,142 @@ export default function DNS() {
             description: '',
             type: 'ethernet' as const,
             enabled: true,
-          }))
-        setInterfaces([...configured, ...extras])
+          }));
+        setInterfaces([...configured, ...extras]);
       })
-      .catch(() => setInterfaces([]))
-  }
+      .catch(() => setInterfaces([]));
+  };
 
   useEffect(() => {
-    loadAll()
-    loadInterfaces()
-  }, [])
+    loadAll();
+    loadInterfaces();
+  }, []);
 
-  const sectionParam = searchParams.get('section')
+  const sectionParam = searchParams.get('section');
   const activeSection =
     sectionParam === 'overrides' || sectionParam === 'blocklists' || sectionParam === 'dot'
       ? sectionParam
-      : 'settings'
+      : 'settings';
 
-  const sectionTabs: Array<{ id: 'settings' | 'dot' | 'overrides' | 'blocklists'; label: string }> = [
-    { id: 'settings', label: 'Settings' },
-    { id: 'dot', label: 'DoT' },
-    { id: 'overrides', label: 'Overrides' },
-    { id: 'blocklists', label: 'Blocklists' },
-  ]
+  const sectionTabs: Array<{ id: 'settings' | 'dot' | 'overrides' | 'blocklists'; label: string }> =
+    [
+      { id: 'settings', label: 'Settings' },
+      { id: 'dot', label: 'DoT' },
+      { id: 'overrides', label: 'Overrides' },
+      { id: 'blocklists', label: 'Blocklists' },
+    ];
 
   const setActiveSection = (section: 'settings' | 'dot' | 'overrides' | 'blocklists') => {
-    const next = new URLSearchParams(searchParams)
-    next.set('section', section)
+    const next = new URLSearchParams(searchParams);
+    next.set('section', section);
     if (section !== 'blocklists') {
-      next.delete('iface')
+      next.delete('iface');
     }
-    setSearchParams(next)
-  }
+    setSearchParams(next);
+  };
 
   const interfaceLabel = (iface: NetworkInterface): string => {
-    return formatInterfaceDisplayName(iface.description, iface.name)
-  }
+    return formatInterfaceDisplayName(iface.description, iface.name);
+  };
 
   const blocklistInterfaces = useMemo(
     () => interfaces.filter((iface) => !isWanInterface(iface)),
-    [interfaces],
-  )
+    [interfaces]
+  );
   const interfaceOptions = useMemo(
     () => blocklistInterfaces.map((iface) => iface.name),
-    [blocklistInterfaces],
-  )
-  const selectedInterface = searchParams.get('iface') ?? ''
+    [blocklistInterfaces]
+  );
+  const selectedInterface = searchParams.get('iface') ?? '';
   const effectiveInterface =
     (selectedInterface && interfaceOptions.includes(selectedInterface) ? selectedInterface : '') ||
     interfaceOptions[0] ||
-    ''
-  const effectiveInterfaceObj = blocklistInterfaces.find((iface) => iface.name === effectiveInterface)
+    '';
+  const effectiveInterfaceObj = blocklistInterfaces.find(
+    (iface) => iface.name === effectiveInterface
+  );
   const effectiveInterfaceLabel = effectiveInterfaceObj
     ? interfaceLabel(effectiveInterfaceObj)
-    : (effectiveInterface || '-')
+    : effectiveInterface || '-';
 
   const interfaceLabelByName = useMemo(
     () => new Map(interfaces.map((iface) => [iface.name, interfaceLabel(iface)] as const)),
-    [interfaces],
-  )
+    [interfaces]
+  );
 
   const listenEntries = useMemo(
-    () => listenInput.split(',').map((v) => v.trim()).filter(Boolean),
-    [listenInput],
-  )
+    () =>
+      listenInput
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean),
+    [listenInput]
+  );
 
   const dnsListenCandidates = useMemo<DnsListenCandidate[]>(
     () =>
       dnsInterfaces.flatMap((iface) =>
         (iface.addresses ?? [])
           .map((cidr) => {
-            const ip = cidr.split('/')[0]?.trim()
-            if (!ip) return null
+            const ip = cidr.split('/')[0]?.trim();
+            if (!ip) return null;
             return {
               key: `${iface.name}-${ip}`,
               ip,
               interfaceName: iface.name,
               interfaceLabel: interfaceLabelByName.get(iface.name) ?? iface.name,
-            }
+            };
           })
-          .filter((entry): entry is DnsListenCandidate => entry !== null),
+          .filter((entry): entry is DnsListenCandidate => entry !== null)
       ),
-    [dnsInterfaces, interfaceLabelByName],
-  )
+    [dnsInterfaces, interfaceLabelByName]
+  );
 
   const listenInterfaceLabels = useMemo(() => {
-    const allCandidates = dnsListenCandidates.map((entry) => entry.interfaceLabel)
-    if (!config || allCandidates.length === 0) return []
+    const allCandidates = dnsListenCandidates.map((entry) => entry.interfaceLabel);
+    if (!config || allCandidates.length === 0) return [];
     if (!config.listen_addresses?.length) {
-      return Array.from(new Set(allCandidates))
+      return Array.from(new Set(allCandidates));
     }
 
-    const seen = new Set<string>()
+    const seen = new Set<string>();
     return listenEntries
       .map((ip) => {
-        const entry = dnsListenCandidates.find((candidate) => candidate.ip === ip)
-        return entry ? entry.interfaceLabel : ip
+        const entry = dnsListenCandidates.find((candidate) => candidate.ip === ip);
+        return entry ? entry.interfaceLabel : ip;
       })
       .filter((label): label is string => {
-        if (seen.has(label)) return false
-        seen.add(label)
-        return true
-      })
-  }, [config, dnsListenCandidates, listenEntries])
+        if (seen.has(label)) return false;
+        seen.add(label);
+        return true;
+      });
+  }, [config, dnsListenCandidates, listenEntries]);
 
   useEffect(() => {
-    if (activeSection !== 'blocklists') return
-    if (selectedInterface || interfaceOptions.length === 0) return
-    const next = new URLSearchParams(searchParams)
-    next.set('section', 'blocklists')
-    next.set('iface', interfaceOptions[0])
-    setSearchParams(next)
-  }, [activeSection, interfaceOptions, searchParams, selectedInterface, setSearchParams])
+    if (activeSection !== 'blocklists') return;
+    if (selectedInterface || interfaceOptions.length === 0) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('section', 'blocklists');
+    next.set('iface', interfaceOptions[0]);
+    setSearchParams(next);
+  }, [activeSection, interfaceOptions, searchParams, selectedInterface, setSearchParams]);
 
   const loadInterfaceBlocklists = (interfaceName: string) => {
     if (!interfaceName) {
-      setBlocklists([])
-      return
+      setBlocklists([]);
+      return;
     }
-    setBlocklistsLoading(true)
+    setBlocklistsLoading(true);
     getInterfaceDnsBlocklists(interfaceName)
       .then((res) => setBlocklists((res.data ?? []) as BlocklistRow[]))
       .catch((err: Error) => setError(err.message))
-      .finally(() => setBlocklistsLoading(false))
-  }
+      .finally(() => setBlocklistsLoading(false));
+  };
 
   useEffect(() => {
-    if (activeSection !== 'blocklists') return
-    loadInterfaceBlocklists(effectiveInterface)
-  }, [activeSection, effectiveInterface])
+    if (activeSection !== 'blocklists') return;
+    loadInterfaceBlocklists(effectiveInterface);
+  }, [activeSection, effectiveInterface]);
 
   const openConfigModal = () => {
     if (config) {
@@ -297,24 +310,24 @@ export default function DNS() {
         dot_certificate: config.dot_certificate ?? '',
         dot_private_key: config.dot_private_key ?? '',
         dot_acme_domain: config.dot_acme_domain ?? '',
-      })
-      setListenInput((config.listen_addresses ?? []).join(', '))
-      setForwardersInput((config.forwarders ?? []).join(', '))
+      });
+      setListenInput((config.listen_addresses ?? []).join(', '));
+      setForwardersInput((config.forwarders ?? []).join(', '));
     } else {
-      setConfigForm(defaultConfigForm())
-      setListenInput('')
-      setForwardersInput('')
+      setConfigForm(defaultConfigForm());
+      setListenInput('');
+      setForwardersInput('');
     }
     getInterfacesInventory()
       .then((res) => {
-        const kernel = Array.isArray(res.data?.kernel) ? res.data.kernel : []
-        setDnsInterfaces(kernel)
+        const kernel = Array.isArray(res.data?.kernel) ? res.data.kernel : [];
+        setDnsInterfaces(kernel);
       })
       .catch(() => {
-        setDnsInterfaces([])
-      })
-    setConfigModalOpen(true)
-  }
+        setDnsInterfaces([]);
+      });
+    setConfigModalOpen(true);
+  };
 
   const openDotModal = () => {
     if (config) {
@@ -324,20 +337,24 @@ export default function DNS() {
         dot_port: config.dot_port ?? 853,
         dot_lan_only: config.dot_lan_only ?? true,
         dot_acme_domain: config.dot_acme_domain ?? '',
-      })
+      });
     } else {
-      setConfigForm(defaultConfigForm())
+      setConfigForm(defaultConfigForm());
     }
-    setDotModalOpen(true)
-  }
+    setDotModalOpen(true);
+  };
 
   const handleSaveConfig = () => {
-    const parseList = (s: string) => s.split(',').map((v) => v.trim()).filter(Boolean)
-    const acmeDomain = configForm.dot_acme_domain?.trim() ?? ''
+    const parseList = (s: string) =>
+      s
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean);
+    const acmeDomain = configForm.dot_acme_domain?.trim() ?? '';
 
     if (configForm.dot_enabled && !acmeDomain) {
-      setError('DNS-over-TLS requires a selected ACME domain.')
-      return
+      setError('DNS-over-TLS requires a selected ACME domain.');
+      return;
     }
 
     const payload: Partial<DnsConfig> = {
@@ -353,130 +370,130 @@ export default function DNS() {
       // Preserve existing local_records - they're managed via the overrides API
       local_records: config?.local_records ?? [],
       interface_blocklists: config?.interface_blocklists ?? [],
-    }
-    setConfigSaving(true)
+    };
+    setConfigSaving(true);
     updateDnsConfig(payload)
       .then((r) => {
-        setConfig(r.data)
-        setConfigModalOpen(false)
+        setConfig(r.data);
+        setConfigModalOpen(false);
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setConfigSaving(false))
-  }
+      .finally(() => setConfigSaving(false));
+  };
 
   const handleAddHost = () => {
-    setHostSaving(true)
-    const hostname = hostForm.hostname.trim()
-    const address = hostForm.address.trim()
-    const existingHostNames = hostOverrides.map((host) => host.hostname)
+    setHostSaving(true);
+    const hostname = hostForm.hostname.trim();
+    const address = hostForm.address.trim();
+    const existingHostNames = hostOverrides.map((host) => host.hostname);
 
     const saveHost = () =>
       createDnsHostOverride(hostname, address)
         .then(() => getDnsOverrides())
         .then((r) => {
-          setHostModalOpen(false)
-          setEditingHostName(null)
-          setHostForm({ hostname: '', address: '' })
-          setHostOverrides(r.data.host_overrides as HostRow[])
+          setHostModalOpen(false);
+          setEditingHostName(null);
+          setHostForm({ hostname: '', address: '' });
+          setHostOverrides(r.data.host_overrides as HostRow[]);
         })
         .catch((err: Error) => setError(err.message))
-        .finally(() => setHostSaving(false))
+        .finally(() => setHostSaving(false));
 
     if (editingHostName) {
       if (editingHostName !== hostname && existingHostNames.includes(hostname)) {
-        setError(`Host override for ${hostname} already exists`)
-        setHostSaving(false)
-        return
+        setError(`Host override for ${hostname} already exists`);
+        setHostSaving(false);
+        return;
       }
       deleteDnsHostOverride(editingHostName)
         .then(() => saveHost())
         .catch((err: Error) => {
-          setError(err.message)
-          setHostSaving(false)
-        })
+          setError(err.message);
+          setHostSaving(false);
+        });
     } else {
-      saveHost()
+      saveHost();
     }
-  }
+  };
 
   const handleDeleteHost = () => {
-    if (!hostDeleteName) return
-    setHostDeleting(true)
+    if (!hostDeleteName) return;
+    setHostDeleting(true);
     deleteDnsHostOverride(hostDeleteName)
       .then(() => getDnsOverrides())
       .then((r) => {
-        setHostDeleteName(null)
-        setHostOverrides(r.data.host_overrides as HostRow[])
+        setHostDeleteName(null);
+        setHostOverrides(r.data.host_overrides as HostRow[]);
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setHostDeleting(false))
-  }
+      .finally(() => setHostDeleting(false));
+  };
 
   const handleAddDomain = () => {
-    setDomainSaving(true)
-    const domain = domainForm.domain.trim()
-    const forwardTo = domainForm.forward_to.trim()
-    const existingDomainNames = domainOverrides.map((entry) => entry.domain)
+    setDomainSaving(true);
+    const domain = domainForm.domain.trim();
+    const forwardTo = domainForm.forward_to.trim();
+    const existingDomainNames = domainOverrides.map((entry) => entry.domain);
 
     const saveDomain = () =>
       createDnsDomainOverride(domain, forwardTo)
         .then(() => getDnsOverrides())
         .then((r) => {
-          setDomainModalOpen(false)
-          setEditingDomainName(null)
-          setDomainForm({ domain: '', forward_to: '' })
-          setDomainOverrides(r.data.domain_overrides as DomainRow[])
+          setDomainModalOpen(false);
+          setEditingDomainName(null);
+          setDomainForm({ domain: '', forward_to: '' });
+          setDomainOverrides(r.data.domain_overrides as DomainRow[]);
         })
         .catch((err: Error) => setError(err.message))
-        .finally(() => setDomainSaving(false))
+        .finally(() => setDomainSaving(false));
 
     if (editingDomainName) {
       if (editingDomainName !== domain && existingDomainNames.includes(domain)) {
-        setError(`Domain override for ${domain} already exists`)
-        setDomainSaving(false)
-        return
+        setError(`Domain override for ${domain} already exists`);
+        setDomainSaving(false);
+        return;
       }
       deleteDnsDomainOverride(editingDomainName)
         .then(() => saveDomain())
         .catch((err: Error) => {
-          setError(err.message)
-          setDomainSaving(false)
-        })
+          setError(err.message);
+          setDomainSaving(false);
+        });
     } else {
-      saveDomain()
+      saveDomain();
     }
-  }
+  };
 
   const handleDeleteDomain = () => {
-    if (!domainDeleteName) return
-    setDomainDeleting(true)
+    if (!domainDeleteName) return;
+    setDomainDeleting(true);
     deleteDnsDomainOverride(domainDeleteName)
       .then(() => getDnsOverrides())
       .then((r) => {
-        setDomainDeleteName(null)
-        setDomainOverrides(r.data.domain_overrides as DomainRow[])
+        setDomainDeleteName(null);
+        setDomainOverrides(r.data.domain_overrides as DomainRow[]);
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setDomainDeleting(false))
-  }
+      .finally(() => setDomainDeleting(false));
+  };
 
   const openAddBlocklistModal = () => {
-    setEditingBlocklistId(null)
-    setSelectedPreset('')
-    setBlocklistForm({ name: '', url: '', enabled: true })
-    setBlocklistModalOpen(true)
-  }
+    setEditingBlocklistId(null);
+    setSelectedPreset('');
+    setBlocklistForm({ name: '', url: '', enabled: true });
+    setBlocklistModalOpen(true);
+  };
 
   const handleAddBlocklist = () => {
     if (!effectiveInterface || !blocklistForm.url.trim()) {
-      setError('Please select an interface and enter a valid blocklist URL.')
-      return
+      setError('Please select an interface and enter a valid blocklist URL.');
+      return;
     }
     if (!isHttpUrl(blocklistForm.url.trim())) {
-      setError('Blocklist URL must be a valid HTTP or HTTPS URL.')
-      return
+      setError('Blocklist URL must be a valid HTTP or HTTPS URL.');
+      return;
     }
-    setBlocklistSaving(true)
+    setBlocklistSaving(true);
 
     const saveBlocklist = () =>
       createInterfaceDnsBlocklist(effectiveInterface, {
@@ -485,36 +502,36 @@ export default function DNS() {
         enabled: blocklistForm.enabled,
       })
         .then(() => {
-          setBlocklistModalOpen(false)
-          setEditingBlocklistId(null)
-          loadInterfaceBlocklists(effectiveInterface)
+          setBlocklistModalOpen(false);
+          setEditingBlocklistId(null);
+          loadInterfaceBlocklists(effectiveInterface);
         })
         .catch((err: Error) => setError(err.message))
-        .finally(() => setBlocklistSaving(false))
+        .finally(() => setBlocklistSaving(false));
 
     if (editingBlocklistId) {
       deleteInterfaceDnsBlocklist(effectiveInterface, editingBlocklistId)
         .then(() => saveBlocklist())
         .catch((err: Error) => {
-          setError(err.message)
-          setBlocklistSaving(false)
-        })
+          setError(err.message);
+          setBlocklistSaving(false);
+        });
     } else {
-      saveBlocklist()
+      saveBlocklist();
     }
-  }
+  };
 
   const handleDeleteBlocklist = () => {
-    if (!effectiveInterface || !blocklistDeleteId) return
-    setBlocklistDeleting(true)
+    if (!effectiveInterface || !blocklistDeleteId) return;
+    setBlocklistDeleting(true);
     deleteInterfaceDnsBlocklist(effectiveInterface, blocklistDeleteId)
       .then(() => {
-        setBlocklistDeleteId(null)
-        loadInterfaceBlocklists(effectiveInterface)
+        setBlocklistDeleteId(null);
+        loadInterfaceBlocklists(effectiveInterface);
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setBlocklistDeleting(false))
-  }
+      .finally(() => setBlocklistDeleting(false));
+  };
 
   const hostColumnsWithActions: Column<HostRow>[] = [
     ...hostColumns,
@@ -526,16 +543,26 @@ export default function DNS() {
         <div className="flex justify-end gap-2">
           <button
             onClick={() => {
-              setEditingHostName(row.hostname as string)
-              setHostForm({ hostname: row.hostname as string, address: row.address as string })
-              setHostModalOpen(true)
+              setEditingHostName(row.hostname as string);
+              setHostForm({ hostname: row.hostname as string, address: row.address as string });
+              setHostModalOpen(true);
             }}
             className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
             title="Edit host override"
             aria-label="Edit host override"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z"
+              />
             </svg>
           </button>
           <button
@@ -544,14 +571,24 @@ export default function DNS() {
             title="Delete host override"
             aria-label="Delete host override"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+              />
             </svg>
           </button>
         </div>
       ),
     },
-  ]
+  ];
 
   const domainColumnsWithActions: Column<DomainRow>[] = [
     ...domainColumns,
@@ -563,16 +600,26 @@ export default function DNS() {
         <div className="flex justify-end gap-2">
           <button
             onClick={() => {
-              setEditingDomainName(row.domain as string)
-              setDomainForm({ domain: row.domain as string, forward_to: row.forward_to as string })
-              setDomainModalOpen(true)
+              setEditingDomainName(row.domain as string);
+              setDomainForm({ domain: row.domain as string, forward_to: row.forward_to as string });
+              setDomainModalOpen(true);
             }}
             className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
             title="Edit domain override"
             aria-label="Edit domain override"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z"
+              />
             </svg>
           </button>
           <button
@@ -581,14 +628,24 @@ export default function DNS() {
             title="Delete domain override"
             aria-label="Delete domain override"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+              />
             </svg>
           </button>
         </div>
       ),
     },
-  ]
+  ];
 
   const blocklistColumnsWithActions: Column<BlocklistRow>[] = [
     {
@@ -602,9 +659,9 @@ export default function DNS() {
       header: 'Status',
       render: (row) => (
         <span
-          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${(row.enabled as boolean)
-            ? 'bg-green-100 text-green-700'
-            : 'bg-gray-100 text-gray-600'}`}
+          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+            (row.enabled as boolean) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+          }`}
         >
           {(row.enabled as boolean) ? 'Enabled' : 'Disabled'}
         </span>
@@ -618,21 +675,31 @@ export default function DNS() {
         <div className="flex justify-end gap-2">
           <button
             onClick={() => {
-              setEditingBlocklistId(String(row.id))
+              setEditingBlocklistId(String(row.id));
               setBlocklistForm({
                 name: (row.name as string) || '',
                 url: row.url as string,
                 enabled: row.enabled as boolean,
-              })
-              setSelectedPreset('')
-              setBlocklistModalOpen(true)
+              });
+              setSelectedPreset('');
+              setBlocklistModalOpen(true);
             }}
             className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
             title="Edit blocklist"
             aria-label="Edit blocklist"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z"
+              />
             </svg>
           </button>
           <button
@@ -641,22 +708,32 @@ export default function DNS() {
             title="Delete blocklist"
             aria-label="Delete blocklist"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+              />
             </svg>
           </button>
         </div>
       ),
     },
-  ]
+  ];
 
   const handleChangeBlocklistInterface = (interfaceName: string) => {
-    const next = new URLSearchParams(searchParams)
-    next.set('section', 'blocklists')
-    if (interfaceName) next.set('iface', interfaceName)
-    else next.delete('iface')
-    setSearchParams(next)
-  }
+    const next = new URLSearchParams(searchParams);
+    next.set('section', 'blocklists');
+    if (interfaceName) next.set('iface', interfaceName);
+    else next.delete('iface');
+    setSearchParams(next);
+  };
 
   return (
     <div className="space-y-6">
@@ -724,7 +801,7 @@ export default function DNS() {
               <div className="rounded-md border border-gray-200 bg-gray-50 p-2">
                 <div className="flex flex-wrap gap-2">
                   {dnsListenCandidates.map((candidate) => {
-                    const selected = listenEntries.includes(candidate.ip)
+                    const selected = listenEntries.includes(candidate.ip);
                     return (
                       <button
                         key={candidate.key}
@@ -732,8 +809,8 @@ export default function DNS() {
                         onClick={() => {
                           const next = selected
                             ? listenEntries.filter((entry) => entry !== candidate.ip)
-                            : [...listenEntries, candidate.ip]
-                          setListenInput(next.join(', '))
+                            : [...listenEntries, candidate.ip];
+                          setListenInput(next.join(', '));
                         }}
                         className={`rounded border px-2.5 py-1.5 text-left text-xs transition-colors ${
                           selected
@@ -743,11 +820,13 @@ export default function DNS() {
                         title={`${candidate.interfaceLabel} (${candidate.interfaceName})`}
                       >
                         <div className="font-mono leading-4">{candidate.ip}</div>
-                        <div className={`leading-4 ${selected ? 'text-blue-100' : 'text-gray-500'}`}>
+                        <div
+                          className={`leading-4 ${selected ? 'text-blue-100' : 'text-gray-500'}`}
+                        >
                           {candidate.interfaceLabel}
                         </div>
                       </button>
-                    )
+                    );
                   })}
                 </div>
               </div>
@@ -772,13 +851,12 @@ export default function DNS() {
               onChange={(e) => setForwardersInput(e.target.value)}
             />
             <p className="text-xs text-gray-500">
-              Enter multiple addresses as comma-separated values. When <strong>upstream forwarders</strong> are set,
-              Unbound operates in forwarder mode; otherwise it performs full recursive resolution.
-              Use <strong>Host Overrides</strong> and <strong>Domain Overrides</strong> for local entries and
-              per-domain forwarding.
+              Enter multiple addresses as comma-separated values. When{' '}
+              <strong>upstream forwarders</strong> are set, Unbound operates in forwarder mode;
+              otherwise it performs full recursive resolution. Use <strong>Host Overrides</strong>{' '}
+              and <strong>Domain Overrides</strong> for local entries and per-domain forwarding.
             </p>
           </div>
-
         </div>
       </Modal>
 
@@ -796,7 +874,9 @@ export default function DNS() {
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Step 1: Turn on encrypted DNS</h3>
-              <p className="text-xs text-gray-500">Enable DoT to accept encrypted DNS connections.</p>
+              <p className="text-xs text-gray-500">
+                Enable DoT to accept encrypted DNS connections.
+              </p>
             </div>
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input
@@ -833,7 +913,9 @@ export default function DNS() {
                 checked={configForm.dot_lan_only === false}
                 onChange={(e) => setConfigForm((f) => ({ ...f, dot_lan_only: !e.target.checked }))}
               />
-              <span className="text-sm font-medium text-gray-700">Allow external (WAN) clients</span>
+              <span className="text-sm font-medium text-gray-700">
+                Allow external (WAN) clients
+              </span>
             </label>
             <p className="text-xs text-gray-500">
               Keep this off unless you intentionally want remote clients to query your DNS server.
@@ -841,12 +923,13 @@ export default function DNS() {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="dns-dot-acme-domain" className="block text-sm font-semibold text-gray-900">
+            <label
+              htmlFor="dns-dot-acme-domain"
+              className="block text-sm font-semibold text-gray-900"
+            >
               Step 3: Select ACME certificate
             </label>
-            <p className="text-xs text-gray-500">
-              DoT requires an issued ACME certificate.
-            </p>
+            <p className="text-xs text-gray-500">DoT requires an issued ACME certificate.</p>
             <select
               id="dns-dot-acme-domain"
               value={configForm.dot_acme_domain ?? ''}
@@ -862,10 +945,9 @@ export default function DNS() {
             </select>
           </div>
 
-
-
           <p className="text-xs text-gray-500">
-            Save applies DoT settings to DNS service. Clients can then connect on TCP/{configForm.dot_port ?? 853} based on your access policy.
+            Save applies DoT settings to DNS service. Clients can then connect on TCP/
+            {configForm.dot_port ?? 853} based on your access policy.
           </p>
         </div>
       </Modal>
@@ -875,8 +957,8 @@ export default function DNS() {
         open={hostModalOpen}
         title={editingHostName ? 'Edit Host Override' : 'Add Host Override'}
         onClose={() => {
-          setHostModalOpen(false)
-          setEditingHostName(null)
+          setHostModalOpen(false);
+          setEditingHostName(null);
         }}
         onConfirm={handleAddHost}
         confirmLabel={editingHostName ? 'Save' : 'Add'}
@@ -926,8 +1008,8 @@ export default function DNS() {
         open={domainModalOpen}
         title={editingDomainName ? 'Edit Domain Override' : 'Add Domain Override'}
         onClose={() => {
-          setDomainModalOpen(false)
-          setEditingDomainName(null)
+          setDomainModalOpen(false);
+          setEditingDomainName(null);
         }}
         onConfirm={handleAddDomain}
         confirmLabel={editingDomainName ? 'Save' : 'Add'}
@@ -977,8 +1059,8 @@ export default function DNS() {
         open={blocklistModalOpen}
         title={editingBlocklistId ? 'Edit DNS Blocklist' : 'Add DNS Blocklist'}
         onClose={() => {
-          setBlocklistModalOpen(false)
-          setEditingBlocklistId(null)
+          setBlocklistModalOpen(false);
+          setEditingBlocklistId(null);
         }}
         onConfirm={handleAddBlocklist}
         confirmLabel={editingBlocklistId ? 'Save' : 'Add'}
@@ -993,7 +1075,10 @@ export default function DNS() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label htmlFor="dns-blocklist-preset" className="block text-xs font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="dns-blocklist-preset"
+                className="block text-xs font-medium text-gray-700 mb-1"
+              >
                 Preset Blocklist (optional)
               </label>
               <select
@@ -1001,16 +1086,16 @@ export default function DNS() {
                 className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 value={selectedPreset}
                 onChange={(e) => {
-                  const presetUrl = e.target.value
-                  setSelectedPreset(presetUrl)
-                  if (!presetUrl) return
-                  const preset = BLOCKLIST_PRESETS.find((p) => p.url === presetUrl)
-                  if (!preset) return
+                  const presetUrl = e.target.value;
+                  setSelectedPreset(presetUrl);
+                  if (!presetUrl) return;
+                  const preset = BLOCKLIST_PRESETS.find((p) => p.url === presetUrl);
+                  if (!preset) return;
                   setBlocklistForm((prev) => ({
                     ...prev,
                     name: prev.name || preset.name,
                     url: preset.url,
-                  }))
+                  }));
                 }}
               >
                 <option value="">Select preset or enter custom URL</option>
@@ -1072,14 +1157,16 @@ export default function DNS() {
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {error}
-          <button className="ml-3 underline" onClick={() => setError(null)}>Dismiss</button>
+          <button className="ml-3 underline" onClick={() => setError(null)}>
+            Dismiss
+          </button>
         </div>
       )}
 
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex gap-1" aria-label="DNS tabs">
           {sectionTabs.map((tab) => {
-            const isActive = activeSection === tab.id
+            const isActive = activeSection === tab.id;
             return (
               <button
                 key={tab.id}
@@ -1095,7 +1182,7 @@ export default function DNS() {
               >
                 {tab.label}
               </button>
-            )
+            );
           })}
         </nav>
       </div>
@@ -1112,8 +1199,18 @@ export default function DNS() {
                 title="Edit resolver"
                 aria-label="Edit resolver"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
                 </svg>
               </button>
             }
@@ -1123,42 +1220,64 @@ export default function DNS() {
             ) : config ? (
               <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
-                  <dd className={`mt-1 font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Status
+                  </dt>
+                  <dd
+                    className={`mt-1 font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}
+                  >
                     {config.enabled ? 'Enabled' : 'Disabled'}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Mode</dt>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Mode
+                  </dt>
                   <dd className="mt-1 font-medium text-gray-800">
                     {config.forwarders?.length ? 'Forwarder' : 'Full Recursion'}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Port</dt>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Port
+                  </dt>
                   <dd className="mt-1 font-medium text-gray-800 font-mono">{config.port ?? 53}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listen Addresses</dt>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Listen Addresses
+                  </dt>
                   <dd className="mt-1 font-medium text-gray-800 font-mono">
-                    {config.listen_addresses?.length ? config.listen_addresses.join(', ') : 'All Interfaces'}
+                    {config.listen_addresses?.length
+                      ? config.listen_addresses.join(', ')
+                      : 'All Interfaces'}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listen Interfaces</dt>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Listen Interfaces
+                  </dt>
                   <dd className="mt-1 font-medium text-gray-800">
-                    {listenInterfaceLabels.length ? listenInterfaceLabels.join(', ') : 'All Interfaces'}
+                    {listenInterfaceLabels.length
+                      ? listenInterfaceLabels.join(', ')
+                      : 'All Interfaces'}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Upstream Forwarders</dt>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Upstream Forwarders
+                  </dt>
                   <dd className="mt-1 font-medium text-gray-800 font-mono">
                     {config.forwarders?.length ? config.forwarders.join(', ') : '- (Recursive)'}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNSSEC</dt>
-                  <dd className={`mt-1 font-semibold ${config.dnssec ? 'text-green-600' : 'text-gray-400'}`}>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    DNSSEC
+                  </dt>
+                  <dd
+                    className={`mt-1 font-semibold ${config.dnssec ? 'text-green-600' : 'text-gray-400'}`}
+                  >
                     {config.dnssec ? 'Enabled' : 'Disabled'}
                   </dd>
                 </div>
@@ -1182,8 +1301,18 @@ export default function DNS() {
               title="Edit DoT"
               aria-label="Edit DoT"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
               </svg>
             </button>
           }
@@ -1193,23 +1322,35 @@ export default function DNS() {
           ) : config ? (
             <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm">
               <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
-                <dd className={`mt-1 font-semibold ${config.dot_enabled ? 'text-green-600' : 'text-gray-400'}`}>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                  Status
+                </dt>
+                <dd
+                  className={`mt-1 font-semibold ${config.dot_enabled ? 'text-green-600' : 'text-gray-400'}`}
+                >
                   {config.dot_enabled ? 'Enabled' : 'Disabled'}
                 </dd>
               </div>
               <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Listener</dt>
-                <dd className="mt-1 font-medium text-gray-800 font-mono">TCP/{config.dot_port ?? 853}</dd>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                  Listener
+                </dt>
+                <dd className="mt-1 font-medium text-gray-800 font-mono">
+                  TCP/{config.dot_port ?? 853}
+                </dd>
               </div>
               <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Access</dt>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                  Access
+                </dt>
                 <dd className="mt-1 font-medium text-gray-800">
                   {config.dot_lan_only === false ? 'LAN + external clients' : 'LAN clients only'}
                 </dd>
               </div>
               <div>
-                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Certificate</dt>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                  Certificate
+                </dt>
                 <dd className="mt-1 font-medium text-gray-800">
                   {config.dot_acme_domain ? 'ACME: ' + config.dot_acme_domain : 'Not configured'}
                 </dd>
@@ -1229,15 +1370,21 @@ export default function DNS() {
             actions={
               <button
                 onClick={() => {
-                  setEditingHostName(null)
-                  setHostForm({ hostname: '', address: '' })
-                  setHostModalOpen(true)
+                  setEditingHostName(null);
+                  setHostForm({ hostname: '', address: '' });
+                  setHostModalOpen(true);
                 }}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                 title="Add host override"
                 aria-label="Add host override"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
               </button>
@@ -1258,15 +1405,21 @@ export default function DNS() {
             actions={
               <button
                 onClick={() => {
-                  setEditingDomainName(null)
-                  setDomainForm({ domain: '', forward_to: '' })
-                  setDomainModalOpen(true)
+                  setEditingDomainName(null);
+                  setDomainForm({ domain: '', forward_to: '' });
+                  setDomainModalOpen(true);
                 }}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                 title="Add domain override"
                 aria-label="Add domain override"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
               </button>
@@ -1295,7 +1448,13 @@ export default function DNS() {
               title="Add blocklist"
               aria-label="Add blocklist"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
             </button>
@@ -1312,7 +1471,9 @@ export default function DNS() {
                   value={effectiveInterface}
                   onChange={(e) => handleChangeBlocklistInterface(e.target.value)}
                 >
-                  {interfaceOptions.length === 0 && <option value="">No non-WAN interfaces available</option>}
+                  {interfaceOptions.length === 0 && (
+                    <option value="">No non-WAN interfaces available</option>
+                  )}
                   {blocklistInterfaces.map((iface) => (
                     <option key={iface.name} value={iface.name}>
                       {interfaceLabel(iface)}
@@ -1321,7 +1482,9 @@ export default function DNS() {
                 </select>
               </div>
               <div className="rounded border border-gray-200 p-3 bg-gray-50">
-                <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">Active Interface</p>
+                <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                  Active Interface
+                </p>
                 <p className="mt-1 font-medium text-gray-900">{effectiveInterfaceLabel}</p>
               </div>
             </div>
@@ -1331,12 +1494,15 @@ export default function DNS() {
               data={blocklists}
               keyField="id"
               loading={blocklistsLoading}
-              emptyMessage={effectiveInterface ? `No blocklists configured for ${effectiveInterfaceLabel}.` : 'Select an interface to manage blocklists.'}
+              emptyMessage={
+                effectiveInterface
+                  ? `No blocklists configured for ${effectiveInterfaceLabel}.`
+                  : 'Select an interface to manage blocklists.'
+              }
             />
           </div>
         </Card>
       )}
-
     </div>
-  )
+  );
 }

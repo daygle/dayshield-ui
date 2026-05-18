@@ -1,12 +1,12 @@
-import { useRef } from 'react'
+import { useRef } from 'react';
 
 interface LogSearchProps {
-  value: string
-  onChange: (value: string) => void
+  value: string;
+  onChange: (value: string) => void;
 }
 
 export default function LogSearch({ value, onChange }: LogSearchProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="relative flex items-center">
@@ -17,7 +17,11 @@ export default function LogSearch({ value, onChange }: LogSearchProps) {
         stroke="currentColor"
         strokeWidth={2}
       >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 0 5 11a6 6 0 0 0 12 0z" />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M21 21l-4.35-4.35M17 11A6 6 0 1 0 5 11a6 6 0 0 0 12 0z"
+        />
       </svg>
       <input
         ref={inputRef}
@@ -30,7 +34,10 @@ export default function LogSearch({ value, onChange }: LogSearchProps) {
       {value && (
         <button
           type="button"
-          onClick={() => { onChange(''); inputRef.current?.focus() }}
+          onClick={() => {
+            onChange('');
+            inputRef.current?.focus();
+          }}
           className="absolute right-2 text-slate-500 hover:text-slate-300"
           aria-label="Clear search"
         >
@@ -38,5 +45,5 @@ export default function LogSearch({ value, onChange }: LogSearchProps) {
         </button>
       )}
     </div>
-  )
+  );
 }

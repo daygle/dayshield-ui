@@ -1,17 +1,14 @@
-import { changePassword } from '../../api/auth'
-import { useToast } from '../../context/ToastContext'
-import Card from '../../components/Card'
-import PasswordChangeForm from '../../components/PasswordChangeForm'
+import { changePassword } from '../../api/auth';
+import { useToast } from '../../context/ToastContext';
+import Card from '../../components/Card';
+import PasswordChangeForm from '../../components/PasswordChangeForm';
 
 export default function ChangePasswordPage() {
-  const { addToast } = useToast()
+  const { addToast } = useToast();
 
-  async function handleChangePassword(
-    currentPassword: string,
-    newPassword: string,
-  ) {
-    await changePassword({ currentPassword, newPassword })
-    addToast('Password updated successfully.', 'success')
+  async function handleChangePassword(currentPassword: string, newPassword: string) {
+    await changePassword({ currentPassword, newPassword });
+    addToast('Password updated successfully.', 'success');
   }
 
   return (
@@ -24,5 +21,5 @@ export default function ChangePasswordPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

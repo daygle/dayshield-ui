@@ -1,32 +1,37 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getPortForwards, createPortForward, updatePortForward, deletePortForward } from '../../api/nat'
-import { getInterfaces } from '../../api/interfaces'
-import { getSystemConfig } from '../../api/system'
-import { useToast } from '../../context/ToastContext'
-import type { NatRule, NatProtocol, NetworkInterface } from '../../types'
-import Card from '../../components/Card'
-import Table, { Column } from '../../components/Table'
-import Modal from '../../components/Modal'
-import FormField from '../../components/FormField'
-import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  getPortForwards,
+  createPortForward,
+  updatePortForward,
+  deletePortForward,
+} from '../../api/nat';
+import { getInterfaces } from '../../api/interfaces';
+import { getSystemConfig } from '../../api/system';
+import { useToast } from '../../context/ToastContext';
+import type { NatRule, NatProtocol, NetworkInterface } from '../../types';
+import Card from '../../components/Card';
+import Table, { Column } from '../../components/Table';
+import Modal from '../../components/Modal';
+import FormField from '../../components/FormField';
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
 // Port forwards are DNAT NAT rules. All fields map directly to NatRule.
-type PfRow = NatRule & Record<string, unknown>
+type PfRow = NatRule & Record<string, unknown>;
 
 const defaultForm = (): Omit<NatRule, 'id'> => ({
   enabled: true,
   description: null,
   rule_type: 'dnat',
-  interface: '',          // WAN interface inbound traffic arrives on
+  interface: '', // WAN interface inbound traffic arrives on
   source: null,
   destination: null,
   protocol: 'tcp',
   source_port: null,
   destination_port: null, // external port being forwarded
   translation: {
-    address: '',          // internal host IP
-    port: null,           // internal port
+    address: '', // internal host IP
+    port: null, // internal port
     port_end: null,
   },
   nat_reflection: false,
@@ -34,118 +39,127 @@ const defaultForm = (): Omit<NatRule, 'id'> => ({
   priority: 100,
   log: false,
   auto_firewall_rule: true,
-})
+});
 
 function isWanInterface(iface: NetworkInterface): boolean {
-  const desc = iface.description?.trim().toLowerCase() ?? ''
-  return Boolean(iface.wanMode) || Boolean(iface.gateway) || desc.includes('wan') || iface.name.toLowerCase() === 'wan'
+  const desc = iface.description?.trim().toLowerCase() ?? '';
+  return (
+    Boolean(iface.wanMode) ||
+    Boolean(iface.gateway) ||
+    desc.includes('wan') ||
+    iface.name.toLowerCase() === 'wan'
+  );
 }
 
 export default function PortForwardPage() {
-  const qc = useQueryClient()
-  const { addToast } = useToast()
+  const qc = useQueryClient();
+  const { addToast } = useToast();
 
   const { data, isLoading } = useQuery({
     queryKey: ['nat', 'portforwards'],
     queryFn: getPortForwards,
-  })
+  });
 
   const { data: interfacesData } = useQuery({
     queryKey: ['interfaces', 'nat-portforward'],
     queryFn: getInterfaces,
-  })
+  });
 
   const { data: systemData } = useQuery({
     queryKey: ['system', 'config'],
     queryFn: getSystemConfig,
-  })
+  });
 
-  const portForwards = (data?.data ?? []) as PfRow[]
-  const wanInterfaces = (interfacesData?.data ?? []).filter((iface) => iface.enabled !== false && isWanInterface(iface))
-  const ipv6Enabled = Boolean(systemData?.data.ipv6Enabled)
+  const portForwards = (data?.data ?? []) as PfRow[];
+  const wanInterfaces = (interfacesData?.data ?? []).filter(
+    (iface) => iface.enabled !== false && isWanInterface(iface)
+  );
+  const ipv6Enabled = Boolean(systemData?.data.ipv6Enabled);
 
   // ---- Form state ----------------------------------------------------------
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editing, setEditing] = useState<NatRule | null>(null)
-  const [form, setForm] = useState<Omit<NatRule, 'id'>>(defaultForm())
-  const [formErrors, setFormErrors] = useState<Partial<Record<string, string>>>({})
-  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<NatRule | null>(null);
+  const [form, setForm] = useState<Omit<NatRule, 'id'>>(defaultForm());
+  const [formErrors, setFormErrors] = useState<Partial<Record<string, string>>>({});
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const openAdd = () => {
-    setEditing(null)
-    setForm(defaultForm())
-    setFormErrors({})
-    setModalOpen(true)
-  }
+    setEditing(null);
+    setForm(defaultForm());
+    setFormErrors({});
+    setModalOpen(true);
+  };
 
   const openEdit = (rule: NatRule) => {
-    setEditing(rule)
-    const { id: _id, ...rest } = rule
+    setEditing(rule);
+    const { id: _id, ...rest } = rule;
     setForm({
       ...rest,
       address_family: rest.address_family ?? 'ipv4',
       translation: rest.translation ?? { address: '', port: null, port_end: null },
-    })
-    setFormErrors({})
-    setModalOpen(true)
-  }
+    });
+    setFormErrors({});
+    setModalOpen(true);
+  };
 
   const validate = (): boolean => {
-    const errors: Record<string, string> = {}
-    if (!form.interface?.trim()) errors.interface = 'WAN interface is required'
-    if (form.address_family === 'ipv6' && !ipv6Enabled) errors.address_family = 'IPv6 NAT requires IPv6 to be enabled in System settings'
-    if (!form.destination_port) errors.destination_port = 'External port is required'
-    if (!form.translation?.address?.trim()) errors.translation_address = 'Internal host IP is required'
-    if (!form.translation?.port) errors.translation_port = 'Internal port is required'
-    setFormErrors(errors)
-    return Object.keys(errors).length === 0
-  }
+    const errors: Record<string, string> = {};
+    if (!form.interface?.trim()) errors.interface = 'WAN interface is required';
+    if (form.address_family === 'ipv6' && !ipv6Enabled)
+      errors.address_family = 'IPv6 NAT requires IPv6 to be enabled in System settings';
+    if (!form.destination_port) errors.destination_port = 'External port is required';
+    if (!form.translation?.address?.trim())
+      errors.translation_address = 'Internal host IP is required';
+    if (!form.translation?.port) errors.translation_port = 'Internal port is required';
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   // ---- Mutations -----------------------------------------------------------
   const createMutation = useMutation({
     mutationFn: createPortForward,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['nat', 'portforwards'] })
-      qc.invalidateQueries({ queryKey: ['nat', 'rules'] })
-      setModalOpen(false)
-      addToast('Port forward created', 'success')
+      qc.invalidateQueries({ queryKey: ['nat', 'portforwards'] });
+      qc.invalidateQueries({ queryKey: ['nat', 'rules'] });
+      setModalOpen(false);
+      addToast('Port forward created', 'success');
     },
     onError: (err: Error) => addToast(err.message, 'error'),
-  })
+  });
 
   const editMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Omit<NatRule, 'id'>> }) =>
       updatePortForward(id, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['nat', 'portforwards'] })
-      qc.invalidateQueries({ queryKey: ['nat', 'rules'] })
-      setModalOpen(false)
-      addToast('Port forward updated', 'success')
+      qc.invalidateQueries({ queryKey: ['nat', 'portforwards'] });
+      qc.invalidateQueries({ queryKey: ['nat', 'rules'] });
+      setModalOpen(false);
+      addToast('Port forward updated', 'success');
     },
     onError: (err: Error) => addToast(err.message, 'error'),
-  })
+  });
 
   const deleteMutation = useMutation({
     mutationFn: deletePortForward,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['nat', 'portforwards'] })
-      qc.invalidateQueries({ queryKey: ['nat', 'rules'] })
-      setDeleteId(null)
-      addToast('Port forward deleted', 'success')
+      qc.invalidateQueries({ queryKey: ['nat', 'portforwards'] });
+      qc.invalidateQueries({ queryKey: ['nat', 'rules'] });
+      setDeleteId(null);
+      addToast('Port forward deleted', 'success');
     },
     onError: (err: Error) => addToast(err.message, 'error'),
-  })
+  });
 
   const handleSave = () => {
-    if (!validate()) return
+    if (!validate()) return;
     if (editing) {
-      editMutation.mutate({ id: editing.id, data: form })
+      editMutation.mutate({ id: editing.id, data: form });
     } else {
-      createMutation.mutate(form)
+      createMutation.mutate(form);
     }
-  }
+  };
 
-  const isSaving = createMutation.isPending || editMutation.isPending
+  const isSaving = createMutation.isPending || editMutation.isPending;
 
   const columns: Column<PfRow>[] = [
     {
@@ -158,8 +172,16 @@ export default function PortForwardPage() {
       ),
     },
     { key: 'interface', header: 'WAN Interface' },
-    { key: 'address_family', header: 'Family', render: (row) => ((row as NatRule).address_family ?? 'ipv4').toUpperCase() },
-    { key: 'destination_port', header: 'Ext. Port', render: (row) => (row as NatRule).destination_port ?? '-' },
+    {
+      key: 'address_family',
+      header: 'Family',
+      render: (row) => ((row as NatRule).address_family ?? 'ipv4').toUpperCase(),
+    },
+    {
+      key: 'destination_port',
+      header: 'Ext. Port',
+      render: (row) => (row as NatRule).destination_port ?? '-',
+    },
     {
       key: 'translation_address',
       header: 'Internal Host',
@@ -171,7 +193,11 @@ export default function PortForwardPage() {
       render: (row) => (row as NatRule).translation?.port ?? '-',
     },
     { key: 'protocol', header: 'Protocol' },
-    { key: 'description', header: 'Description', render: (row) => (row as NatRule).description ?? '' },
+    {
+      key: 'description',
+      header: 'Description',
+      render: (row) => (row as NatRule).description ?? '',
+    },
     {
       key: 'actions',
       header: '',
@@ -184,8 +210,18 @@ export default function PortForwardPage() {
             title="Edit port forward"
             aria-label="Edit port forward"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
             </svg>
           </button>
           <button
@@ -194,14 +230,24 @@ export default function PortForwardPage() {
             title="Delete port forward"
             aria-label="Delete port forward"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+              />
             </svg>
           </button>
         </div>
       ),
     },
-  ]
+  ];
 
   return (
     <div className="space-y-6">
@@ -251,14 +297,18 @@ export default function PortForwardPage() {
               as="select"
               value={form.address_family ?? 'ipv4'}
               error={formErrors.address_family}
-              onChange={(e) => setForm({ ...form, address_family: e.target.value as NatRule['address_family'] })}
+              onChange={(e) =>
+                setForm({ ...form, address_family: e.target.value as NatRule['address_family'] })
+              }
             >
               <option value="ipv4">IPv4</option>
               <option value="ipv6">IPv6</option>
             </FormField>
           ) : (
             <div className="col-span-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Address Family</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Address Family
+              </p>
               <p className="mt-1 text-sm text-gray-700">IPv4 only</p>
             </div>
           )}
@@ -345,9 +395,7 @@ export default function PortForwardPage() {
                 checked={form.nat_reflection}
                 onChange={(e) => setForm({ ...form, nat_reflection: e.target.checked })}
               />
-              <span className="text-sm font-medium text-gray-700">
-                Enable NAT Reflection
-              </span>
+              <span className="text-sm font-medium text-gray-700">Enable NAT Reflection</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
@@ -388,7 +436,13 @@ export default function PortForwardPage() {
             title="Add port forward"
             aria-label="Add port forward"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
           </button>
@@ -402,7 +456,6 @@ export default function PortForwardPage() {
           emptyMessage="No port forwards defined."
         />
       </Card>
-
     </div>
-  )
+  );
 }

@@ -1,19 +1,19 @@
-import Modal from '../../components/Modal'
-import type { BackupEntry } from '../../types'
-import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
+import Modal from '../../components/Modal';
+import type { BackupEntry } from '../../types';
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
 
 function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 interface RestoreBackupDialogProps {
-  open: boolean
-  loading: boolean
-  entry: BackupEntry | null
-  onClose: () => void
-  onConfirm: () => void
+  open: boolean;
+  loading: boolean;
+  entry: BackupEntry | null;
+  onClose: () => void;
+  onConfirm: () => void;
 }
 
 export default function RestoreBackupDialog({
@@ -23,9 +23,9 @@ export default function RestoreBackupDialog({
   onClose,
   onConfirm,
 }: RestoreBackupDialogProps) {
-  const { formatDateTime } = useDisplayPreferences()
+  const { formatDateTime } = useDisplayPreferences();
 
-  if (!entry) return null
+  if (!entry) return null;
 
   return (
     <Modal
@@ -72,9 +72,7 @@ export default function RestoreBackupDialog({
           </div>
           <div>
             <dt className="text-gray-500">Created</dt>
-            <dd className="font-medium text-gray-800">
-              {formatDateTime(entry.createdAt)}
-            </dd>
+            <dd className="font-medium text-gray-800">{formatDateTime(entry.createdAt)}</dd>
           </div>
           <div>
             <dt className="text-gray-500">Size</dt>
@@ -84,9 +82,7 @@ export default function RestoreBackupDialog({
           </div>
           <div className="col-span-2">
             <dt className="text-gray-500">SHA256</dt>
-            <dd className="font-mono text-xs text-gray-700 break-all">
-              {entry.sha256 ?? '-'}
-            </dd>
+            <dd className="font-mono text-xs text-gray-700 break-all">{entry.sha256 ?? '-'}</dd>
           </div>
           <div>
             <dt className="text-gray-500">Encrypted</dt>
@@ -95,5 +91,5 @@ export default function RestoreBackupDialog({
         </dl>
       </div>
     </Modal>
-  )
+  );
 }

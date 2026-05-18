@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   getDhcpConfig,
   getDhcp6Config,
@@ -23,8 +23,8 @@ import {
   getInterfaceDhcp6StaticLeases,
   createInterfaceDhcp6StaticLease,
   deleteInterfaceDhcp6StaticLease,
-} from '../../api/dhcp'
-import { getInterfaces, getInterfacesInventory } from '../../api/interfaces'
+} from '../../api/dhcp';
+import { getInterfaces, getInterfacesInventory } from '../../api/interfaces';
 import type {
   Dhcp6Config,
   Dhcp6ConfigPerInterface,
@@ -35,47 +35,47 @@ import type {
   DhcpStaticLease,
   DhcpLease,
   NetworkInterface,
-} from '../../types'
-import Card from '../../components/Card'
-import Button from '../../components/Button'
-import Table, { Column } from '../../components/Table'
-import Modal from '../../components/Modal'
-import FormField from '../../components/FormField'
-import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
-import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
+} from '../../types';
+import Card from '../../components/Card';
+import Button from '../../components/Button';
+import Table, { Column } from '../../components/Table';
+import Modal from '../../components/Modal';
+import FormField from '../../components/FormField';
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
 
-type StaticLeaseRow = DhcpStaticLease & Record<string, unknown>
-type ActiveLeaseRow = DhcpLease & Record<string, unknown>
-type Static6LeaseRow = Dhcp6StaticLease & Record<string, unknown>
-type Active6LeaseRow = Dhcp6Lease & Record<string, unknown>
+type StaticLeaseRow = DhcpStaticLease & Record<string, unknown>;
+type ActiveLeaseRow = DhcpLease & Record<string, unknown>;
+type Static6LeaseRow = Dhcp6StaticLease & Record<string, unknown>;
+type Active6LeaseRow = Dhcp6Lease & Record<string, unknown>;
 
 const staticColumns: Column<StaticLeaseRow>[] = [
   { key: 'mac', header: 'MAC Address' },
   { key: 'ipAddress', header: 'IP Address' },
   { key: 'hostname', header: 'Hostname' },
   { key: 'description', header: 'Description' },
-]
+];
 
 const static6Columns: Column<Static6LeaseRow>[] = [
   { key: 'duid', header: 'DUID' },
   { key: 'ipAddress', header: 'IPv6 Address' },
   { key: 'hostname', header: 'Hostname' },
   { key: 'description', header: 'Description' },
-]
+];
 
 const defaultLease6Form: Omit<Dhcp6StaticLease, 'id'> = {
   duid: '',
   ipAddress: '',
   hostname: '',
   description: '',
-}
+};
 
 const defaultLeaseForm: Omit<DhcpStaticLease, 'id'> = {
   mac: '',
   ipAddress: '',
   hostname: '',
   description: '',
-}
+};
 
 const defaultConfigForm = (): Partial<DhcpConfig> => ({
   enabled: true,
@@ -87,7 +87,7 @@ const defaultConfigForm = (): Partial<DhcpConfig> => ({
   dnsServers: [],
   leaseTime: 86400,
   domainName: '',
-})
+});
 
 const defaultConfig6Form = (): Partial<Dhcp6Config> => ({
   enabled: true,
@@ -98,140 +98,140 @@ const defaultConfig6Form = (): Partial<Dhcp6Config> => ({
   dnsServers: [],
   leaseTime: 86400,
   domainName: '',
-})
+});
 
 function isWanInterface(iface: NetworkInterface): boolean {
-  const desc = iface.description?.trim().toLowerCase() ?? ''
-  return Boolean(iface.wanMode) || desc.includes('wan') || iface.name.toLowerCase() === 'wan'
+  const desc = iface.description?.trim().toLowerCase() ?? '';
+  return Boolean(iface.wanMode) || desc.includes('wan') || iface.name.toLowerCase() === 'wan';
 }
 
 function ipv6ToBigInt(value: string): bigint | null {
-  const trimmed = value.trim().toLowerCase()
-  if (!trimmed || trimmed.includes('/') || trimmed.includes('.')) return null
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed.includes('/') || trimmed.includes('.')) return null;
 
-  const halves = trimmed.split('::')
-  if (halves.length > 2) return null
+  const halves = trimmed.split('::');
+  if (halves.length > 2) return null;
 
   const parseParts = (part: string): number[] | null => {
-    if (!part) return []
-    const pieces = part.split(':')
-    if (pieces.some((piece) => piece === '')) return null
+    if (!part) return [];
+    const pieces = part.split(':');
+    if (pieces.some((piece) => piece === '')) return null;
     const parsed = pieces.map((piece) => {
-      if (!/^[0-9a-f]{1,4}$/.test(piece)) return null
-      return Number.parseInt(piece, 16)
-    })
-    return parsed.some((piece) => piece == null) ? null : parsed as number[]
-  }
+      if (!/^[0-9a-f]{1,4}$/.test(piece)) return null;
+      return Number.parseInt(piece, 16);
+    });
+    return parsed.some((piece) => piece == null) ? null : (parsed as number[]);
+  };
 
-  const head = parseParts(halves[0])
-  const tail = parseParts(halves[1] ?? '')
-  if (head == null || tail == null) return null
+  const head = parseParts(halves[0]);
+  const tail = parseParts(halves[1] ?? '');
+  if (head == null || tail == null) return null;
 
-  const hasCompression = halves.length === 2
-  const missing = 8 - head.length - tail.length
-  if ((!hasCompression && missing !== 0) || (hasCompression && missing < 0)) return null
+  const hasCompression = halves.length === 2;
+  const missing = 8 - head.length - tail.length;
+  if ((!hasCompression && missing !== 0) || (hasCompression && missing < 0)) return null;
 
-  const segments = hasCompression
-    ? [...head, ...Array(missing).fill(0), ...tail]
-    : head
-  if (segments.length !== 8) return null
+  const segments = hasCompression ? [...head, ...Array(missing).fill(0), ...tail] : head;
+  if (segments.length !== 8) return null;
 
-  return segments.reduce((acc, segment) => (acc << 16n) + BigInt(segment), 0n)
+  return segments.reduce((acc, segment) => (acc << 16n) + BigInt(segment), 0n);
 }
 
 function ipv6InSubnet(address: string, cidr: string): boolean {
-  const [network, prefixText] = cidr.split('/')
-  const prefix = Number(prefixText)
-  if (!network || !Number.isInteger(prefix) || prefix < 0 || prefix > 128) return false
+  const [network, prefixText] = cidr.split('/');
+  const prefix = Number(prefixText);
+  if (!network || !Number.isInteger(prefix) || prefix < 0 || prefix > 128) return false;
 
-  const ip = ipv6ToBigInt(address)
-  const networkIp = ipv6ToBigInt(network)
-  if (ip == null || networkIp == null) return false
+  const ip = ipv6ToBigInt(address);
+  const networkIp = ipv6ToBigInt(network);
+  if (ip == null || networkIp == null) return false;
 
-  const allBits = (1n << 128n) - 1n
-  const mask = prefix === 0 ? 0n : (allBits << BigInt(128 - prefix)) & allBits
-  return (ip & mask) === (networkIp & mask)
+  const allBits = (1n << 128n) - 1n;
+  const mask = prefix === 0 ? 0n : (allBits << BigInt(128 - prefix)) & allBits;
+  return (ip & mask) === (networkIp & mask);
 }
 
 export default function DHCP() {
-  const { formatDateTime } = useDisplayPreferences()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const selectedInterface = searchParams.get('iface')
-  const selectedSection = searchParams.get('section')
-  const [config, setConfig] = useState<DhcpConfig | null>(null)
-  const [config6, setConfig6] = useState<Dhcp6Config | null>(null)
-  const [interfaceConfig, setInterfaceConfig] = useState<DhcpConfigPerInterface | null>(null)
-  const [interfaceConfig6, setInterfaceConfig6] = useState<Dhcp6ConfigPerInterface | null>(null)
-  const [staticLeases, setStaticLeases] = useState<StaticLeaseRow[]>([])
-  const [activeLeases, setActiveLeases] = useState<ActiveLeaseRow[]>([])
-  const [static6Leases, setStatic6Leases] = useState<Static6LeaseRow[]>([])
-  const [active6Leases, setActive6Leases] = useState<Active6LeaseRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { formatDateTime } = useDisplayPreferences();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedInterface = searchParams.get('iface');
+  const selectedSection = searchParams.get('section');
+  const [config, setConfig] = useState<DhcpConfig | null>(null);
+  const [config6, setConfig6] = useState<Dhcp6Config | null>(null);
+  const [interfaceConfig, setInterfaceConfig] = useState<DhcpConfigPerInterface | null>(null);
+  const [interfaceConfig6, setInterfaceConfig6] = useState<Dhcp6ConfigPerInterface | null>(null);
+  const [staticLeases, setStaticLeases] = useState<StaticLeaseRow[]>([]);
+  const [activeLeases, setActiveLeases] = useState<ActiveLeaseRow[]>([]);
+  const [static6Leases, setStatic6Leases] = useState<Static6LeaseRow[]>([]);
+  const [active6Leases, setActive6Leases] = useState<Active6LeaseRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [leaseModalOpen, setLeaseModalOpen] = useState(false)
-  const [leaseForm, setLeaseForm] = useState<Omit<DhcpStaticLease, 'id'>>(defaultLeaseForm)
-  const [leaseSaving, setLeaseSaving] = useState(false)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  const [leaseModalOpen, setLeaseModalOpen] = useState(false);
+  const [leaseForm, setLeaseForm] = useState<Omit<DhcpStaticLease, 'id'>>(defaultLeaseForm);
+  const [leaseSaving, setLeaseSaving] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const [lease6ModalOpen, setLease6ModalOpen] = useState(false)
-  const [lease6Form, setLease6Form] = useState<Omit<Dhcp6StaticLease, 'id'> & { mac?: string }>(defaultLease6Form)
-  const [lease6Saving, setLease6Saving] = useState(false)
-  const [delete6Id, setDelete6Id] = useState<string | null>(null)
-  const [deleting6, setDeleting6] = useState(false)
-  const [configModalOpen, setConfigModalOpen] = useState(false)
-  const [configForm, setConfigForm] = useState<Partial<DhcpConfig | DhcpConfigPerInterface>>(defaultConfigForm())
-  const [configSaving, setConfigSaving] = useState(false)
-  const [config6ModalOpen, setConfig6ModalOpen] = useState(false)
-  const [config6Form, setConfig6Form] = useState<Partial<Dhcp6Config | Dhcp6ConfigPerInterface>>(defaultConfig6Form())
-  const [config6Saving, setConfig6Saving] = useState(false)
+  const [lease6ModalOpen, setLease6ModalOpen] = useState(false);
+  const [lease6Form, setLease6Form] = useState<Omit<Dhcp6StaticLease, 'id'> & { mac?: string }>(
+    defaultLease6Form
+  );
+  const [lease6Saving, setLease6Saving] = useState(false);
+  const [delete6Id, setDelete6Id] = useState<string | null>(null);
+  const [deleting6, setDeleting6] = useState(false);
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [configForm, setConfigForm] =
+    useState<Partial<DhcpConfig | DhcpConfigPerInterface>>(defaultConfigForm());
+  const [configSaving, setConfigSaving] = useState(false);
+  const [config6ModalOpen, setConfig6ModalOpen] = useState(false);
+  const [config6Form, setConfig6Form] =
+    useState<Partial<Dhcp6Config | Dhcp6ConfigPerInterface>>(defaultConfig6Form());
+  const [config6Saving, setConfig6Saving] = useState(false);
   // DNS servers are edited as a comma-separated string in the input
-  const [dnsInput, setDnsInput] = useState('')
-  const [dns6Input, setDns6Input] = useState('')
-  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
+  const [dnsInput, setDnsInput] = useState('');
+  const [dns6Input, setDns6Input] = useState('');
+  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
 
   const interfaceLabel = (iface: NetworkInterface): string =>
-    formatInterfaceDisplayName(iface.description, iface.name)
+    formatInterfaceDisplayName(iface.description, iface.name);
 
   const selectableInterfaces = useMemo(
     () => interfaces.filter((iface) => !isWanInterface(iface)),
-    [interfaces],
-  )
+    [interfaces]
+  );
 
   const selectedInterfaceMeta = useMemo(
     () => interfaces.find((iface) => iface.name === selectedInterface) ?? null,
-    [interfaces, selectedInterface],
-  )
+    [interfaces, selectedInterface]
+  );
 
   const selectedInterfaceLabel = selectedInterfaceMeta
     ? interfaceLabel(selectedInterfaceMeta)
-    : selectedInterface || ''
+    : selectedInterface || '';
 
   const activeSection =
-    selectedSection === 'dhcp' || selectedSection === 'dhcp6'
-      ? selectedSection
-      : 'dhcp'
-  const showDhcpSection = activeSection === 'dhcp'
-  const showDhcp6Section = activeSection === 'dhcp6'
+    selectedSection === 'dhcp' || selectedSection === 'dhcp6' ? selectedSection : 'dhcp';
+  const showDhcpSection = activeSection === 'dhcp';
+  const showDhcp6Section = activeSection === 'dhcp6';
 
   const sectionTabs: Array<{ id: 'dhcp' | 'dhcp6'; label: string }> = [
     { id: 'dhcp', label: 'DHCP' },
     { id: 'dhcp6', label: 'DHCPv6' },
-  ]
+  ];
 
   const setActiveSection = (section: 'dhcp' | 'dhcp6') => {
-    const next = new URLSearchParams(searchParams)
-    next.set('section', section)
-    setSearchParams(next)
-  }
+    const next = new URLSearchParams(searchParams);
+    next.set('section', section);
+    setSearchParams(next);
+  };
 
   const globalConfigInterfaceLabel = useMemo(() => {
-    const name = config?.interface
-    if (!name) return '-'
-    const iface = interfaces.find((item) => item.name === name)
-    return iface ? interfaceLabel(iface) : name
-  }, [config?.interface, interfaces])
+    const name = config?.interface;
+    if (!name) return '-';
+    const iface = interfaces.find((item) => item.name === name);
+    return iface ? interfaceLabel(iface) : name;
+  }, [config?.interface, interfaces]);
 
   const openStaticReservationFromLease = (lease: ActiveLeaseRow) => {
     setLeaseForm({
@@ -239,9 +239,9 @@ export default function DHCP() {
       ipAddress: lease.ipAddress ?? '',
       hostname: lease.hostname ?? '',
       description: '',
-    })
-    setLeaseModalOpen(true)
-  }
+    });
+    setLeaseModalOpen(true);
+  };
 
   const openStatic6ReservationFromLease = (lease: Active6LeaseRow) => {
     setLease6Form({
@@ -250,9 +250,9 @@ export default function DHCP() {
       ipAddress: lease.ipAddress ?? '',
       hostname: lease.hostname ?? '',
       description: '',
-    })
-    setLease6ModalOpen(true)
-  }
+    });
+    setLease6ModalOpen(true);
+  };
 
   const activeColumns: Column<ActiveLeaseRow>[] = [
     { key: 'mac', header: 'MAC Address' },
@@ -262,32 +262,32 @@ export default function DHCP() {
       key: 'state',
       header: 'State',
       render: (row) => {
-        const state = row.state as DhcpLease['state']
+        const state = row.state as DhcpLease['state'];
         const map: Record<string, string> = {
-          active:    'bg-green-100 text-green-700',
-          expired:   'bg-red-100 text-red-700',
-          reserved:  'bg-blue-100 text-blue-700',
-          declined:  'bg-orange-100 text-orange-700',
+          active: 'bg-green-100 text-green-700',
+          expired: 'bg-red-100 text-red-700',
+          reserved: 'bg-blue-100 text-blue-700',
+          declined: 'bg-orange-100 text-orange-700',
           reclaimed: 'bg-gray-100 text-gray-500',
-        }
+        };
         return (
-          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold capitalize ${map[state] ?? 'bg-gray-100 text-gray-500'}`}>
+          <span
+            className={`inline-block px-2 py-0.5 rounded text-xs font-semibold capitalize ${map[state] ?? 'bg-gray-100 text-gray-500'}`}
+          >
             {state}
           </span>
-        )
+        );
       },
     },
     {
       key: 'ends',
       header: 'Expires',
       render: (row) => {
-        const raw = row.ends as string
-        if (!raw) return '-'
-        const asNum = Number(raw)
-        const d = Number.isFinite(asNum) && asNum > 1e9
-          ? new Date(asNum * 1000)
-          : new Date(raw)
-        return isNaN(d.getTime()) ? raw : formatDateTime(d)
+        const raw = row.ends as string;
+        if (!raw) return '-';
+        const asNum = Number(raw);
+        const d = Number.isFinite(asNum) && asNum > 1e9 ? new Date(asNum * 1000) : new Date(raw);
+        return isNaN(d.getTime()) ? raw : formatDateTime(d);
       },
     },
     {
@@ -305,10 +305,10 @@ export default function DHCP() {
         </Button>
       ),
     },
-  ]
+  ];
 
   const loadAll = () => {
-    setLoading(true)
+    setLoading(true);
     if (selectedInterface) {
       Promise.all([
         getInterfaceDhcpConfig(selectedInterface),
@@ -319,111 +319,135 @@ export default function DHCP() {
         getDhcp6Leases(),
       ])
         .then(([cfg, cfg6, statics, active, statics6, active6]) => {
-          setInterfaceConfig(cfg.data)
-          setInterfaceConfig6(cfg6.data)
-          setConfig(null)
-          setConfig6(null)
-          setStaticLeases(statics.data as StaticLeaseRow[])
-          setActiveLeases(active.data as ActiveLeaseRow[])
-          setStatic6Leases(statics6.data as Static6LeaseRow[])
-          setActive6Leases(active6.data as Active6LeaseRow[])
+          setInterfaceConfig(cfg.data);
+          setInterfaceConfig6(cfg6.data);
+          setConfig(null);
+          setConfig6(null);
+          setStaticLeases(statics.data as StaticLeaseRow[]);
+          setActiveLeases(active.data as ActiveLeaseRow[]);
+          setStatic6Leases(statics6.data as Static6LeaseRow[]);
+          setActive6Leases(active6.data as Active6LeaseRow[]);
         })
         .catch((err: Error) => setError(err.message))
-        .finally(() => setLoading(false))
-      return
+        .finally(() => setLoading(false));
+      return;
     }
 
-    Promise.all([getDhcpConfig(), getDhcp6Config(), getDhcpStaticLeases(), getDhcpLeases(), getDhcp6StaticLeases(), getDhcp6Leases()])
+    Promise.all([
+      getDhcpConfig(),
+      getDhcp6Config(),
+      getDhcpStaticLeases(),
+      getDhcpLeases(),
+      getDhcp6StaticLeases(),
+      getDhcp6Leases(),
+    ])
       .then(([cfg, cfg6, statics, actives, statics6, actives6]) => {
-        setConfig(cfg.data)
-        setConfig6(cfg6.data)
-        setInterfaceConfig(null)
-        setInterfaceConfig6(null)
-        setStaticLeases(statics.data as StaticLeaseRow[])
-        setActiveLeases(actives.data as ActiveLeaseRow[])
-        setStatic6Leases(statics6.data as Static6LeaseRow[])
-        setActive6Leases(actives6.data as Active6LeaseRow[])
+        setConfig(cfg.data);
+        setConfig6(cfg6.data);
+        setInterfaceConfig(null);
+        setInterfaceConfig6(null);
+        setStaticLeases(statics.data as StaticLeaseRow[]);
+        setActiveLeases(actives.data as ActiveLeaseRow[]);
+        setStatic6Leases(statics6.data as Static6LeaseRow[]);
+        setActive6Leases(actives6.data as Active6LeaseRow[]);
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false))
-  }
+      .finally(() => setLoading(false));
+  };
 
-  useEffect(loadAll, [selectedInterface])
-
-  useEffect(() => {
-    if (!selectedInterface || selectableInterfaces.length === 0) return
-    const isSelectable = selectableInterfaces.some((iface) => iface.name === selectedInterface)
-    if (isSelectable) return
-
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      next.set('iface', selectableInterfaces[0].name)
-      return next
-    }, { replace: true })
-  }, [selectedInterface, selectableInterfaces, setSearchParams])
+  useEffect(loadAll, [selectedInterface]);
 
   useEffect(() => {
-    if (selectedInterface || selectableInterfaces.length === 0) return
+    if (!selectedInterface || selectableInterfaces.length === 0) return;
+    const isSelectable = selectableInterfaces.some((iface) => iface.name === selectedInterface);
+    if (isSelectable) return;
 
-    const preferred = selectableInterfaces.find((iface) => iface.name === config?.interface) ?? selectableInterfaces[0]
-    if (!preferred) return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('iface', selectableInterfaces[0].name);
+        return next;
+      },
+      { replace: true }
+    );
+  }, [selectedInterface, selectableInterfaces, setSearchParams]);
 
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      next.set('iface', preferred.name)
-      return next
-    }, { replace: true })
-  }, [selectedInterface, selectableInterfaces, config?.interface, setSearchParams])
+  useEffect(() => {
+    if (selectedInterface || selectableInterfaces.length === 0) return;
+
+    const preferred =
+      selectableInterfaces.find((iface) => iface.name === config?.interface) ??
+      selectableInterfaces[0];
+    if (!preferred) return;
+
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('iface', preferred.name);
+        return next;
+      },
+      { replace: true }
+    );
+  }, [selectedInterface, selectableInterfaces, config?.interface, setSearchParams]);
 
   const activeLeasesForSelectedInterface = useMemo(() => {
-    if (!selectedInterface) return activeLeases
-    const subnet = interfaceConfig?.subnet
-    if (!subnet) return activeLeases
+    if (!selectedInterface) return activeLeases;
+    const subnet = interfaceConfig?.subnet;
+    if (!subnet) return activeLeases;
 
-    const [network, prefixText] = subnet.split('/')
-    const prefix = Number(prefixText)
-    if (!network || !Number.isInteger(prefix) || prefix < 0 || prefix > 32) return activeLeases
+    const [network, prefixText] = subnet.split('/');
+    const prefix = Number(prefixText);
+    if (!network || !Number.isInteger(prefix) || prefix < 0 || prefix > 32) return activeLeases;
 
     const toIPv4Int = (value: string): number | null => {
-      const parts = value.split('.').map((part) => Number(part))
-      if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
-        return null
+      const parts = value.split('.').map((part) => Number(part));
+      if (
+        parts.length !== 4 ||
+        parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)
+      ) {
+        return null;
       }
-      return (((parts[0] << 24) >>> 0) + ((parts[1] << 16) >>> 0) + ((parts[2] << 8) >>> 0) + (parts[3] >>> 0)) >>> 0
-    }
+      return (
+        (((parts[0] << 24) >>> 0) +
+          ((parts[1] << 16) >>> 0) +
+          ((parts[2] << 8) >>> 0) +
+          (parts[3] >>> 0)) >>>
+        0
+      );
+    };
 
-    const networkInt = toIPv4Int(network)
-    if (networkInt == null) return activeLeases
-    const mask = prefix === 0 ? 0 : ((0xffffffff << (32 - prefix)) >>> 0)
+    const networkInt = toIPv4Int(network);
+    if (networkInt == null) return activeLeases;
+    const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
 
     return activeLeases.filter((lease) => {
-      const ip = toIPv4Int(String(lease.ipAddress ?? ''))
-      return ip != null && (ip & mask) === (networkInt & mask)
-    })
-  }, [activeLeases, selectedInterface, interfaceConfig?.subnet])
+      const ip = toIPv4Int(String(lease.ipAddress ?? ''));
+      return ip != null && (ip & mask) === (networkInt & mask);
+    });
+  }, [activeLeases, selectedInterface, interfaceConfig?.subnet]);
 
   const active6LeasesForSelectedInterface = useMemo(() => {
-    if (!selectedInterface) return active6Leases
-    const subnet = interfaceConfig6?.subnet
-    if (!subnet) return active6Leases
+    if (!selectedInterface) return active6Leases;
+    const subnet = interfaceConfig6?.subnet;
+    if (!subnet) return active6Leases;
 
-    return active6Leases.filter((lease) => ipv6InSubnet(String(lease.ipAddress ?? ''), subnet))
-  }, [active6Leases, selectedInterface, interfaceConfig6?.subnet])
+    return active6Leases.filter((lease) => ipv6InSubnet(String(lease.ipAddress ?? ''), subnet));
+  }, [active6Leases, selectedInterface, interfaceConfig6?.subnet]);
 
   const handleSelectInterface = (interfaceName: string) => {
     setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      if (interfaceName) next.set('iface', interfaceName)
-      else next.delete('iface')
-      return next
-    })
-  }
+      const next = new URLSearchParams(prev);
+      if (interfaceName) next.set('iface', interfaceName);
+      else next.delete('iface');
+      return next;
+    });
+  };
 
   useEffect(() => {
     Promise.all([getInterfaces(), getInterfacesInventory()])
       .then(([ifacesRes, inventoryRes]) => {
-        const configured = (ifacesRes.data ?? []).filter((iface) => iface.enabled !== false)
-        const known = new Set(configured.map((iface) => iface.name))
+        const configured = (ifacesRes.data ?? []).filter((iface) => iface.enabled !== false);
+        const known = new Set(configured.map((iface) => iface.name));
         const extras = (inventoryRes.data?.names ?? [])
           .filter((name) => name !== 'lo' && !known.has(name))
           .map((name) => ({
@@ -431,173 +455,173 @@ export default function DHCP() {
             description: '',
             type: 'ethernet' as const,
             enabled: true,
-          }))
+          }));
 
-        setInterfaces([...configured, ...extras])
+        setInterfaces([...configured, ...extras]);
       })
-      .catch(() => setInterfaces([]))
-  }, [])
+      .catch(() => setInterfaces([]));
+  }, []);
 
   const openConfigModal = () => {
     if (selectedInterface && interfaceConfig) {
-      setConfigForm({ ...interfaceConfig })
-      setDnsInput((interfaceConfig.dnsServers ?? []).join(', '))
+      setConfigForm({ ...interfaceConfig });
+      setDnsInput((interfaceConfig.dnsServers ?? []).join(', '));
     } else if (config) {
-      setConfigForm({ ...config })
-      setDnsInput((config.dnsServers ?? []).join(', '))
+      setConfigForm({ ...config });
+      setDnsInput((config.dnsServers ?? []).join(', '));
     } else {
-      setConfigForm(defaultConfigForm())
-      setDnsInput('')
+      setConfigForm(defaultConfigForm());
+      setDnsInput('');
     }
-    setConfigModalOpen(true)
-  }
+    setConfigModalOpen(true);
+  };
 
   const handleSaveConfig = () => {
     // Parse the DNS servers input back to an array
     const dnsServers = dnsInput
       .split(',')
       .map((s) => s.trim())
-      .filter(Boolean)
-    const payload = { ...configForm, dnsServers }
-    setConfigSaving(true)
+      .filter(Boolean);
+    const payload = { ...configForm, dnsServers };
+    setConfigSaving(true);
     const savePromise = selectedInterface
       ? updateInterfaceDhcpConfig(selectedInterface, payload as Partial<DhcpConfigPerInterface>)
-      : updateDhcpConfig(payload as Partial<DhcpConfig>)
+      : updateDhcpConfig(payload as Partial<DhcpConfig>);
 
     savePromise
       .then((r) => {
         if (selectedInterface) {
-          setInterfaceConfig(r.data as DhcpConfigPerInterface)
+          setInterfaceConfig(r.data as DhcpConfigPerInterface);
         } else {
-          setConfig(r.data as DhcpConfig)
+          setConfig(r.data as DhcpConfig);
         }
-        setConfigModalOpen(false)
+        setConfigModalOpen(false);
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setConfigSaving(false))
-  }
+      .finally(() => setConfigSaving(false));
+  };
 
   const openConfig6Modal = () => {
     if (selectedInterface && interfaceConfig6) {
-      setConfig6Form({ ...interfaceConfig6 })
-      setDns6Input((interfaceConfig6.dnsServers ?? []).join(', '))
+      setConfig6Form({ ...interfaceConfig6 });
+      setDns6Input((interfaceConfig6.dnsServers ?? []).join(', '));
     } else if (config6) {
-      setConfig6Form({ ...config6 })
-      setDns6Input((config6.dnsServers ?? []).join(', '))
+      setConfig6Form({ ...config6 });
+      setDns6Input((config6.dnsServers ?? []).join(', '));
     } else {
-      setConfig6Form(defaultConfig6Form())
-      setDns6Input('')
+      setConfig6Form(defaultConfig6Form());
+      setDns6Input('');
     }
-    setConfig6ModalOpen(true)
-  }
+    setConfig6ModalOpen(true);
+  };
 
   const handleSaveConfig6 = () => {
     const dnsServers = dns6Input
       .split(',')
       .map((s) => s.trim())
-      .filter(Boolean)
-    const payload = { ...config6Form, dnsServers }
-    setConfig6Saving(true)
+      .filter(Boolean);
+    const payload = { ...config6Form, dnsServers };
+    setConfig6Saving(true);
     const savePromise = selectedInterface
       ? updateInterfaceDhcp6Config(selectedInterface, payload as Partial<Dhcp6ConfigPerInterface>)
-      : updateDhcp6Config(payload as Partial<Dhcp6Config>)
+      : updateDhcp6Config(payload as Partial<Dhcp6Config>);
 
     savePromise
       .then((r) => {
         if (selectedInterface) {
-          setInterfaceConfig6(r.data as Dhcp6ConfigPerInterface)
+          setInterfaceConfig6(r.data as Dhcp6ConfigPerInterface);
         } else {
-          setConfig6(r.data as Dhcp6Config)
+          setConfig6(r.data as Dhcp6Config);
         }
-        setConfig6ModalOpen(false)
+        setConfig6ModalOpen(false);
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setConfig6Saving(false))
-  }
+      .finally(() => setConfig6Saving(false));
+  };
 
   const handleAddLease = () => {
-    setLeaseSaving(true)
+    setLeaseSaving(true);
     const addPromise = selectedInterface
       ? createInterfaceStaticLease(selectedInterface, leaseForm)
-      : createDhcpStaticLease(leaseForm)
+      : createDhcpStaticLease(leaseForm);
 
     addPromise
       .then(() => {
-        setLeaseModalOpen(false)
-        setLeaseForm(defaultLeaseForm)
+        setLeaseModalOpen(false);
+        setLeaseForm(defaultLeaseForm);
         const reloadLeases = selectedInterface
           ? getInterfaceStaticLeases(selectedInterface)
-          : getDhcpStaticLeases()
+          : getDhcpStaticLeases();
         reloadLeases
           .then((r) => setStaticLeases(r.data as StaticLeaseRow[]))
-          .catch((err: Error) => setError(err.message))
+          .catch((err: Error) => setError(err.message));
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setLeaseSaving(false))
-  }
+      .finally(() => setLeaseSaving(false));
+  };
 
   const handleDeleteLease = () => {
-    if (deleteId === null) return
-    setDeleting(true)
+    if (deleteId === null) return;
+    setDeleting(true);
     const deletePromise = selectedInterface
       ? deleteInterfaceStaticLease(selectedInterface, deleteId)
-      : deleteDhcpStaticLease(deleteId)
+      : deleteDhcpStaticLease(deleteId);
 
     deletePromise
       .then(() => {
-        setDeleteId(null)
+        setDeleteId(null);
         const reloadLeases = selectedInterface
           ? getInterfaceStaticLeases(selectedInterface)
-          : getDhcpStaticLeases()
+          : getDhcpStaticLeases();
         reloadLeases
           .then((r) => setStaticLeases(r.data as StaticLeaseRow[]))
-          .catch((err: Error) => setError(err.message))
+          .catch((err: Error) => setError(err.message));
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setDeleting(false))
-  }
+      .finally(() => setDeleting(false));
+  };
 
   const handleAddLease6 = () => {
-    setLease6Saving(true)
+    setLease6Saving(true);
     const addPromise = selectedInterface
       ? createInterfaceDhcp6StaticLease(selectedInterface, lease6Form)
-      : createDhcp6StaticLease(lease6Form)
+      : createDhcp6StaticLease(lease6Form);
 
     addPromise
       .then(() => {
-        setLease6ModalOpen(false)
-        setLease6Form(defaultLease6Form)
+        setLease6ModalOpen(false);
+        setLease6Form(defaultLease6Form);
         const reloadLeases = selectedInterface
           ? getInterfaceDhcp6StaticLeases(selectedInterface)
-          : getDhcp6StaticLeases()
+          : getDhcp6StaticLeases();
         reloadLeases
           .then((r) => setStatic6Leases(r.data as Static6LeaseRow[]))
-          .catch((err: Error) => setError(err.message))
+          .catch((err: Error) => setError(err.message));
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setLease6Saving(false))
-  }
+      .finally(() => setLease6Saving(false));
+  };
 
   const handleDeleteLease6 = () => {
-    if (delete6Id === null) return
-    setDeleting6(true)
+    if (delete6Id === null) return;
+    setDeleting6(true);
     const deletePromise = selectedInterface
       ? deleteInterfaceDhcp6StaticLease(selectedInterface, delete6Id)
-      : deleteDhcp6StaticLease(delete6Id)
+      : deleteDhcp6StaticLease(delete6Id);
 
     deletePromise
       .then(() => {
-        setDelete6Id(null)
+        setDelete6Id(null);
         const reloadLeases = selectedInterface
           ? getInterfaceDhcp6StaticLeases(selectedInterface)
-          : getDhcp6StaticLeases()
+          : getDhcp6StaticLeases();
         reloadLeases
           .then((r) => setStatic6Leases(r.data as Static6LeaseRow[]))
-          .catch((err: Error) => setError(err.message))
+          .catch((err: Error) => setError(err.message));
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setDeleting6(false))
-  }
+      .finally(() => setDeleting6(false));
+  };
 
   const static6ColumnsWithActions: Column<Static6LeaseRow>[] = [
     ...static6Columns,
@@ -612,47 +636,61 @@ export default function DHCP() {
           title="Delete DHCPv6 static lease"
           aria-label="Delete DHCPv6 static lease"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+            />
           </svg>
         </button>
       ),
     },
-  ]
+  ];
 
   const active6Columns: Column<Active6LeaseRow>[] = [
     { key: 'ipAddress', header: 'IPv6 Address' },
-    { key: 'duid', header: 'DUID', render: (row) => <span className="font-mono text-xs">{row.duid as string || '-'}</span> },
+    {
+      key: 'duid',
+      header: 'DUID',
+      render: (row) => <span className="font-mono text-xs">{(row.duid as string) || '-'}</span>,
+    },
     { key: 'hostname', header: 'Hostname', render: (row) => (row.hostname as string) || '-' },
     {
       key: 'state',
       header: 'State',
       render: (row) => {
-        const state = row.state as string
+        const state = row.state as string;
         const map: Record<string, string> = {
-          active:    'bg-green-100 text-green-700',
-          expired:   'bg-red-100 text-red-700',
-          declined:  'bg-orange-100 text-orange-700',
+          active: 'bg-green-100 text-green-700',
+          expired: 'bg-red-100 text-red-700',
+          declined: 'bg-orange-100 text-orange-700',
           reclaimed: 'bg-gray-100 text-gray-500',
-        }
+        };
         return (
-          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold capitalize ${map[state] ?? 'bg-gray-100 text-gray-500'}`}>
+          <span
+            className={`inline-block px-2 py-0.5 rounded text-xs font-semibold capitalize ${map[state] ?? 'bg-gray-100 text-gray-500'}`}
+          >
             {state}
           </span>
-        )
+        );
       },
     },
     {
       key: 'ends',
       header: 'Expires',
       render: (row) => {
-        const raw = row.ends as string
-        if (!raw) return '-'
-        const asNum = Number(raw)
-        const d = Number.isFinite(asNum) && asNum > 1e9
-          ? new Date(asNum * 1000)
-          : new Date(raw)
-        return isNaN(d.getTime()) ? raw : formatDateTime(d)
+        const raw = row.ends as string;
+        if (!raw) return '-';
+        const asNum = Number(raw);
+        const d = Number.isFinite(asNum) && asNum > 1e9 ? new Date(asNum * 1000) : new Date(raw);
+        return isNaN(d.getTime()) ? raw : formatDateTime(d);
       },
     },
     {
@@ -670,7 +708,7 @@ export default function DHCP() {
         </Button>
       ),
     },
-  ]
+  ];
 
   const staticColumnsWithActions: Column<StaticLeaseRow>[] = [
     ...staticColumns,
@@ -685,19 +723,31 @@ export default function DHCP() {
           title="Delete static lease"
           aria-label="Delete static lease"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+            />
           </svg>
         </button>
       ),
     },
-  ]
+  ];
 
   const leaseTimeFmt = (secs: number) => {
-    if (secs >= 86400 && secs % 86400 === 0) return `${secs / 86400} day${secs / 86400 !== 1 ? 's' : ''}`
-    if (secs >= 3600 && secs % 3600 === 0) return `${secs / 3600} hour${secs / 3600 !== 1 ? 's' : ''}`
-    return `${secs}s`
-  }
+    if (secs >= 86400 && secs % 86400 === 0)
+      return `${secs / 86400} day${secs / 86400 !== 1 ? 's' : ''}`;
+    if (secs >= 3600 && secs % 3600 === 0)
+      return `${secs / 3600} hour${secs / 3600 !== 1 ? 's' : ''}`;
+    return `${secs}s`;
+  };
 
   return (
     <div className="space-y-6">
@@ -739,7 +789,9 @@ export default function DHCP() {
                 >
                   <option value="">Select interface</option>
                   {selectableInterfaces.map((iface) => (
-                    <option key={iface.name} value={iface.name}>{interfaceLabel(iface)}</option>
+                    <option key={iface.name} value={iface.name}>
+                      {interfaceLabel(iface)}
+                    </option>
                   ))}
                 </FormField>
               )}
@@ -831,7 +883,8 @@ export default function DHCP() {
           </details>
 
           <p className="text-xs text-gray-500">
-            <strong>Subnet</strong> must match the interface network. Configure per-interface scopes from the DHCP submenu for each interface.
+            <strong>Subnet</strong> must match the interface network. Configure per-interface scopes
+            from the DHCP submenu for each interface.
           </p>
         </div>
       </Modal>
@@ -873,7 +926,9 @@ export default function DHCP() {
                 >
                   <option value="">Select interface</option>
                   {selectableInterfaces.map((iface) => (
-                    <option key={iface.name} value={iface.name}>{interfaceLabel(iface)}</option>
+                    <option key={iface.name} value={iface.name}>
+                      {interfaceLabel(iface)}
+                    </option>
                   ))}
                 </FormField>
               )}
@@ -895,7 +950,10 @@ export default function DHCP() {
                 placeholder="86400"
                 value={String(config6Form.leaseTime ?? 86400)}
                 onChange={(e) =>
-                  setConfig6Form((f) => ({ ...f, leaseTime: parseInt(e.target.value, 10) || 86400 }))
+                  setConfig6Form((f) => ({
+                    ...f,
+                    leaseTime: parseInt(e.target.value, 10) || 86400,
+                  }))
                 }
               />
 
@@ -950,7 +1008,11 @@ export default function DHCP() {
       {/* Add Static Lease Modal */}
       <Modal
         open={leaseModalOpen}
-        title={selectedInterface ? `Add Static IP Reservation: ${selectedInterfaceLabel}` : 'Add Static Lease'}
+        title={
+          selectedInterface
+            ? `Add Static IP Reservation: ${selectedInterfaceLabel}`
+            : 'Add Static Lease'
+        }
         onClose={() => setLeaseModalOpen(false)}
         onConfirm={handleAddLease}
         confirmLabel="Add"
@@ -1017,8 +1079,9 @@ export default function DHCP() {
       >
         <div className="space-y-4">
           <p className="text-xs text-gray-500">
-            Provide a <strong>DUID</strong> (colon-separated hex, e.g. <span className="font-mono">00:03:00:01:aa:bb:cc:dd:ee:ff</span>)
-            or a <strong>MAC address</strong> — it will be auto-converted to a DUID-LL.
+            Provide a <strong>DUID</strong> (colon-separated hex, e.g.{' '}
+            <span className="font-mono">00:03:00:01:aa:bb:cc:dd:ee:ff</span>) or a{' '}
+            <strong>MAC address</strong> — it will be auto-converted to a DUID-LL.
           </p>
           <FormField
             id="l6-duid"
@@ -1076,14 +1139,16 @@ export default function DHCP() {
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {error}
-          <button className="ml-3 underline" onClick={() => setError(null)}>Dismiss</button>
+          <button className="ml-3 underline" onClick={() => setError(null)}>
+            Dismiss
+          </button>
         </div>
       )}
 
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex gap-1" aria-label="DHCP tabs">
           {sectionTabs.map((tab) => {
-            const isActive = activeSection === tab.id
+            const isActive = activeSection === tab.id;
             return (
               <button
                 key={tab.id}
@@ -1099,7 +1164,7 @@ export default function DHCP() {
               >
                 {tab.label}
               </button>
-            )
+            );
           })}
         </nav>
       </div>
@@ -1131,15 +1196,29 @@ export default function DHCP() {
           {/* DHCP Config summary */}
           <Card
             title={selectedInterface ? `DHCP: ${selectedInterfaceLabel}` : 'DHCP Server'}
-            subtitle={selectedInterface ? 'Per-interface DHCPv4 scope and reservation settings' : 'Kea DHCPv4 configuration'}
+            subtitle={
+              selectedInterface
+                ? 'Per-interface DHCPv4 scope and reservation settings'
+                : 'Kea DHCPv4 configuration'
+            }
             actions={
               <button
                 onClick={openConfigModal}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                 title={selectedInterface ? 'Edit interface DHCP settings' : 'Edit DHCP settings'}
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
                 </svg>
               </button>
             }
@@ -1150,53 +1229,91 @@ export default function DHCP() {
               <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
                 {!selectedInterface && (
                   <div>
-                    <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Interface</dt>
+                    <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                      Interface
+                    </dt>
                     <dd className="mt-1 font-medium text-gray-800">{globalConfigInterfaceLabel}</dd>
                   </div>
                 )}
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
-                  <dd className={`mt-1 font-semibold ${(selectedInterface ? interfaceConfig?.enabled : config?.enabled) ? 'text-green-600' : 'text-gray-400'}`}>
-                    {(selectedInterface ? interfaceConfig?.enabled : config?.enabled) ? 'Enabled' : 'Disabled'}
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Status
+                  </dt>
+                  <dd
+                    className={`mt-1 font-semibold ${(selectedInterface ? interfaceConfig?.enabled : config?.enabled) ? 'text-green-600' : 'text-gray-400'}`}
+                  >
+                    {(selectedInterface ? interfaceConfig?.enabled : config?.enabled)
+                      ? 'Enabled'
+                      : 'Disabled'}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Subnet</dt>
-                  <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.subnet : config?.subnet) || '-'}</dd>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Subnet
+                  </dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">
+                    {(selectedInterface ? interfaceConfig?.subnet : config?.subnet) || '-'}
+                  </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Pool Range</dt>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Pool Range
+                  </dt>
                   <dd className="mt-1 font-medium text-gray-800 font-mono">
-                    {(selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart) && (selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd)
+                    {(selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart) &&
+                    (selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd)
                       ? `${selectedInterface ? interfaceConfig?.rangeStart : config?.rangeStart} - ${selectedInterface ? interfaceConfig?.rangeEnd : config?.rangeEnd}`
                       : '-'}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Default Gateway</dt>
-                  <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.gateway : config?.gateway) || '-'}</dd>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Default Gateway
+                  </dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">
+                    {(selectedInterface ? interfaceConfig?.gateway : config?.gateway) || '-'}
+                  </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNS Servers</dt>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    DNS Servers
+                  </dt>
                   <dd className="mt-1 font-medium text-gray-800 font-mono">
                     {(selectedInterface ? interfaceConfig?.dnsServers : config?.dnsServers)?.length
-                      ? (selectedInterface ? interfaceConfig?.dnsServers : config?.dnsServers)?.join(', ')
+                      ? (selectedInterface
+                          ? interfaceConfig?.dnsServers
+                          : config?.dnsServers
+                        )?.join(', ')
                       : '-'}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Lease Time</dt>
-                  <dd className="mt-1 font-medium text-gray-800">{leaseTimeFmt((selectedInterface ? interfaceConfig?.leaseTime : config?.leaseTime) ?? 86400)}</dd>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Lease Time
+                  </dt>
+                  <dd className="mt-1 font-medium text-gray-800">
+                    {leaseTimeFmt(
+                      (selectedInterface ? interfaceConfig?.leaseTime : config?.leaseTime) ?? 86400
+                    )}
+                  </dd>
                 </div>
                 {(selectedInterface ? interfaceConfig?.domainName : config?.domainName) && (
                   <div>
-                    <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Domain Name</dt>
-                    <dd className="mt-1 font-medium text-gray-800 font-mono">{selectedInterface ? interfaceConfig?.domainName : config?.domainName}</dd>
+                    <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                      Domain Name
+                    </dt>
+                    <dd className="mt-1 font-medium text-gray-800 font-mono">
+                      {selectedInterface ? interfaceConfig?.domainName : config?.domainName}
+                    </dd>
                   </div>
                 )}
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Subnet Mask</dt>
-                  <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig?.subnetMask : config?.subnetMask) || '-'}</dd>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Subnet Mask
+                  </dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">
+                    {(selectedInterface ? interfaceConfig?.subnetMask : config?.subnetMask) || '-'}
+                  </dd>
                 </div>
               </dl>
             ) : (
@@ -1206,14 +1323,24 @@ export default function DHCP() {
 
           <Card
             title={selectedInterface ? 'Static IP Reservations' : 'Static Leases'}
-            subtitle={selectedInterface ? `Reservations for ${selectedInterfaceLabel}` : 'MAC to IP address reservations (always assigned the same IP)'}
+            subtitle={
+              selectedInterface
+                ? `Reservations for ${selectedInterfaceLabel}`
+                : 'MAC to IP address reservations (always assigned the same IP)'
+            }
             actions={
               <button
                 onClick={() => setLeaseModalOpen(true)}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                 title="Add new lease"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
               </button>
@@ -1230,7 +1357,11 @@ export default function DHCP() {
 
           <Card
             title="Active Leases"
-            subtitle={selectedInterface ? `Active leases within ${selectedInterfaceLabel}` : 'Currently assigned DHCP leases'}
+            subtitle={
+              selectedInterface
+                ? `Active leases within ${selectedInterfaceLabel}`
+                : 'Currently assigned DHCP leases'
+            }
           >
             <Table
               columns={activeColumns}
@@ -1247,15 +1378,29 @@ export default function DHCP() {
         <>
           <Card
             title={selectedInterface ? `DHCPv6: ${selectedInterfaceLabel}` : 'DHCPv6 Server'}
-            subtitle={selectedInterface ? 'Per-interface DHCPv6 scope settings' : 'Kea DHCPv6 configuration'}
+            subtitle={
+              selectedInterface ? 'Per-interface DHCPv6 scope settings' : 'Kea DHCPv6 configuration'
+            }
             actions={
               <button
                 onClick={openConfig6Modal}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-                title={selectedInterface ? 'Edit interface DHCPv6 settings' : 'Edit DHCPv6 settings'}
+                title={
+                  selectedInterface ? 'Edit interface DHCPv6 settings' : 'Edit DHCPv6 settings'
+                }
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
                 </svg>
               </button>
             }
@@ -1266,44 +1411,76 @@ export default function DHCP() {
               <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
                 {!selectedInterface && (
                   <div>
-                    <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Interface</dt>
+                    <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                      Interface
+                    </dt>
                     <dd className="mt-1 font-medium text-gray-800">{config6?.interface || '-'}</dd>
                   </div>
                 )}
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
-                  <dd className={`mt-1 font-semibold ${(selectedInterface ? interfaceConfig6?.enabled : config6?.enabled) ? 'text-green-600' : 'text-gray-400'}`}>
-                    {(selectedInterface ? interfaceConfig6?.enabled : config6?.enabled) ? 'Enabled' : 'Disabled'}
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Status
+                  </dt>
+                  <dd
+                    className={`mt-1 font-semibold ${(selectedInterface ? interfaceConfig6?.enabled : config6?.enabled) ? 'text-green-600' : 'text-gray-400'}`}
+                  >
+                    {(selectedInterface ? interfaceConfig6?.enabled : config6?.enabled)
+                      ? 'Enabled'
+                      : 'Disabled'}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Subnet</dt>
-                  <dd className="mt-1 font-medium text-gray-800 font-mono">{(selectedInterface ? interfaceConfig6?.subnet : config6?.subnet) || '-'}</dd>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Subnet
+                  </dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">
+                    {(selectedInterface ? interfaceConfig6?.subnet : config6?.subnet) || '-'}
+                  </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Pool Range</dt>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Pool Range
+                  </dt>
                   <dd className="mt-1 font-medium text-gray-800 font-mono">
-                    {(selectedInterface ? interfaceConfig6?.rangeStart : config6?.rangeStart) && (selectedInterface ? interfaceConfig6?.rangeEnd : config6?.rangeEnd)
+                    {(selectedInterface ? interfaceConfig6?.rangeStart : config6?.rangeStart) &&
+                    (selectedInterface ? interfaceConfig6?.rangeEnd : config6?.rangeEnd)
                       ? `${selectedInterface ? interfaceConfig6?.rangeStart : config6?.rangeStart} - ${selectedInterface ? interfaceConfig6?.rangeEnd : config6?.rangeEnd}`
                       : '-'}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">DNS Servers</dt>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    DNS Servers
+                  </dt>
                   <dd className="mt-1 font-medium text-gray-800 font-mono">
-                    {(selectedInterface ? interfaceConfig6?.dnsServers : config6?.dnsServers)?.length
-                      ? (selectedInterface ? interfaceConfig6?.dnsServers : config6?.dnsServers)?.join(', ')
+                    {(selectedInterface ? interfaceConfig6?.dnsServers : config6?.dnsServers)
+                      ?.length
+                      ? (selectedInterface
+                          ? interfaceConfig6?.dnsServers
+                          : config6?.dnsServers
+                        )?.join(', ')
                       : '-'}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Lease Time</dt>
-                  <dd className="mt-1 font-medium text-gray-800">{leaseTimeFmt((selectedInterface ? interfaceConfig6?.leaseTime : config6?.leaseTime) ?? 86400)}</dd>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Lease Time
+                  </dt>
+                  <dd className="mt-1 font-medium text-gray-800">
+                    {leaseTimeFmt(
+                      (selectedInterface ? interfaceConfig6?.leaseTime : config6?.leaseTime) ??
+                        86400
+                    )}
+                  </dd>
                 </div>
                 {(selectedInterface ? interfaceConfig6?.domainName : config6?.domainName) && (
                   <div>
-                    <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Domain Name</dt>
-                    <dd className="mt-1 font-medium text-gray-800 font-mono">{selectedInterface ? interfaceConfig6?.domainName : config6?.domainName}</dd>
+                    <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                      Domain Name
+                    </dt>
+                    <dd className="mt-1 font-medium text-gray-800 font-mono">
+                      {selectedInterface ? interfaceConfig6?.domainName : config6?.domainName}
+                    </dd>
                   </div>
                 )}
               </dl>
@@ -1318,11 +1495,20 @@ export default function DHCP() {
             subtitle="DUID → IPv6 address static bindings managed by the Kea DHCPv6 server"
             actions={
               <button
-                onClick={() => { setLease6Form(defaultLease6Form); setLease6ModalOpen(true) }}
+                onClick={() => {
+                  setLease6Form(defaultLease6Form);
+                  setLease6ModalOpen(true);
+                }}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                 title="Add DHCPv6 static reservation"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
               </button>
@@ -1353,5 +1539,5 @@ export default function DHCP() {
         </>
       )}
     </div>
-  )
+  );
 }

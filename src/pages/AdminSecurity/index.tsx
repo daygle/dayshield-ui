@@ -1,28 +1,35 @@
-import { useCallback, useEffect, useState } from 'react'
-import { getAdminSecurity, updateAdminSecurity } from '../../api/admin'
-import type { AdminSecuritySettings } from '../../types'
-import Card from '../../components/Card'
-import Button from '../../components/Button'
-import FormField from '../../components/FormField'
+import { useCallback, useEffect, useState } from 'react';
+import { getAdminSecurity, updateAdminSecurity } from '../../api/admin';
+import type { AdminSecuritySettings } from '../../types';
+import Card from '../../components/Card';
+import Button from '../../components/Button';
+import FormField from '../../components/FormField';
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
-type ToastKind = 'success' | 'error'
-interface ToastMsg { id: number; kind: ToastKind; text: string }
-let toastSeq = 0
+type ToastKind = 'success' | 'error';
+interface ToastMsg {
+  id: number;
+  kind: ToastKind;
+  text: string;
+}
+let toastSeq = 0;
 
 function Toast({ messages }: { messages: ToastMsg[] }) {
-  if (!messages.length) return null
+  if (!messages.length) return null;
   return (
     <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 w-80">
       {messages.map((m) => (
-        <div key={m.id} role="alert"
-          className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm shadow-lg text-white ${m.kind === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+        <div
+          key={m.id}
+          role="alert"
+          className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm shadow-lg text-white ${m.kind === 'success' ? 'bg-green-600' : 'bg-red-600'}`}
+        >
           {m.text}
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
@@ -35,59 +42,62 @@ const DEFAULT_SETTINGS: AdminSecuritySettings = {
   require_uppercase: false,
   require_number: false,
   require_special: false,
-}
-
+};
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AdminSecurity() {
-  const [settings, setSettings] = useState<AdminSecuritySettings>(DEFAULT_SETTINGS)
-  const [form, setForm] = useState<AdminSecuritySettings>(DEFAULT_SETTINGS)
-  const [editing, setEditing] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [toasts, setToasts] = useState<ToastMsg[]>([])
+  const [settings, setSettings] = useState<AdminSecuritySettings>(DEFAULT_SETTINGS);
+  const [form, setForm] = useState<AdminSecuritySettings>(DEFAULT_SETTINGS);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [toasts, setToasts] = useState<ToastMsg[]>([]);
 
   const pushToast = useCallback((kind: ToastKind, text: string) => {
-    const id = ++toastSeq
-    setToasts((prev) => [...prev, { id, kind, text }])
-    setTimeout(() => setToasts((prev) => prev.filter((m) => m.id !== id)), 4000)
-  }, [])
+    const id = ++toastSeq;
+    setToasts((prev) => [...prev, { id, kind, text }]);
+    setTimeout(() => setToasts((prev) => prev.filter((m) => m.id !== id)), 4000);
+  }, []);
 
   const load = useCallback(async () => {
     try {
-      const data = await getAdminSecurity()
-      setSettings(data)
-      setForm(data)
+      const data = await getAdminSecurity();
+      setSettings(data);
+      setForm(data);
     } catch {
-      pushToast('error', 'Failed to load admin security settings')
+      pushToast('error', 'Failed to load admin security settings');
     }
-  }, [pushToast])
+  }, [pushToast]);
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const openEdit = () => { setForm(settings); setEditing(true) }
-  const closeEdit = () => setEditing(false)
+  const openEdit = () => {
+    setForm(settings);
+    setEditing(true);
+  };
+  const closeEdit = () => setEditing(false);
 
   const handleSave = async () => {
-    setSaving(true)
+    setSaving(true);
     try {
-      await updateAdminSecurity(form)
-      setSettings(form)
-      setEditing(false)
-      pushToast('success', 'Admin security settings updated')
+      await updateAdminSecurity(form);
+      setSettings(form);
+      setEditing(false);
+      pushToast('success', 'Admin security settings updated');
     } catch {
-      pushToast('error', 'Failed to save settings')
+      pushToast('error', 'Failed to save settings');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
-
+  };
 
   const numField = (
     label: string,
     key: keyof AdminSecuritySettings,
     min: number,
-    help?: string,
+    help?: string
   ) => (
     <FormField label={label} hint={help}>
       <input
@@ -95,13 +105,13 @@ export default function AdminSecurity() {
         min={min}
         value={form[key] as number}
         onChange={(e) => {
-          const parsed = Number(e.target.value)
-          setForm({ ...form, [key]: Number.isFinite(parsed) ? Math.max(min, parsed) : min })
+          const parsed = Number(e.target.value);
+          setForm({ ...form, [key]: Number.isFinite(parsed) ? Math.max(min, parsed) : min });
         }}
         className="block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
       />
     </FormField>
-  )
+  );
 
   const boolField = (label: string, key: keyof AdminSecuritySettings) => (
     <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 cursor-pointer">
@@ -113,7 +123,7 @@ export default function AdminSecurity() {
       />
       {label}
     </label>
-  )
+  );
 
   return (
     <div className="space-y-6">
@@ -130,8 +140,18 @@ export default function AdminSecurity() {
           title="Edit settings"
           aria-label="Edit admin security settings"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
           </svg>
         </button>
       </div>
@@ -140,7 +160,14 @@ export default function AdminSecurity() {
       <Card>
         <div className="divide-y divide-slate-100 dark:divide-slate-700">
           <Row label="Session timeout" value={`${settings.session_timeout_minutes} minutes`} />
-          <Row label="Max login attempts" value={settings.max_login_attempts === 0 ? 'Unlimited' : `${settings.max_login_attempts} attempts`} />
+          <Row
+            label="Max login attempts"
+            value={
+              settings.max_login_attempts === 0
+                ? 'Unlimited'
+                : `${settings.max_login_attempts} attempts`
+            }
+          />
           <Row label="Lockout duration" value={`${settings.lockout_duration_minutes} minutes`} />
           <Row label="Min password length" value={`${settings.min_password_length} characters`} />
           <Row label="Require uppercase" value={settings.require_uppercase ? 'Yes' : 'No'} />
@@ -149,17 +176,27 @@ export default function AdminSecurity() {
         </div>
       </Card>
 
-
       {/* Edit panel */}
       {editing && (
         <Card title="Edit Admin Security Settings" onClose={closeEdit}>
           <div className="space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Session Policy</p>
-            {numField('Session Timeout (minutes)', 'session_timeout_minutes', 1, 'How long before an idle session is expired')}
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 pt-2">Login Lockout</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Session Policy
+            </p>
+            {numField(
+              'Session Timeout (minutes)',
+              'session_timeout_minutes',
+              1,
+              'How long before an idle session is expired'
+            )}
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 pt-2">
+              Login Lockout
+            </p>
             {numField('Max Login Attempts', 'max_login_attempts', 0, 'Set to 0 to disable lockout')}
             {numField('Lockout Duration (minutes)', 'lockout_duration_minutes', 1)}
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 pt-2">Password Complexity</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 pt-2">
+              Password Complexity
+            </p>
             {numField('Minimum Password Length', 'min_password_length', 4)}
             <div className="space-y-2 mt-1">
               {boolField('Require uppercase letter', 'require_uppercase')}
@@ -168,15 +205,19 @@ export default function AdminSecurity() {
             </div>
           </div>
           <div className="mt-4 flex justify-end gap-3">
-            <Button size="sm" variant="secondary" onClick={closeEdit} disabled={saving}>Cancel</Button>
-            <Button size="sm" variant="primary" onClick={handleSave} loading={saving}>Save</Button>
+            <Button size="sm" variant="secondary" onClick={closeEdit} disabled={saving}>
+              Cancel
+            </Button>
+            <Button size="sm" variant="primary" onClick={handleSave} loading={saving}>
+              Save
+            </Button>
           </div>
         </Card>
       )}
 
       <Toast messages={toasts} />
     </div>
-  )
+  );
 }
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -185,5 +226,5 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="text-sm text-slate-600 dark:text-slate-300">{label}</span>
       <span className="text-sm font-medium text-slate-900 dark:text-white">{value}</span>
     </div>
-  )
+  );
 }

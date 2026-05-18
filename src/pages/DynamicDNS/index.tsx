@@ -1,24 +1,24 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import Card from '../../components/Card'
-import Button from '../../components/Button'
-import FormField from '../../components/FormField'
-import { useToast } from '../../context/ToastContext'
-import { getInterfacesInventory } from '../../api/interfaces'
-import { getSystemConfig } from '../../api/system'
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Card from '../../components/Card';
+import Button from '../../components/Button';
+import FormField from '../../components/FormField';
+import { useToast } from '../../context/ToastContext';
+import { getInterfacesInventory } from '../../api/interfaces';
+import { getSystemConfig } from '../../api/system';
 import {
   getDynamicDnsConfig,
   getDynamicDnsStatus,
   triggerDynamicDnsUpdate,
   updateDynamicDnsConfig,
-} from '../../api/dynamicDns'
+} from '../../api/dynamicDns';
 import type {
   DynamicDnsConfig,
   DynamicDnsEntry,
   DynamicDnsProvider,
   DynamicDnsStatus,
   NetworkInterface,
-} from '../../types'
-import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
+} from '../../types';
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
 const PROVIDERS: Array<{ value: DynamicDnsProvider; label: string }> = [
   { value: 'duck_dns', label: 'DuckDNS' },
@@ -26,14 +26,14 @@ const PROVIDERS: Array<{ value: DynamicDnsProvider; label: string }> = [
   { value: 'dynu', label: 'Dynu' },
   { value: 'free_dns', label: 'FreeDNS (Afraid.org)' },
   { value: 'custom', label: 'Custom URL' },
-]
+];
 
 const createEntryId = (): string => {
   if (typeof globalThis.crypto?.randomUUID === 'function') {
-    return globalThis.crypto.randomUUID()
+    return globalThis.crypto.randomUUID();
   }
-  return `ddns-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
-}
+  return `ddns-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+};
 
 const DEFAULT_ENTRY = (iface: string): DynamicDnsEntry => ({
   id: createEntryId(),
@@ -46,61 +46,64 @@ const DEFAULT_ENTRY = (iface: string): DynamicDnsEntry => ({
   password: '',
   passwordConfigured: false,
   updateUrl: '',
-})
+});
 
 const DEFAULT_CONFIG: DynamicDnsConfig = {
   enabled: false,
   checkIntervalSeconds: 300,
   entries: [],
-}
+};
 
 function providerNeedsUsername(provider: DynamicDnsProvider): boolean {
-  return provider === 'no_ip' || provider === 'dynu'
+  return provider === 'no_ip' || provider === 'dynu';
 }
 
 function providerNeedsCustomUrl(provider: DynamicDnsProvider): boolean {
-  return provider === 'custom'
+  return provider === 'custom';
 }
 
 function providerSecretLabel(provider: DynamicDnsProvider): string {
-  if (provider === 'duck_dns') return 'Token'
-  if (provider === 'free_dns') return 'Update Token'
-  return 'Password / API Key'
+  if (provider === 'duck_dns') return 'Token';
+  if (provider === 'free_dns') return 'Update Token';
+  return 'Password / API Key';
 }
 
 function providerHelpText(provider: DynamicDnsProvider): string {
   if (provider === 'custom') {
-    return 'Use placeholders: {hostname}, {username}, {password}, {ip}'
+    return 'Use placeholders: {hostname}, {username}, {password}, {ip}';
   }
   if (provider === 'duck_dns') {
-    return 'Hostname should be your DuckDNS subdomain (without .duckdns.org).'
+    return 'Hostname should be your DuckDNS subdomain (without .duckdns.org).';
   }
-  return ''
+  return '';
 }
 
 function validateEntry(entry: DynamicDnsEntry, ipv6Enabled: boolean): string | null {
-  if (!entry.enabled) return null
-  if (!entry.interface.trim()) return 'Interface is required.'
-  if (entry.addressFamily === 'ipv6' && !ipv6Enabled) return 'IPv6 Dynamic DNS entries require IPv6 to be enabled in System settings.'
-  if (!entry.hostname.trim()) return 'Hostname is required.'
-  if (providerNeedsUsername(entry.provider) && !entry.username?.trim()) return 'Username is required.'
-  if (!entry.passwordConfigured && !entry.password.trim()) return `${providerSecretLabel(entry.provider)} is required.`
+  if (!entry.enabled) return null;
+  if (!entry.interface.trim()) return 'Interface is required.';
+  if (entry.addressFamily === 'ipv6' && !ipv6Enabled)
+    return 'IPv6 Dynamic DNS entries require IPv6 to be enabled in System settings.';
+  if (!entry.hostname.trim()) return 'Hostname is required.';
+  if (providerNeedsUsername(entry.provider) && !entry.username?.trim())
+    return 'Username is required.';
+  if (!entry.passwordConfigured && !entry.password.trim())
+    return `${providerSecretLabel(entry.provider)} is required.`;
   if (providerNeedsCustomUrl(entry.provider)) {
-    if (!entry.updateUrl?.trim()) return 'Custom update URL is required.'
-    if (!entry.updateUrl.includes('{ip}')) return 'Custom update URL must include {ip}.'
+    if (!entry.updateUrl?.trim()) return 'Custom update URL is required.';
+    if (!entry.updateUrl.includes('{ip}')) return 'Custom update URL must include {ip}.';
   }
-  return null
+  return null;
 }
 
 export default function DynamicDnsPage() {
-  const [config, setConfig] = useState<DynamicDnsConfig>(DEFAULT_CONFIG)
-  const [status, setStatus] = useState<DynamicDnsStatus | null>(null)
-  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
-  const [ipv6Enabled, setIpv6Enabled] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [runningUpdate, setRunningUpdate] = useState(false)
-  const { addToast } = useToast()
+  const [config, setConfig] = useState<DynamicDnsConfig>(DEFAULT_CONFIG);
+  const [status, setStatus] = useState<DynamicDnsStatus | null>(null);
+  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
+  const [ipv6Enabled, setIpv6Enabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [runningUpdate, setRunningUpdate] = useState(false);
+  const { addToast } = useToast();
 
   const interfaceOptions = useMemo(
     () =>
@@ -110,93 +113,98 @@ export default function DynamicDnsPage() {
           value: iface.name,
           label: formatInterfaceDisplayName(iface.description, iface.name),
         })),
-    [interfaces],
-  )
+    [interfaces]
+  );
 
-  const firstInterface = interfaceOptions[0]?.value ?? ''
+  const firstInterface = interfaceOptions[0]?.value ?? '';
 
   const loadAll = useCallback(() => {
-    setLoading(true)
-    Promise.all([getDynamicDnsConfig(), getDynamicDnsStatus(), getInterfacesInventory(), getSystemConfig()])
+    setLoading(true);
+    Promise.all([
+      getDynamicDnsConfig(),
+      getDynamicDnsStatus(),
+      getInterfacesInventory(),
+      getSystemConfig(),
+    ])
       .then(([cfg, stat, inventory, system]) => {
-        setConfig(cfg.data)
-        setStatus(stat.data)
-        setInterfaces(inventory.data.configured)
-        setIpv6Enabled(Boolean(system.data.ipv6Enabled))
+        setConfig(cfg.data);
+        setStatus(stat.data);
+        setInterfaces(inventory.data.configured);
+        setIpv6Enabled(Boolean(system.data.ipv6Enabled));
       })
       .catch((err: Error) => addToast(`Failed to load Dynamic DNS data: ${err.message}`, 'error'))
-      .finally(() => setLoading(false))
-  }, [addToast])
+      .finally(() => setLoading(false));
+  }, [addToast]);
 
   useEffect(() => {
-    loadAll()
-  }, [loadAll])
+    loadAll();
+  }, [loadAll]);
 
   const entryErrors = useMemo(() => {
-    const out = new Map<string, string>()
+    const out = new Map<string, string>();
     for (const entry of config.entries) {
-      const error = validateEntry(entry, ipv6Enabled)
-      if (error) out.set(entry.id, error)
+      const error = validateEntry(entry, ipv6Enabled);
+      if (error) out.set(entry.id, error);
     }
-    return out
-  }, [config.entries, ipv6Enabled])
+    return out;
+  }, [config.entries, ipv6Enabled]);
 
-  const hasErrors = entryErrors.size > 0
+  const hasErrors = entryErrors.size > 0;
 
   const upsertEntry = (id: string, patch: Partial<DynamicDnsEntry>) => {
     setConfig((prev) => ({
       ...prev,
       entries: prev.entries.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)),
-    }))
-  }
+    }));
+  };
 
   const addEntry = () => {
     setConfig((prev) => ({
       ...prev,
       entries: [...prev.entries, DEFAULT_ENTRY(firstInterface)],
-    }))
-  }
+    }));
+  };
 
   const removeEntry = (id: string) => {
     setConfig((prev) => ({
       ...prev,
       entries: prev.entries.filter((entry) => entry.id !== id),
-    }))
-  }
+    }));
+  };
 
   const handleSave = () => {
     if (hasErrors) {
-      addToast('Fix entry errors before saving.', 'error')
-      return
+      addToast('Fix entry errors before saving.', 'error');
+      return;
     }
 
-    setSaving(true)
+    setSaving(true);
     updateDynamicDnsConfig(config)
       .then((res) => {
-        setConfig(res.data)
-        addToast('Dynamic DNS configuration saved.', 'success')
+        setConfig(res.data);
+        addToast('Dynamic DNS configuration saved.', 'success');
       })
       .catch((err: Error) => addToast(`Save failed: ${err.message}`, 'error'))
-      .finally(() => setSaving(false))
-  }
+      .finally(() => setSaving(false));
+  };
 
   const handleUpdateNow = () => {
-    setRunningUpdate(true)
+    setRunningUpdate(true);
     triggerDynamicDnsUpdate()
       .then((res) => {
-        setStatus(res.data)
-        const failedCount = res.data.entries.filter((entry) => !entry.success).length
+        setStatus(res.data);
+        const failedCount = res.data.entries.filter((entry) => !entry.success).length;
         if (failedCount > 0) {
-          addToast(`Dynamic DNS update completed with ${failedCount} failure(s).`, 'warning')
+          addToast(`Dynamic DNS update completed with ${failedCount} failure(s).`, 'warning');
         } else {
-          addToast('Dynamic DNS update completed successfully.', 'success')
+          addToast('Dynamic DNS update completed successfully.', 'success');
         }
       })
       .catch((err: Error) => addToast(`Update failed: ${err.message}`, 'error'))
-      .finally(() => setRunningUpdate(false))
-  }
+      .finally(() => setRunningUpdate(false));
+  };
 
-  const busy = loading || saving
+  const busy = loading || saving;
 
   return (
     <div className="space-y-6">
@@ -214,13 +222,29 @@ export default function DynamicDnsPage() {
               aria-label="Update DNS now"
             >
               {runningUpdate ? (
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <svg
+                  className="animate-spin h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
                   <circle cx="12" cy="12" r="10" className="opacity-25" />
                   <path d="M4 12a8 8 0 018-8v8H4" className="opacity-75" />
                 </svg>
               ) : (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v6h6M20 20v-6h-6M5.6 6.4a9 9 0 0112.8 12.8M18.4 17.6a9 9 0 01-12.8-12.8" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 4v6h6M20 20v-6h-6M5.6 6.4a9 9 0 0112.8 12.8M18.4 17.6a9 9 0 01-12.8-12.8"
+                  />
                 </svg>
               )}
             </button>
@@ -237,8 +261,18 @@ export default function DynamicDnsPage() {
               title={config.enabled ? 'Disable Dynamic DNS' : 'Enable Dynamic DNS'}
               aria-label={config.enabled ? 'Disable Dynamic DNS' : 'Enable Dynamic DNS'}
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
               </svg>
             </button>
           </div>
@@ -253,7 +287,12 @@ export default function DynamicDnsPage() {
             step={30}
             value={config.checkIntervalSeconds}
             disabled={busy}
-            onChange={(e) => setConfig((prev) => ({ ...prev, checkIntervalSeconds: Number(e.target.value) || 300 }))}
+            onChange={(e) =>
+              setConfig((prev) => ({
+                ...prev,
+                checkIntervalSeconds: Number(e.target.value) || 300,
+              }))
+            }
             hint="Minimum 30 seconds."
           />
         </div>
@@ -271,7 +310,13 @@ export default function DynamicDnsPage() {
             title="Add Dynamic DNS entry"
             aria-label="Add Dynamic DNS entry"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
           </button>
@@ -284,7 +329,7 @@ export default function DynamicDnsPage() {
         ) : (
           <div className="space-y-4">
             {config.entries.map((entry, idx) => {
-              const error = entryErrors.get(entry.id)
+              const error = entryErrors.get(entry.id);
               return (
                 <div key={entry.id} className="rounded-lg border border-gray-200 p-4 space-y-3">
                   <div className="flex items-center justify-between">
@@ -308,7 +353,11 @@ export default function DynamicDnsPage() {
                         aria-label="Delete entry"
                       >
                         <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M8.5 2a1 1 0 00-.894.553L7 4H4a1 1 0 000 2h.293l.853 10.243A2 2 0 007.14 18h5.72a2 2 0 001.994-1.757L15.707 6H16a1 1 0 100-2h-3l-.606-1.447A1 1 0 0011.5 2h-3zm1 4a1 1 0 012 0v8a1 1 0 11-2 0V6z" clipRule="evenodd" />
+                          <path
+                            fillRule="evenodd"
+                            d="M8.5 2a1 1 0 00-.894.553L7 4H4a1 1 0 000 2h.293l.853 10.243A2 2 0 007.14 18h5.72a2 2 0 001.994-1.757L15.707 6H16a1 1 0 100-2h-3l-.606-1.447A1 1 0 0011.5 2h-3zm1 4a1 1 0 012 0v8a1 1 0 11-2 0V6z"
+                            clipRule="evenodd"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -321,7 +370,15 @@ export default function DynamicDnsPage() {
                       as="select"
                       value={entry.provider}
                       disabled={busy}
-                      onChange={(e) => upsertEntry(entry.id, { provider: e.target.value as DynamicDnsProvider, username: '', password: '', passwordConfigured: false, updateUrl: '' })}
+                      onChange={(e) =>
+                        upsertEntry(entry.id, {
+                          provider: e.target.value as DynamicDnsProvider,
+                          username: '',
+                          password: '',
+                          passwordConfigured: false,
+                          updateUrl: '',
+                        })
+                      }
                     >
                       {PROVIDERS.map((provider) => (
                         <option key={provider.value} value={provider.value}>
@@ -353,14 +410,20 @@ export default function DynamicDnsPage() {
                         as="select"
                         value={entry.addressFamily ?? 'ipv4'}
                         disabled={busy}
-                        onChange={(e) => upsertEntry(entry.id, { addressFamily: e.target.value as DynamicDnsEntry['addressFamily'] })}
+                        onChange={(e) =>
+                          upsertEntry(entry.id, {
+                            addressFamily: e.target.value as DynamicDnsEntry['addressFamily'],
+                          })
+                        }
                       >
                         <option value="ipv4">IPv4</option>
                         <option value="ipv6">IPv6</option>
                       </FormField>
                     ) : (
                       <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Address Family</p>
+                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                          Address Family
+                        </p>
                         <p className="mt-1 text-sm text-gray-700">IPv4 only</p>
                       </div>
                     )}
@@ -390,7 +453,11 @@ export default function DynamicDnsPage() {
                       type="password"
                       value={entry.password}
                       disabled={busy}
-                      placeholder={entry.passwordConfigured ? 'Stored value set. Enter a new value to replace it.' : ''}
+                      placeholder={
+                        entry.passwordConfigured
+                          ? 'Stored value set. Enter a new value to replace it.'
+                          : ''
+                      }
                       onChange={(e) => upsertEntry(entry.id, { password: e.target.value })}
                     />
 
@@ -413,7 +480,7 @@ export default function DynamicDnsPage() {
                     </p>
                   )}
                 </div>
-              )
+              );
             })}
           </div>
         )}
@@ -431,8 +498,18 @@ export default function DynamicDnsPage() {
             title="Refresh update status"
             aria-label="Refresh update status"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v6h6M20 20v-6h-6M5.6 6.4a9 9 0 0112.8 12.8M18.4 17.6a9 9 0 01-12.8-12.8" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 4v6h6M20 20v-6h-6M5.6 6.4a9 9 0 0112.8 12.8M18.4 17.6a9 9 0 01-12.8-12.8"
+              />
             </svg>
           </button>
         }
@@ -484,5 +561,5 @@ export default function DynamicDnsPage() {
         </Button>
       </div>
     </div>
-  )
+  );
 }

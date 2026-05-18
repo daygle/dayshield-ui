@@ -1,30 +1,42 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom';
 
 interface NavItem {
-  type?: 'item'
-  to: string
-  label: string
-  icon: React.ReactNode
-  level?: 0 | 1 | 2
+  type?: 'item';
+  to: string;
+  label: string;
+  icon: React.ReactNode;
+  level?: 0 | 1 | 2;
 }
 
 interface NavSection {
-  type: 'section'
-  label: string
+  type: 'section';
+  label: string;
 }
 
-type NavEntry = NavItem | NavSection
+type NavEntry = NavItem | NavSection;
 
-const appReleaseVersion = import.meta.env.VITE_GITHUB_RELEASE ?? '0.0.0'
-const appVersionLabel = appReleaseVersion.startsWith('v') ? appReleaseVersion : `v${appReleaseVersion}`
+const appReleaseVersion = import.meta.env.VITE_GITHUB_RELEASE ?? '0.0.0';
+const appVersionLabel = appReleaseVersion.startsWith('v')
+  ? appReleaseVersion
+  : `v${appReleaseVersion}`;
 
 const navEntries: NavEntry[] = [
   {
     to: '/dashboard',
     label: 'Dashboard',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9 9 9M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M3 12l9-9 9 9M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9"
+        />
       </svg>
     ),
   },
@@ -32,7 +44,13 @@ const navEntries: NavEntry[] = [
     to: '/interfaces',
     label: 'Interfaces',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
         <path strokeLinecap="round" strokeLinejoin="round" d="M8 9l4-4 4 4M8 15l4 4 4-4" />
       </svg>
     ),
@@ -41,8 +59,18 @@ const navEntries: NavEntry[] = [
     to: '/gateways',
     label: 'Gateways',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+        />
       </svg>
     ),
   },
@@ -50,8 +78,18 @@ const navEntries: NavEntry[] = [
     to: '/firewall',
     label: 'Firewall',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5h-3m3 3h-3m3-6h-3M8.25 4.5h7.5a2.25 2.25 0 012.25 2.25v10.5A2.25 2.25 0 0115.75 19.5h-7.5A2.25 2.25 0 016 17.25V6.75A2.25 2.25 0 018.25 4.5z" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M13.5 10.5h-3m3 3h-3m3-6h-3M8.25 4.5h7.5a2.25 2.25 0 012.25 2.25v10.5A2.25 2.25 0 0115.75 19.5h-7.5A2.25 2.25 0 016 17.25V6.75A2.25 2.25 0 018.25 4.5z"
+        />
       </svg>
     ),
   },
@@ -59,7 +97,13 @@ const navEntries: NavEntry[] = [
     to: '/nat',
     label: 'NAT',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
         <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h10M7 12h10M7 17h10" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 4l3 3-3 3M9 14l-3 3 3 3" />
       </svg>
@@ -69,8 +113,18 @@ const navEntries: NavEntry[] = [
     to: '/vpn',
     label: 'VPN',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+        />
       </svg>
     ),
   },
@@ -78,8 +132,18 @@ const navEntries: NavEntry[] = [
     to: '/dns',
     label: 'DNS',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"
+        />
       </svg>
     ),
   },
@@ -87,8 +151,18 @@ const navEntries: NavEntry[] = [
     to: '/dynamic-dns',
     label: 'Dynamic DNS',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 0112.9-5.3M19.5 12a7.5 7.5 0 01-12.9 5.3" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M4.5 12a7.5 7.5 0 0112.9-5.3M19.5 12a7.5 7.5 0 01-12.9 5.3"
+        />
         <path strokeLinecap="round" strokeLinejoin="round" d="M18 3v4h-4M6 21v-4h4" />
       </svg>
     ),
@@ -97,7 +171,13 @@ const navEntries: NavEntry[] = [
     to: '/dhcp',
     label: 'DHCP',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
         <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
       </svg>
     ),
@@ -106,8 +186,18 @@ const navEntries: NavEntry[] = [
     to: '/captive-portal',
     label: 'Captive Portal',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 11c1.657 0 3-1.343 3-3V7a3 3 0 10-6 0v1c0 1.657 1.343 3 3 3z" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M12 11c1.657 0 3-1.343 3-3V7a3 3 0 10-6 0v1c0 1.657 1.343 3 3 3z"
+        />
         <path strokeLinecap="round" strokeLinejoin="round" d="M5 19a7 7 0 0114 0" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M20 12a8 8 0 11-16 0 8 8 0 0116 0z" />
       </svg>
@@ -117,8 +207,18 @@ const navEntries: NavEntry[] = [
     to: '/ntp',
     label: 'NTP',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z"
+        />
       </svg>
     ),
   },
@@ -126,8 +226,18 @@ const navEntries: NavEntry[] = [
     to: '/cloudflared',
     label: 'Cloudflared',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18h11.5a3.5 3.5 0 000-7 5 5 0 00-9.7-1.5A4 4 0 006 18z" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M6 18h11.5a3.5 3.5 0 000-7 5 5 0 00-9.7-1.5A4 4 0 006 18z"
+        />
       </svg>
     ),
   },
@@ -135,8 +245,18 @@ const navEntries: NavEntry[] = [
     to: '/security',
     label: 'Security',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5-2.5c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V6l8-3 8 3v1.5z" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M9 12l2 2 4-4m5-2.5c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V6l8-3 8 3v1.5z"
+        />
       </svg>
     ),
   },
@@ -144,8 +264,18 @@ const navEntries: NavEntry[] = [
     to: '/acme',
     label: 'ACME / TLS',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+        />
       </svg>
     ),
   },
@@ -153,8 +283,18 @@ const navEntries: NavEntry[] = [
     to: '/logs',
     label: 'Logs',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5M3.75 6.75h16.5M3.75 17.25h10.5" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M3.75 12h16.5M3.75 6.75h16.5M3.75 17.25h10.5"
+        />
       </svg>
     ),
   },
@@ -162,8 +302,18 @@ const navEntries: NavEntry[] = [
     to: '/backup',
     label: 'Backup / Restore',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+        />
       </svg>
     ),
   },
@@ -171,8 +321,18 @@ const navEntries: NavEntry[] = [
     to: '/notifications',
     label: 'Notifications',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+        />
       </svg>
     ),
   },
@@ -180,26 +340,36 @@ const navEntries: NavEntry[] = [
     to: '/system',
     label: 'System',
     icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+        />
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
     ),
   },
-]
+];
 
 interface SidebarProps {
-  isOpen: boolean
-  onClose: () => void
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const location = useLocation()
+  const location = useLocation();
   const isSecurityRoute =
     location.pathname.startsWith('/security') ||
     location.pathname.startsWith('/suricata') ||
     location.pathname.startsWith('/crowdsec') ||
-    location.pathname.startsWith('/ai-threats')
+    location.pathname.startsWith('/ai-threats');
 
   return (
     <>
@@ -221,8 +391,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="flex min-w-0 items-center gap-3">
             <img src="/shield.svg" alt="DayShield" className="h-8 w-8 shrink-0" />
             <div className="min-w-0">
-              <span className="block truncate text-base font-bold leading-none text-white">DayShield</span>
-              <span className="block text-[10px] text-blue-400 mt-0.5 tracking-widest uppercase">Firewall</span>
+              <span className="block truncate text-base font-bold leading-none text-white">
+                DayShield
+              </span>
+              <span className="block text-[10px] text-blue-400 mt-0.5 tracking-widest uppercase">
+                Firewall
+              </span>
             </div>
           </div>
           <button
@@ -231,7 +405,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             className="rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
             onClick={onClose}
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.8}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
             </svg>
           </button>
@@ -248,25 +428,33 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 >
                   {entry.label}
                 </p>
-              )
+              );
             }
-            const item = entry as NavItem
-            const level = item.level ?? 0
-            const itemClassName = level === 0 ? 'sidebar-link' : level === 2 ? 'sidebar-sub-link-nested' : 'sidebar-sub-link'
+            const item = entry as NavItem;
+            const level = item.level ?? 0;
+            const itemClassName =
+              level === 0
+                ? 'sidebar-link'
+                : level === 2
+                  ? 'sidebar-sub-link-nested'
+                  : 'sidebar-sub-link';
             return (
               <div key={item.to}>
                 <NavLink
                   to={item.to}
                   onClick={onClose}
                   className={({ isActive }) =>
-                    [itemClassName, isActive || (item.to === '/security' && isSecurityRoute) ? 'active' : ''].join(' ')
+                    [
+                      itemClassName,
+                      isActive || (item.to === '/security' && isSecurityRoute) ? 'active' : '',
+                    ].join(' ')
                   }
                 >
                   {item.icon}
                   <span className="truncate">{item.label}</span>
                 </NavLink>
               </div>
-            )
+            );
           })}
         </nav>
 
@@ -276,5 +464,5 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
       </aside>
     </>
-  )
+  );
 }

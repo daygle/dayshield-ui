@@ -1,5 +1,5 @@
-import apiClient from './client'
-import type { AdminSecuritySettings } from '../types'
+import apiClient from './client';
+import type { AdminSecuritySettings } from '../types';
 
 const DEFAULT_ADMIN_SECURITY: AdminSecuritySettings = {
   session_timeout_minutes: 480,
@@ -9,10 +9,10 @@ const DEFAULT_ADMIN_SECURITY: AdminSecuritySettings = {
   require_uppercase: false,
   require_number: false,
   require_special: false,
-}
+};
 
 function normalizeAdminSecurity(raw: unknown): AdminSecuritySettings {
-  const value = (raw ?? {}) as Partial<AdminSecuritySettings>
+  const value = (raw ?? {}) as Partial<AdminSecuritySettings>;
   return {
     session_timeout_minutes:
       typeof value.session_timeout_minutes === 'number' && value.session_timeout_minutes > 0
@@ -33,22 +33,20 @@ function normalizeAdminSecurity(raw: unknown): AdminSecuritySettings {
     require_uppercase: Boolean(value.require_uppercase),
     require_number: Boolean(value.require_number),
     require_special: Boolean(value.require_special),
-  }
+  };
 }
 
 export const getAdminSecurity = (): Promise<AdminSecuritySettings> =>
   apiClient
     .get('/admin/security')
-    .then((r) => normalizeAdminSecurity((r.data as { data?: unknown })?.data))
+    .then((r) => normalizeAdminSecurity((r.data as { data?: unknown })?.data));
 
 export const updateAdminSecurity = (
-  settings: AdminSecuritySettings,
+  settings: AdminSecuritySettings
 ): Promise<{ message: string }> =>
-  apiClient
-    .put('/admin/security', settings)
-    .then((r) => {
-      const payload = (r.data as { data?: { message?: string }; message?: string })
-      return {
-        message: payload.data?.message ?? payload.message ?? 'admin security settings updated',
-      }
-    })
+  apiClient.put('/admin/security', settings).then((r) => {
+    const payload = r.data as { data?: { message?: string }; message?: string };
+    return {
+      message: payload.data?.message ?? payload.message ?? 'admin security settings updated',
+    };
+  });

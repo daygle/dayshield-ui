@@ -1,22 +1,28 @@
-import { useState } from 'react'
-import type { Ipv6Mode, Ipv6RaMode, NetworkInterface } from '../../types'
-import { updateInterface } from '../../api/interfaces'
-import FormField from '../../components/FormField'
-import Modal from '../../components/Modal'
-import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
+import { useState } from 'react';
+import type { Ipv6Mode, Ipv6RaMode, NetworkInterface } from '../../types';
+import { updateInterface } from '../../api/interfaces';
+import FormField from '../../components/FormField';
+import Modal from '../../components/Modal';
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
 interface InterfaceDetailsProps {
-  iface: NetworkInterface
-  ipv6Enabled?: boolean
-  parentInterfaceOptions?: string[]
-  parentInterfaceLabel?: (name: string) => string
-  onUpdate?: () => void
+  iface: NetworkInterface;
+  ipv6Enabled?: boolean;
+  parentInterfaceOptions?: string[];
+  parentInterfaceLabel?: (name: string) => string;
+  onUpdate?: () => void;
 }
 
-export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInterfaceOptions = [], parentInterfaceLabel, onUpdate }: InterfaceDetailsProps) {
-  const [editOpen, setEditOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+export default function InterfaceDetails({
+  iface,
+  ipv6Enabled = false,
+  parentInterfaceOptions = [],
+  parentInterfaceLabel,
+  onUpdate,
+}: InterfaceDetailsProps) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<NetworkInterface>>({
     name: iface.name,
     description: iface.description,
@@ -45,7 +51,7 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
     gateway: iface.gateway,
     mtu: iface.mtu,
     mss: iface.mss,
-  })
+  });
 
   const ipv4ConfigurationType = iface.dhcp4
     ? 'DHCP'
@@ -53,94 +59,95 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
       ? 'PPPoE'
       : iface.wanMode === 'dhcp'
         ? 'DHCP WAN'
-        : 'Static'
+        : 'Static';
 
-  const kernelAddresses = iface.kernelAddresses ?? []
-  const availableParentInterfaces = parentInterfaceOptions.filter((name) => name !== iface.name)
-  const availableTrackSourceInterfaces = availableParentInterfaces
-  const resolvedParentInterfaceOptions = form.parentInterface
-    && !availableParentInterfaces.includes(form.parentInterface)
-    ? [...availableParentInterfaces, form.parentInterface]
-    : availableParentInterfaces
-  const resolvedTrackSourceOptions = form.trackSourceInterface
-    && !availableTrackSourceInterfaces.includes(form.trackSourceInterface)
-    ? [...availableTrackSourceInterfaces, form.trackSourceInterface]
-    : availableTrackSourceInterfaces
-  const formIpv6Mode: Ipv6Mode = form.ipv6Mode ?? (form.dhcp6 ? 'dhcp6' : form.acceptRa ? 'slaac' : 'static')
-  const isWanForm = Boolean(form.wanMode || form.gateway)
-  const kernelIpv4 = kernelAddresses.filter((addr) => addr.includes('.'))
-  const kernelIpv6 = kernelAddresses.filter((addr) => addr.includes(':'))
-  const statusText = iface.enabled ? (iface.kernelState ?? 'UP') : 'DOWN'
-  const statusClass = statusText.toUpperCase() === 'UP'
-    ? 'bg-green-100 text-green-700'
-    : 'bg-gray-100 text-gray-600'
-  const interfaceDisplayName = formatInterfaceDisplayName(iface.description, iface.name)
+  const kernelAddresses = iface.kernelAddresses ?? [];
+  const availableParentInterfaces = parentInterfaceOptions.filter((name) => name !== iface.name);
+  const availableTrackSourceInterfaces = availableParentInterfaces;
+  const resolvedParentInterfaceOptions =
+    form.parentInterface && !availableParentInterfaces.includes(form.parentInterface)
+      ? [...availableParentInterfaces, form.parentInterface]
+      : availableParentInterfaces;
+  const resolvedTrackSourceOptions =
+    form.trackSourceInterface && !availableTrackSourceInterfaces.includes(form.trackSourceInterface)
+      ? [...availableTrackSourceInterfaces, form.trackSourceInterface]
+      : availableTrackSourceInterfaces;
+  const formIpv6Mode: Ipv6Mode =
+    form.ipv6Mode ?? (form.dhcp6 ? 'dhcp6' : form.acceptRa ? 'slaac' : 'static');
+  const isWanForm = Boolean(form.wanMode || form.gateway);
+  const kernelIpv4 = kernelAddresses.filter((addr) => addr.includes('.'));
+  const kernelIpv6 = kernelAddresses.filter((addr) => addr.includes(':'));
+  const statusText = iface.enabled ? (iface.kernelState ?? 'UP') : 'DOWN';
+  const statusClass =
+    statusText.toUpperCase() === 'UP' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600';
+  const interfaceDisplayName = formatInterfaceDisplayName(iface.description, iface.name);
 
-  const formatCount = (value?: number) => (typeof value === 'number' ? value.toLocaleString() : '-')
+  const formatCount = (value?: number) =>
+    typeof value === 'number' ? value.toLocaleString() : '-';
   const formatBytes = (value?: number) => {
-    if (typeof value !== 'number') return '-'
-    const units = ['B', 'KB', 'MB', 'GB', 'TB']
-    let size = value
-    let idx = 0
+    if (typeof value !== 'number') return '-';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let size = value;
+    let idx = 0;
     while (size >= 1024 && idx < units.length - 1) {
-      size /= 1024
-      idx += 1
+      size /= 1024;
+      idx += 1;
     }
-    return `${size.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`
-  }
+    return `${size.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
+  };
 
   const labelParentInterface = (name?: string) => {
-    if (!name) return '-'
-    return parentInterfaceLabel ? parentInterfaceLabel(name) : name
-  }
+    if (!name) return '-';
+    return parentInterfaceLabel ? parentInterfaceLabel(name) : name;
+  };
 
   const labelIpv6Mode = (mode: Ipv6Mode | undefined) => {
     switch (mode) {
       case 'dhcp6':
-        return 'DHCPv6'
+        return 'DHCPv6';
       case 'slaac':
-        return 'SLAAC (RA)'
+        return 'SLAAC (RA)';
       case 'track_interface':
-        return 'Track Interface'
+        return 'Track Interface';
       default:
-        return 'Static'
+        return 'Static';
     }
-  }
+  };
 
   const labelRaMode = (mode: Ipv6RaMode | undefined) => {
     switch (mode) {
       case 'router_only':
-        return 'Router Only'
+        return 'Router Only';
       case 'managed':
-        return 'Managed'
+        return 'Managed';
       case 'assisted':
-        return 'Assisted'
+        return 'Assisted';
       case 'stateless':
-        return 'Stateless'
+        return 'Stateless';
       default:
-        return 'Unmanaged'
+        return 'Unmanaged';
     }
-  }
+  };
 
   const handleSave = () => {
     if (form.type === 'vlan') {
-      const vlanId = Number(form.vlanId)
+      const vlanId = Number(form.vlanId);
       if (!form.parentInterface?.trim()) {
-        setError('Parent interface is required for VLAN interfaces.')
-        return
+        setError('Parent interface is required for VLAN interfaces.');
+        return;
       }
       if (!Number.isInteger(vlanId) || vlanId < 1 || vlanId > 4094) {
-        setError('VLAN ID must be a whole number between 1 and 4094.')
-        return
+        setError('VLAN ID must be a whole number between 1 and 4094.');
+        return;
       }
     }
     if (ipv6Enabled && formIpv6Mode === 'track_interface' && !form.trackSourceInterface?.trim()) {
-      setError('Track Interface mode requires a source interface.')
-      return
+      setError('Track Interface mode requires a source interface.');
+      return;
     }
 
-    setSaving(true)
-    setError(null)
+    setSaving(true);
+    setError(null);
     updateInterface({
       ...iface,
       ...form,
@@ -150,12 +157,12 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
       blockBogonNetworks: isWanForm ? Boolean(form.blockBogonNetworks) : false,
     } as NetworkInterface)
       .then(() => {
-        setEditOpen(false)
-        onUpdate?.()
+        setEditOpen(false);
+        onUpdate?.();
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setSaving(false))
-  }
+      .finally(() => setSaving(false));
+  };
 
   return (
     <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -194,7 +201,9 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
               >
                 <option value="">Select parent interface</option>
                 {resolvedParentInterfaceOptions.map((name) => (
-                  <option key={name} value={name}>{labelParentInterface(name)}</option>
+                  <option key={name} value={name}>
+                    {labelParentInterface(name)}
+                  </option>
                 ))}
               </FormField>
               <FormField
@@ -232,7 +241,7 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
             as="select"
             value={form.dhcp4 ? 'dhcp' : form.wanMode === 'pppoe' ? 'pppoe' : 'static'}
             onChange={(e) => {
-              const mode = e.target.value
+              const mode = e.target.value;
               if (mode === 'dhcp') {
                 setForm({
                   ...form,
@@ -241,8 +250,8 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
                   ipv4Address: '',
                   ipv4Prefix: 24,
                   gateway: '',
-                })
-                return
+                });
+                return;
               }
               if (mode === 'pppoe') {
                 setForm({
@@ -252,14 +261,14 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
                   ipv4Address: '',
                   gateway: '',
                   mtu: form.mtu ?? 1492,
-                })
-                return
+                });
+                return;
               }
               setForm({
                 ...form,
                 dhcp4: false,
                 wanMode: undefined,
-              })
+              });
             }}
           >
             <option value="static">Static</option>
@@ -272,7 +281,9 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
             type="number"
             min={68}
             value={String(form.mtu ?? '')}
-            onChange={(e) => setForm({ ...form, mtu: e.target.value ? Number(e.target.value) : undefined })}
+            onChange={(e) =>
+              setForm({ ...form, mtu: e.target.value ? Number(e.target.value) : undefined })
+            }
           />
           <FormField
             id="iface-mss"
@@ -281,7 +292,9 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
             min={536}
             max={65535}
             value={String(form.mss ?? '')}
-            onChange={(e) => setForm({ ...form, mss: e.target.value ? Number(e.target.value) : undefined })}
+            onChange={(e) =>
+              setForm({ ...form, mss: e.target.value ? Number(e.target.value) : undefined })
+            }
           />
           {form.wanMode === 'pppoe' && (
             <>
@@ -339,7 +352,9 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
                   />
                   <span>
                     <span className="block font-medium text-gray-900">Block private networks</span>
-                    <span className="text-xs text-gray-500">Drop inbound WAN traffic sourced from RFC1918 or IPv6 unique-local ranges.</span>
+                    <span className="text-xs text-gray-500">
+                      Drop inbound WAN traffic sourced from RFC1918 or IPv6 unique-local ranges.
+                    </span>
                   </span>
                 </label>
                 <label className="flex items-start gap-3 text-sm text-gray-700">
@@ -351,7 +366,10 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
                   />
                   <span>
                     <span className="block font-medium text-gray-900">Block bogon networks</span>
-                    <span className="text-xs text-gray-500">Drop inbound WAN traffic sourced from invalid, reserved, or documentation ranges.</span>
+                    <span className="text-xs text-gray-500">
+                      Drop inbound WAN traffic sourced from invalid, reserved, or documentation
+                      ranges.
+                    </span>
                   </span>
                 </label>
               </div>
@@ -366,20 +384,22 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
                 as="select"
                 value={formIpv6Mode}
                 onChange={(e) => {
-                  const mode = e.target.value as Ipv6Mode
+                  const mode = e.target.value as Ipv6Mode;
                   setForm({
                     ...form,
                     ipv6Mode: mode,
                     dhcp6: mode === 'dhcp6',
                     acceptRa: mode === 'slaac',
-                    trackSourceInterface: mode === 'track_interface' ? (form.trackSourceInterface ?? '') : '',
+                    trackSourceInterface:
+                      mode === 'track_interface' ? (form.trackSourceInterface ?? '') : '',
                     trackPrefixId: mode === 'track_interface' ? form.trackPrefixId : undefined,
-                    delegatedPrefixLen: mode === 'track_interface' ? form.delegatedPrefixLen : undefined,
+                    delegatedPrefixLen:
+                      mode === 'track_interface' ? form.delegatedPrefixLen : undefined,
                     raMode: mode === 'track_interface' ? (form.raMode ?? 'unmanaged') : undefined,
                     iaPdHintLen: mode === 'dhcp6' ? form.iaPdHintLen : undefined,
                     ipv6Address: mode === 'static' ? form.ipv6Address : '',
                     ipv6Prefix: mode === 'static' ? (form.ipv6Prefix ?? 64) : 64,
-                  })
+                  });
                 }}
               >
                 <option value="static">Static</option>
@@ -416,7 +436,9 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
                   >
                     <option value="">Select source interface</option>
                     {resolvedTrackSourceOptions.map((name) => (
-                      <option key={name} value={name}>{labelParentInterface(name)}</option>
+                      <option key={name} value={name}>
+                        {labelParentInterface(name)}
+                      </option>
                     ))}
                   </FormField>
                   <FormField
@@ -510,8 +532,18 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
           title="Edit interface settings"
           aria-label="Edit interface settings"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
           </svg>
         </button>
       </div>
@@ -519,7 +551,9 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
       <div className="rounded border border-gray-200 bg-white p-4">
         <div className="mb-3 flex items-center justify-between">
           <h4 className="text-sm font-semibold text-gray-900">Overview</h4>
-          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}>
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}
+          >
             {statusText}
           </span>
         </div>
@@ -552,10 +586,17 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
             <div className="rounded border border-gray-100 bg-gray-50 p-3">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">IPv6</p>
               <p className="mt-1 font-mono text-sm text-gray-900">
-                {iface.ipv6Address ? `${iface.ipv6Address}/${iface.ipv6Prefix ?? '-'}` : kernelIpv6.length > 0 ? kernelIpv6.join(', ') : '-'}
+                {iface.ipv6Address
+                  ? `${iface.ipv6Address}/${iface.ipv6Prefix ?? '-'}`
+                  : kernelIpv6.length > 0
+                    ? kernelIpv6.join(', ')
+                    : '-'}
               </p>
               <p className="mt-1 text-xs text-gray-500">
-                Mode: {labelIpv6Mode(iface.ipv6Mode ?? (iface.dhcp6 ? 'dhcp6' : iface.acceptRa ? 'slaac' : 'static'))}
+                Mode:{' '}
+                {labelIpv6Mode(
+                  iface.ipv6Mode ?? (iface.dhcp6 ? 'dhcp6' : iface.acceptRa ? 'slaac' : 'static')
+                )}
               </p>
               {iface.ipv6Mode === 'track_interface' && (
                 <p className="mt-1 text-xs text-gray-500">
@@ -563,13 +604,12 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
                 </p>
               )}
               {iface.ipv6Mode === 'track_interface' && (
-                <p className="mt-1 text-xs text-gray-500">
-                  RA Mode: {labelRaMode(iface.raMode)}
-                </p>
+                <p className="mt-1 text-xs text-gray-500">RA Mode: {labelRaMode(iface.raMode)}</p>
               )}
               {iface.resolvedIpv6Prefix && (
                 <p className="mt-1 text-xs text-gray-500">
-                  {iface.ipv6Mode === 'dhcp6' ? 'Delegated' : 'Assigned'}: <span className="font-mono">{iface.resolvedIpv6Prefix}</span>
+                  {iface.ipv6Mode === 'dhcp6' ? 'Delegated' : 'Assigned'}:{' '}
+                  <span className="font-mono">{iface.resolvedIpv6Prefix}</span>
                 </p>
               )}
               {kernelIpv6.length > 0 && iface.ipv6Address && (
@@ -598,23 +638,26 @@ export default function InterfaceDetails({ iface, ipv6Enabled = false, parentInt
             </p>
           </div>
           <div className="rounded border border-gray-100 bg-gray-50 p-3 md:col-span-2 lg:col-span-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Kernel Flags</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+              Kernel Flags
+            </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {(iface.kernelFlags && iface.kernelFlags.length > 0) ? iface.kernelFlags.map((flag) => (
-                <span
-                  key={flag}
-                  className="inline-flex items-center rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] font-medium text-gray-700"
-                >
-                  {flag}
-                </span>
-              )) : (
+              {iface.kernelFlags && iface.kernelFlags.length > 0 ? (
+                iface.kernelFlags.map((flag) => (
+                  <span
+                    key={flag}
+                    className="inline-flex items-center rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] font-medium text-gray-700"
+                  >
+                    {flag}
+                  </span>
+                ))
+              ) : (
                 <span className="text-xs text-gray-500">No runtime flags available.</span>
               )}
             </div>
           </div>
         </div>
       </div>
-
     </div>
-  )
+  );
 }

@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import Modal from '../../components/Modal'
-import FormField from '../../components/FormField'
-import type { CreateBackupRequest } from '../../types'
+import { useState } from 'react';
+import Modal from '../../components/Modal';
+import FormField from '../../components/FormField';
+import type { CreateBackupRequest } from '../../types';
 
 const SELECTIVE_COMPONENTS = [
   { id: 'firewall', label: 'Firewall rules' },
@@ -10,13 +10,13 @@ const SELECTIVE_COMPONENTS = [
   { id: 'vpn', label: 'VPN / WireGuard' },
   { id: 'certificates', label: 'Certificates (ACME)' },
   { id: 'system', label: 'System configuration' },
-]
+];
 
 interface CreateBackupDialogProps {
-  open: boolean
-  loading: boolean
-  onClose: () => void
-  onConfirm: (req: CreateBackupRequest) => void
+  open: boolean;
+  loading: boolean;
+  onClose: () => void;
+  onConfirm: (req: CreateBackupRequest) => void;
 }
 
 export default function CreateBackupDialog({
@@ -25,49 +25,47 @@ export default function CreateBackupDialog({
   onClose,
   onConfirm,
 }: CreateBackupDialogProps) {
-  const [type, setType] = useState<'full' | 'selective'>('full')
-  const [components, setComponents] = useState<string[]>([])
-  const [encrypt, setEncrypt] = useState(false)
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [pwError, setPwError] = useState('')
+  const [type, setType] = useState<'full' | 'selective'>('full');
+  const [components, setComponents] = useState<string[]>([]);
+  const [encrypt, setEncrypt] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwError, setPwError] = useState('');
 
   const toggleComponent = (id: string) => {
-    setComponents((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
-    )
-  }
+    setComponents((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+  };
 
   const handleConfirm = () => {
     if (encrypt) {
       if (!password) {
-        setPwError('Password is required for encrypted backups.')
-        return
+        setPwError('Password is required for encrypted backups.');
+        return;
       }
       if (password !== confirmPassword) {
-        setPwError('Passwords do not match.')
-        return
+        setPwError('Passwords do not match.');
+        return;
       }
     }
-    setPwError('')
-    const req: CreateBackupRequest = { type }
-    if (type === 'selective') req.components = components
+    setPwError('');
+    const req: CreateBackupRequest = { type };
+    if (type === 'selective') req.components = components;
     if (encrypt) {
-      req.encrypt = true
-      if (password) req.password = password
+      req.encrypt = true;
+      if (password) req.password = password;
     }
-    onConfirm(req)
-  }
+    onConfirm(req);
+  };
 
   const handleClose = () => {
-    setType('full')
-    setComponents([])
-    setEncrypt(false)
-    setPassword('')
-    setConfirmPassword('')
-    setPwError('')
-    onClose()
-  }
+    setType('full');
+    setComponents([]);
+    setEncrypt(false);
+    setPassword('');
+    setConfirmPassword('');
+    setPwError('');
+    onClose();
+  };
 
   return (
     <Modal
@@ -136,8 +134,8 @@ export default function CreateBackupDialog({
               type="checkbox"
               checked={encrypt}
               onChange={(e) => {
-                setEncrypt(e.target.checked)
-                setPwError('')
+                setEncrypt(e.target.checked);
+                setPwError('');
               }}
               className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500"
             />
@@ -154,7 +152,10 @@ export default function CreateBackupDialog({
               type="password"
               required
               value={password}
-              onChange={(e) => { setPassword(e.target.value); setPwError('') }}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setPwError('');
+              }}
               autoComplete="new-password"
             />
             <FormField
@@ -163,7 +164,10 @@ export default function CreateBackupDialog({
               type="password"
               required
               value={confirmPassword}
-              onChange={(e) => { setConfirmPassword(e.target.value); setPwError('') }}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                setPwError('');
+              }}
               autoComplete="new-password"
               error={pwError}
             />
@@ -171,5 +175,5 @@ export default function CreateBackupDialog({
         )}
       </div>
     </Modal>
-  )
+  );
 }

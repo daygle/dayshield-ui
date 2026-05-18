@@ -1,48 +1,46 @@
-import { useState } from 'react'
-import FormField from './FormField'
-import Button from './Button'
+import { useState } from 'react';
+import FormField from './FormField';
+import Button from './Button';
 
 interface PasswordChangeFormProps {
-  onSubmit: (currentPassword: string, newPassword: string) => Promise<void>
+  onSubmit: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 export default function PasswordChangeForm({ onSubmit }: PasswordChangeFormProps) {
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
+    e.preventDefault();
+    setError('');
 
     if (newPassword !== confirmPassword) {
-      setError('New passwords do not match.')
-      return
+      setError('New passwords do not match.');
+      return;
     }
     if (newPassword.length < 8) {
-      setError('New password must be at least 8 characters.')
-      return
+      setError('New password must be at least 8 characters.');
+      return;
     }
 
-    setSubmitting(true)
+    setSubmitting(true);
     try {
-      await onSubmit(currentPassword, newPassword)
-      setCurrentPassword('')
-      setNewPassword('')
-      setConfirmPassword('')
+      await onSubmit(currentPassword, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Password change failed')
+      setError(err instanceof Error ? err.message : 'Password change failed');
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
   const isValid =
-    currentPassword.length > 0 &&
-    newPassword.length > 0 &&
-    confirmPassword.length > 0
+    currentPassword.length > 0 && newPassword.length > 0 && confirmPassword.length > 0;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -59,9 +57,7 @@ export default function PasswordChangeForm({ onSubmit }: PasswordChangeFormProps
         required
         autoComplete="current-password"
         value={currentPassword}
-        onChange={(e) =>
-          setCurrentPassword((e.target as HTMLInputElement).value)
-        }
+        onChange={(e) => setCurrentPassword((e.target as HTMLInputElement).value)}
       />
 
       <FormField
@@ -82,9 +78,7 @@ export default function PasswordChangeForm({ onSubmit }: PasswordChangeFormProps
         required
         autoComplete="new-password"
         value={confirmPassword}
-        onChange={(e) =>
-          setConfirmPassword((e.target as HTMLInputElement).value)
-        }
+        onChange={(e) => setConfirmPassword((e.target as HTMLInputElement).value)}
       />
 
       <Button
@@ -96,5 +90,5 @@ export default function PasswordChangeForm({ onSubmit }: PasswordChangeFormProps
         {submitting ? 'Updating…' : 'Update Password'}
       </Button>
     </form>
-  )
+  );
 }

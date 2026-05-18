@@ -1,19 +1,19 @@
-import { useNavigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
-import LoginForm from '../components/LoginForm'
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import LoginForm from '../components/LoginForm';
 
 export default function LoginPage() {
-  const { signIn } = useAuth()
-  const { addToast } = useToast()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/dashboard'
+  const { signIn } = useAuth();
+  const { addToast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/dashboard';
 
   async function handleLogin(username: string, password: string) {
-    await signIn({ username, password })
-    addToast('Signed in successfully.', 'success')
-    navigate(from, { replace: true })
+    await signIn({ username, password });
+    addToast('Signed in successfully.', 'success');
+    navigate(from, { replace: true });
   }
 
   return (
@@ -38,5 +38,5 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

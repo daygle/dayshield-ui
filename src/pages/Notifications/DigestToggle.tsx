@@ -1,7 +1,7 @@
 interface DigestToggleProps {
-  enabled: boolean
-  disabled: boolean
-  onChange: (enabled: boolean) => void
+  enabled: boolean;
+  disabled: boolean;
+  onChange: (enabled: boolean) => void;
 }
 
 export default function DigestToggle({ enabled, disabled, onChange }: DigestToggleProps) {
@@ -37,5 +37,5 @@ export default function DigestToggle({ enabled, disabled, onChange }: DigestTogg
         </p>
       </div>
     </div>
-  )
+  );
 }

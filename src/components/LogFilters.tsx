@@ -1,4 +1,4 @@
-import type { LiveLogsFilter, LogLevel, LogSource } from '../types/logs'
+import type { LiveLogsFilter, LogLevel, LogSource } from '../types/logs';
 
 const SOURCES: { value: LogSource | 'all'; label: string }[] = [
   { value: 'all', label: 'All Sources' },
@@ -18,7 +18,7 @@ const SOURCES: { value: LogSource | 'all'; label: string }[] = [
   { value: 'vpn', label: 'VPN' },
   { value: 'cloudflared', label: 'Cloudflared' },
   { value: 'acme', label: 'ACME' },
-]
+];
 
 const LEVELS: { value: LogLevel | 'all'; label: string }[] = [
   { value: 'all', label: 'All Levels' },
@@ -27,11 +27,11 @@ const LEVELS: { value: LogLevel | 'all'; label: string }[] = [
   { value: 'warning', label: 'Warning' },
   { value: 'error', label: 'Error' },
   { value: 'critical', label: 'Critical' },
-]
+];
 
 interface LogFiltersProps {
-  filter: LiveLogsFilter
-  onChange: (next: Partial<LiveLogsFilter>) => void
+  filter: LiveLogsFilter;
+  onChange: (next: Partial<LiveLogsFilter>) => void;
 }
 
 export default function LogFilters({ filter, onChange }: LogFiltersProps) {
@@ -63,5 +63,5 @@ export default function LogFilters({ filter, onChange }: LogFiltersProps) {
         ))}
       </select>
     </div>
-  )
+  );
 }

@@ -1,44 +1,48 @@
-import { useEffect, useState } from 'react'
-import { sendTestEmail } from '../../api/notifications'
-import Button from '../../components/Button'
-import FormField from '../../components/FormField'
+import { useEffect, useState } from 'react';
+import { sendTestEmail } from '../../api/notifications';
+import Button from '../../components/Button';
+import FormField from '../../components/FormField';
 
 interface TestEmailButtonProps {
-  defaultRecipient: string
-  disabled: boolean
-  onResult: (success: boolean, message: string) => void
+  defaultRecipient: string;
+  disabled: boolean;
+  onResult: (success: boolean, message: string) => void;
 }
 
-export default function TestEmailButton({ defaultRecipient, disabled, onResult }: TestEmailButtonProps) {
-  const [recipient, setRecipient] = useState(defaultRecipient || '')
-  const [sending, setSending] = useState(false)
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+export default function TestEmailButton({
+  defaultRecipient,
+  disabled,
+  onResult,
+}: TestEmailButtonProps) {
+  const [recipient, setRecipient] = useState(defaultRecipient || '');
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Sync the field when the parent's default recipient changes (e.g. after
   // async config load or after the recipients list is saved), but only when
   // the user hasn't already typed a custom value.
   useEffect(() => {
-    setRecipient((current) => (current === '' ? defaultRecipient || '' : current))
-  }, [defaultRecipient])
+    setRecipient((current) => (current === '' ? defaultRecipient || '' : current));
+  }, [defaultRecipient]);
 
   const handle = () => {
-    const email = recipient.trim()
-    if (!email) return
-    setSending(true)
-    setResult(null)
+    const email = recipient.trim();
+    if (!email) return;
+    setSending(true);
+    setResult(null);
     sendTestEmail({ recipient: email })
       .then((res) => {
-        const r = { success: res.data.success, message: res.data.message }
-        setResult(r)
-        onResult(r.success, r.message)
+        const r = { success: res.data.success, message: res.data.message };
+        setResult(r);
+        onResult(r.success, r.message);
       })
       .catch((err: Error) => {
-        const r = { success: false, message: err.message }
-        setResult(r)
-        onResult(false, err.message)
+        const r = { success: false, message: err.message };
+        setResult(r);
+        onResult(false, err.message);
       })
-      .finally(() => setSending(false))
-  }
+      .finally(() => setSending(false));
+  };
 
   return (
     <div className="space-y-3">
@@ -74,17 +78,35 @@ export default function TestEmailButton({ defaultRecipient, disabled, onResult }
           ].join(' ')}
         >
           {result.success ? (
-            <svg className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 111.414-1.414L8.414 12.172l7.879-7.879a1 1 0 011.414 0z" clipRule="evenodd" />
+            <svg
+              className="h-4 w-4 shrink-0 mt-0.5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 111.414-1.414L8.414 12.172l7.879-7.879a1 1 0 011.414 0z"
+                clipRule="evenodd"
+              />
             </svg>
           ) : (
-            <svg className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zm-1 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            <svg
+              className="h-4 w-4 shrink-0 mt-0.5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zm-1 8a1 1 0 100-2 1 1 0 000 2z"
+                clipRule="evenodd"
+              />
             </svg>
           )}
           <span>{result.message}</span>
         </div>
       )}
     </div>
-  )
+  );
 }

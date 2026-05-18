@@ -1,31 +1,31 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import MainLayout from './layouts/MainLayout'
-import ProtectedRoute from './components/ProtectedRoute'
-import LoginPage from './pages/LoginPage'
-import Dashboard from './pages/Dashboard'
-import Interfaces from './pages/Interfaces'
-import Gateways from './pages/Gateways'
-import Firewall from './pages/Firewall'
-import NAT from './pages/NAT'
-import VPN from './pages/VPN'
-import DNS from './pages/DNS'
-import DynamicDNS from './pages/DynamicDNS'
-import DHCP from './pages/DHCP'
-import CaptivePortal from './pages/CaptivePortal'
-import Suricata from './pages/Suricata'
-import SuricataRulesetsPage from './pages/Suricata/RulesetsPage'
-import CrowdSec from './pages/CrowdSec'
-import AIThreats from './pages/AIThreats'
-import Security from './pages/Security'
-import ACME from './pages/ACME'
-import System from './pages/System'
-import Logs from './pages/Logs'
-import Backup from './pages/Backup'
-import Notifications from './pages/Notifications'
-import NTP from './pages/NTP'
-import Cloudflared from './pages/Cloudflared'
-import ChangePasswordPage from './pages/ChangePasswordPage'
-import AdminSecurity from './pages/AdminSecurity'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import MainLayout from './layouts/MainLayout';
+import ProtectedRoute from './components/ProtectedRoute';
+import LoginPage from './pages/LoginPage';
+import Dashboard from './pages/Dashboard';
+import Interfaces from './pages/Interfaces';
+import Gateways from './pages/Gateways';
+import Firewall from './pages/Firewall';
+import NAT from './pages/NAT';
+import VPN from './pages/VPN';
+import DNS from './pages/DNS';
+import DynamicDNS from './pages/DynamicDNS';
+import DHCP from './pages/DHCP';
+import CaptivePortal from './pages/CaptivePortal';
+import Suricata from './pages/Suricata';
+import SuricataRulesetsPage from './pages/Suricata/RulesetsPage';
+import CrowdSec from './pages/CrowdSec';
+import AIThreats from './pages/AIThreats';
+import Security from './pages/Security';
+import ACME from './pages/ACME';
+import System from './pages/System';
+import Logs from './pages/Logs';
+import Backup from './pages/Backup';
+import Notifications from './pages/Notifications';
+import NTP from './pages/NTP';
+import Cloudflared from './pages/Cloudflared';
+import ChangePasswordPage from './pages/ChangePasswordPage';
+import AdminSecurity from './pages/AdminSecurity';
 
 function App() {
   return (
@@ -73,7 +73,7 @@ function App() {
         </Route>
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
 
-export default App
+export default App;

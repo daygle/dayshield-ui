@@ -1,112 +1,118 @@
-import React, { useEffect, useState } from 'react'
-import {
-  getCrowdSecConfig,
-  updateCrowdSecConfig,
-  getCrowdSecDecisions,
-} from '../../api/crowdsec'
-import type { CrowdSecStatus, CrowdSecDecision } from '../../types'
-import Card from '../../components/Card'
-import Table, { Column } from '../../components/Table'
-import Modal from '../../components/Modal'
-import FormField from '../../components/FormField'
-import ErrorBoundary from '../../components/ErrorBoundary'
-import { useToast } from '../../context/ToastContext'
+import React, { useEffect, useState } from 'react';
+import { getCrowdSecConfig, updateCrowdSecConfig, getCrowdSecDecisions } from '../../api/crowdsec';
+import type { CrowdSecStatus, CrowdSecDecision } from '../../types';
+import Card from '../../components/Card';
+import Table, { Column } from '../../components/Table';
+import Modal from '../../components/Modal';
+import FormField from '../../components/FormField';
+import ErrorBoundary from '../../components/ErrorBoundary';
+import { useToast } from '../../context/ToastContext';
 
-type DecisionRow = CrowdSecDecision & Record<string, unknown>
+type DecisionRow = CrowdSecDecision & Record<string, unknown>;
 
 const decisionTypeBadge = (type: string) => {
   const map: Record<string, string> = {
     ban: 'bg-red-100 text-red-700',
     captcha: 'bg-yellow-100 text-yellow-700',
     throttle: 'bg-orange-100 text-orange-700',
-  }
+  };
   return (
-    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase ${map[type] ?? 'bg-gray-100 text-gray-700'}`}>
+    <span
+      className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase ${map[type] ?? 'bg-gray-100 text-gray-700'}`}
+    >
       {type}
     </span>
-  )
-}
+  );
+};
 
 export default function CrowdSec() {
   return (
     <ErrorBoundary fallbackMessage="The CrowdSec page failed to render. Please refresh and try again.">
       <CrowdSecContent />
     </ErrorBoundary>
-  )
+  );
 }
 
 const decisionColumns = (): Column<DecisionRow>[] => [
-  { key: 'value', header: 'IP / Range', render: (row) => <span className="font-mono text-xs">{row.value as string}</span> },
-  { key: 'type', header: 'Action', render: (row) => decisionTypeBadge(String(row.type ?? 'unknown')) },
+  {
+    key: 'value',
+    header: 'IP / Range',
+    render: (row) => <span className="font-mono text-xs">{row.value as string}</span>,
+  },
+  {
+    key: 'type',
+    header: 'Action',
+    render: (row) => decisionTypeBadge(String(row.type ?? 'unknown')),
+  },
   { key: 'scope', header: 'Scope' },
   { key: 'duration', header: 'Duration' },
-]
+];
 
 function CrowdSecContent() {
-  const [status, setStatus] = useState<CrowdSecStatus | null>(null)
-  const [decisions, setDecisions] = useState<DecisionRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
+  const [status, setStatus] = useState<CrowdSecStatus | null>(null);
+  const [decisions, setDecisions] = useState<DecisionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  const [configModalOpen, setConfigModalOpen] = useState(false)
-  const [enableConfirmOpen, setEnableConfirmOpen] = useState(false)
-  const [configForm, setConfigForm] = useState<Partial<CrowdSecStatus>>({})
-  const [saving, setSaving] = useState(false)
-  const { addToast } = useToast()
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [enableConfirmOpen, setEnableConfirmOpen] = useState(false);
+  const [configForm, setConfigForm] = useState<Partial<CrowdSecStatus>>({});
+  const [saving, setSaving] = useState(false);
+  const { addToast } = useToast();
 
   const loadAll = () => {
-    setLoading(true)
+    setLoading(true);
     Promise.all([getCrowdSecConfig(), getCrowdSecDecisions()])
       .then(([st, dec]) => {
-        setStatus(st.data)
-        setConfigForm(st.data)
-        setDecisions(dec.data as DecisionRow[])
-        setError(null)
+        setStatus(st.data);
+        setConfigForm(st.data);
+        setDecisions(dec.data as DecisionRow[]);
+        setError(null);
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false))
-  }
+      .finally(() => setLoading(false));
+  };
 
-  useEffect(loadAll, [])
+  useEffect(loadAll, []);
 
   const validation = React.useMemo(() => {
-    const lapiUrl = (configForm.lapi_url ?? '').trim()
-    const apiKey = (configForm.api_key ?? '').trim()
-    const updateInterval = Number(configForm.update_interval)
-    const banAlias = (configForm.ban_alias_name ?? '').trim()
-    const hasSavedApiKey = Boolean(status?.api_key_configured)
-    let lapiUrlError = ''
-    let apiKeyError = ''
-    let updateIntervalError = ''
-    let banAliasError = ''
+    const lapiUrl = (configForm.lapi_url ?? '').trim();
+    const apiKey = (configForm.api_key ?? '').trim();
+    const updateInterval = Number(configForm.update_interval);
+    const banAlias = (configForm.ban_alias_name ?? '').trim();
+    const hasSavedApiKey = Boolean(status?.api_key_configured);
+    let lapiUrlError = '';
+    let apiKeyError = '';
+    let updateIntervalError = '';
+    let banAliasError = '';
 
     if (!lapiUrl) {
-      lapiUrlError = 'LAPI URL is required.'
+      lapiUrlError = 'LAPI URL is required.';
     } else {
       try {
-        const parsed = new URL(lapiUrl)
+        const parsed = new URL(lapiUrl);
         if (!['http:', 'https:'].includes(parsed.protocol)) {
-          lapiUrlError = 'LAPI URL must use http:// or https://.'
+          lapiUrlError = 'LAPI URL must use http:// or https://.';
         }
       } catch {
-        lapiUrlError = 'LAPI URL must be a valid URL.'
+        lapiUrlError = 'LAPI URL must be a valid URL.';
       }
     }
 
     if (!Number.isFinite(updateInterval) || updateInterval < 1) {
-      updateIntervalError = 'Update interval must be at least 1 second.'
+      updateIntervalError = 'Update interval must be at least 1 second.';
     }
 
     if (!banAlias) {
-      banAliasError = 'Ban alias name is required.'
+      banAliasError = 'Ban alias name is required.';
     }
 
     if (configForm.enabled && !apiKey && !hasSavedApiKey) {
-      apiKeyError = 'API key is required before enabling CrowdSec.'
+      apiKeyError = 'API key is required before enabling CrowdSec.';
     }
 
-    const errors = [lapiUrlError, apiKeyError, updateIntervalError, banAliasError].filter(Boolean)
+    const errors = [lapiUrlError, apiKeyError, updateIntervalError, banAliasError].filter(Boolean);
 
     return {
       errors,
@@ -115,50 +121,57 @@ function CrowdSecContent() {
       updateIntervalError,
       banAliasError,
       isValid: errors.length === 0,
-    }
-  }, [configForm.api_key, configForm.ban_alias_name, configForm.enabled, configForm.lapi_url, configForm.update_interval, status?.api_key_configured])
+    };
+  }, [
+    configForm.api_key,
+    configForm.ban_alias_name,
+    configForm.enabled,
+    configForm.lapi_url,
+    configForm.update_interval,
+    status?.api_key_configured,
+  ]);
 
   const saveConfig = () => {
-    const apiKey = (configForm.api_key ?? '').trim()
+    const apiKey = (configForm.api_key ?? '').trim();
     const payload: Partial<CrowdSecStatus> = {
       enabled: !!configForm.enabled,
       lapi_url: (configForm.lapi_url ?? '').trim(),
       update_interval: Number(configForm.update_interval),
       ban_alias_name: (configForm.ban_alias_name ?? '').trim(),
-    }
+    };
 
     if (apiKey) {
-      payload.api_key = apiKey
+      payload.api_key = apiKey;
     }
 
-    setSaving(true)
+    setSaving(true);
     updateCrowdSecConfig(payload)
       .then((res) => {
-        setStatus(res.data)
-        setConfigForm(res.data)
-        setConfigModalOpen(false)
-        setError(null)
-        setSuccess('CrowdSec configuration saved successfully.')
-        addToast('CrowdSec configuration saved successfully.', 'success')
+        setStatus(res.data);
+        setConfigForm(res.data);
+        setConfigModalOpen(false);
+        setError(null);
+        setSuccess('CrowdSec configuration saved successfully.');
+        addToast('CrowdSec configuration saved successfully.', 'success');
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setSaving(false))
-  }
+      .finally(() => setSaving(false));
+  };
 
   const handleSaveConfig = () => {
     if (!validation.isValid) {
-      setError(validation.errors[0] ?? 'Please fix the CrowdSec settings form errors.')
-      return
+      setError(validation.errors[0] ?? 'Please fix the CrowdSec settings form errors.');
+      return;
     }
 
-    const enableRequested = Boolean(configForm.enabled)
+    const enableRequested = Boolean(configForm.enabled);
     if (enableRequested && !status?.enabled) {
-      setEnableConfirmOpen(true)
-      return
+      setEnableConfirmOpen(true);
+      return;
     }
 
-    saveConfig()
-  }
+    saveConfig();
+  };
 
   if (loading) {
     return (
@@ -166,7 +179,7 @@ function CrowdSecContent() {
         <div className="h-24 animate-pulse rounded-lg border border-gray-200 bg-gray-100" />
         <div className="h-56 animate-pulse rounded-lg border border-gray-200 bg-gray-100" />
       </div>
-    )
+    );
   }
 
   return (
@@ -209,7 +222,11 @@ function CrowdSecContent() {
             label="API Key"
             placeholder="Paste CrowdSec API key"
             aria-label="CrowdSec API key"
-            hint={status?.api_key_configured ? 'A key is already saved. Leave this blank to keep it.' : 'Required before enabling CrowdSec.'}
+            hint={
+              status?.api_key_configured
+                ? 'A key is already saved. Leave this blank to keep it.'
+                : 'Required before enabling CrowdSec.'
+            }
             error={validation.apiKeyError || undefined}
             value={configForm.api_key ?? ''}
             onChange={(e) => setConfigForm((f) => ({ ...f, api_key: e.target.value }))}
@@ -252,8 +269,8 @@ function CrowdSecContent() {
         title="Enable CrowdSec integration?"
         onClose={() => setEnableConfirmOpen(false)}
         onConfirm={() => {
-          setEnableConfirmOpen(false)
-          saveConfig()
+          setEnableConfirmOpen(false);
+          saveConfig();
         }}
         confirmLabel="Enable and Save"
         size="md"
@@ -265,12 +282,20 @@ function CrowdSecContent() {
       </Modal>
 
       {error && (
-        <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700" role="alert" aria-live="assertive">
+        <div
+          className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+          role="alert"
+          aria-live="assertive"
+        >
           {error}
         </div>
       )}
       {success && (
-        <div className="rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700" role="status" aria-live="polite">
+        <div
+          className="rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700"
+          role="status"
+          aria-live="polite"
+        >
           {success}
         </div>
       )}
@@ -279,13 +304,28 @@ function CrowdSecContent() {
       {status && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           {[
-            { label: 'Status', value: status.enabled ? 'Enabled' : 'Disabled', color: status.enabled ? 'text-green-600' : 'text-gray-500' },
-            { label: 'API Key', value: status.api_key_configured ? 'Configured' : 'Missing', color: status.api_key_configured ? 'text-green-600' : 'text-orange-600' },
-            { label: 'Poll Interval', value: `${status.update_interval || 0}s`, color: 'text-gray-900' },
+            {
+              label: 'Status',
+              value: status.enabled ? 'Enabled' : 'Disabled',
+              color: status.enabled ? 'text-green-600' : 'text-gray-500',
+            },
+            {
+              label: 'API Key',
+              value: status.api_key_configured ? 'Configured' : 'Missing',
+              color: status.api_key_configured ? 'text-green-600' : 'text-orange-600',
+            },
+            {
+              label: 'Poll Interval',
+              value: `${status.update_interval || 0}s`,
+              color: 'text-gray-900',
+            },
             { label: 'Ban Alias', value: status.ban_alias_name || '-', color: 'text-gray-900' },
             { label: 'Active Decisions', value: String(decisions.length), color: 'text-gray-900' },
           ].map(({ label, value, color }) => (
-            <div key={label} className="min-w-0 bg-white rounded-lg border border-gray-200 shadow-sm px-5 py-4">
+            <div
+              key={label}
+              className="min-w-0 bg-white rounded-lg border border-gray-200 shadow-sm px-5 py-4"
+            >
               <p className="text-sm text-gray-500 mb-1">{label}</p>
               <p className={`break-words text-base font-semibold ${color}`}>{value}</p>
             </div>
@@ -308,13 +348,36 @@ function CrowdSecContent() {
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {loading ? (
-                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <svg
+                    className="h-4 w-4 animate-spin"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
                 ) : (
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14" />
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14"
+                    />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m0 12v4" />
                   </svg>
                 )}
@@ -326,8 +389,18 @@ function CrowdSecContent() {
                 title="Edit settings"
                 aria-label="Edit CrowdSec settings"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
                 </svg>
               </button>
             </div>
@@ -346,7 +419,9 @@ function CrowdSecContent() {
             </div>
             <div>
               <dt className="text-gray-500">API Key</dt>
-              <dd className={`font-medium ${status.api_key_configured ? 'text-green-600' : 'text-orange-600'}`}>
+              <dd
+                className={`font-medium ${status.api_key_configured ? 'text-green-600' : 'text-orange-600'}`}
+              >
                 {status.api_key_configured ? 'Configured' : 'Not configured'}
               </dd>
             </div>
@@ -356,7 +431,9 @@ function CrowdSecContent() {
             </div>
             <div>
               <dt className="text-gray-500">Ban Alias</dt>
-              <dd className="font-medium text-gray-800 font-mono">{status.ban_alias_name || '-'}</dd>
+              <dd className="font-medium text-gray-800 font-mono">
+                {status.ban_alias_name || '-'}
+              </dd>
             </div>
           </dl>
         </Card>
@@ -375,7 +452,6 @@ function CrowdSecContent() {
           emptyMessage="No active decisions."
         />
       </Card>
-
     </div>
-  )
+  );
 }

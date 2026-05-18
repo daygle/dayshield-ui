@@ -1,27 +1,27 @@
-import { useState } from 'react'
-import FormField from './FormField'
-import Button from './Button'
+import { useState } from 'react';
+import FormField from './FormField';
+import Button from './Button';
 
 interface LoginFormProps {
-  onSubmit: (username: string, password: string) => Promise<void>
+  onSubmit: (username: string, password: string) => Promise<void>;
 }
 
 export default function LoginForm({ onSubmit }: LoginFormProps) {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    setSubmitting(true)
+    e.preventDefault();
+    setError('');
+    setSubmitting(true);
     try {
-      await onSubmit(username, password)
+      await onSubmit(username, password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+      setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
@@ -61,5 +61,5 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
         {submitting ? 'Signing in…' : 'Sign in'}
       </Button>
     </form>
-  )
+  );
 }

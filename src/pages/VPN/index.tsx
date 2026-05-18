@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react';
 import {
   getWgServer,
   getWgPeers,
@@ -6,15 +6,15 @@ import {
   generateWgKeys,
   createWgPeer,
   deleteWgPeer,
-} from '../../api/wireguard'
-import type { WgServer, WgPeer } from '../../types'
-import Button from '../../components/Button'
-import Card from '../../components/Card'
-import Modal from '../../components/Modal'
-import FormField from '../../components/FormField'
-import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
+} from '../../api/wireguard';
+import type { WgServer, WgPeer } from '../../types';
+import Button from '../../components/Button';
+import Card from '../../components/Card';
+import Modal from '../../components/Modal';
+import FormField from '../../components/FormField';
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
-type PeerRow = WgPeer & Record<string, unknown>
+type PeerRow = WgPeer & Record<string, unknown>;
 
 const defaultPeerForm = {
   name: '',
@@ -24,7 +24,7 @@ const defaultPeerForm = {
   endpoint: '',
   persistentKeepalive: 25,
   enabled: true,
-}
+};
 
 const defaultServerForm = {
   interface: 'wg0',
@@ -34,79 +34,86 @@ const defaultServerForm = {
   enabled: true,
   publicKey: '',
   privateKey: '',
-}
+};
 
 function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1048576).toFixed(1)} MB`
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
 export default function VPN() {
-  const [server, setServer] = useState<WgServer | null>(null)
-  const [peers, setPeers] = useState<PeerRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [server, setServer] = useState<WgServer | null>(null);
+  const [peers, setPeers] = useState<PeerRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [peerModalOpen, setPeerModalOpen] = useState(false)
-  const [peerForm, setPeerForm] = useState(defaultPeerForm)
-  const [peerSaving, setPeerSaving] = useState(false)
-  const [deleteId, setDeleteId] = useState<number | null>(null)
-  const [deleting, setDeleting] = useState(false)
-  const [serverModalOpen, setServerModalOpen] = useState(false)
-  const [serverSaving, setServerSaving] = useState(false)
-  const [serverForm, setServerForm] = useState(defaultServerForm)
-  const [showPrivateKey, setShowPrivateKey] = useState(false)
+  const [peerModalOpen, setPeerModalOpen] = useState(false);
+  const [peerForm, setPeerForm] = useState(defaultPeerForm);
+  const [peerSaving, setPeerSaving] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [serverModalOpen, setServerModalOpen] = useState(false);
+  const [serverSaving, setServerSaving] = useState(false);
+  const [serverForm, setServerForm] = useState(defaultServerForm);
+  const [showPrivateKey, setShowPrivateKey] = useState(false);
 
   const updatePrimaryTunnelAddress = (nextIp?: string, nextPrefix?: string) => {
-    const entries = serverForm.addresses.split(',').map((s) => s.trim()).filter(Boolean)
-    const first = entries[0] ?? defaultServerForm.addresses
-    const [currentIpRaw, currentPrefixRaw] = first.split('/')
-    const currentIp = currentIpRaw?.trim() || '10.8.0.1'
-    const currentPrefix = currentPrefixRaw?.trim() || '24'
-    const mergedIp = (nextIp ?? currentIp).trim() || currentIp
-    const mergedPrefix = (nextPrefix ?? currentPrefix).trim() || currentPrefix
-    const merged = `${mergedIp}/${mergedPrefix}`
-    const rest = entries.slice(1)
+    const entries = serverForm.addresses
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const first = entries[0] ?? defaultServerForm.addresses;
+    const [currentIpRaw, currentPrefixRaw] = first.split('/');
+    const currentIp = currentIpRaw?.trim() || '10.8.0.1';
+    const currentPrefix = currentPrefixRaw?.trim() || '24';
+    const mergedIp = (nextIp ?? currentIp).trim() || currentIp;
+    const mergedPrefix = (nextPrefix ?? currentPrefix).trim() || currentPrefix;
+    const merged = `${mergedIp}/${mergedPrefix}`;
+    const rest = entries.slice(1);
     setServerForm((prev) => ({
       ...prev,
       addresses: [merged, ...rest].join(', '),
-    }))
-  }
+    }));
+  };
 
   const primaryTunnelAddress = (() => {
-    const first = serverForm.addresses.split(',').map((s) => s.trim()).filter(Boolean)[0] ?? defaultServerForm.addresses
-    const [ip, prefix] = first.split('/')
+    const first =
+      serverForm.addresses
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)[0] ?? defaultServerForm.addresses;
+    const [ip, prefix] = first.split('/');
     return {
       ip: ip?.trim() || '10.8.0.1',
       prefix: prefix?.trim() || '24',
-    }
-  })()
+    };
+  })();
 
   const loadAll = () => {
-    setLoading(true)
+    setLoading(true);
     Promise.all([getWgServer(), getWgPeers()])
       .then(([srv, prs]) => {
-        setServer(srv.data)
-        setPeers(prs.data as PeerRow[])
+        setServer(srv.data);
+        setPeers(prs.data as PeerRow[]);
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false))
-  }
+      .finally(() => setLoading(false));
+  };
 
-  useEffect(loadAll, [])
+  useEffect(loadAll, []);
 
   const handleToggleEnabled = () => {
-    if (!server) return
-    setServerSaving(true)
+    if (!server) return;
+    setServerSaving(true);
     createWgInterface({
       ...server,
       enabled: !server.enabled,
     })
       .then(() => loadAll())
       .catch((err: Error) => setError(err.message))
-      .finally(() => setServerSaving(false))
-  }
+      .finally(() => setServerSaving(false));
+  };
 
   const openServerModal = () => {
     setServerForm({
@@ -117,91 +124,97 @@ export default function VPN() {
       enabled: server?.enabled ?? true,
       publicKey: server?.publicKey || '',
       privateKey: '',
-    })
-    setShowPrivateKey(false)
-    setServerModalOpen(true)
-  }
+    });
+    setShowPrivateKey(false);
+    setServerModalOpen(true);
+  };
 
   const handleGenerateServerKeys = () => {
-    const name = serverForm.interface.trim() || defaultServerForm.interface
+    const name = serverForm.interface.trim() || defaultServerForm.interface;
     generateWgKeys(name)
       .then((res) => {
         setServerForm((current) => ({
           ...current,
           privateKey: res.data.private_key,
           publicKey: res.data.public_key,
-        }))
-        setShowPrivateKey(true)
+        }));
+        setShowPrivateKey(true);
       })
-      .catch((err: Error) => setError(err.message))
-  }
+      .catch((err: Error) => setError(err.message));
+  };
 
   const handleSaveServer = () => {
-    setServerSaving(true)
+    setServerSaving(true);
     createWgInterface({
       interface: serverForm.interface.trim(),
       description: serverForm.description.trim(),
       publicKey: serverForm.publicKey.trim(),
       privateKey: serverForm.privateKey.trim(),
       listenPort: Number(serverForm.listenPort) || defaultServerForm.listenPort,
-      addresses: serverForm.addresses.split(',').map((s) => s.trim()).filter(Boolean),
+      addresses: serverForm.addresses
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
       peers: server?.peers ?? [],
       enabled: serverForm.enabled,
     })
       .then(() => {
-        setServerModalOpen(false)
-        setServerForm((f) => ({ ...f, privateKey: '' }))
-        loadAll()
+        setServerModalOpen(false);
+        setServerForm((f) => ({ ...f, privateKey: '' }));
+        loadAll();
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setServerSaving(false))
-  }
+      .finally(() => setServerSaving(false));
+  };
 
   const handleAddPeer = () => {
-    setPeerSaving(true)
+    setPeerSaving(true);
     createWgPeer({
       name: peerForm.name,
       publicKey: peerForm.publicKey,
       presharedKey: peerForm.presharedKey || undefined,
-      allowedIPs: peerForm.allowedIPs.split(',').map((s) => s.trim()).filter(Boolean),
+      allowedIPs: peerForm.allowedIPs
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
       endpoint: peerForm.endpoint || undefined,
       persistentKeepalive: peerForm.persistentKeepalive,
       enabled: peerForm.enabled,
     })
       .then(() => {
-        setPeerModalOpen(false)
-        setPeerForm(defaultPeerForm)
-        loadAll()
+        setPeerModalOpen(false);
+        setPeerForm(defaultPeerForm);
+        loadAll();
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setPeerSaving(false))
-  }
+      .finally(() => setPeerSaving(false));
+  };
 
   const handleDeletePeer = () => {
-    if (deleteId === null) return
-    setDeleting(true)
+    if (deleteId === null) return;
+    setDeleting(true);
     deleteWgPeer(deleteId)
       .then(() => {
-        setDeleteId(null)
-        loadAll()
+        setDeleteId(null);
+        loadAll();
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setDeleting(false))
-  }
+      .finally(() => setDeleting(false));
+  };
 
   const listenPortLabel = useMemo(() => {
-    if (!server) return 'Not configured'
-    if (server.listenPort === 0) return 'Auto (kernel-assigned)'
-    return server.listenPort > 0 ? String(server.listenPort) : 'Not configured'
-  }, [server])
+    if (!server) return 'Not configured';
+    if (server.listenPort === 0) return 'Auto (kernel-assigned)';
+    return server.listenPort > 0 ? String(server.listenPort) : 'Not configured';
+  }, [server]);
 
   const vpnDisplayName = useMemo(() => {
-    if (!server?.interface) return 'VPN'
-    return formatInterfaceDisplayName(server.description, server.interface)
-  }, [server])
+    if (!server?.interface) return 'VPN';
+    return formatInterfaceDisplayName(server.description, server.interface);
+  }, [server]);
 
   if (loading) {
-    return <div className="text-center py-8 text-gray-500">Loading VPN configuration...</div>
+    return <div className="text-center py-8 text-gray-500">Loading VPN configuration...</div>;
   }
 
   if (!server || !server.interface) {
@@ -255,7 +268,9 @@ export default function VPN() {
               min={1}
               max={65535}
               value={String(serverForm.listenPort)}
-              onChange={(e) => setServerForm({ ...serverForm, listenPort: Number(e.target.value) || 51820 })}
+              onChange={(e) =>
+                setServerForm({ ...serverForm, listenPort: Number(e.target.value) || 51820 })
+              }
             />
             <FormField
               id="server-address-ip"
@@ -318,12 +333,14 @@ export default function VPN() {
               <Button variant="secondary" size="sm" onClick={handleGenerateServerKeys}>
                 Generate Keys
               </Button>
-              <p className="text-xs text-gray-500">Generate a new keypair before creating the server.</p>
+              <p className="text-xs text-gray-500">
+                Generate a new keypair before creating the server.
+              </p>
             </div>
           </div>
         </Modal>
       </div>
-    )
+    );
   }
 
   return (
@@ -332,8 +349,8 @@ export default function VPN() {
         open={peerModalOpen}
         title="Add VPN Peer"
         onClose={() => {
-          setPeerModalOpen(false)
-          setPeerForm(defaultPeerForm)
+          setPeerModalOpen(false);
+          setPeerForm(defaultPeerForm);
         }}
         onConfirm={handleAddPeer}
         confirmLabel="Add Peer"
@@ -389,7 +406,9 @@ export default function VPN() {
             type="number"
             min={0}
             value={String(peerForm.persistentKeepalive)}
-            onChange={(e) => setPeerForm({ ...peerForm, persistentKeepalive: Number(e.target.value) })}
+            onChange={(e) =>
+              setPeerForm({ ...peerForm, persistentKeepalive: Number(e.target.value) })
+            }
           />
           <div className="col-span-2 flex items-center gap-2">
             <input
@@ -451,7 +470,9 @@ export default function VPN() {
             min={1}
             max={65535}
             value={String(serverForm.listenPort)}
-            onChange={(e) => setServerForm({ ...serverForm, listenPort: Number(e.target.value) || 51820 })}
+            onChange={(e) =>
+              setServerForm({ ...serverForm, listenPort: Number(e.target.value) || 51820 })
+            }
           />
           <FormField
             id="server-address-ip"
@@ -514,7 +535,9 @@ export default function VPN() {
             <Button variant="secondary" size="sm" onClick={handleGenerateServerKeys}>
               Generate Keys
             </Button>
-            <p className="text-xs text-gray-500">Generate a new keypair before creating the server.</p>
+            <p className="text-xs text-gray-500">
+              Generate a new keypair before creating the server.
+            </p>
           </div>
         </div>
       </Modal>
@@ -538,8 +561,18 @@ export default function VPN() {
               title="Refresh VPN status"
               aria-label="Refresh VPN status"
             >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14 10 10 0 01-14.14 0" />
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14 10 10 0 01-14.14 0"
+                />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m8 6h-4" />
               </svg>
             </button>
@@ -555,9 +588,19 @@ export default function VPN() {
               title={server?.enabled ? 'Disable VPN' : 'Enable VPN'}
               aria-label={server?.enabled ? 'Disable VPN' : 'Enable VPN'}
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v5" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 0112.728 12.728" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5.636 5.636a9 9 0 0112.728 12.728"
+                />
               </svg>
             </button>
             <button
@@ -567,8 +610,18 @@ export default function VPN() {
               title="Edit VPN"
               aria-label="Edit VPN"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v4m0 6v4m7-7h-4M5 12H1" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 5v4m0 6v4m7-7h-4M5 12H1"
+                />
               </svg>
             </button>
           </div>
@@ -631,7 +684,9 @@ export default function VPN() {
             </div>
             <div>
               <dt className="text-gray-500 mb-1">Tunnel Addresses</dt>
-              <dd className="font-mono text-gray-900">{server.addresses.length ? server.addresses.join(', ') : 'None configured'}</dd>
+              <dd className="font-mono text-gray-900">
+                {server.addresses.length ? server.addresses.join(', ') : 'None configured'}
+              </dd>
             </div>
             <div>
               <dt className="text-gray-500 mb-1">Public Key</dt>
@@ -659,12 +714,15 @@ export default function VPN() {
               </div>
               <div>
                 <p className="text-gray-500">Active</p>
-                <p className="text-lg font-semibold text-green-600">{peers.filter((p) => p.enabled).length}</p>
+                <p className="text-lg font-semibold text-green-600">
+                  {peers.filter((p) => p.enabled).length}
+                </p>
               </div>
               <div>
                 <p className="text-gray-500">RX / TX</p>
                 <p className="text-lg font-semibold text-gray-900">
-                  {formatBytes(peers.reduce((s, p) => s + ((p.transferRx as number) || 0), 0))} / {formatBytes(peers.reduce((s, p) => s + ((p.transferTx as number) || 0), 0))}
+                  {formatBytes(peers.reduce((s, p) => s + ((p.transferRx as number) || 0), 0))} /{' '}
+                  {formatBytes(peers.reduce((s, p) => s + ((p.transferTx as number) || 0), 0))}
                 </p>
               </div>
             </div>
@@ -681,9 +739,15 @@ export default function VPN() {
                         {peer.name}
                         {!peer.enabled && <span className="ml-2 text-gray-400">○ Disabled</span>}
                       </div>
-                      <p className="mt-1 text-xs font-mono text-gray-600">{peer.publicKey?.slice(0, 24)}…</p>
-                      <p className="mt-1 text-xs text-gray-500">IPs: {(peer.allowedIPs as string[]).join(', ')}</p>
-                      {peer.endpoint && <p className="mt-1 text-xs text-gray-500">Endpoint: {peer.endpoint}</p>}
+                      <p className="mt-1 text-xs font-mono text-gray-600">
+                        {peer.publicKey?.slice(0, 24)}…
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        IPs: {(peer.allowedIPs as string[]).join(', ')}
+                      </p>
+                      {peer.endpoint && (
+                        <p className="mt-1 text-xs text-gray-500">Endpoint: {peer.endpoint}</p>
+                      )}
                     </div>
                     <button
                       onClick={() => setDeleteId(peer.id as number)}
@@ -691,8 +755,18 @@ export default function VPN() {
                       title="Delete peer"
                       aria-label="Delete peer"
                     >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -705,5 +779,5 @@ export default function VPN() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

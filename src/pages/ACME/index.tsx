@@ -1,18 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react';
 import {
   getAcmeAccount,
   updateAcmeAccount,
   getAcmeCertificates,
   issueAcmeCertificate,
-} from '../../api/acme'
-import type { AcmeAccount, AcmeCertificate, AcmeCertificateStatus } from '../../types'
-import Card from '../../components/Card'
-import Table, { Column } from '../../components/Table'
-import Modal from '../../components/Modal'
-import FormField from '../../components/FormField'
-import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
+} from '../../api/acme';
+import type { AcmeAccount, AcmeCertificate, AcmeCertificateStatus } from '../../types';
+import Card from '../../components/Card';
+import Table, { Column } from '../../components/Table';
+import Modal from '../../components/Modal';
+import FormField from '../../components/FormField';
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
 
-type CertRow = AcmeCertificate & Record<string, unknown>
+type CertRow = AcmeCertificate & Record<string, unknown>;
 
 const statusBadge = (status: AcmeCertificateStatus) => {
   const map: Record<AcmeCertificateStatus, string> = {
@@ -20,76 +20,81 @@ const statusBadge = (status: AcmeCertificateStatus) => {
     pending: 'bg-yellow-100 text-yellow-700',
     expired: 'bg-red-100 text-red-700',
     error: 'bg-red-100 text-red-700',
-  }
+  };
   return (
-    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase ${map[status]}`}>
+    <span
+      className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase ${map[status]}`}
+    >
       {status}
     </span>
-  )
-}
+  );
+};
 
 function daysUntil(isoDate: string): number {
-  return Math.ceil((new Date(isoDate).getTime() - Date.now()) / 86400000)
+  return Math.ceil((new Date(isoDate).getTime() - Date.now()) / 86400000);
 }
 
-const defaultCertForm = { domain: '', sans: '', autoRenew: true }
+const defaultCertForm = { domain: '', sans: '', autoRenew: true };
 
 export default function ACME() {
-  const { formatDate } = useDisplayPreferences()
-  const [account, setAccount] = useState<AcmeAccount | null>(null)
-  const [certs, setCerts] = useState<CertRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { formatDate } = useDisplayPreferences();
+  const [account, setAccount] = useState<AcmeAccount | null>(null);
+  const [certs, setCerts] = useState<CertRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [accountEditOpen, setAccountEditOpen] = useState(false)
-  const [accountForm, setAccountForm] = useState<Partial<AcmeAccount>>({})
-  const [accountSaving, setAccountSaving] = useState(false)
+  const [accountEditOpen, setAccountEditOpen] = useState(false);
+  const [accountForm, setAccountForm] = useState<Partial<AcmeAccount>>({});
+  const [accountSaving, setAccountSaving] = useState(false);
 
-  const [issueOpen, setIssueOpen] = useState(false)
-  const [certForm, setCertForm] = useState(defaultCertForm)
-  const [issueSaving, setIssueSaving] = useState(false)
+  const [issueOpen, setIssueOpen] = useState(false);
+  const [certForm, setCertForm] = useState(defaultCertForm);
+  const [issueSaving, setIssueSaving] = useState(false);
 
   const loadAll = () => {
-    setLoading(true)
+    setLoading(true);
     Promise.all([getAcmeAccount(), getAcmeCertificates()])
       .then(([acc, c]) => {
-        setAccount(acc.data)
-        setAccountForm(acc.data)
-        setCerts(Array.isArray(c.data) ? (c.data as CertRow[]) : [])
+        setAccount(acc.data);
+        setAccountForm(acc.data);
+        setCerts(Array.isArray(c.data) ? (c.data as CertRow[]) : []);
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false))
-  }
+      .finally(() => setLoading(false));
+  };
 
-  useEffect(loadAll, [])
+  useEffect(loadAll, []);
 
   const handleSaveAccount = () => {
-    setAccountSaving(true)
+    setAccountSaving(true);
     updateAcmeAccount(accountForm)
       .then((res) => {
-        setAccount(res.data)
-        setAccountForm(res.data)
-        setAccountEditOpen(false)
+        setAccount(res.data);
+        setAccountForm(res.data);
+        setAccountEditOpen(false);
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setAccountSaving(false))
-  }
+      .finally(() => setAccountSaving(false));
+  };
 
   const handleIssueCert = () => {
-    setIssueSaving(true)
+    setIssueSaving(true);
     issueAcmeCertificate({
       domain: certForm.domain,
-      sans: certForm.sans.split(',').map((s) => s.trim()).filter(Boolean),
+      sans: certForm.sans
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
       autoRenew: certForm.autoRenew,
     })
       .then(() => {
-        setIssueOpen(false)
-        setCertForm(defaultCertForm)
-        getAcmeCertificates().then((r) => setCerts(r.data as CertRow[]))
+        setIssueOpen(false);
+        setCertForm(defaultCertForm);
+        getAcmeCertificates().then((r) => setCerts(r.data as CertRow[]));
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setIssueSaving(false))
-  }
+      .finally(() => setIssueSaving(false));
+  };
 
   const certColumns: Column<CertRow>[] = [
     { key: 'domain', header: 'Domain' },
@@ -97,29 +102,33 @@ export default function ACME() {
       key: 'sans',
       header: 'SANs',
       render: (row) => {
-        const sans = row.sans as string[] | undefined
-        return sans && Array.isArray(sans) && sans.length ? sans.join(', ') : '-'
+        const sans = row.sans as string[] | undefined;
+        return sans && Array.isArray(sans) && sans.length ? sans.join(', ') : '-';
       },
     },
-    { key: 'status', header: 'Status', render: (row) => statusBadge(row.status as AcmeCertificateStatus) },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => statusBadge(row.status as AcmeCertificateStatus),
+    },
     { key: 'issuer', header: 'Issuer' },
     {
       key: 'notAfter',
       header: 'Expires',
       render: (row) => {
-        const notAfter = String(row.notAfter ?? '').trim()
-        if (!notAfter) return ''
+        const notAfter = String(row.notAfter ?? '').trim();
+        if (!notAfter) return '';
 
-        const parsed = new Date(notAfter)
-        if (Number.isNaN(parsed.getTime())) return ''
+        const parsed = new Date(notAfter);
+        if (Number.isNaN(parsed.getTime())) return '';
 
-        const days = daysUntil(notAfter)
-        const color = days < 14 ? 'text-red-600' : days < 30 ? 'text-yellow-600' : 'text-gray-800'
+        const days = daysUntil(notAfter);
+        const color = days < 14 ? 'text-red-600' : days < 30 ? 'text-yellow-600' : 'text-gray-800';
         return (
           <span className={`font-medium ${color}`}>
             {formatDate(parsed)} ({days}d)
           </span>
-        )
+        );
       },
     },
     {
@@ -131,14 +140,12 @@ export default function ACME() {
         </span>
       ),
     },
-  ]
+  ];
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-40 text-gray-400">
-        Loading ACME data…
-      </div>
-    )
+      <div className="flex items-center justify-center h-40 text-gray-400">Loading ACME data…</div>
+    );
   }
 
   return (
@@ -170,8 +177,11 @@ export default function ACME() {
             onChange={(e) => setAccountForm({ ...accountForm, directory_url: e.target.value })}
           />
           <p className="text-xs text-gray-500">
-            Use <code className="font-mono">https://acme-staging-v02.api.letsencrypt.org/directory</code> for
-            testing to avoid Let&apos;s Encrypt rate limits.
+            Use{' '}
+            <code className="font-mono">
+              https://acme-staging-v02.api.letsencrypt.org/directory
+            </code>{' '}
+            for testing to avoid Let&apos;s Encrypt rate limits.
           </p>
         </div>
       </Modal>
@@ -217,13 +227,26 @@ export default function ACME() {
           title="ACME Account"
           actions={
             <button
-              onClick={() => { setAccountForm(account); setAccountEditOpen(true) }}
+              onClick={() => {
+                setAccountForm(account);
+                setAccountEditOpen(true);
+              }}
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
               title="Edit ACME account"
               aria-label="Edit ACME account"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
               </svg>
             </button>
           }
@@ -235,11 +258,15 @@ export default function ACME() {
             </div>
             <div>
               <dt className="text-gray-500">ACME Server</dt>
-              <dd className="font-medium text-gray-800 break-all">{account.directory_url || '-'}</dd>
+              <dd className="font-medium text-gray-800 break-all">
+                {account.directory_url || '-'}
+              </dd>
             </div>
             <div>
               <dt className="text-gray-500">Registered</dt>
-              <dd className={`font-medium ${account.registered ? 'text-green-600' : 'text-gray-400'}`}>
+              <dd
+                className={`font-medium ${account.registered ? 'text-green-600' : 'text-gray-400'}`}
+              >
                 {account.registered ? 'Yes' : 'No'}
               </dd>
             </div>
@@ -264,7 +291,13 @@ export default function ACME() {
             title="Issue certificate"
             aria-label="Issue certificate"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
           </button>
@@ -278,7 +311,6 @@ export default function ACME() {
           emptyMessage="No certificates issued yet."
         />
       </Card>
-
     </div>
-  )
+  );
 }

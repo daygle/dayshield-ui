@@ -1,5 +1,10 @@
-import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig, type AxiosHeaders } from 'axios'
-import type { ApiResponse } from '../types'
+import axios, {
+  type AxiosError,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+  type AxiosHeaders,
+} from 'axios';
+import type { ApiResponse } from '../types';
 
 const apiClient = axios.create({
   baseURL: '/',
@@ -8,13 +13,13 @@ const apiClient = axios.create({
   },
   timeout: 10000,
   withCredentials: true,
-})
+});
 
 // ---------------------------------------------------------------------------
 // Token storage
 // ---------------------------------------------------------------------------
 
-const TOKEN_KEY = 'dayshield_token'
+const TOKEN_KEY = 'dayshield_token';
 
 /**
  * Persist (or remove) the JWT token in sessionStorage.
@@ -23,15 +28,15 @@ const TOKEN_KEY = 'dayshield_token'
  */
 export function setAuthToken(token: string | null): void {
   if (token) {
-    sessionStorage.setItem(TOKEN_KEY, token)
+    sessionStorage.setItem(TOKEN_KEY, token);
   } else {
-    sessionStorage.removeItem(TOKEN_KEY)
+    sessionStorage.removeItem(TOKEN_KEY);
   }
 }
 
 /** Read the stored JWT token, or null if none. */
 export function getAuthToken(): string | null {
-  return sessionStorage.getItem(TOKEN_KEY)
+  return sessionStorage.getItem(TOKEN_KEY);
 }
 
 // ---------------------------------------------------------------------------
@@ -39,10 +44,10 @@ export function getAuthToken(): string | null {
 // ---------------------------------------------------------------------------
 
 // Callback invoked on HTTP 401 – registered by AuthContext to trigger logout
-let unauthorizedHandler: (() => void) | null = null
+let unauthorizedHandler: (() => void) | null = null;
 
 export function setUnauthorizedHandler(handler: (() => void) | null): void {
-  unauthorizedHandler = handler
+  unauthorizedHandler = handler;
 }
 
 // ---------------------------------------------------------------------------
@@ -52,75 +57,72 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
 // Attach Bearer token on every request when one is available
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = getAuthToken()
+    const token = getAuthToken();
     if (token) {
-      const headers = config.headers ?? {}
-      const rawHeaders = headers as AxiosHeaders
-      rawHeaders.Authorization = `Bearer ${token}`
-      config.headers = rawHeaders
+      const headers = config.headers ?? {};
+      const rawHeaders = headers as AxiosHeaders;
+      rawHeaders.Authorization = `Bearer ${token}`;
+      config.headers = rawHeaders;
     }
-    return config
+    return config;
   },
-  (error: AxiosError) => Promise.reject(error),
-)
+  (error: AxiosError) => Promise.reject(error)
+);
 
 // Response interceptor for error normalisation
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
-    const responseType = response.config.responseType
+    const responseType = response.config.responseType;
 
     // Leave non-JSON payloads alone so blob downloads continue to work.
     if (responseType && responseType !== 'json') {
-      return response
+      return response;
     }
 
-    const payload = response.data
+    const payload = response.data;
     const isEnvelope =
-      payload !== null &&
-      typeof payload === 'object' &&
-      'success' in payload &&
-      'data' in payload
+      payload !== null && typeof payload === 'object' && 'success' in payload && 'data' in payload;
 
     if (!isEnvelope) {
       response.data = {
         success: true,
         data: payload,
-      } as ApiResponse<unknown>
+      } as ApiResponse<unknown>;
     }
 
-    return response
+    return response;
   },
   (error: AxiosError<unknown>) => {
-    const status = error.response?.status
-    const requestUrl = (error.config?.url ?? '').toLowerCase()
+    const status = error.response?.status;
+    const requestUrl = (error.config?.url ?? '').toLowerCase();
     const isAuthEndpoint =
       requestUrl.includes('/auth/login') ||
       requestUrl.includes('/auth/logout') ||
-      requestUrl.includes('/auth/status')
+      requestUrl.includes('/auth/status');
 
     // Only auto-logout on 401 for protected endpoints when a token exists.
     // This avoids loops/noise on intentional unauthenticated auth endpoints.
     if (status === 401 && !isAuthEndpoint && getAuthToken()) {
-      unauthorizedHandler?.()
+      unauthorizedHandler?.();
     }
 
     if (!error.response) {
-      return Promise.reject(new Error('Network error: could not reach DayShield API'))
+      return Promise.reject(new Error('Network error: could not reach DayShield API'));
     }
 
-    const rawData = error.response?.data
+    const rawData = error.response?.data;
     const responseData =
       rawData !== null && typeof rawData === 'object'
         ? (rawData as Record<string, unknown>)
-        : undefined
+        : undefined;
     const message =
       (responseData?.error as string | undefined) ??
       (responseData?.message as string | undefined) ??
       (typeof rawData === 'string' && rawData.trim().length > 0 ? rawData.trim() : undefined) ??
       error.message ??
-      'Unknown error'
-    return Promise.reject(new Error(message))
-  },
-)
+      'Unknown error';
+    return Promise.reject(new Error(message));
+  }
+);
 
-export default apiClient
+export default apiClient;

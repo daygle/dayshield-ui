@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   createCaptivePortalSession,
   getCaptivePortalConfig,
@@ -6,22 +6,22 @@ import {
   getCaptivePortalStatus,
   revokeCaptivePortalSession,
   updateCaptivePortalConfig,
-} from '../../api/captivePortal'
-import { getInterfacesInventory } from '../../api/interfaces'
+} from '../../api/captivePortal';
+import { getInterfacesInventory } from '../../api/interfaces';
 import type {
   CaptivePortalConfig,
   CaptivePortalSessionRow,
   CaptivePortalStatus,
   CaptivePortalVoucher,
   NetworkInterface,
-} from '../../types'
-import Card from '../../components/Card'
-import Button from '../../components/Button'
-import FormField from '../../components/FormField'
-import Table, { type Column } from '../../components/Table'
-import { useToast } from '../../context/ToastContext'
-import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
-import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
+} from '../../types';
+import Card from '../../components/Card';
+import Button from '../../components/Button';
+import FormField from '../../components/FormField';
+import Table, { type Column } from '../../components/Table';
+import { useToast } from '../../context/ToastContext';
+import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
 const DEFAULT_CONFIG: CaptivePortalConfig = {
   enabled: false,
@@ -39,71 +39,71 @@ const DEFAULT_CONFIG: CaptivePortalConfig = {
   walledGardenIps: [],
   bypassMacs: [],
   vouchers: [],
-}
+};
 
 interface SessionCreateForm {
-  clientIp: string
-  clientMac: string
-  ttlSeconds: string
+  clientIp: string;
+  clientMac: string;
+  ttlSeconds: string;
 }
 
-type CaptivePortalSessionRecord = CaptivePortalSessionRow & Record<string, unknown>
+type CaptivePortalSessionRecord = CaptivePortalSessionRow & Record<string, unknown>;
 
 const DEFAULT_SESSION_FORM: SessionCreateForm = {
   clientIp: '',
   clientMac: '',
   ttlSeconds: '',
-}
+};
 
 function splitListInput(raw: string): string[] {
   return raw
     .split(/[\n,]/)
     .map((value) => value.trim())
-    .filter(Boolean)
+    .filter(Boolean);
 }
 
 function toTextAreaList(values: string[]): string {
-  return values.join('\n')
+  return values.join('\n');
 }
 
 function toDatetimeLocal(value?: string | null): string {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
 
-  const pad = (num: number) => String(num).padStart(2, '0')
-  const year = date.getFullYear()
-  const month = pad(date.getMonth() + 1)
-  const day = pad(date.getDate())
-  const hour = pad(date.getHours())
-  const minute = pad(date.getMinutes())
+  const pad = (num: number) => String(num).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hour = pad(date.getHours());
+  const minute = pad(date.getMinutes());
 
-  return `${year}-${month}-${day}T${hour}:${minute}`
+  return `${year}-${month}-${day}T${hour}:${minute}`;
 }
 
 function fromDatetimeLocal(value: string): string | null {
-  const trimmed = value.trim()
-  if (!trimmed) return null
-  const date = new Date(trimmed)
-  if (Number.isNaN(date.getTime())) return null
-  return date.toISOString()
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
 }
 
 function isHttpUrl(value: string): boolean {
   try {
-    const parsed = new URL(value)
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
   } catch {
-    return false
+    return false;
   }
 }
 
 function normalizeVoucher(voucher: CaptivePortalVoucher): CaptivePortalVoucher {
-  const code = voucher.code.trim()
+  const code = voucher.code.trim();
   const maxUses =
     typeof voucher.maxUses === 'number' && Number.isFinite(voucher.maxUses) && voucher.maxUses > 0
       ? Math.floor(voucher.maxUses)
-      : undefined
+      : undefined;
   return {
     ...voucher,
     id: voucher.id || `voucher-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -111,13 +111,13 @@ function normalizeVoucher(voucher: CaptivePortalVoucher): CaptivePortalVoucher {
     description: voucher.description?.trim() || undefined,
     expiresAt: voucher.expiresAt || undefined,
     maxUses,
-  }
+  };
 }
 
 const sessionColumns = (
   formatDateTime: (value?: Date | string | number | null) => string,
   onRevoke: (sessionId: string) => void,
-  revokingSessionId: string | null,
+  revokingSessionId: string | null
 ): Column<CaptivePortalSessionRecord>[] => [
   {
     key: 'active',
@@ -161,7 +161,9 @@ const sessionColumns = (
     key: 'voucherId',
     header: 'Voucher',
     render: (row) => (
-      <span className="font-mono text-xs">{row.voucherId ? String(row.voucherId).slice(0, 8) : '-'}</span>
+      <span className="font-mono text-xs">
+        {row.voucherId ? String(row.voucherId).slice(0, 8) : '-'}
+      </span>
     ),
   },
   {
@@ -189,28 +191,28 @@ const sessionColumns = (
       </Button>
     ),
   },
-]
+];
 
 export default function CaptivePortalPage() {
-  const { addToast } = useToast()
-  const { formatDateTime } = useDisplayPreferences()
+  const { addToast } = useToast();
+  const { formatDateTime } = useDisplayPreferences();
 
-  const [config, setConfig] = useState<CaptivePortalConfig>(DEFAULT_CONFIG)
-  const [status, setStatus] = useState<CaptivePortalStatus | null>(null)
-  const [sessions, setSessions] = useState<CaptivePortalSessionRecord[]>([])
-  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
+  const [config, setConfig] = useState<CaptivePortalConfig>(DEFAULT_CONFIG);
+  const [status, setStatus] = useState<CaptivePortalStatus | null>(null);
+  const [sessions, setSessions] = useState<CaptivePortalSessionRecord[]>([]);
+  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
 
-  const [walledGardenText, setWalledGardenText] = useState('')
-  const [bypassMacsText, setBypassMacsText] = useState('')
-  const [sessionForm, setSessionForm] = useState<SessionCreateForm>(DEFAULT_SESSION_FORM)
+  const [walledGardenText, setWalledGardenText] = useState('');
+  const [bypassMacsText, setBypassMacsText] = useState('');
+  const [sessionForm, setSessionForm] = useState<SessionCreateForm>(DEFAULT_SESSION_FORM);
 
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [authorizing, setAuthorizing] = useState(false)
-  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [authorizing, setAuthorizing] = useState(false);
+  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
 
   const loadAll = useCallback(() => {
-    setLoading(true)
+    setLoading(true);
     Promise.all([
       getCaptivePortalConfig(),
       getCaptivePortalStatus(),
@@ -218,51 +220,65 @@ export default function CaptivePortalPage() {
       getInterfacesInventory(),
     ])
       .then(([cfg, stat, sess, inventory]) => {
-        setConfig(cfg.data)
-        setStatus(stat.data)
-        setSessions(sess.data.sessions as CaptivePortalSessionRecord[])
+        setConfig(cfg.data);
+        setStatus(stat.data);
+        setSessions(sess.data.sessions as CaptivePortalSessionRecord[]);
         const configured = Array.isArray(inventory.data?.configured)
           ? inventory.data.configured.filter((iface) => iface.type !== 'loopback')
-          : []
-        setInterfaces(configured)
-        setWalledGardenText(toTextAreaList(cfg.data.walledGardenIps))
-        setBypassMacsText(toTextAreaList(cfg.data.bypassMacs))
+          : [];
+        setInterfaces(configured);
+        setWalledGardenText(toTextAreaList(cfg.data.walledGardenIps));
+        setBypassMacsText(toTextAreaList(cfg.data.bypassMacs));
       })
-      .catch((err: Error) => addToast(`Failed to load captive portal data: ${err.message}`, 'error'))
-      .finally(() => setLoading(false))
-  }, [addToast])
+      .catch((err: Error) =>
+        addToast(`Failed to load captive portal data: ${err.message}`, 'error')
+      )
+      .finally(() => setLoading(false));
+  }, [addToast]);
 
   useEffect(() => {
-    loadAll()
-  }, [loadAll])
+    loadAll();
+  }, [loadAll]);
 
   const interfaceLabel = useCallback(
     (name: string) => {
-      const iface = interfaces.find((entry) => entry.name === name)
-      return formatInterfaceDisplayName(iface?.description, name)
+      const iface = interfaces.find((entry) => entry.name === name);
+      return formatInterfaceDisplayName(iface?.description, name);
     },
-    [interfaces],
-  )
+    [interfaces]
+  );
 
   const statusBadge = useMemo(() => {
-    if (!status) return null
+    if (!status) return null;
     if (status.enabled && status.sessionsActive > 0) {
-      return <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">Enabled / active sessions</span>
+      return (
+        <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+          Enabled / active sessions
+        </span>
+      );
     }
     if (status.enabled) {
-      return <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">Enabled</span>
+      return (
+        <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+          Enabled
+        </span>
+      );
     }
-    return <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">Disabled</span>
-  }, [status])
+    return (
+      <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+        Disabled
+      </span>
+    );
+  }, [status]);
 
   const handleToggleInterface = (name: string) => {
     setConfig((current) => {
       const selected = current.interfaces.includes(name)
         ? current.interfaces.filter((entry) => entry !== name)
-        : [...current.interfaces, name]
-      return { ...current, interfaces: selected }
-    })
-  }
+        : [...current.interfaces, name];
+      return { ...current, interfaces: selected };
+    });
+  };
 
   const handleAddVoucher = () => {
     setConfig((current) => ({
@@ -279,82 +295,85 @@ export default function CaptivePortalPage() {
           uses: 0,
         },
       ],
-    }))
-  }
+    }));
+  };
 
   const handleUpdateVoucher = (voucherId: string, next: Partial<CaptivePortalVoucher>) => {
     setConfig((current) => ({
       ...current,
       vouchers: current.vouchers.map((voucher) =>
-        voucher.id === voucherId ? { ...voucher, ...next } : voucher,
+        voucher.id === voucherId ? { ...voucher, ...next } : voucher
       ),
-    }))
-  }
+    }));
+  };
 
   const handleDeleteVoucher = (voucherId: string) => {
     setConfig((current) => ({
       ...current,
       vouchers: current.vouchers.filter((voucher) => voucher.id !== voucherId),
-    }))
-  }
+    }));
+  };
 
   const validateBeforeSave = (): string | null => {
     if (config.enabled && config.interfaces.length === 0) {
-      return 'Select at least one interface when captive portal is enabled.'
+      return 'Select at least one interface when captive portal is enabled.';
     }
 
     if (config.sessionTtlSeconds < 60) {
-      return 'Session TTL must be at least 60 seconds.'
+      return 'Session TTL must be at least 60 seconds.';
     }
 
     if (config.idleTimeoutSeconds > 0 && config.idleTimeoutSeconds < 60) {
-      return 'Idle timeout must be 0 or at least 60 seconds.'
+      return 'Idle timeout must be 0 or at least 60 seconds.';
     }
 
     if (!config.listenAddress.trim()) {
-      return 'Listen address is required.'
+      return 'Listen address is required.';
     }
 
     if (!config.portalTitle.trim()) {
-      return 'Portal title is required.'
+      return 'Portal title is required.';
     }
 
     if (config.successRedirectUrl?.trim() && !isHttpUrl(config.successRedirectUrl.trim())) {
-      return 'Success redirect URL must be a valid HTTP or HTTPS URL.'
+      return 'Success redirect URL must be a valid HTTP or HTTPS URL.';
     }
 
     if (config.authMode === 'voucher') {
-      const enabledVouchers = config.vouchers.filter((voucher) => voucher.enabled)
+      const enabledVouchers = config.vouchers.filter((voucher) => voucher.enabled);
       if (enabledVouchers.length === 0) {
-        return 'Voucher mode requires at least one enabled voucher.'
+        return 'Voucher mode requires at least one enabled voucher.';
       }
-      const voucherCodes = enabledVouchers.map((voucher) => voucher.code.trim())
+      const voucherCodes = enabledVouchers.map((voucher) => voucher.code.trim());
       if (voucherCodes.some((code) => code.length < 4 || code.length > 128)) {
-        return 'Each enabled voucher code must be 4 to 128 characters.'
+        return 'Each enabled voucher code must be 4 to 128 characters.';
       }
       if (voucherCodes.some((code) => /\s/.test(code))) {
-        return 'Voucher codes cannot contain whitespace.'
+        return 'Voucher codes cannot contain whitespace.';
       }
       if (new Set(voucherCodes).size !== voucherCodes.length) {
-        return 'Voucher codes must be unique.'
+        return 'Voucher codes must be unique.';
       }
-      const invalidMaxUses = enabledVouchers.some((voucher) =>
-        voucher.maxUses != null &&
-        (!Number.isFinite(voucher.maxUses) || voucher.maxUses <= 0 || voucher.uses > voucher.maxUses),
-      )
+      const invalidMaxUses = enabledVouchers.some(
+        (voucher) =>
+          voucher.maxUses != null &&
+          (!Number.isFinite(voucher.maxUses) ||
+            voucher.maxUses <= 0 ||
+            voucher.uses > voucher.maxUses)
+      );
       if (invalidMaxUses) {
-        return 'Voucher max uses must be greater than current uses.'
+        return 'Voucher max uses must be greater than current uses.';
       }
     }
 
-    return null
-  }
+    return null;
+  };
 
   const performSave = (successMessage: string) => {
-    const validationError = validateBeforeSave()
+    const validationError = validateBeforeSave();
     if (validationError) {
-      addToast(validationError, 'error')
-      return
+      addToast(validationError, 'error');
+      return;
     }
 
     const normalized: CaptivePortalConfig = {
@@ -371,40 +390,42 @@ export default function CaptivePortalPage() {
       vouchers: config.vouchers
         .map((voucher) => normalizeVoucher(voucher))
         .filter((voucher) => voucher.code.length > 0),
-    }
+    };
 
-    setSaving(true)
+    setSaving(true);
     updateCaptivePortalConfig(normalized)
       .then((res) => {
-        setConfig(res.data)
-        setWalledGardenText(toTextAreaList(res.data.walledGardenIps))
-        setBypassMacsText(toTextAreaList(res.data.bypassMacs))
-        addToast(successMessage, 'success')
-        return Promise.all([getCaptivePortalStatus(), getCaptivePortalSessions()])
+        setConfig(res.data);
+        setWalledGardenText(toTextAreaList(res.data.walledGardenIps));
+        setBypassMacsText(toTextAreaList(res.data.bypassMacs));
+        addToast(successMessage, 'success');
+        return Promise.all([getCaptivePortalStatus(), getCaptivePortalSessions()]);
       })
       .then(([stat, sess]) => {
-        setStatus(stat.data)
-        setSessions(sess.data.sessions as CaptivePortalSessionRecord[])
+        setStatus(stat.data);
+        setSessions(sess.data.sessions as CaptivePortalSessionRecord[]);
       })
-      .catch((err: Error) => addToast(`Failed to save captive portal config: ${err.message}`, 'error'))
-      .finally(() => setSaving(false))
-  }
+      .catch((err: Error) =>
+        addToast(`Failed to save captive portal config: ${err.message}`, 'error')
+      )
+      .finally(() => setSaving(false));
+  };
 
   const handleSave = () => {
-    performSave('Captive portal configuration saved.')
-  }
+    performSave('Captive portal configuration saved.');
+  };
 
   const handleRestart = () => {
-    performSave('Captive portal service restart requested.')
-  }
+    performSave('Captive portal service restart requested.');
+  };
 
   const handleAuthorizeSession = () => {
     if (!sessionForm.clientIp.trim()) {
-      addToast('Client IP is required to authorize a session.', 'error')
-      return
+      addToast('Client IP is required to authorize a session.', 'error');
+      return;
     }
 
-    const ttlSeconds = Number(sessionForm.ttlSeconds)
+    const ttlSeconds = Number(sessionForm.ttlSeconds);
     const request = {
       clientIp: sessionForm.clientIp.trim(),
       clientMac: sessionForm.clientMac.trim() || undefined,
@@ -412,39 +433,39 @@ export default function CaptivePortalPage() {
         sessionForm.ttlSeconds.trim().length > 0 && Number.isFinite(ttlSeconds)
           ? Math.max(60, Math.floor(ttlSeconds))
           : undefined,
-    }
+    };
 
-    setAuthorizing(true)
+    setAuthorizing(true);
     createCaptivePortalSession(request)
       .then(() => {
-        addToast('Session authorized.', 'success')
-        setSessionForm(DEFAULT_SESSION_FORM)
-        return Promise.all([getCaptivePortalStatus(), getCaptivePortalSessions()])
+        addToast('Session authorized.', 'success');
+        setSessionForm(DEFAULT_SESSION_FORM);
+        return Promise.all([getCaptivePortalStatus(), getCaptivePortalSessions()]);
       })
       .then(([stat, sess]) => {
-        setStatus(stat.data)
-        setSessions(sess.data.sessions as CaptivePortalSessionRecord[])
+        setStatus(stat.data);
+        setSessions(sess.data.sessions as CaptivePortalSessionRecord[]);
       })
       .catch((err: Error) => addToast(`Failed to authorize session: ${err.message}`, 'error'))
-      .finally(() => setAuthorizing(false))
-  }
+      .finally(() => setAuthorizing(false));
+  };
 
   const handleRevokeSession = (sessionId: string) => {
-    setRevokingSessionId(sessionId)
+    setRevokingSessionId(sessionId);
     revokeCaptivePortalSession(sessionId)
       .then(() => {
-        addToast('Session revoked.', 'success')
-        return Promise.all([getCaptivePortalStatus(), getCaptivePortalSessions()])
+        addToast('Session revoked.', 'success');
+        return Promise.all([getCaptivePortalStatus(), getCaptivePortalSessions()]);
       })
       .then(([stat, sess]) => {
-        setStatus(stat.data)
-        setSessions(sess.data.sessions as CaptivePortalSessionRecord[])
+        setStatus(stat.data);
+        setSessions(sess.data.sessions as CaptivePortalSessionRecord[]);
       })
       .catch((err: Error) => addToast(`Failed to revoke session: ${err.message}`, 'error'))
-      .finally(() => setRevokingSessionId(null))
-  }
+      .finally(() => setRevokingSessionId(null));
+  };
 
-  const busy = loading || saving
+  const busy = loading || saving;
 
   return (
     <div className="space-y-6">
@@ -466,26 +487,63 @@ export default function CaptivePortalPage() {
                   : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v5m0 8a4 4 0 100-8 4 4 0 000 8z" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 4v5m0 8a4 4 0 100-8 4 4 0 000 8z"
+                />
               </svg>
             </button>
             <button
               type="button"
               disabled={busy}
               onClick={handleRestart}
-              title={saving ? 'Restarting captive portal service' : 'Restart captive portal service'}
-              aria-label={saving ? 'Restarting captive portal service' : 'Restart captive portal service'}
+              title={
+                saving ? 'Restarting captive portal service' : 'Restart captive portal service'
+              }
+              aria-label={
+                saving ? 'Restarting captive portal service' : 'Restart captive portal service'
+              }
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {saving ? (
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                 </svg>
               ) : (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0L12 12" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4.93 4.93a10 10 0 0114.14 0L12 12"
+                  />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 12V8h4" />
                 </svg>
               )}
@@ -495,11 +553,23 @@ export default function CaptivePortalPage() {
               disabled={busy}
               onClick={loadAll}
               title={loading ? 'Refreshing captive portal status' : 'Refresh captive portal status'}
-              aria-label={loading ? 'Refreshing captive portal status' : 'Refresh captive portal status'}
+              aria-label={
+                loading ? 'Refreshing captive portal status' : 'Refresh captive portal status'
+              }
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14"
+                />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m0 12v4" />
               </svg>
             </button>
@@ -507,18 +577,45 @@ export default function CaptivePortalPage() {
               type="button"
               disabled={busy}
               onClick={handleSave}
-              title={saving ? 'Saving captive portal configuration' : 'Save captive portal configuration'}
-              aria-label={saving ? 'Saving captive portal configuration' : 'Save captive portal configuration'}
+              title={
+                saving ? 'Saving captive portal configuration' : 'Save captive portal configuration'
+              }
+              aria-label={
+                saving ? 'Saving captive portal configuration' : 'Save captive portal configuration'
+              }
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {saving ? (
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                 </svg>
               ) : (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 5v14h14V5H5zm0 0l6 6m0-6v6" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 5v14h14V5H5zm0 0l6 6m0-6v6"
+                  />
                 </svg>
               )}
             </button>
@@ -530,24 +627,42 @@ export default function CaptivePortalPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 text-sm text-gray-700 md:grid-cols-3">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Portal listener</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Portal listener
+              </p>
               <p className="mt-1 font-medium">
                 {status?.listenAddress}:{status?.listenPort}
               </p>
-              <p>Auth mode: <span className="font-medium">{status?.authMode === 'voucher' ? 'Voucher' : 'Click-through'}</span></p>
+              <p>
+                Auth mode:{' '}
+                <span className="font-medium">
+                  {status?.authMode === 'voucher' ? 'Voucher' : 'Click-through'}
+                </span>
+              </p>
             </div>
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Sessions</p>
-              <p className="mt-1">Active: <span className="font-medium">{status?.sessionsActive ?? 0}</span></p>
-              <p>Total: <span className="font-medium">{status?.sessionsTotal ?? 0}</span></p>
-              <p>Expired: <span className="font-medium">{status?.sessionsExpired ?? 0}</span></p>
+              <p className="mt-1">
+                Active: <span className="font-medium">{status?.sessionsActive ?? 0}</span>
+              </p>
+              <p>
+                Total: <span className="font-medium">{status?.sessionsTotal ?? 0}</span>
+              </p>
+              <p>
+                Expired: <span className="font-medium">{status?.sessionsExpired ?? 0}</span>
+              </p>
             </div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Protected interfaces</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Protected interfaces
+              </p>
               {status?.interfaces?.length ? (
                 <div className="mt-1 flex flex-wrap gap-2">
                   {status.interfaces.map((name) => (
-                    <span key={name} className="inline-flex rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                    <span
+                      key={name}
+                      className="inline-flex rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
+                    >
                       {interfaceLabel(name)}
                     </span>
                   ))}
@@ -583,7 +698,12 @@ export default function CaptivePortalPage() {
               label="Authorization mode"
               value={config.authMode}
               disabled={busy}
-              onChange={(e) => setConfig((current) => ({ ...current, authMode: e.target.value as CaptivePortalConfig['authMode'] }))}
+              onChange={(e) =>
+                setConfig((current) => ({
+                  ...current,
+                  authMode: e.target.value as CaptivePortalConfig['authMode'],
+                }))
+              }
             >
               <option value="click_through">Click-through</option>
               <option value="voucher">Voucher</option>
@@ -593,7 +713,9 @@ export default function CaptivePortalPage() {
               label="Listen address"
               value={config.listenAddress}
               disabled={busy}
-              onChange={(e) => setConfig((current) => ({ ...current, listenAddress: e.target.value }))}
+              onChange={(e) =>
+                setConfig((current) => ({ ...current, listenAddress: e.target.value }))
+              }
             />
             <FormField
               id="cp-listen-port"
@@ -603,7 +725,9 @@ export default function CaptivePortalPage() {
               max={65535}
               value={config.listenPort}
               disabled={busy}
-              onChange={(e) => setConfig((current) => ({ ...current, listenPort: Number(e.target.value) || 0 }))}
+              onChange={(e) =>
+                setConfig((current) => ({ ...current, listenPort: Number(e.target.value) || 0 }))
+              }
             />
           </div>
 
@@ -615,7 +739,12 @@ export default function CaptivePortalPage() {
               min={60}
               value={config.sessionTtlSeconds}
               disabled={busy}
-              onChange={(e) => setConfig((current) => ({ ...current, sessionTtlSeconds: Number(e.target.value) || 0 }))}
+              onChange={(e) =>
+                setConfig((current) => ({
+                  ...current,
+                  sessionTtlSeconds: Number(e.target.value) || 0,
+                }))
+              }
             />
             <FormField
               id="cp-idle-timeout"
@@ -625,7 +754,12 @@ export default function CaptivePortalPage() {
               value={config.idleTimeoutSeconds}
               hint="Set to 0 to disable idle expiry"
               disabled={busy}
-              onChange={(e) => setConfig((current) => ({ ...current, idleTimeoutSeconds: Number(e.target.value) || 0 }))}
+              onChange={(e) =>
+                setConfig((current) => ({
+                  ...current,
+                  idleTimeoutSeconds: Number(e.target.value) || 0,
+                }))
+              }
             />
           </div>
 
@@ -635,14 +769,18 @@ export default function CaptivePortalPage() {
               label="Portal title"
               value={config.portalTitle}
               disabled={busy}
-              onChange={(e) => setConfig((current) => ({ ...current, portalTitle: e.target.value }))}
+              onChange={(e) =>
+                setConfig((current) => ({ ...current, portalTitle: e.target.value }))
+              }
             />
             <FormField
               id="cp-success-url"
               label="Success redirect URL"
               value={config.successRedirectUrl ?? ''}
               disabled={busy}
-              onChange={(e) => setConfig((current) => ({ ...current, successRedirectUrl: e.target.value }))}
+              onChange={(e) =>
+                setConfig((current) => ({ ...current, successRedirectUrl: e.target.value }))
+              }
             />
           </div>
 
@@ -653,7 +791,9 @@ export default function CaptivePortalPage() {
             label="Portal message"
             value={config.portalMessage}
             disabled={busy}
-            onChange={(e) => setConfig((current) => ({ ...current, portalMessage: e.target.value }))}
+            onChange={(e) =>
+              setConfig((current) => ({ ...current, portalMessage: e.target.value }))
+            }
           />
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -661,7 +801,9 @@ export default function CaptivePortalPage() {
               <input
                 type="checkbox"
                 checked={config.redirectHttp}
-                onChange={(e) => setConfig((current) => ({ ...current, redirectHttp: e.target.checked }))}
+                onChange={(e) =>
+                  setConfig((current) => ({ ...current, redirectHttp: e.target.checked }))
+                }
                 disabled={busy}
                 className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
@@ -671,7 +813,9 @@ export default function CaptivePortalPage() {
               <input
                 type="checkbox"
                 checked={config.termsRequired}
-                onChange={(e) => setConfig((current) => ({ ...current, termsRequired: e.target.checked }))}
+                onChange={(e) =>
+                  setConfig((current) => ({ ...current, termsRequired: e.target.checked }))
+                }
                 disabled={busy}
                 className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
@@ -686,7 +830,10 @@ export default function CaptivePortalPage() {
             ) : (
               <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
                 {interfaces.map((iface) => (
-                  <label key={iface.name} className="flex items-center gap-2 rounded border border-gray-200 px-3 py-2 text-sm text-gray-700">
+                  <label
+                    key={iface.name}
+                    className="flex items-center gap-2 rounded border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                  >
                     <input
                       type="checkbox"
                       checked={config.interfaces.includes(iface.name)}
@@ -745,14 +892,18 @@ export default function CaptivePortalPage() {
                           label="Code"
                           value={voucher.code}
                           disabled={busy}
-                          onChange={(e) => handleUpdateVoucher(voucher.id, { code: e.target.value })}
+                          onChange={(e) =>
+                            handleUpdateVoucher(voucher.id, { code: e.target.value })
+                          }
                         />
                         <FormField
                           id={`voucher-description-${voucher.id}`}
                           label="Description"
                           value={voucher.description ?? ''}
                           disabled={busy}
-                          onChange={(e) => handleUpdateVoucher(voucher.id, { description: e.target.value })}
+                          onChange={(e) =>
+                            handleUpdateVoucher(voucher.id, { description: e.target.value })
+                          }
                         />
                         <FormField
                           id={`voucher-max-uses-${voucher.id}`}
@@ -763,10 +914,10 @@ export default function CaptivePortalPage() {
                           hint="Leave empty for unlimited uses"
                           disabled={busy}
                           onChange={(e) => {
-                            const next = e.target.value.trim()
+                            const next = e.target.value.trim();
                             handleUpdateVoucher(voucher.id, {
                               maxUses: next.length > 0 ? Math.max(1, Number(next) || 1) : null,
-                            })
+                            });
                           }}
                         />
                         <FormField
@@ -775,7 +926,11 @@ export default function CaptivePortalPage() {
                           type="datetime-local"
                           value={toDatetimeLocal(voucher.expiresAt)}
                           disabled={busy}
-                          onChange={(e) => handleUpdateVoucher(voucher.id, { expiresAt: fromDatetimeLocal(e.target.value) })}
+                          onChange={(e) =>
+                            handleUpdateVoucher(voucher.id, {
+                              expiresAt: fromDatetimeLocal(e.target.value),
+                            })
+                          }
                         />
                       </div>
 
@@ -784,7 +939,9 @@ export default function CaptivePortalPage() {
                           <input
                             type="checkbox"
                             checked={voucher.enabled}
-                            onChange={(e) => handleUpdateVoucher(voucher.id, { enabled: e.target.checked })}
+                            onChange={(e) =>
+                              handleUpdateVoucher(voucher.id, { enabled: e.target.checked })
+                            }
                             disabled={busy}
                             className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
@@ -815,7 +972,11 @@ export default function CaptivePortalPage() {
         title="Authorize Client Session"
         subtitle="Manually authorize a client by IP address from the admin UI."
         actions={
-          <Button onClick={handleAuthorizeSession} loading={authorizing} disabled={loading || authorizing}>
+          <Button
+            onClick={handleAuthorizeSession}
+            loading={authorizing}
+            disabled={loading || authorizing}
+          >
             Authorize Session
           </Button>
         }
@@ -825,7 +986,9 @@ export default function CaptivePortalPage() {
             id="cp-client-ip"
             label="Client IP"
             value={sessionForm.clientIp}
-            onChange={(e) => setSessionForm((current) => ({ ...current, clientIp: e.target.value }))}
+            onChange={(e) =>
+              setSessionForm((current) => ({ ...current, clientIp: e.target.value }))
+            }
             disabled={loading || authorizing}
             placeholder="192.168.1.100"
           />
@@ -833,7 +996,9 @@ export default function CaptivePortalPage() {
             id="cp-client-mac"
             label="Client MAC (optional)"
             value={sessionForm.clientMac}
-            onChange={(e) => setSessionForm((current) => ({ ...current, clientMac: e.target.value }))}
+            onChange={(e) =>
+              setSessionForm((current) => ({ ...current, clientMac: e.target.value }))
+            }
             disabled={loading || authorizing}
             placeholder="aa:bb:cc:dd:ee:ff"
           />
@@ -843,14 +1008,19 @@ export default function CaptivePortalPage() {
             type="number"
             min={60}
             value={sessionForm.ttlSeconds}
-            onChange={(e) => setSessionForm((current) => ({ ...current, ttlSeconds: e.target.value }))}
+            onChange={(e) =>
+              setSessionForm((current) => ({ ...current, ttlSeconds: e.target.value }))
+            }
             disabled={loading || authorizing}
             hint="Optional. Leave empty to use global session TTL."
           />
         </div>
       </Card>
 
-      <Card title="Active and Historical Sessions" subtitle="Review and revoke portal authorizations.">
+      <Card
+        title="Active and Historical Sessions"
+        subtitle="Review and revoke portal authorizations."
+      >
         <Table<CaptivePortalSessionRecord>
           columns={sessionColumns(formatDateTime, handleRevokeSession, revokingSessionId)}
           data={sessions}
@@ -860,5 +1030,5 @@ export default function CaptivePortalPage() {
         />
       </Card>
     </div>
-  )
+  );
 }

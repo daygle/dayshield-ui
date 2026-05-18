@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
-import { getDashboardNetworkStatus } from '../api/system'
+import { useQuery } from '@tanstack/react-query';
+import { getDashboardNetworkStatus } from '../api/system';
 
 export function useNetworkStatus() {
   return useQuery({
@@ -7,5 +7,5 @@ export function useNetworkStatus() {
     queryFn: () => getDashboardNetworkStatus().then((r) => r.data),
     refetchInterval: 5000,
     retry: 2,
-  })
+  });
 }

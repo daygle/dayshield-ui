@@ -1,5 +1,5 @@
 interface ErrorBannerProps {
-  message: string
+  message: string;
 }
 
 export default function ErrorBanner({ message }: ErrorBannerProps) {
@@ -20,5 +20,5 @@ export default function ErrorBanner({ message }: ErrorBannerProps) {
       </svg>
       <p className="text-sm text-red-700">{message}</p>
     </div>
-  )
+  );
 }

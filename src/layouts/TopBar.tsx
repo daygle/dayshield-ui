@@ -1,7 +1,7 @@
-import { useLocation, useNavigate, Link } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
-import Button from '../components/Button'
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import Button from '../components/Button';
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -13,29 +13,27 @@ const pageTitles: Record<string, string> = {
   '/captive-portal': 'Captive Portal',
   '/system': 'System',
   '/change-password': 'Change Password',
-}
+};
 
 interface TopBarProps {
-  onOpenSidebar: () => void
+  onOpenSidebar: () => void;
 }
 
 export default function TopBar({ onOpenSidebar }: TopBarProps) {
-  const { pathname } = useLocation()
-  const title = pageTitles[pathname] ?? 'DayShield'
-  const { user, signOut } = useAuth()
-  const { addToast } = useToast()
-  const navigate = useNavigate()
+  const { pathname } = useLocation();
+  const title = pageTitles[pathname] ?? 'DayShield';
+  const { user, signOut } = useAuth();
+  const { addToast } = useToast();
+  const navigate = useNavigate();
 
   async function handleLogout() {
-    await signOut()
-    addToast('You have been signed out.', 'info')
-    navigate('/login', { replace: true })
+    await signOut();
+    addToast('You have been signed out.', 'info');
+    navigate('/login', { replace: true });
   }
 
   // Derive initials from username
-  const initials = user?.username
-    ? user.username.slice(0, 2).toUpperCase()
-    : 'DS'
+  const initials = user?.username ? user.username.slice(0, 2).toUpperCase() : 'DS';
 
   return (
     <header className="flex min-h-14 items-center justify-between gap-3 bg-white px-3 py-2 border-b border-gray-200 shrink-0 sm:px-6">
@@ -46,7 +44,13 @@ export default function TopBar({ onOpenSidebar }: TopBarProps) {
           className="rounded-md border border-gray-200 p-2 text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 lg:hidden"
           onClick={onOpenSidebar}
         >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h16" />
           </svg>
         </button>
@@ -82,5 +86,5 @@ export default function TopBar({ onOpenSidebar }: TopBarProps) {
         </Button>
       </div>
     </header>
-  )
+  );
 }

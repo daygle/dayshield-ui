@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   getSuricataRulesets,
   getSuricataRulesetRules,
@@ -9,263 +9,267 @@ import {
   updateManagedSuricataRuleset,
   updateSuricataRulesetDisabledRules,
   type RulesetRule,
-} from '../../api/suricata'
-import type { SuricataRuleset } from '../../types'
-import Card from '../../components/Card'
-import Button from '../../components/Button'
-import FormField from '../../components/FormField'
-import ErrorBoundary from '../../components/ErrorBoundary'
+} from '../../api/suricata';
+import type { SuricataRuleset } from '../../types';
+import Card from '../../components/Card';
+import Button from '../../components/Button';
+import FormField from '../../components/FormField';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 type RulesetGroup = {
-  label: string
-  rulesets: SuricataRuleset[]
-}
+  label: string;
+  rulesets: SuricataRuleset[];
+};
 
 type RulesetSubgroup = {
-  label: string
-  rulesets: SuricataRuleset[]
-}
+  label: string;
+  rulesets: SuricataRuleset[];
+};
 
 type RulesetSubgroupSummary = RulesetSubgroup & {
-  familyLabel: string
-}
+  familyLabel: string;
+};
 
-type GroupAction = 'install' | 'enable' | 'disable'
+type GroupAction = 'install' | 'enable' | 'disable';
 
-const rulesetKey = (id: string | number) => String(id)
+const rulesetKey = (id: string | number) => String(id);
 
 const labelFromSlug = (value: string): string => {
-  const trimmed = value.trim()
-  if (!trimmed) return trimmed
-  if (trimmed === 'et-open') return 'ET open'
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed === 'et-open') return 'ET open';
   return trimmed
     .split(/[-_\s]+/)
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
-}
+    .join(' ');
+};
 
 const familyLabelFor = (ruleset: SuricataRuleset): string => {
-  const id = String(ruleset.id)
-  const vendor = ruleset.vendor?.trim() ?? ''
+  const id = String(ruleset.id);
+  const vendor = ruleset.vendor?.trim() ?? '';
 
   if (id.includes('/')) {
-    return labelFromSlug(id.split('/')[0] ?? id)
+    return labelFromSlug(id.split('/')[0] ?? id);
   }
 
   if (vendor.toLowerCase().includes('emerging threats') || id.startsWith('et-')) {
-    return 'ET open'
+    return 'ET open';
   }
 
-  return vendor || 'Available'
-}
+  return vendor || 'Available';
+};
 
 const rulesetPathLabelFor = (ruleset: SuricataRuleset): string => {
-  const id = String(ruleset.id)
-  const parts = id.split('/').filter(Boolean)
+  const id = String(ruleset.id);
+  const parts = id.split('/').filter(Boolean);
   if (parts.length > 1) {
-    return parts.map(labelFromSlug).join(' / ')
+    return parts.map(labelFromSlug).join(' / ');
   }
 
-  return ruleset.name
-}
+  return ruleset.name;
+};
 
 const sourceFileBasename = (source: string): string | null => {
-  const trimmed = source.trim()
-  if (!trimmed) return null
+  const trimmed = source.trim();
+  if (!trimmed) return null;
 
   const path = (() => {
     try {
-      return new URL(trimmed).pathname
+      return new URL(trimmed).pathname;
     } catch {
-      return trimmed.split('?')[0]?.split('#')[0] ?? trimmed
+      return trimmed.split('?')[0]?.split('#')[0] ?? trimmed;
     }
-  })()
+  })();
 
-  const file = path.split('/').filter(Boolean).pop()
-  if (!file) return null
+  const file = path.split('/').filter(Boolean).pop();
+  if (!file) return null;
 
-  if (file.endsWith('.rules')) return file.slice(0, -6)
-  if (file.endsWith('.rules.gz')) return file.slice(0, -9)
-  return file
-}
+  if (file.endsWith('.rules')) return file.slice(0, -6);
+  if (file.endsWith('.rules.gz')) return file.slice(0, -9);
+  return file;
+};
 
 const subgroupLabelFor = (ruleset: SuricataRuleset): string => {
-  const family = familyLabelFor(ruleset)
-  if (family !== 'ET open') return 'General'
+  const family = familyLabelFor(ruleset);
+  if (family !== 'ET open') return 'General';
 
   const normalizeEtGroupLabel = (value: string): string => {
-    const trimmed = value.trim()
-    if (!trimmed) return 'et-open.rules'
-    return trimmed.endsWith('.rules') ? trimmed : `${trimmed}.rules`
-  }
+    const trimmed = value.trim();
+    if (!trimmed) return 'et-open.rules';
+    return trimmed.endsWith('.rules') ? trimmed : `${trimmed}.rules`;
+  };
 
-  const idParts = String(ruleset.id).split('/').filter(Boolean)
+  const idParts = String(ruleset.id).split('/').filter(Boolean);
   if (idParts.length > 1 && idParts[1]) {
-    return normalizeEtGroupLabel(idParts[1])
+    return normalizeEtGroupLabel(idParts[1]);
   }
 
-  const basename = sourceFileBasename(ruleset.source)
+  const basename = sourceFileBasename(ruleset.source);
   if (basename && basename.startsWith('emerging-')) {
-    return normalizeEtGroupLabel(basename)
+    return normalizeEtGroupLabel(basename);
   }
 
-  return 'et-open.rules'
-}
+  return 'et-open.rules';
+};
 
 const subgroupSort = (a: string, b: string): number => {
-  if (a === 'General') return -1
-  if (b === 'General') return 1
-  return a.localeCompare(b)
-}
+  if (a === 'General') return -1;
+  if (b === 'General') return 1;
+  return a.localeCompare(b);
+};
 
 const groupSort = (a: string, b: string): number => {
-  if (a === 'Installed') return -1
-  if (b === 'Installed') return 1
-  if (a === 'ET open') return -1
-  if (b === 'ET open') return 1
-  if (a === 'Available') return -1
-  if (b === 'Available') return 1
-  return a.localeCompare(b)
-}
+  if (a === 'Installed') return -1;
+  if (b === 'Installed') return 1;
+  if (a === 'ET open') return -1;
+  if (b === 'ET open') return 1;
+  if (a === 'Available') return -1;
+  if (b === 'Available') return 1;
+  return a.localeCompare(b);
+};
 
 const buildRulesetGroups = (rulesets: SuricataRuleset[]): RulesetGroup[] => {
-  const groups = new Map<string, SuricataRuleset[]>()
+  const groups = new Map<string, SuricataRuleset[]>();
   for (const ruleset of rulesets) {
-    const label = familyLabelFor(ruleset)
-    const current = groups.get(label) ?? []
-    current.push(ruleset)
-    groups.set(label, current)
+    const label = familyLabelFor(ruleset);
+    const current = groups.get(label) ?? [];
+    current.push(ruleset);
+    groups.set(label, current);
   }
 
   return Array.from(groups.entries())
-    .map(([label, groupRulesets]): RulesetGroup => ({
-      label,
-      rulesets: groupRulesets.sort((a, b) => a.name.localeCompare(b.name)),
-    }))
-    .sort((a, b) => groupSort(a.label, b.label))
-}
+    .map(
+      ([label, groupRulesets]): RulesetGroup => ({
+        label,
+        rulesets: groupRulesets.sort((a, b) => a.name.localeCompare(b.name)),
+      })
+    )
+    .sort((a, b) => groupSort(a.label, b.label));
+};
 
 const buildRulesetSubgroups = (rulesets: SuricataRuleset[]): RulesetSubgroup[] => {
-  const groups = new Map<string, SuricataRuleset[]>()
+  const groups = new Map<string, SuricataRuleset[]>();
   for (const ruleset of rulesets) {
-    const label = subgroupLabelFor(ruleset)
-    const current = groups.get(label) ?? []
-    current.push(ruleset)
-    groups.set(label, current)
+    const label = subgroupLabelFor(ruleset);
+    const current = groups.get(label) ?? [];
+    current.push(ruleset);
+    groups.set(label, current);
   }
 
   return Array.from(groups.entries())
-    .map(([label, subgroupRulesets]): RulesetSubgroup => ({
-      label,
-      rulesets: subgroupRulesets.sort((a, b) => a.name.localeCompare(b.name)),
-    }))
-    .sort((a, b) => subgroupSort(a.label, b.label))
-}
+    .map(
+      ([label, subgroupRulesets]): RulesetSubgroup => ({
+        label,
+        rulesets: subgroupRulesets.sort((a, b) => a.name.localeCompare(b.name)),
+      })
+    )
+    .sort((a, b) => subgroupSort(a.label, b.label));
+};
 
 const getGroupAction = (rulesets: SuricataRuleset[]): GroupAction | null => {
-  if (!rulesets.length) return null
-  if (rulesets.some((ruleset) => !ruleset.installed)) return 'install'
-  if (rulesets.some((ruleset) => !ruleset.enabled)) return 'enable'
-  if (rulesets.some((ruleset) => ruleset.enabled)) return 'disable'
-  return null
-}
+  if (!rulesets.length) return null;
+  if (rulesets.some((ruleset) => !ruleset.installed)) return 'install';
+  if (rulesets.some((ruleset) => !ruleset.enabled)) return 'enable';
+  if (rulesets.some((ruleset) => ruleset.enabled)) return 'disable';
+  return null;
+};
 
 const groupActionLabel: Record<GroupAction, string> = {
   install: 'Install',
   enable: 'Enable',
   disable: 'Disable',
-}
+};
 
 const runGroupAction = async (rulesets: SuricataRuleset[], action: GroupAction) => {
   if (action === 'install') {
     await Promise.all(
       rulesets
         .filter((ruleset) => !ruleset.installed)
-        .map((ruleset) => installSuricataRuleset(ruleset.id)),
-    )
-    return
+        .map((ruleset) => installSuricataRuleset(ruleset.id))
+    );
+    return;
   }
 
-  const enabled = action === 'enable'
+  const enabled = action === 'enable';
   await Promise.all(
     rulesets
       .filter((ruleset) => Boolean(ruleset.installed) && ruleset.enabled !== enabled)
-      .map((ruleset) => updateSuricataRuleset(ruleset.id, { enabled })),
-  )
-}
+      .map((ruleset) => updateSuricataRuleset(ruleset.id, { enabled }))
+  );
+};
 
 function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
-  const [searchParams] = useSearchParams()
-  const scopedFamily = embedded ? '' : searchParams.get('group') ?? ''
-  const scopedSubgroup = embedded ? '' : searchParams.get('subgroup') ?? ''
-  const scopedToSubgroup = Boolean(scopedFamily && scopedSubgroup)
+  const [searchParams] = useSearchParams();
+  const scopedFamily = embedded ? '' : (searchParams.get('group') ?? '');
+  const scopedSubgroup = embedded ? '' : (searchParams.get('subgroup') ?? '');
+  const scopedToSubgroup = Boolean(scopedFamily && scopedSubgroup);
 
-  const [rulesets, setRulesets] = useState<SuricataRuleset[]>([])
-  const [loading, setLoading] = useState(true)
-  const [rulesLoading, setRulesLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedGroup, setSelectedGroup] = useState<string>('')
-  const [selectedSubgroup, setSelectedSubgroup] = useState<string>('')
-  const [selectedRulesetId, setSelectedRulesetId] = useState<string>('')
-  const [rules, setRules] = useState<RulesetRule[]>([])
-  const [rulesHint, setRulesHint] = useState<string | null>(null)
-  const [disabledRuleIds, setDisabledRuleIds] = useState<Set<string>>(new Set())
-  const [rulesSearch, setRulesSearch] = useState('')
-  const [checkingUpdates, setCheckingUpdates] = useState(false)
-  const [installingRulesetId, setInstallingRulesetId] = useState<string | null>(null)
-  const [updatingRulesetId, setUpdatingRulesetId] = useState<string | null>(null)
+  const [rulesets, setRulesets] = useState<SuricataRuleset[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [rulesLoading, setRulesLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState<string>('');
+  const [selectedSubgroup, setSelectedSubgroup] = useState<string>('');
+  const [selectedRulesetId, setSelectedRulesetId] = useState<string>('');
+  const [rules, setRules] = useState<RulesetRule[]>([]);
+  const [rulesHint, setRulesHint] = useState<string | null>(null);
+  const [disabledRuleIds, setDisabledRuleIds] = useState<Set<string>>(new Set());
+  const [rulesSearch, setRulesSearch] = useState('');
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [installingRulesetId, setInstallingRulesetId] = useState<string | null>(null);
+  const [updatingRulesetId, setUpdatingRulesetId] = useState<string | null>(null);
 
   const loadRulesets = useCallback(() => {
-    setLoading(true)
+    setLoading(true);
     return getSuricataRulesets()
       .then((res) => {
-        const nextRulesets = res.data ?? []
-        setRulesets(nextRulesets)
-        setError(null)
+        const nextRulesets = res.data ?? [];
+        setRulesets(nextRulesets);
+        setError(null);
 
         if (nextRulesets.length === 0) {
-          setSelectedGroup('')
-          setSelectedSubgroup('')
-          setSelectedRulesetId('')
-          return
+          setSelectedGroup('');
+          setSelectedSubgroup('');
+          setSelectedRulesetId('');
+          return;
         }
 
-        const groups = buildRulesetGroups(nextRulesets)
-        const defaultGroup = groups[0]?.label ?? ''
-        const defaultGroupRulesets = groups[0]?.rulesets ?? []
-        const defaultSubgroup = buildRulesetSubgroups(defaultGroupRulesets)[0]?.label ?? ''
+        const groups = buildRulesetGroups(nextRulesets);
+        const defaultGroup = groups[0]?.label ?? '';
+        const defaultGroupRulesets = groups[0]?.rulesets ?? [];
+        const defaultSubgroup = buildRulesetSubgroups(defaultGroupRulesets)[0]?.label ?? '';
         const defaultRuleset =
           defaultGroupRulesets.find((ruleset) => subgroupLabelFor(ruleset) === defaultSubgroup) ??
-          defaultGroupRulesets[0]
+          defaultGroupRulesets[0];
 
         setSelectedGroup((prev) =>
-          prev && groups.some((group) => group.label === prev) ? prev : defaultGroup,
-        )
+          prev && groups.some((group) => group.label === prev) ? prev : defaultGroup
+        );
         setSelectedSubgroup((prev) => {
           const prevExists = nextRulesets.some(
             (ruleset) =>
-              familyLabelFor(ruleset) === defaultGroup && subgroupLabelFor(ruleset) === prev,
-          )
-          return prevExists ? prev : defaultSubgroup
-        })
+              familyLabelFor(ruleset) === defaultGroup && subgroupLabelFor(ruleset) === prev
+          );
+          return prevExists ? prev : defaultSubgroup;
+        });
         setSelectedRulesetId((prev) => {
-          const prevExists = nextRulesets.some((ruleset) => rulesetKey(ruleset.id) === prev)
-          return prevExists ? prev : rulesetKey(defaultRuleset?.id ?? '')
-        })
+          const prevExists = nextRulesets.some((ruleset) => rulesetKey(ruleset.id) === prev);
+          return prevExists ? prev : rulesetKey(defaultRuleset?.id ?? '');
+        });
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false))
-  }, [])
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
-    loadRulesets()
-  }, [loadRulesets])
+    loadRulesets();
+  }, [loadRulesets]);
 
-  const groupedRulesets = useMemo(() => buildRulesetGroups(rulesets), [rulesets])
+  const groupedRulesets = useMemo(() => buildRulesetGroups(rulesets), [rulesets]);
 
   const visibleGroups = useMemo(
     () =>
@@ -275,57 +279,59 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
           group.rulesets.some(
             (ruleset) =>
               ruleset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              subgroupLabelFor(ruleset).toLowerCase().includes(searchTerm.toLowerCase()),
-          ),
+              subgroupLabelFor(ruleset).toLowerCase().includes(searchTerm.toLowerCase())
+          )
       ),
-    [groupedRulesets, searchTerm],
-  )
+    [groupedRulesets, searchTerm]
+  );
 
   const selectedGroupRulesets = useMemo(
     () => groupedRulesets.find((group) => group.label === selectedGroup)?.rulesets ?? [],
-    [groupedRulesets, selectedGroup],
-  )
+    [groupedRulesets, selectedGroup]
+  );
 
   const selectedGroupSubgroups = useMemo(
     () => buildRulesetSubgroups(selectedGroupRulesets),
-    [selectedGroupRulesets],
-  )
+    [selectedGroupRulesets]
+  );
 
   const selectedSubgroupRulesets = useMemo(
     () =>
       selectedGroupSubgroups.find((subgroup) => subgroup.label === selectedSubgroup)?.rulesets ??
       [],
-    [selectedGroupSubgroups, selectedSubgroup],
-  )
+    [selectedGroupSubgroups, selectedSubgroup]
+  );
 
   const selectedRuleset = useMemo(
     () => rulesets.find((ruleset) => rulesetKey(ruleset.id) === selectedRulesetId) ?? null,
-    [rulesets, selectedRulesetId],
-  )
+    [rulesets, selectedRulesetId]
+  );
 
   useEffect(() => {
-    if (!scopedToSubgroup) return
+    if (!scopedToSubgroup) return;
 
-    const scopedGroupEntry = groupedRulesets.find((group) => group.label === scopedFamily)
-    if (!scopedGroupEntry) return
+    const scopedGroupEntry = groupedRulesets.find((group) => group.label === scopedFamily);
+    if (!scopedGroupEntry) return;
 
     if (selectedGroup !== scopedFamily) {
-      setSelectedGroup(scopedFamily)
-      return
+      setSelectedGroup(scopedFamily);
+      return;
     }
 
     const scopedSubgroupEntry = buildRulesetSubgroups(scopedGroupEntry.rulesets).find(
-      (subgroup) => subgroup.label === scopedSubgroup,
-    )
-    if (!scopedSubgroupEntry) return
+      (subgroup) => subgroup.label === scopedSubgroup
+    );
+    if (!scopedSubgroupEntry) return;
 
     if (selectedSubgroup !== scopedSubgroup) {
-      setSelectedSubgroup(scopedSubgroup)
-      return
+      setSelectedSubgroup(scopedSubgroup);
+      return;
     }
 
-    if (!scopedSubgroupEntry.rulesets.some((ruleset) => rulesetKey(ruleset.id) === selectedRulesetId)) {
-      setSelectedRulesetId(rulesetKey(scopedSubgroupEntry.rulesets[0]?.id ?? ''))
+    if (
+      !scopedSubgroupEntry.rulesets.some((ruleset) => rulesetKey(ruleset.id) === selectedRulesetId)
+    ) {
+      setSelectedRulesetId(rulesetKey(scopedSubgroupEntry.rulesets[0]?.id ?? ''));
     }
   }, [
     groupedRulesets,
@@ -335,195 +341,201 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
     selectedGroup,
     selectedRulesetId,
     selectedSubgroup,
-  ])
+  ]);
 
   useEffect(() => {
     if (selectedGroupSubgroups.length === 0) {
-      setSelectedSubgroup('')
-      return
+      setSelectedSubgroup('');
+      return;
     }
 
-    const exists = selectedGroupSubgroups.some((subgroup) => subgroup.label === selectedSubgroup)
+    const exists = selectedGroupSubgroups.some((subgroup) => subgroup.label === selectedSubgroup);
     if (!exists) {
-      setSelectedSubgroup(selectedGroupSubgroups[0].label)
+      setSelectedSubgroup(selectedGroupSubgroups[0].label);
     }
-  }, [selectedGroupSubgroups, selectedSubgroup])
+  }, [selectedGroupSubgroups, selectedSubgroup]);
 
   useEffect(() => {
     if (!selectedSubgroupRulesets.length) {
-      setSelectedRulesetId('')
-      return
+      setSelectedRulesetId('');
+      return;
     }
 
     const exists = selectedSubgroupRulesets.some(
-      (ruleset) => rulesetKey(ruleset.id) === selectedRulesetId,
-    )
+      (ruleset) => rulesetKey(ruleset.id) === selectedRulesetId
+    );
     if (!exists) {
-      setSelectedRulesetId(rulesetKey(selectedSubgroupRulesets[0].id))
+      setSelectedRulesetId(rulesetKey(selectedSubgroupRulesets[0].id));
     }
-  }, [selectedSubgroupRulesets, selectedRulesetId])
+  }, [selectedSubgroupRulesets, selectedRulesetId]);
 
   const loadSelectedRules = useCallback((rulesetId: string) => {
-    if (!rulesetId) return
-    setRulesLoading(true)
-    setRulesHint(null)
+    if (!rulesetId) return;
+    setRulesLoading(true);
+    setRulesHint(null);
     getSuricataRulesetRules(rulesetId)
       .then((res) => {
-        const nextRules = res.data ?? []
-        setRules(nextRules)
-        const disabled = new Set<string>()
+        const nextRules = res.data ?? [];
+        setRules(nextRules);
+        const disabled = new Set<string>();
         nextRules.forEach((rule) => {
-          if (!rule.enabled) disabled.add(rule.id)
-        })
-        setDisabledRuleIds(disabled)
-        setError(null)
+          if (!rule.enabled) disabled.add(rule.id);
+        });
+        setDisabledRuleIds(disabled);
+        setError(null);
       })
       .catch((err: Error) => {
-        const message = err.message ?? String(err)
+        const message = err.message ?? String(err);
         if (/rules file not found/i.test(message)) {
-          setRules([])
-          setDisabledRuleIds(new Set())
+          setRules([]);
+          setDisabledRuleIds(new Set());
           setRulesHint(
-            'No downloaded rules are available for this ruleset yet. Install and enable the ruleset to load rule contents.',
-          )
-          setError(null)
-          return
+            'No downloaded rules are available for this ruleset yet. Install and enable the ruleset to load rule contents.'
+          );
+          setError(null);
+          return;
         }
-        setRulesHint(null)
-        setError(message)
+        setRulesHint(null);
+        setError(message);
       })
-      .finally(() => setRulesLoading(false))
-  }, [])
+      .finally(() => setRulesLoading(false));
+  }, []);
 
   useEffect(() => {
-    if (!selectedRulesetId) return
+    if (!selectedRulesetId) return;
     if (!selectedRuleset?.installed) {
-      setRules([])
-      setDisabledRuleIds(new Set())
-      setRulesHint('This ruleset is not installed yet. Click Install to download its rules.')
-      setError(null)
-      return
+      setRules([]);
+      setDisabledRuleIds(new Set());
+      setRulesHint('This ruleset is not installed yet. Click Install to download its rules.');
+      setError(null);
+      return;
     }
-    loadSelectedRules(selectedRulesetId)
-  }, [selectedRulesetId, selectedRuleset, loadSelectedRules])
+    loadSelectedRules(selectedRulesetId);
+  }, [selectedRulesetId, selectedRuleset, loadSelectedRules]);
 
   const handleSelectGroup = (label: string) => {
-    setSelectedGroup(label)
-    const nextGroupRulesets = groupedRulesets.find((group) => group.label === label)?.rulesets ?? []
-    const subgroups = buildRulesetSubgroups(nextGroupRulesets)
-    const nextSubgroup = subgroups[0]?.label ?? ''
+    setSelectedGroup(label);
+    const nextGroupRulesets =
+      groupedRulesets.find((group) => group.label === label)?.rulesets ?? [];
+    const subgroups = buildRulesetSubgroups(nextGroupRulesets);
+    const nextSubgroup = subgroups[0]?.label ?? '';
     const nextRuleset =
       nextGroupRulesets.find((ruleset) => subgroupLabelFor(ruleset) === nextSubgroup) ??
-      nextGroupRulesets[0]
-    setSelectedSubgroup(nextSubgroup)
-    setSelectedRulesetId(nextRuleset ? rulesetKey(nextRuleset.id) : '')
-  }
+      nextGroupRulesets[0];
+    setSelectedSubgroup(nextSubgroup);
+    setSelectedRulesetId(nextRuleset ? rulesetKey(nextRuleset.id) : '');
+  };
 
   const handleSelectSubgroup = (label: string) => {
-    setSelectedSubgroup(label)
-    const nextRuleset = selectedGroupSubgroups.find((subgroup) => subgroup.label === label)?.rulesets[0]
-    setSelectedRulesetId(nextRuleset ? rulesetKey(nextRuleset.id) : '')
-  }
+    setSelectedSubgroup(label);
+    const nextRuleset = selectedGroupSubgroups.find((subgroup) => subgroup.label === label)
+      ?.rulesets[0];
+    setSelectedRulesetId(nextRuleset ? rulesetKey(nextRuleset.id) : '');
+  };
 
   const handleSelectRuleset = (ruleset: SuricataRuleset) => {
-    setSelectedGroup(familyLabelFor(ruleset))
-    setSelectedSubgroup(subgroupLabelFor(ruleset))
-    setSelectedRulesetId(rulesetKey(ruleset.id))
-  }
+    setSelectedGroup(familyLabelFor(ruleset));
+    setSelectedSubgroup(subgroupLabelFor(ruleset));
+    setSelectedRulesetId(rulesetKey(ruleset.id));
+  };
 
   const toggleRule = useCallback((ruleId: string) => {
     setDisabledRuleIds((prev) => {
-      const next = new Set(prev)
+      const next = new Set(prev);
       if (next.has(ruleId)) {
-        next.delete(ruleId)
+        next.delete(ruleId);
       } else {
-        next.add(ruleId)
+        next.add(ruleId);
       }
-      return next
-    })
-  }, [])
+      return next;
+    });
+  }, []);
 
   const saveRules = async () => {
-    if (!selectedRulesetId) return
-    setSaving(true)
-    setSuccess(null)
-    setError(null)
+    if (!selectedRulesetId) return;
+    setSaving(true);
+    setSuccess(null);
+    setError(null);
     try {
-      await updateSuricataRulesetDisabledRules(selectedRulesetId, Array.from(disabledRuleIds))
-      setSuccess(`Saved rules for ${selectedRuleset?.name ?? selectedRulesetId}.`)
-      await loadRulesets()
-      loadSelectedRules(selectedRulesetId)
+      await updateSuricataRulesetDisabledRules(selectedRulesetId, Array.from(disabledRuleIds));
+      setSuccess(`Saved rules for ${selectedRuleset?.name ?? selectedRulesetId}.`);
+      await loadRulesets();
+      loadSelectedRules(selectedRulesetId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const checkAllUpdates = async () => {
-    setCheckingUpdates(true)
-    setSuccess(null)
-    setError(null)
+    setCheckingUpdates(true);
+    setSuccess(null);
+    setError(null);
     try {
-      await checkSuricataRulesetUpdates()
-      setSuccess('Checked for ruleset updates.')
-      await loadRulesets()
+      await checkSuricataRulesetUpdates();
+      setSuccess('Checked for ruleset updates.');
+      await loadRulesets();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setCheckingUpdates(false)
+      setCheckingUpdates(false);
     }
-  }
+  };
 
   const updateRuleset = async (ruleset: SuricataRuleset) => {
-    const id = rulesetKey(ruleset.id)
-    setUpdatingRulesetId(id)
-    setSuccess(null)
-    setError(null)
+    const id = rulesetKey(ruleset.id);
+    setUpdatingRulesetId(id);
+    setSuccess(null);
+    setError(null);
     try {
-      await updateManagedSuricataRuleset(ruleset.id)
-      setSuccess(`Updated ${ruleset.name}.`)
-      await loadRulesets()
+      await updateManagedSuricataRuleset(ruleset.id);
+      setSuccess(`Updated ${ruleset.name}.`);
+      await loadRulesets();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setUpdatingRulesetId(null)
+      setUpdatingRulesetId(null);
     }
-  }
+  };
 
   const installSelectedRuleset = async () => {
-    if (!selectedRuleset) return
-    const id = rulesetKey(selectedRuleset.id)
-    setInstallingRulesetId(id)
-    setSuccess(null)
-    setError(null)
+    if (!selectedRuleset) return;
+    const id = rulesetKey(selectedRuleset.id);
+    setInstallingRulesetId(id);
+    setSuccess(null);
+    setError(null);
     try {
-      await installSuricataRuleset(selectedRuleset.id)
-      setSuccess(`Installed ${selectedRuleset.name}.`)
-      await loadRulesets()
+      await installSuricataRuleset(selectedRuleset.id);
+      setSuccess(`Installed ${selectedRuleset.name}.`);
+      await loadRulesets();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setInstallingRulesetId(null)
+      setInstallingRulesetId(null);
     }
-  }
+  };
 
   const filteredRules = rules.filter((rule) => {
-    const term = rulesSearch.toLowerCase()
+    const term = rulesSearch.toLowerCase();
     return (
       rule.id.toLowerCase().includes(term) ||
       rule.signature.toLowerCase().includes(term) ||
       rule.action.toLowerCase().includes(term)
-    )
-  })
+    );
+  });
 
-  const selectedRulesetRuleCount = selectedRuleset?.installed ? rules.length : null
+  const selectedRulesetRuleCount = selectedRuleset?.installed ? rules.length : null;
   const selectedRulesetDisabledCount = selectedRuleset?.installed
-    ? rules.reduce((count, rule) => count + (disabledRuleIds.has(rule.id) || !rule.enabled ? 1 : 0), 0)
-    : null
-  const selectedRulesetEnabledCount = selectedRulesetRuleCount !== null
-    ? selectedRulesetRuleCount - selectedRulesetDisabledCount!
-    : null
+    ? rules.reduce(
+        (count, rule) => count + (disabledRuleIds.has(rule.id) || !rule.enabled ? 1 : 0),
+        0
+      )
+    : null;
+  const selectedRulesetEnabledCount =
+    selectedRulesetRuleCount !== null
+      ? selectedRulesetRuleCount - selectedRulesetDisabledCount!
+      : null;
 
   return (
     <div className="space-y-6">
@@ -552,8 +564,18 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
               aria-label="Refresh Suricata rulesets"
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14 10 10 0 01-14.14 0" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14 10 10 0 01-14.14 0"
+                />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4" />
               </svg>
             </button>
@@ -565,7 +587,13 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
               aria-label="Check Suricata ruleset updates"
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </button>
@@ -579,12 +607,24 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {installingRulesetId === selectedRulesetId ? (
-                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <svg
+                    className="h-4 w-4 animate-spin"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
                     <circle cx="12" cy="12" r="10" className="opacity-25" />
                     <path d="M4 12a8 8 0 018-8V4" className="opacity-75" />
                   </svg>
                 ) : (
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                   </svg>
                 )}
@@ -657,17 +697,13 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <div className="font-medium text-gray-900">{group.label}</div>
-                      <div className="text-xs text-gray-500">
-                        Rulesets: {group.rulesets.length}
-                      </div>
+                      <div className="text-xs text-gray-500">Rulesets: {group.rulesets.length}</div>
                     </div>
                     <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                      {
-                        group.rulesets.reduce(
-                          (count, ruleset) => count + (ruleset.installed ? 1 : 0),
-                          0,
-                        )
-                      }{' '}
+                      {group.rulesets.reduce(
+                        (count, ruleset) => count + (ruleset.installed ? 1 : 0),
+                        0
+                      )}{' '}
                       installed
                     </span>
                   </div>
@@ -700,7 +736,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                   <div className="mt-1 text-xs text-gray-500">
                     {subgroup.rulesets.reduce(
                       (count, ruleset) => count + (ruleset.installed ? 1 : 0),
-                      0,
+                      0
                     )}{' '}
                     installed
                   </div>
@@ -759,8 +795,8 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                           size="sm"
                           variant="primary"
                           onClick={(event) => {
-                            event.stopPropagation()
-                            installSuricataRuleset(ruleset.id).then(() => loadRulesets())
+                            event.stopPropagation();
+                            installSuricataRuleset(ruleset.id).then(() => loadRulesets());
                           }}
                         >
                           Install
@@ -770,10 +806,10 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                           size="sm"
                           variant={ruleset.enabled ? 'secondary' : 'primary'}
                           onClick={(event) => {
-                            event.stopPropagation()
+                            event.stopPropagation();
                             updateSuricataRuleset(ruleset.id, {
                               enabled: !ruleset.enabled,
-                            }).then(() => loadRulesets())
+                            }).then(() => loadRulesets());
                           }}
                         >
                           {ruleset.enabled ? 'Disable' : 'Enable'}
@@ -784,8 +820,8 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                           size="sm"
                           variant="secondary"
                           onClick={(event) => {
-                            event.stopPropagation()
-                            updateRuleset(ruleset)
+                            event.stopPropagation();
+                            updateRuleset(ruleset);
                           }}
                           loading={updatingRulesetId === rulesetKey(ruleset.id)}
                         >
@@ -805,7 +841,6 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
           </Card>
         )}
 
-
         <Card
           title={selectedRuleset ? rulesetPathLabelFor(selectedRuleset) : 'Rule Details'}
           subtitle={
@@ -816,7 +851,8 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
           actions={
             selectedRuleset ? (
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '—'} disabled
+                {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '—'}{' '}
+                disabled
               </span>
             ) : undefined
           }
@@ -880,7 +916,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                     </thead>
                     <tbody>
                       {filteredRules.map((rule) => {
-                        const isDisabled = disabledRuleIds.has(rule.id)
+                        const isDisabled = disabledRuleIds.has(rule.id);
                         return (
                           <tr key={rule.id} className="border-b border-gray-100 hover:bg-gray-50">
                             <td className="px-4 py-3">
@@ -895,17 +931,13 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                                 </span>
                               </label>
                             </td>
-                            <td className="px-4 py-3 font-mono text-xs text-gray-700">
-                              {rule.id}
-                            </td>
+                            <td className="px-4 py-3 font-mono text-xs text-gray-700">{rule.id}</td>
                             <td className="px-4 py-3 text-xs uppercase text-gray-600">
                               {rule.action}
                             </td>
-                            <td className="px-4 py-3 text-xs text-gray-700">
-                              {rule.signature}
-                            </td>
+                            <td className="px-4 py-3 text-xs text-gray-700">{rule.signature}</td>
                           </tr>
-                        )
+                        );
                       })}
                       {filteredRules.length === 0 && (
                         <tr>
@@ -921,7 +953,12 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
                 <div className="text-xs text-gray-500">
-                  {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '—'} disabled, {selectedRulesetRuleCount !== null ? selectedRulesetRuleCount - selectedRulesetDisabledCount! : '—'} enabled
+                  {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '—'}{' '}
+                  disabled,{' '}
+                  {selectedRulesetRuleCount !== null
+                    ? selectedRulesetRuleCount - selectedRulesetDisabledCount!
+                    : '—'}{' '}
+                  enabled
                 </div>
                 <div className="flex gap-2">
                   {!embedded && !scopedToSubgroup && (
@@ -936,7 +973,9 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                     variant="primary"
                     onClick={saveRules}
                     loading={saving}
-                    disabled={!selectedRuleset.installed || rules.length === 0 || Boolean(rulesHint)}
+                    disabled={
+                      !selectedRuleset.installed || rules.length === 0 || Boolean(rulesHint)
+                    }
                   >
                     Save
                   </Button>
@@ -947,74 +986,76 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
         </Card>
       </div>
     </div>
-  )
+  );
 }
 
 export function SuricataRulesetGroupsSection() {
-  const [rulesets, setRulesets] = useState<SuricataRuleset[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [actingGroupKey, setActingGroupKey] = useState<string | null>(null)
-  const [checkingUpdates, setCheckingUpdates] = useState(false)
-  const [rulesetStats, setRulesetStats] = useState<Record<string, { total: number; enabled: number }>>({})
+  const [rulesets, setRulesets] = useState<SuricataRuleset[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [actingGroupKey, setActingGroupKey] = useState<string | null>(null);
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [rulesetStats, setRulesetStats] = useState<
+    Record<string, { total: number; enabled: number }>
+  >({});
 
   const loadRulesets = useCallback(() => {
-    setLoading(true)
+    setLoading(true);
     return getSuricataRulesets()
       .then((res) => {
-        setRulesets(res.data ?? [])
-        setError(null)
+        setRulesets(res.data ?? []);
+        setError(null);
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false))
-  }, [])
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
-    loadRulesets()
-  }, [loadRulesets])
+    loadRulesets();
+  }, [loadRulesets]);
 
   useEffect(() => {
     const installedRulesetIds = rulesets
       .filter((ruleset) => ruleset.installed)
-      .map((ruleset) => rulesetKey(ruleset.id))
+      .map((ruleset) => rulesetKey(ruleset.id));
 
-    const missingStats = installedRulesetIds.filter((id) => !(id in rulesetStats))
-    if (missingStats.length === 0) return
+    const missingStats = installedRulesetIds.filter((id) => !(id in rulesetStats));
+    if (missingStats.length === 0) return;
 
     Promise.all(
       rulesets
         .filter((ruleset) => ruleset.installed && missingStats.includes(rulesetKey(ruleset.id)))
         .map(async (ruleset) => {
           try {
-            const res = await getSuricataRulesetRules(ruleset.id)
-            const total = res.data?.length ?? 0
-            const enabled = res.data?.filter((rule) => rule.enabled).length ?? 0
-            return { id: rulesetKey(ruleset.id), total, enabled }
+            const res = await getSuricataRulesetRules(ruleset.id);
+            const total = res.data?.length ?? 0;
+            const enabled = res.data?.filter((rule) => rule.enabled).length ?? 0;
+            return { id: rulesetKey(ruleset.id), total, enabled };
           } catch {
-            return null
+            return null;
           }
-        }),
+        })
     ).then((results) => {
       setRulesetStats((current) => {
-        const next = { ...current }
+        const next = { ...current };
         for (const item of results) {
-          if (item) next[item.id] = { total: item.total, enabled: item.enabled }
+          if (item) next[item.id] = { total: item.total, enabled: item.enabled };
         }
-        return next
-      })
-    })
-  }, [rulesets, rulesetStats])
+        return next;
+      });
+    });
+  }, [rulesets, rulesetStats]);
 
   const subgroupCards = useMemo(() => {
     return buildRulesetGroups(rulesets).flatMap((group): RulesetSubgroupSummary[] =>
       buildRulesetSubgroups(group.rulesets).map((subgroup) => ({
         ...subgroup,
         familyLabel: group.label,
-      })),
-    )
-  }, [rulesets])
+      }))
+    );
+  }, [rulesets]);
 
   const visibleSubgroupCards = useMemo(
     () =>
@@ -1023,46 +1064,46 @@ export function SuricataRulesetGroupsSection() {
           subgroup.familyLabel.toLowerCase().includes(searchTerm.toLowerCase()) ||
           subgroup.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
           subgroup.rulesets.some((ruleset) =>
-            ruleset.name.toLowerCase().includes(searchTerm.toLowerCase()),
-          ),
+            ruleset.name.toLowerCase().includes(searchTerm.toLowerCase())
+          )
       ),
-    [searchTerm, subgroupCards],
-  )
+    [searchTerm, subgroupCards]
+  );
 
   const handleGroupAction = async (subgroup: RulesetSubgroupSummary) => {
-    const action = getGroupAction(subgroup.rulesets)
-    if (!action) return
+    const action = getGroupAction(subgroup.rulesets);
+    if (!action) return;
 
-    const groupKey = `${subgroup.familyLabel}:${subgroup.label}`
-    setActingGroupKey(groupKey)
-    setSuccess(null)
-    setError(null)
+    const groupKey = `${subgroup.familyLabel}:${subgroup.label}`;
+    setActingGroupKey(groupKey);
+    setSuccess(null);
+    setError(null);
 
     try {
-      await runGroupAction(subgroup.rulesets, action)
-      setSuccess(`${groupActionLabel[action]} completed for ${subgroup.label}.`)
-      await loadRulesets()
+      await runGroupAction(subgroup.rulesets, action);
+      setSuccess(`${groupActionLabel[action]} completed for ${subgroup.label}.`);
+      await loadRulesets();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setActingGroupKey(null)
+      setActingGroupKey(null);
     }
-  }
+  };
 
   const handleCheckUpdates = async () => {
-    setCheckingUpdates(true)
-    setSuccess(null)
-    setError(null)
+    setCheckingUpdates(true);
+    setSuccess(null);
+    setError(null);
     try {
-      await checkSuricataRulesetUpdates()
-      setSuccess('Checked for ruleset updates.')
-      await loadRulesets()
+      await checkSuricataRulesetUpdates();
+      setSuccess('Checked for ruleset updates.');
+      await loadRulesets();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setCheckingUpdates(false)
+      setCheckingUpdates(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -1080,7 +1121,12 @@ export function SuricataRulesetGroupsSection() {
           <Button variant="secondary" size="sm" onClick={loadRulesets} loading={loading}>
             Refresh
           </Button>
-          <Button variant="secondary" size="sm" onClick={handleCheckUpdates} loading={checkingUpdates}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleCheckUpdates}
+            loading={checkingUpdates}
+          >
             Check Updates
           </Button>
         </div>
@@ -1099,17 +1145,19 @@ export function SuricataRulesetGroupsSection() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {visibleSubgroupCards.map((subgroup) => {
-          const groupKey = `${subgroup.familyLabel}:${subgroup.label}`
-          const action = getGroupAction(subgroup.rulesets)
-          const allInstalled = subgroup.rulesets.every((ruleset) => ruleset.installed)
-          const statsForInstalled = subgroup.rulesets.map((ruleset) => rulesetStats[rulesetKey(ruleset.id)])
-          const allStatsLoaded = allInstalled && statsForInstalled.every((stats) => Boolean(stats))
+          const groupKey = `${subgroup.familyLabel}:${subgroup.label}`;
+          const action = getGroupAction(subgroup.rulesets);
+          const allInstalled = subgroup.rulesets.every((ruleset) => ruleset.installed);
+          const statsForInstalled = subgroup.rulesets.map(
+            (ruleset) => rulesetStats[rulesetKey(ruleset.id)]
+          );
+          const allStatsLoaded = allInstalled && statsForInstalled.every((stats) => Boolean(stats));
           const ruleCount = allStatsLoaded
             ? statsForInstalled.reduce((total, stats) => total + (stats?.total ?? 0), 0)
-            : null
+            : null;
           const enabledCount = allStatsLoaded
             ? statsForInstalled.reduce((total, stats) => total + (stats?.enabled ?? 0), 0)
-            : null
+            : null;
 
           return (
             <div
@@ -1118,9 +1166,7 @@ export function SuricataRulesetGroupsSection() {
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900">
-                    {subgroup.label}
-                  </h4>
+                  <h4 className="text-sm font-semibold text-gray-900">{subgroup.label}</h4>
                   <p className="mt-1 text-xs text-gray-500">
                     Rulesets: {ruleCount !== null ? ruleCount : '—'}
                   </p>
@@ -1140,7 +1186,7 @@ export function SuricataRulesetGroupsSection() {
                   </Button>
                   <Link
                     to={`/suricata/rulesets?group=${encodeURIComponent(
-                      subgroup.familyLabel,
+                      subgroup.familyLabel
                     )}&subgroup=${encodeURIComponent(subgroup.label)}`}
                     className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
                   >
@@ -1149,7 +1195,7 @@ export function SuricataRulesetGroupsSection() {
                 </div>
               </div>
             </div>
-          )
+          );
         })}
       </div>
 
@@ -1159,7 +1205,7 @@ export function SuricataRulesetGroupsSection() {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 export default function SuricataRulesetsPage() {
@@ -1167,5 +1213,5 @@ export default function SuricataRulesetsPage() {
     <ErrorBoundary fallbackMessage="The Suricata rulesets page failed to render. Please refresh and try again.">
       <RulesetsPageContent />
     </ErrorBoundary>
-  )
+  );
 }

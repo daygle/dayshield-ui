@@ -1,10 +1,10 @@
-import { Outlet } from 'react-router-dom'
-import { useState } from 'react'
-import Sidebar from './Sidebar'
-import TopBar from './TopBar'
+import { Outlet } from 'react-router-dom';
+import { useState } from 'react';
+import Sidebar from './Sidebar';
+import TopBar from './TopBar';
 
 export default function MainLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="flex h-screen h-dvh overflow-hidden">
@@ -18,5 +18,5 @@ export default function MainLayout() {
         </main>
       </div>
     </div>
-  )
+  );
 }

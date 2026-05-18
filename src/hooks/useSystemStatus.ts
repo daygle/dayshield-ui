@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
-import { getDashboardSystemStatus } from '../api/system'
+import { useQuery } from '@tanstack/react-query';
+import { getDashboardSystemStatus } from '../api/system';
 
 export function useSystemStatus() {
   return useQuery({
@@ -7,5 +7,5 @@ export function useSystemStatus() {
     queryFn: () => getDashboardSystemStatus().then((r) => r.data),
     refetchInterval: 5000,
     retry: 2,
-  })
+  });
 }

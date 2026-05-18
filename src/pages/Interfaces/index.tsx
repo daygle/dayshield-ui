@@ -1,16 +1,16 @@
-import { useEffect, useState } from 'react'
-import type { ChangeEvent } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { getInterfacesInventory, createInterface, deleteInterface } from '../../api/interfaces'
-import { getSystemConfig } from '../../api/system'
-import type { Ipv6Mode, Ipv6RaMode, NetworkInterface } from '../../types'
-import Card from '../../components/Card'
-import Modal from '../../components/Modal'
-import FormField from '../../components/FormField'
-import InterfaceDetails from './InterfaceDetails'
-import { formatInterfaceDisplayName } from '../../utils/interfaceLabel'
+import { useEffect, useState } from 'react';
+import type { ChangeEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { getInterfacesInventory, createInterface, deleteInterface } from '../../api/interfaces';
+import { getSystemConfig } from '../../api/system';
+import type { Ipv6Mode, Ipv6RaMode, NetworkInterface } from '../../types';
+import Card from '../../components/Card';
+import Modal from '../../components/Modal';
+import FormField from '../../components/FormField';
+import InterfaceDetails from './InterfaceDetails';
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
-type InterfaceRow = NetworkInterface & Record<string, unknown>
+type InterfaceRow = NetworkInterface & Record<string, unknown>;
 
 const defaultForm: Partial<NetworkInterface> = {
   name: '',
@@ -38,149 +38,156 @@ const defaultForm: Partial<NetworkInterface> = {
   ipv6Address: '',
   ipv6Prefix: 64,
   mss: undefined,
-}
+};
 
 export default function Interfaces() {
-  const [searchParams] = useSearchParams()
-  const [ifaces, setIfaces] = useState<InterfaceRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState<Partial<NetworkInterface>>(defaultForm)
-  const [saving, setSaving] = useState(false)
-  const [deleteName, setDeleteName] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState(false)
-  const [expandedInterface, setExpandedInterface] = useState<string | null>(searchParams.get('iface'))
-  const [unusedKernelNames, setUnusedKernelNames] = useState<string[]>([])
-  const [allInterfaceNames, setAllInterfaceNames] = useState<string[]>([])
-  const [configuredVlanNames, setConfiguredVlanNames] = useState<string[]>([])
-  const [useCustomName, setUseCustomName] = useState(false)
-  const [ipv6Enabled, setIpv6Enabled] = useState(false)
+  const [searchParams] = useSearchParams();
+  const [ifaces, setIfaces] = useState<InterfaceRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState<Partial<NetworkInterface>>(defaultForm);
+  const [saving, setSaving] = useState(false);
+  const [deleteName, setDeleteName] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [expandedInterface, setExpandedInterface] = useState<string | null>(
+    searchParams.get('iface')
+  );
+  const [unusedKernelNames, setUnusedKernelNames] = useState<string[]>([]);
+  const [allInterfaceNames, setAllInterfaceNames] = useState<string[]>([]);
+  const [configuredVlanNames, setConfiguredVlanNames] = useState<string[]>([]);
+  const [useCustomName, setUseCustomName] = useState(false);
+  const [ipv6Enabled, setIpv6Enabled] = useState(false);
 
-  const requestedInterface = searchParams.get('iface')
-  const isInterfaceRowArray = (value: unknown): value is InterfaceRow[] =>
-    Array.isArray(value)
+  const requestedInterface = searchParams.get('iface');
+  const isInterfaceRowArray = (value: unknown): value is InterfaceRow[] => Array.isArray(value);
 
   const interfaceNameLabel = (name: string) => {
-    const iface = ifaces.find((item) => item.name === name)
-    return formatInterfaceDisplayName(iface?.description, name)
-  }
+    const iface = ifaces.find((item) => item.name === name);
+    return formatInterfaceDisplayName(iface?.description, name);
+  };
 
   const load = () => {
-    setLoading(true)
+    setLoading(true);
     getSystemConfig()
       .then((res) => setIpv6Enabled(Boolean(res.data?.ipv6Enabled)))
-      .catch(() => setIpv6Enabled(false))
+      .catch(() => setIpv6Enabled(false));
     getInterfacesInventory()
       .then((res) => {
-        const rows = isInterfaceRowArray(res.data?.configured) ? res.data.configured : []
-        setUnusedKernelNames(Array.isArray(res.data?.unusedKernelNames) ? res.data.unusedKernelNames : [])
-        setAllInterfaceNames(Array.isArray(res.data?.names) ? res.data.names : [])
-        setConfiguredVlanNames(rows.filter((iface) => iface.type === 'vlan').map((iface) => iface.name))
-        setIfaces(rows)
+        const rows = isInterfaceRowArray(res.data?.configured) ? res.data.configured : [];
+        setUnusedKernelNames(
+          Array.isArray(res.data?.unusedKernelNames) ? res.data.unusedKernelNames : []
+        );
+        setAllInterfaceNames(Array.isArray(res.data?.names) ? res.data.names : []);
+        setConfiguredVlanNames(
+          rows.filter((iface) => iface.type === 'vlan').map((iface) => iface.name)
+        );
+        setIfaces(rows);
         setExpandedInterface((current) => {
           if (requestedInterface && rows.some((i) => i.name === requestedInterface)) {
-            return requestedInterface
+            return requestedInterface;
           }
           if (!current && rows.length > 0) {
-            return rows[0].name
+            return rows[0].name;
           }
-          return current
-        })
+          return current;
+        });
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false))
-  }
+      .finally(() => setLoading(false));
+  };
 
-  useEffect(load, [requestedInterface])
+  useEffect(load, [requestedInterface]);
 
-  const isVlanForm = form.type === 'vlan'
-  const isWanForm = Boolean(form.wanMode || form.gateway)
-  const ipv6Mode: Ipv6Mode = form.ipv6Mode ?? (form.dhcp6 ? 'dhcp6' : form.acceptRa ? 'slaac' : 'static')
-  const parentInterfaceOptions = allInterfaceNames
-    .filter((name) => name !== 'lo' && name !== form.name && !configuredVlanNames.includes(name))
+  const isVlanForm = form.type === 'vlan';
+  const isWanForm = Boolean(form.wanMode || form.gateway);
+  const ipv6Mode: Ipv6Mode =
+    form.ipv6Mode ?? (form.dhcp6 ? 'dhcp6' : form.acceptRa ? 'slaac' : 'static');
+  const parentInterfaceOptions = allInterfaceNames.filter(
+    (name) => name !== 'lo' && name !== form.name && !configuredVlanNames.includes(name)
+  );
 
-  const selectedInterfaceDetails = ifaces.find((iface) => iface.name === expandedInterface) ?? null
+  const selectedInterfaceDetails = ifaces.find((iface) => iface.name === expandedInterface) ?? null;
 
   const resolveIpv6Mode = (iface: NetworkInterface): Ipv6Mode =>
-    iface.ipv6Mode ?? (iface.dhcp6 ? 'dhcp6' : iface.acceptRa ? 'slaac' : 'static')
+    iface.ipv6Mode ?? (iface.dhcp6 ? 'dhcp6' : iface.acceptRa ? 'slaac' : 'static');
 
   const formatIpv6Mode = (mode: Ipv6Mode): string => {
     switch (mode) {
       case 'dhcp6':
-        return 'DHCPv6'
+        return 'DHCPv6';
       case 'slaac':
-        return 'SLAAC (RA Receive)'
+        return 'SLAAC (RA Receive)';
       case 'track_interface':
-        return 'Track Interface (PD)'
+        return 'Track Interface (PD)';
       default:
-        return 'Static'
+        return 'Static';
     }
-  }
+  };
 
   const formatRaMode = (mode: Ipv6RaMode = 'unmanaged'): string => {
     switch (mode) {
       case 'router_only':
-        return 'Router Only'
+        return 'Router Only';
       case 'managed':
-        return 'Managed'
+        return 'Managed';
       case 'assisted':
-        return 'Assisted'
+        return 'Assisted';
       case 'stateless':
-        return 'Stateless'
+        return 'Stateless';
       default:
-        return 'Unmanaged'
+        return 'Unmanaged';
     }
-  }
+  };
 
   const handleSave = () => {
     if (!form.name?.trim()) {
-      setError('Interface name is required.')
-      return
+      setError('Interface name is required.');
+      return;
     }
     if (isVlanForm) {
-      const vlanId = Number(form.vlanId)
+      const vlanId = Number(form.vlanId);
       if (!form.parentInterface?.trim()) {
-        setError('Parent interface is required for VLAN interfaces.')
-        return
+        setError('Parent interface is required for VLAN interfaces.');
+        return;
       }
       if (!Number.isInteger(vlanId) || vlanId < 1 || vlanId > 4094) {
-        setError('VLAN ID must be a whole number between 1 and 4094.')
-        return
+        setError('VLAN ID must be a whole number between 1 and 4094.');
+        return;
       }
     }
     if (ipv6Enabled && ipv6Mode === 'track_interface' && !form.trackSourceInterface?.trim()) {
-      setError('Track Interface mode requires a source interface.')
-      return
+      setError('Track Interface mode requires a source interface.');
+      return;
     }
 
-    setSaving(true)
+    setSaving(true);
     createInterface({
       ...form,
       blockPrivateNetworks: isWanForm ? Boolean(form.blockPrivateNetworks) : false,
       blockBogonNetworks: isWanForm ? Boolean(form.blockBogonNetworks) : false,
     } as NetworkInterface)
       .then(() => {
-        setModalOpen(false)
-        setForm(defaultForm)
-        setUseCustomName(false)
-        load()
+        setModalOpen(false);
+        setForm(defaultForm);
+        setUseCustomName(false);
+        load();
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setSaving(false))
-  }
+      .finally(() => setSaving(false));
+  };
 
   const handleDelete = () => {
-    if (!deleteName) return
-    setDeleting(true)
+    if (!deleteName) return;
+    setDeleting(true);
     deleteInterface(deleteName)
       .then(() => {
-        setDeleteName(null)
-        load()
+        setDeleteName(null);
+        load();
       })
       .catch((err: Error) => setError(err.message))
-      .finally(() => setDeleting(false))
-  }
+      .finally(() => setDeleting(false));
+  };
 
   return (
     <div className="space-y-4">
@@ -189,10 +196,10 @@ export default function Interfaces() {
         open={modalOpen}
         title="Add Interface"
         onClose={() => {
-          setModalOpen(false)
-          setForm(defaultForm)
-          setUseCustomName(false)
-          setError(null)
+          setModalOpen(false);
+          setForm(defaultForm);
+          setUseCustomName(false);
+          setError(null);
         }}
         onConfirm={handleSave}
         confirmLabel="Create"
@@ -206,15 +213,15 @@ export default function Interfaces() {
             as="select"
             value={form.type ?? 'ethernet'}
             onChange={(e) => {
-              const type = e.target.value as NetworkInterface['type']
+              const type = e.target.value as NetworkInterface['type'];
               setForm({
                 ...defaultForm,
                 type,
                 name: '',
                 enabled: form.enabled ?? true,
                 description: form.description ?? '',
-              })
-              setUseCustomName(false)
+              });
+              setUseCustomName(false);
             }}
           >
             <option value="ethernet">Ethernet</option>
@@ -224,24 +231,26 @@ export default function Interfaces() {
             id="iface-name"
             label="Interface Name"
             required
-            as={(!isVlanForm && !useCustomName) ? 'select' : undefined}
+            as={!isVlanForm && !useCustomName ? 'select' : undefined}
             placeholder={isVlanForm ? 'e.g. eth0.100' : useCustomName ? 'e.g. eth0' : undefined}
             value={form.name ?? ''}
             onChange={(e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-              const value = e.target.value
+              const value = e.target.value;
               if (!isVlanForm && value === '__custom__') {
-                setUseCustomName(true)
-                setForm({ ...form, name: '' })
-                return
+                setUseCustomName(true);
+                setForm({ ...form, name: '' });
+                return;
               }
-              setForm({ ...form, name: value })
+              setForm({ ...form, name: value });
             }}
           >
             {!isVlanForm && !useCustomName && (
               <>
                 <option value="">Select unused NIC</option>
                 {unusedKernelNames.map((name) => (
-                  <option key={name} value={name}>{interfaceNameLabel(name)}</option>
+                  <option key={name} value={name}>
+                    {interfaceNameLabel(name)}
+                  </option>
                 ))}
                 <option value="__custom__">Custom name...</option>
               </>
@@ -259,7 +268,9 @@ export default function Interfaces() {
               >
                 <option value="">Select parent interface</option>
                 {parentInterfaceOptions.map((name) => (
-                  <option key={name} value={name}>{interfaceNameLabel(name)}</option>
+                  <option key={name} value={name}>
+                    {interfaceNameLabel(name)}
+                  </option>
                 ))}
               </FormField>
               <FormField
@@ -286,8 +297,8 @@ export default function Interfaces() {
                 type="button"
                 className="text-xs text-blue-600 hover:text-blue-700"
                 onClick={() => {
-                  setUseCustomName(false)
-                  setForm({ ...form, name: '' })
+                  setUseCustomName(false);
+                  setForm({ ...form, name: '' });
                 }}
               >
                 Choose from unused NIC list instead
@@ -302,7 +313,6 @@ export default function Interfaces() {
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
           <div className="col-span-2 flex items-center gap-3">
-
             <input
               id="iface-dhcp4"
               type="checkbox"
@@ -333,7 +343,7 @@ export default function Interfaces() {
               as="select"
               value={form.wanMode ?? ''}
               onChange={(e) => {
-                const v = e.target.value as NetworkInterface['wanMode'] | ''
+                const v = e.target.value as NetworkInterface['wanMode'] | '';
                 setForm({
                   ...form,
                   wanMode: v || undefined,
@@ -342,7 +352,7 @@ export default function Interfaces() {
                   mtu: v === 'pppoe' ? (form.mtu ?? 1492) : form.mtu,
                   blockPrivateNetworks: v ? form.blockPrivateNetworks : false,
                   blockBogonNetworks: v ? form.blockBogonNetworks : false,
-                })
+                });
               }}
             >
               <option value="">- Not a WAN interface -</option>
@@ -412,7 +422,9 @@ export default function Interfaces() {
                   />
                   <span>
                     <span className="block font-medium text-gray-900">Block private networks</span>
-                    <span className="text-xs text-gray-500">Drop inbound WAN traffic sourced from RFC1918 or IPv6 unique-local ranges.</span>
+                    <span className="text-xs text-gray-500">
+                      Drop inbound WAN traffic sourced from RFC1918 or IPv6 unique-local ranges.
+                    </span>
                   </span>
                 </label>
                 <label className="flex items-start gap-3 text-sm text-gray-700">
@@ -424,7 +436,10 @@ export default function Interfaces() {
                   />
                   <span>
                     <span className="block font-medium text-gray-900">Block bogon networks</span>
-                    <span className="text-xs text-gray-500">Drop inbound WAN traffic sourced from invalid, reserved, or documentation ranges.</span>
+                    <span className="text-xs text-gray-500">
+                      Drop inbound WAN traffic sourced from invalid, reserved, or documentation
+                      ranges.
+                    </span>
                   </span>
                 </label>
               </div>
@@ -439,20 +454,22 @@ export default function Interfaces() {
                 as="select"
                 value={ipv6Mode}
                 onChange={(e) => {
-                  const mode = e.target.value as Ipv6Mode
+                  const mode = e.target.value as Ipv6Mode;
                   setForm({
                     ...form,
                     ipv6Mode: mode,
                     dhcp6: mode === 'dhcp6',
                     acceptRa: mode === 'slaac',
-                    trackSourceInterface: mode === 'track_interface' ? (form.trackSourceInterface ?? '') : '',
+                    trackSourceInterface:
+                      mode === 'track_interface' ? (form.trackSourceInterface ?? '') : '',
                     trackPrefixId: mode === 'track_interface' ? form.trackPrefixId : undefined,
-                    delegatedPrefixLen: mode === 'track_interface' ? form.delegatedPrefixLen : undefined,
+                    delegatedPrefixLen:
+                      mode === 'track_interface' ? form.delegatedPrefixLen : undefined,
                     raMode: mode === 'track_interface' ? (form.raMode ?? 'unmanaged') : undefined,
                     iaPdHintLen: mode === 'dhcp6' ? form.iaPdHintLen : undefined,
                     ipv6Address: mode === 'static' ? form.ipv6Address : '',
                     ipv6Prefix: mode === 'static' ? (form.ipv6Prefix ?? 64) : 64,
-                  })
+                  });
                 }}
               >
                 <option value="static">Static</option>
@@ -491,7 +508,9 @@ export default function Interfaces() {
                     {allInterfaceNames
                       .filter((name) => name !== form.name)
                       .map((name) => (
-                        <option key={name} value={name}>{interfaceNameLabel(name)}</option>
+                        <option key={name} value={name}>
+                          {interfaceNameLabel(name)}
+                        </option>
                       ))}
                   </FormField>
                   <FormField
@@ -604,30 +623,39 @@ export default function Interfaces() {
           ) : (
             <div className="space-y-3">
               {ifaces.map((iface) => {
-                const mode = resolveIpv6Mode(iface)
-                const isTrack = mode === 'track_interface'
-                const isDhcp6 = mode === 'dhcp6'
-                const isSlaac = mode === 'slaac'
-                const raMode = iface.raMode ?? 'unmanaged'
-                const receiveRaText = isSlaac ? 'Enabled' : 'Disabled'
+                const mode = resolveIpv6Mode(iface);
+                const isTrack = mode === 'track_interface';
+                const isDhcp6 = mode === 'dhcp6';
+                const isSlaac = mode === 'slaac';
+                const raMode = iface.raMode ?? 'unmanaged';
+                const receiveRaText = isSlaac ? 'Enabled' : 'Disabled';
                 const advertiseRaText = isTrack
-                  ? (iface.resolvedIpv6Prefix ? `Active (${formatRaMode(raMode)})` : `Waiting (${formatRaMode(raMode)})`)
-                  : 'Disabled'
+                  ? iface.resolvedIpv6Prefix
+                    ? `Active (${formatRaMode(raMode)})`
+                    : `Waiting (${formatRaMode(raMode)})`
+                  : 'Disabled';
 
                 return (
-                  <div key={`ipv6-${iface.name}`} className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                  <div
+                    key={`ipv6-${iface.name}`}
+                    className="rounded-md border border-gray-200 bg-gray-50 p-3"
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
                         <p className="text-sm font-semibold text-gray-900">
                           {formatInterfaceDisplayName(iface.description, iface.name)}
                         </p>
-                        <p className="mt-0.5 text-xs text-gray-500">{iface.name} • {iface.type}</p>
+                        <p className="mt-0.5 text-xs text-gray-500">
+                          {iface.name} • {iface.type}
+                        </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
                           {formatIpv6Mode(mode)}
                         </span>
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${iface.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${iface.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}
+                        >
                           {iface.enabled ? 'Interface Up' : 'Interface Down'}
                         </span>
                       </div>
@@ -636,15 +664,27 @@ export default function Interfaces() {
                     <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-gray-700 md:grid-cols-3">
                       <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
                         <span className="font-medium text-gray-500">DHCPv6 Client:</span>{' '}
-                        <span className={isDhcp6 ? 'text-green-700' : 'text-gray-600'}>{isDhcp6 ? 'Enabled' : 'Disabled'}</span>
+                        <span className={isDhcp6 ? 'text-green-700' : 'text-gray-600'}>
+                          {isDhcp6 ? 'Enabled' : 'Disabled'}
+                        </span>
                       </div>
                       <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
                         <span className="font-medium text-gray-500">RA Receive:</span>{' '}
-                        <span className={isSlaac ? 'text-green-700' : 'text-gray-600'}>{receiveRaText}</span>
+                        <span className={isSlaac ? 'text-green-700' : 'text-gray-600'}>
+                          {receiveRaText}
+                        </span>
                       </div>
                       <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
                         <span className="font-medium text-gray-500">RA Advertise:</span>{' '}
-                        <span className={advertiseRaText.startsWith('Active') ? 'text-green-700' : 'text-gray-600'}>{advertiseRaText}</span>
+                        <span
+                          className={
+                            advertiseRaText.startsWith('Active')
+                              ? 'text-green-700'
+                              : 'text-gray-600'
+                          }
+                        >
+                          {advertiseRaText}
+                        </span>
                       </div>
                     </div>
 
@@ -660,7 +700,7 @@ export default function Interfaces() {
                       </p>
                     )}
                   </div>
-                )
+                );
               })}
             </div>
           )}
@@ -677,15 +717,19 @@ export default function Interfaces() {
             title="Add interface"
             aria-label="Add interface"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
           </button>
         }
       >
-        {error && (
-          <p className="text-sm text-red-600 mb-3">{error}</p>
-        )}
+        {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
 
         {loading ? (
           <p className="text-gray-500">Loading interfaces...</p>
@@ -694,10 +738,12 @@ export default function Interfaces() {
         ) : (
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_1fr]">
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Interfaces</div>
+              <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Interfaces
+              </div>
               <div className="space-y-2">
                 {ifaces.map((iface) => {
-                  const isSelected = expandedInterface === iface.name
+                  const isSelected = expandedInterface === iface.name;
                   return (
                     <div
                       key={iface.name}
@@ -720,10 +766,14 @@ export default function Interfaces() {
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                              iface.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                              iface.enabled
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-500'
                             }`}
                           >
-                            <span className={`h-1.5 w-1.5 rounded-full ${iface.enabled ? 'bg-green-500' : 'bg-gray-400'}`} />
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${iface.enabled ? 'bg-green-500' : 'bg-gray-400'}`}
+                            />
                             {iface.enabled ? 'Up' : 'Down'}
                           </span>
                           {iface.type === 'vlan' && (
@@ -744,12 +794,22 @@ export default function Interfaces() {
                         title="Delete interface"
                         aria-label="Delete interface"
                       >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+                          />
                         </svg>
                       </button>
                     </div>
-                  )
+                  );
                 })}
               </div>
             </div>
@@ -773,7 +833,6 @@ export default function Interfaces() {
           </div>
         )}
       </Card>
-
     </div>
-  )
+  );
 }

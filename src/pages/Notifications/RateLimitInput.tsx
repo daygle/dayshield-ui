@@ -1,7 +1,7 @@
 interface RateLimitInputProps {
-  minutes: number
-  disabled: boolean
-  onChange: (minutes: number) => void
+  minutes: number;
+  disabled: boolean;
+  onChange: (minutes: number) => void;
 }
 
 export default function RateLimitInput({ minutes, disabled, onChange }: RateLimitInputProps) {
@@ -19,8 +19,8 @@ export default function RateLimitInput({ minutes, disabled, onChange }: RateLimi
           disabled={disabled}
           value={minutes}
           onChange={(e) => {
-            const v = parseInt(e.target.value, 10)
-            if (!isNaN(v) && v >= 1 && v <= 1440) onChange(v)
+            const v = parseInt(e.target.value, 10);
+            if (!isNaN(v) && v >= 1 && v <= 1440) onChange(v);
           }}
           className="w-24 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm
             focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500
@@ -32,5 +32,5 @@ export default function RateLimitInput({ minutes, disabled, onChange }: RateLimi
         Alerts of the same category will not be sent more than once per this interval.
       </p>
     </div>
-  )
+  );
 }

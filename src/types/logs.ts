@@ -14,24 +14,24 @@ export type LogSource =
   | 'crowdsec'
   | 'pppoe'
   | 'backup_restore'
-  | 'updates'
+  | 'updates';
 
-export type LogLevel = 'debug' | 'info' | 'warning' | 'error' | 'critical'
+export type LogLevel = 'debug' | 'info' | 'warning' | 'error' | 'critical';
 
 export interface LogEntry {
-  id: string
-  timestamp: string   // ISO 8601
-  source: LogSource
-  level: LogLevel
-  message: string
-  raw?: string
-  meta?: Record<string, unknown>
+  id: string;
+  timestamp: string; // ISO 8601
+  source: LogSource;
+  level: LogLevel;
+  message: string;
+  raw?: string;
+  meta?: Record<string, unknown>;
 }
 
-export type WsStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
+export type WsStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 export interface LiveLogsFilter {
-  source: LogSource | 'all'
-  level: LogLevel | 'all'
-  search: string
+  source: LogSource | 'all';
+  level: LogLevel | 'all';
+  search: string;
 }
