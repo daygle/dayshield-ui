@@ -1026,7 +1026,7 @@ export default function System() {
             <FormField
               id="upd-registry-url"
               label="Update Source"
-              hint="Registry manifest endpoint (GitHub repository URL or API endpoint). Each component — Core, Web UI, and Root Filesystem — resolves its own independent version through this manifest."
+              hint="Registry manifest endpoint (GitHub repository URL or API endpoint). Each component resolves its version independently through this manifest."
               value={updateSettings.registryUrl ?? ''}
               onChange={(e) => setUpdateSettings({ ...updateSettings, registryUrl: e.target.value })}
             />
