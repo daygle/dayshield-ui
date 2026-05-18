@@ -1413,7 +1413,7 @@ export default function System() {
                   <dl className="mt-2 space-y-1 text-xs text-gray-600">
                     <div>
                       <dt className="inline text-gray-500">
-                        {comp.component === 'rootfs' ? 'Current image baseline: ' : 'Current version: '}
+                        Version Installed: 
                       </dt>
                       <dd className="inline font-mono text-gray-800">
                         {componentCurrentDisplay(comp)}
@@ -1421,12 +1421,20 @@ export default function System() {
                     </div>
                     <div>
                       <dt className="inline text-gray-500">
-                        {comp.component === 'rootfs' ? 'Published image: ' : 'Available version: '}
+                        Latest Version: 
                       </dt>
                       <dd className="inline font-mono text-gray-800">
                         {componentRemoteDisplay(comp)}
                       </dd>
                     </div>
+                    {comp.component === 'rootfs' && updates.rootfsSlotStatus?.supported && (
+                      <div>
+                        <dt className="inline text-gray-500">Boot Slot: </dt>
+                        <dd className="inline font-mono text-gray-800">
+                          {updates.rootfsSlotStatus.activeSlot?.toUpperCase() ?? '-'}
+                        </dd>
+                      </div>
+                    )}
                     {/* Show last applied version if available */}
                     {comp.lastAppliedVersion && (
                       <div>
@@ -1458,24 +1466,12 @@ export default function System() {
               ))}
             </div>
 
-            {updates.rootfsSlotStatus && (
+            {updates.rootfsSlotStatus && !updates.rootfsSlotStatus.supported && (
               <div
-                className={`rounded-md border px-4 py-3 text-sm ${
-                  updates.rootfsSlotStatus.supported
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                    : 'border-orange-200 bg-orange-50 text-orange-800'
-                }`}
+                className="rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800"
               >
-                <p className="font-medium">
-                  {updates.rootfsSlotStatus.supported ? 'A/B rootfs layout ready.' : 'A/B rootfs layout unavailable.'}
-                </p>
-                {updates.rootfsSlotStatus.supported ? (
-                  <p className="mt-1">
-                    Active slot {updates.rootfsSlotStatus.activeSlot?.toUpperCase() ?? '-'}; next rootfs update will stage to slot {updates.rootfsSlotStatus.inactiveSlot?.toUpperCase() ?? '-'}.
-                  </p>
-                ) : (
-                  <p className="mt-1">{updates.rootfsSlotStatus.reason ?? 'Required rootfs slot labels were not detected.'}</p>
-                )}
+                <p className="font-medium">A/B rootfs layout unavailable.</p>
+                <p className="mt-1">{updates.rootfsSlotStatus.reason ?? 'Required rootfs slot labels were not detected.'}</p>
                 {updates.rootfsUpdate && (
                   <p className="mt-1 text-xs">
                     Rootfs update status: {updates.rootfsUpdate.status}
