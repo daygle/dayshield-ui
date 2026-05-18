@@ -198,12 +198,42 @@ export default function DynamicDnsPage() {
         subtitle="Update DNS records automatically when your interface IP changes."
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="secondary" disabled={busy || runningUpdate || !config.enabled} loading={runningUpdate} onClick={handleUpdateNow}>
-              Update Now
-            </Button>
-            <Button variant={config.enabled ? 'danger' : 'primary'} disabled={busy} onClick={() => setConfig((prev) => ({ ...prev, enabled: !prev.enabled }))}>
-              {config.enabled ? 'Disable' : 'Enable'}
-            </Button>
+            <button
+              type="button"
+              disabled={busy || runningUpdate || !config.enabled}
+              onClick={handleUpdateNow}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Update DNS now"
+              aria-label="Update DNS now"
+            >
+              {runningUpdate ? (
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <circle cx="12" cy="12" r="10" className="opacity-25" />
+                  <path d="M4 12a8 8 0 018-8v8H4" className="opacity-75" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v6h6M20 20v-6h-6M5.6 6.4a9 9 0 0112.8 12.8M18.4 17.6a9 9 0 01-12.8-12.8" />
+                </svg>
+              )}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setConfig((prev) => ({ ...prev, enabled: !prev.enabled }))}
+              className={[
+                'inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+                config.enabled
+                  ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
+              ].join(' ')}
+              title={config.enabled ? 'Disable Dynamic DNS' : 'Enable Dynamic DNS'}
+              aria-label={config.enabled ? 'Disable Dynamic DNS' : 'Enable Dynamic DNS'}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </button>
           </div>
         }
       >
@@ -386,9 +416,18 @@ export default function DynamicDnsPage() {
         title="Update Status"
         subtitle="Most recent Dynamic DNS update results."
         actions={
-          <Button variant="secondary" disabled={busy} onClick={loadAll}>
-            Refresh
-          </Button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={loadAll}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Refresh update status"
+            aria-label="Refresh update status"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v6h6M20 20v-6h-6M5.6 6.4a9 9 0 0112.8 12.8M18.4 17.6a9 9 0 01-12.8-12.8" />
+            </svg>
+          </button>
         }
       >
         <div className="space-y-3">
