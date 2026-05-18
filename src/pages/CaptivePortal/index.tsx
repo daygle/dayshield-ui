@@ -492,7 +492,7 @@ export default function CaptivePortalPage() {
         subtitle="Define listener behavior, interface scope, and authorization mode."
         actions={
           <Button onClick={handleSave} loading={saving} disabled={busy}>
-            Save Configuration
+            Save
           </Button>
         }
       >

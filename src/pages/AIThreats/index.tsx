@@ -633,7 +633,7 @@ function AIThreatsContent() {
                 Current: {aiSettings.enabled ? 'Enabled' : 'Disabled'} · Threshold {Math.round(aiSettings.risk_score_block_threshold * 100)}%
               </p>
               <Button variant="primary" onClick={handleSaveAiSettings} loading={aiSaving}>
-                Save AI Settings
+                Save
               </Button>
             </div>
           </div>

@@ -101,7 +101,7 @@ export default function ScheduleForm({
 
       <div className="flex justify-end">
         <Button onClick={onSave} loading={saving}>
-          Save Schedule
+          Save
         </Button>
       </div>
     </div>

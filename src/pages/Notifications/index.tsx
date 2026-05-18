@@ -254,7 +254,7 @@ export default function NotificationsPage() {
       {/* Save */}
       <div className="flex justify-end">
         <Button loading={saving} disabled={busy} onClick={handleSave}>
-          Save settings
+          Save
         </Button>
       </div>
 

@@ -434,7 +434,7 @@ export default function DynamicDnsPage() {
 
       <div className="flex justify-end">
         <Button disabled={busy} loading={saving} onClick={handleSave}>
-          Save Dynamic DNS Configuration
+          Save
         </Button>
       </div>
     </div>

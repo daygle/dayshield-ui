@@ -1010,7 +1010,7 @@ export default function Firewall() {
       {showSettingsSection && <div id="firewall-settings">
         {settingsModalOpen && (
           <div className="mb-4">
-            <Card title="Edit Firewall Settings">
+            <Card title="Edit Firewall Settings" onClose={() => setSettingsModalOpen(false)}>
               <div className="space-y-4">
                 {settingsFormError && (
                   <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
@@ -1187,7 +1187,14 @@ export default function Firewall() {
       {showRulesSection && <div id="firewall-rules">
         {ruleModalOpen && (
           <div className="mb-4">
-            <Card title={editRule ? 'Edit Firewall Rule' : 'Add Firewall Rule'}>
+            <Card
+              title={editRule ? 'Edit Firewall Rule' : 'Add Firewall Rule'}
+              onClose={() => {
+                setRuleModalOpen(false)
+                setEditRule(null)
+                setRuleFormError(null)
+              }}
+            >
               <div className="space-y-3">
                 {ruleFormError && (
                   <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
@@ -1519,7 +1526,7 @@ export default function Firewall() {
 
                 <div className="mt-4 flex justify-end gap-2">
                   <Button size="sm" variant="primary" onClick={handleSaveRule} loading={ruleSaving}>
-                    {editRule ? 'Save Changes' : 'Save'}
+                    Save
                   </Button>
                   <Button
                     size="sm"
@@ -1594,7 +1601,13 @@ export default function Firewall() {
       {showAliasesSection && <div id="firewall-aliases">
         {aliasModalOpen && (
           <div className="mb-4">
-            <Card title="Add Alias">
+            <Card
+              title="Add Alias"
+              onClose={() => {
+                setAliasModalOpen(false)
+                setAliasFormError(null)
+              }}
+            >
               <div className="space-y-4">
                 {aliasFormError && (
                   <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">

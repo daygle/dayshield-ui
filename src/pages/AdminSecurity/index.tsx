@@ -152,7 +152,7 @@ export default function AdminSecurity() {
 
       {/* Edit panel */}
       {editing && (
-        <Card title="Edit Admin Security Settings">
+        <Card title="Edit Admin Security Settings" onClose={closeEdit}>
           <div className="space-y-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Session Policy</p>
             {numField('Session Timeout (minutes)', 'session_timeout_minutes', 1, 'How long before an idle session is expired')}
@@ -168,8 +168,8 @@ export default function AdminSecurity() {
             </div>
           </div>
           <div className="mt-4 flex justify-end gap-3">
-            <Button variant="secondary" onClick={closeEdit} disabled={saving}>Cancel</Button>
-            <Button variant="primary" onClick={handleSave} loading={saving}>Save</Button>
+            <Button size="sm" variant="secondary" onClick={closeEdit} disabled={saving}>Cancel</Button>
+            <Button size="sm" variant="primary" onClick={handleSave} loading={saving}>Save</Button>
           </div>
         </Card>
       )}

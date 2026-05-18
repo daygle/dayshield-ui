@@ -28,7 +28,7 @@ export default function Modal({
   children,
   onClose,
   onConfirm,
-  confirmLabel = 'Confirm',
+  confirmLabel = 'Save',
   cancelLabel = 'Cancel',
   confirmVariant = 'primary',
   loading = false,
@@ -100,10 +100,11 @@ export default function Modal({
           </div>
         ) : onConfirm ? (
           <div className="flex justify-end gap-3 px-6 pb-4">
-            <Button variant="secondary" onClick={onClose} disabled={loading}>
+            <Button size="sm" variant="secondary" onClick={onClose} disabled={loading}>
               {cancelLabel}
             </Button>
             <Button
+              size="sm"
               variant={confirmVariant}
               onClick={onConfirm}
               loading={loading}

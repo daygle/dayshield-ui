@@ -957,7 +957,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                     loading={saving}
                     disabled={!selectedRuleset.installed || rules.length === 0 || Boolean(rulesHint)}
                   >
-                    Save Rules
+                    Save
                   </Button>
                 </div>
               </div>

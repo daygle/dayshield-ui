@@ -430,7 +430,7 @@ function CloudflaredPageContent() {
           Restart Service
         </Button>
         <Button aria-label="Save Cloudflared configuration" loading={saving} disabled={busy} onClick={handleSave}>
-          Save Configuration
+          Save
         </Button>
       </div>
 

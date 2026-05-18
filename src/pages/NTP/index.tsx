@@ -395,7 +395,7 @@ export default function NtpPage() {
         subtitle="Manage upstream time servers and LAN interfaces that are allowed to serve NTP"
         actions={
           <Button loading={saving} disabled={busy} onClick={handleSave}>
-            Save configuration
+            Save
           </Button>
         }
       >
