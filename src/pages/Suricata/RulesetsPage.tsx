@@ -216,6 +216,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
   const [disabledRuleIds, setDisabledRuleIds] = useState<Set<string>>(new Set())
   const [rulesSearch, setRulesSearch] = useState('')
   const [checkingUpdates, setCheckingUpdates] = useState(false)
+  const [installingRulesetId, setInstallingRulesetId] = useState<string | null>(null)
   const [updatingRulesetId, setUpdatingRulesetId] = useState<string | null>(null)
 
   const loadRulesets = useCallback(() => {
@@ -490,6 +491,23 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
     }
   }
 
+  const installSelectedRuleset = async () => {
+    if (!selectedRuleset) return
+    const id = rulesetKey(selectedRuleset.id)
+    setInstallingRulesetId(id)
+    setSuccess(null)
+    setError(null)
+    try {
+      await installSuricataRuleset(selectedRuleset.id)
+      setSuccess(`Installed ${selectedRuleset.name}.`)
+      await loadRulesets()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setInstallingRulesetId(null)
+    }
+  }
+
   const filteredRules = rules.filter((rule) => {
     const term = rulesSearch.toLowerCase()
     return (
@@ -499,8 +517,13 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
     )
   })
 
-  const enabledCount = rulesets.filter((ruleset) => ruleset.installed && ruleset.enabled).length
-  const disabledCount = rulesets.filter((ruleset) => ruleset.installed && !ruleset.enabled).length
+  const selectedRulesetRuleCount = selectedRuleset?.installed ? rules.length : null
+  const selectedRulesetDisabledCount = selectedRuleset?.installed
+    ? rules.reduce((count, rule) => count + (disabledRuleIds.has(rule.id) || !rule.enabled ? 1 : 0), 0)
+    : null
+  const selectedRulesetEnabledCount = selectedRulesetRuleCount !== null
+    ? selectedRulesetRuleCount - selectedRulesetDisabledCount!
+    : null
 
   return (
     <div className="space-y-6">
@@ -521,27 +544,73 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                 Back to Suricata
               </Link>
             )}
-            <Button variant="secondary" size="sm" onClick={loadRulesets} loading={loading}>
-              Refresh
-            </Button>
-            <Button variant="secondary" size="sm" onClick={checkAllUpdates} loading={checkingUpdates}>
-              Check Updates
-            </Button>
+            <button
+              type="button"
+              onClick={loadRulesets}
+              disabled={loading}
+              title="Refresh"
+              aria-label="Refresh Suricata rulesets"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14 10 10 0 01-14.14 0" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={checkAllUpdates}
+              disabled={checkingUpdates}
+              title="Check updates"
+              aria-label="Check Suricata ruleset updates"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+            {selectedRuleset && !selectedRuleset.installed && (
+              <button
+                type="button"
+                onClick={installSelectedRuleset}
+                disabled={Boolean(installingRulesetId)}
+                title="Install selected ruleset"
+                aria-label="Install selected ruleset"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {installingRulesetId === selectedRulesetId ? (
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <circle cx="12" cy="12" r="10" className="opacity-25" />
+                    <path d="M4 12a8 8 0 018-8V4" className="opacity-75" />
+                  </svg>
+                ) : (
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                )}
+              </button>
+            )}
           </div>
         }
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
           <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
             <div className="text-gray-500">Total Rulesets</div>
-            <div className="text-lg font-semibold text-gray-900">{rulesets.length}</div>
+            <div className="text-lg font-semibold text-gray-900">
+              {selectedRulesetRuleCount !== null ? selectedRulesetRuleCount : '—'}
+            </div>
           </div>
           <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
             <div className="text-gray-500">Enabled</div>
-            <div className="text-lg font-semibold text-green-700">{enabledCount}</div>
+            <div className="text-lg font-semibold text-green-700">
+              {selectedRulesetEnabledCount !== null ? selectedRulesetEnabledCount : '—'}
+            </div>
           </div>
           <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
             <div className="text-gray-500">Disabled</div>
-            <div className="text-lg font-semibold text-orange-700">{disabledCount}</div>
+            <div className="text-lg font-semibold text-orange-700">
+              {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '—'}
+            </div>
           </div>
         </div>
       </Card>
@@ -560,7 +629,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
       <div
         className={
           scopedToSubgroup
-            ? 'grid gap-6 lg:grid-cols-[360px_1fr]'
+            ? 'grid gap-6 lg:grid-cols-1'
             : 'grid gap-6 lg:grid-cols-[280px_360px_1fr]'
         }
       >
@@ -736,94 +805,6 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
           </Card>
         )}
 
-        {scopedToSubgroup && (
-          <Card
-            title={selectedSubgroup || 'Ruleset Group'}
-            subtitle={selectedGroup || 'Select a group'}
-          >
-            <div className="space-y-2">
-              {selectedSubgroupRulesets.map((ruleset) => (
-                <button
-                  key={rulesetKey(ruleset.id)}
-                  type="button"
-                  onClick={() => handleSelectRuleset(ruleset)}
-                  className={`w-full rounded border px-4 py-3 text-left transition-colors ${
-                    selectedRulesetId === rulesetKey(ruleset.id)
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-medium text-gray-900">{ruleset.name}</div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 text-xs">
-                      <span
-                        className={`rounded-full px-2 py-0.5 font-medium ${
-                          ruleset.installed
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}
-                      >
-                        {ruleset.installed ? 'Installed' : 'Available'}
-                      </span>
-                      {ruleset.updateAvailable && (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-700">
-                          Update available
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {!ruleset.installed ? (
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          installSuricataRuleset(ruleset.id).then(() => loadRulesets())
-                        }}
-                      >
-                        Install
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant={ruleset.enabled ? 'secondary' : 'primary'}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          updateSuricataRuleset(ruleset.id, {
-                            enabled: !ruleset.enabled,
-                          }).then(() => loadRulesets())
-                        }}
-                      >
-                        {ruleset.enabled ? 'Disable' : 'Enable'}
-                      </Button>
-                    )}
-                    {ruleset.installed && ruleset.updateAvailable && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          updateRuleset(ruleset)
-                        }}
-                        loading={updatingRulesetId === rulesetKey(ruleset.id)}
-                      >
-                        Update
-                      </Button>
-                    )}
-                  </div>
-                </button>
-              ))}
-              {selectedSubgroupRulesets.length === 0 && (
-                <div className="rounded border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500">
-                  No rulesets in this group.
-                </div>
-              )}
-            </div>
-          </Card>
-        )}
 
         <Card
           title={selectedRuleset ? rulesetPathLabelFor(selectedRuleset) : 'Rule Details'}
@@ -835,7 +816,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
           actions={
             selectedRuleset ? (
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                {disabledCount} disabled
+                {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '—'} disabled
               </span>
             ) : undefined
           }
@@ -940,7 +921,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
                 <div className="text-xs text-gray-500">
-                  {disabledCount} disabled, {rules.length - disabledCount} enabled
+                  {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '—'} disabled, {selectedRulesetRuleCount !== null ? selectedRulesetRuleCount - selectedRulesetDisabledCount! : '—'} enabled
                 </div>
                 <div className="flex gap-2">
                   {!embedded && !scopedToSubgroup && (
@@ -977,6 +958,7 @@ export function SuricataRulesetGroupsSection() {
   const [searchTerm, setSearchTerm] = useState('')
   const [actingGroupKey, setActingGroupKey] = useState<string | null>(null)
   const [checkingUpdates, setCheckingUpdates] = useState(false)
+  const [rulesetStats, setRulesetStats] = useState<Record<string, { total: number; enabled: number }>>({})
 
   const loadRulesets = useCallback(() => {
     setLoading(true)
@@ -992,6 +974,38 @@ export function SuricataRulesetGroupsSection() {
   useEffect(() => {
     loadRulesets()
   }, [loadRulesets])
+
+  useEffect(() => {
+    const installedRulesetIds = rulesets
+      .filter((ruleset) => ruleset.installed)
+      .map((ruleset) => rulesetKey(ruleset.id))
+
+    const missingStats = installedRulesetIds.filter((id) => !(id in rulesetStats))
+    if (missingStats.length === 0) return
+
+    Promise.all(
+      rulesets
+        .filter((ruleset) => ruleset.installed && missingStats.includes(rulesetKey(ruleset.id)))
+        .map(async (ruleset) => {
+          try {
+            const res = await getSuricataRulesetRules(ruleset.id)
+            const total = res.data?.length ?? 0
+            const enabled = res.data?.filter((rule) => rule.enabled).length ?? 0
+            return { id: rulesetKey(ruleset.id), total, enabled }
+          } catch {
+            return null
+          }
+        }),
+    ).then((results) => {
+      setRulesetStats((current) => {
+        const next = { ...current }
+        for (const item of results) {
+          if (item) next[item.id] = { total: item.total, enabled: item.enabled }
+        }
+        return next
+      })
+    })
+  }, [rulesets, rulesetStats])
 
   const subgroupCards = useMemo(() => {
     return buildRulesetGroups(rulesets).flatMap((group): RulesetSubgroupSummary[] =>
@@ -1087,9 +1101,15 @@ export function SuricataRulesetGroupsSection() {
         {visibleSubgroupCards.map((subgroup) => {
           const groupKey = `${subgroup.familyLabel}:${subgroup.label}`
           const action = getGroupAction(subgroup.rulesets)
-          const enabledCount = subgroup.rulesets.filter(
-            (ruleset) => ruleset.installed && ruleset.enabled,
-          ).length
+          const allInstalled = subgroup.rulesets.every((ruleset) => ruleset.installed)
+          const statsForInstalled = subgroup.rulesets.map((ruleset) => rulesetStats[rulesetKey(ruleset.id)])
+          const allStatsLoaded = allInstalled && statsForInstalled.every((stats) => Boolean(stats))
+          const ruleCount = allStatsLoaded
+            ? statsForInstalled.reduce((total, stats) => total + (stats?.total ?? 0), 0)
+            : null
+          const enabledCount = allStatsLoaded
+            ? statsForInstalled.reduce((total, stats) => total + (stats?.enabled ?? 0), 0)
+            : null
 
           return (
             <div
@@ -1102,12 +1122,12 @@ export function SuricataRulesetGroupsSection() {
                     {subgroup.label}
                   </h4>
                   <p className="mt-1 text-xs text-gray-500">
-                    Rulesets: {subgroup.rulesets.length}
+                    Rulesets: {ruleCount !== null ? ruleCount : '—'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                    {enabledCount} enabled
+                    {enabledCount !== null ? enabledCount : '—'} enabled
                   </span>
                   <Button
                     size="sm"

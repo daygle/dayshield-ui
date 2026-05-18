@@ -125,6 +125,7 @@ type DashboardCardId =
   | 'metrics'
   | 'system'
   | 'network'
+  | 'interface_traffic'
   | 'acme'
   | 'ai'
   | 'suricata'
@@ -142,6 +143,7 @@ const defaultDashboardCardConfigs: DashboardCardConfig[] = [
   { id: 'metrics', visible: true, width: 2 },
   { id: 'system', visible: true, width: 1 },
   { id: 'network', visible: true, width: 1 },
+  { id: 'interface_traffic', visible: true, width: 2 },
   { id: 'acme', visible: true, width: 1 },
   { id: 'ai', visible: true, width: 1 },
   { id: 'suricata', visible: true, width: 1 },
@@ -154,6 +156,7 @@ const dashboardCardTitles: Record<DashboardCardId, string> = {
   metrics: 'Live Metrics',
   system: 'System Status',
   network: 'Network Status',
+  interface_traffic: 'Interface Traffic',
   acme: 'Certificate Status',
   ai: 'AI Threat Engine',
   suricata: 'Suricata Alerts',
@@ -166,6 +169,7 @@ const dashboardCardDescriptions: Record<DashboardCardId, string> = {
   metrics: 'Live CPU, memory, throughput, firewall, and security snapshot.',
   system: 'Hostname, uptime, CPU, RAM and disk stats.',
   network: 'WAN/LAN status and traffic throughput.',
+  interface_traffic: 'Per-interface status with RX/TX traffic trends.',
   acme: 'ACME certificate health and renewal status.',
   ai: 'AI Threat Engine configuration and blocking state.',
   suricata: 'Suricata alert rate and danger state.',
@@ -432,6 +436,76 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+          </>
+        )
+      case 'interface_traffic':
+        return (
+          <>
+            {net.isError && <ErrorBanner message={net.error?.message ?? 'Failed to load network status'} />}
+            {net.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
+            {net.data && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-500">WAN Interface</p>
+                    <p className="mt-1 text-base font-semibold text-gray-900">
+                      {formatDashboardInterfaceName(net.data.wan_iface_description, net.data.wan_iface, 'WAN')}
+                    </p>
+                    <p className="text-sm text-gray-500">{net.data.wan_ip ?? '-'}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Gateway</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="font-medium text-gray-900">{net.data.gateway_status === 'up' ? 'Online' : net.data.gateway_status === 'down' ? 'Offline' : 'Unknown'}</span>
+                      {net.data.gateway_status === 'up' ? (
+                        <Badge variant="green">Online</Badge>
+                      ) : net.data.gateway_status === 'down' ? (
+                        <Badge variant="red">Offline</Badge>
+                      ) : (
+                        <Badge variant="gray">Unknown</Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>↓ RX {formatBps(toFiniteNumber(net.data.wan_rx_bps))}</span>
+                    <Sparkline data={rxHistory} color="#22c55e" height={36} width={140} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>↑ TX {formatBps(toFiniteNumber(net.data.wan_tx_bps))}</span>
+                    <Sparkline data={txHistory} color="#3b82f6" height={36} width={140} />
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">Interfaces</p>
+                  <div className="space-y-2">
+                    <div className="rounded-lg border border-gray-100 bg-white p-3 text-sm">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="font-semibold text-gray-900">{formatDashboardInterfaceName(net.data.wan_iface_description, net.data.wan_iface, 'WAN')}</p>
+                          <p className="text-xs text-gray-500">{net.data.wan_ip ?? '-'}</p>
+                        </div>
+                        <Badge variant="green">WAN</Badge>
+                      </div>
+                    </div>
+                    {net.data.lan_ifaces.map((iface) => (
+                      <div key={iface.name} className="rounded-lg border border-gray-100 bg-white p-3 text-sm">
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <p className="font-semibold text-gray-900">{formatDashboardInterfaceName(iface.description, iface.name, 'LAN')}</p>
+                            <p className="text-xs text-gray-500">{[iface.ip, iface.ipv6].filter(Boolean).join(' / ') || '-'}</p>
+                          </div>
+                          <Badge variant={iface.enabled ? 'green' : 'red'}>{iface.enabled ? 'Up' : 'Down'}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </>

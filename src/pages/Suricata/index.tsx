@@ -329,7 +329,7 @@ function SuricataContent() {
       {/* Global Suricata Status Card */}
       {config && (
         <Card
-          title="Suricata Status"
+          title="Suricata Overview"
           subtitle="Global IDS/IPS configuration and settings"
           actions={
             <div className="flex items-center gap-2">
