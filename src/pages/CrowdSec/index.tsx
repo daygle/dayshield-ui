@@ -11,18 +11,17 @@ import Modal from '../../components/Modal'
 import FormField from '../../components/FormField'
 import ErrorBoundary from '../../components/ErrorBoundary'
 import { useToast } from '../../context/ToastContext'
-import { useDisplayPreferences } from '../../context/DisplayPreferencesContext'
 
 type DecisionRow = CrowdSecDecision & Record<string, unknown>
 
-const decisionTypeBadge = (type: CrowdSecDecision['type']) => {
-  const map: Record<CrowdSecDecision['type'], string> = {
+const decisionTypeBadge = (type: string) => {
+  const map: Record<string, string> = {
     ban: 'bg-red-100 text-red-700',
     captcha: 'bg-yellow-100 text-yellow-700',
     throttle: 'bg-orange-100 text-orange-700',
   }
   return (
-    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase ${map[type]}`}>
+    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase ${map[type] ?? 'bg-gray-100 text-gray-700'}`}>
       {type}
     </span>
   )
@@ -36,18 +35,14 @@ export default function CrowdSec() {
   )
 }
 
-const decisionColumns = (
-  formatDateTime: (value?: Date | string | number | null) => string,
-): Column<DecisionRow>[] => [
+const decisionColumns = (): Column<DecisionRow>[] => [
   { key: 'value', header: 'IP / Range', render: (row) => <span className="font-mono text-xs">{row.value as string}</span> },
-  { key: 'type', header: 'Type', render: (row) => decisionTypeBadge(row.type as CrowdSecDecision['type']) },
-  { key: 'origin', header: 'Origin' },
+  { key: 'type', header: 'Action', render: (row) => decisionTypeBadge(String(row.type ?? 'unknown')) },
+  { key: 'scope', header: 'Scope' },
   { key: 'duration', header: 'Duration' },
-  { key: 'createdAt', header: 'Created', render: (row) => formatDateTime(row.createdAt as string) },
 ]
 
 function CrowdSecContent() {
-  const { formatDateTime } = useDisplayPreferences()
   const [status, setStatus] = useState<CrowdSecStatus | null>(null)
   const [decisions, setDecisions] = useState<DecisionRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -77,9 +72,12 @@ function CrowdSecContent() {
 
   const validation = React.useMemo(() => {
     const lapiUrl = (configForm.lapi_url ?? '').trim()
+    const apiKey = (configForm.api_key ?? '').trim()
     const updateInterval = Number(configForm.update_interval)
     const banAlias = (configForm.ban_alias_name ?? '').trim()
+    const hasSavedApiKey = Boolean(status?.api_key_configured)
     let lapiUrlError = ''
+    let apiKeyError = ''
     let updateIntervalError = ''
     let banAliasError = ''
 
@@ -104,26 +102,37 @@ function CrowdSecContent() {
       banAliasError = 'Ban alias name is required.'
     }
 
-    const errors = [lapiUrlError, updateIntervalError, banAliasError].filter(Boolean)
+    if (configForm.enabled && !apiKey && !hasSavedApiKey) {
+      apiKeyError = 'API key is required before enabling CrowdSec.'
+    }
+
+    const errors = [lapiUrlError, apiKeyError, updateIntervalError, banAliasError].filter(Boolean)
 
     return {
       errors,
       lapiUrlError,
+      apiKeyError,
       updateIntervalError,
       banAliasError,
       isValid: errors.length === 0,
     }
-  }, [configForm.ban_alias_name, configForm.lapi_url, configForm.update_interval])
+  }, [configForm.api_key, configForm.ban_alias_name, configForm.enabled, configForm.lapi_url, configForm.update_interval, status?.api_key_configured])
 
   const saveConfig = () => {
-    setSaving(true)
-    updateCrowdSecConfig({
+    const apiKey = (configForm.api_key ?? '').trim()
+    const payload: Partial<CrowdSecStatus> = {
       enabled: !!configForm.enabled,
       lapi_url: (configForm.lapi_url ?? '').trim(),
-      api_key: configForm.api_key ?? '',
       update_interval: Number(configForm.update_interval),
       ban_alias_name: (configForm.ban_alias_name ?? '').trim(),
-    })
+    }
+
+    if (apiKey) {
+      payload.api_key = apiKey
+    }
+
+    setSaving(true)
+    updateCrowdSecConfig(payload)
       .then((res) => {
         setStatus(res.data)
         setConfigForm(res.data)
@@ -200,6 +209,8 @@ function CrowdSecContent() {
             label="API Key"
             placeholder="Paste CrowdSec API key"
             aria-label="CrowdSec API key"
+            hint={status?.api_key_configured ? 'A key is already saved. Leave this blank to keep it.' : 'Required before enabling CrowdSec.'}
+            error={validation.apiKeyError || undefined}
             value={configForm.api_key ?? ''}
             onChange={(e) => setConfigForm((f) => ({ ...f, api_key: e.target.value }))}
           />
@@ -266,16 +277,17 @@ function CrowdSecContent() {
 
       {/* Status */}
       {status && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           {[
             { label: 'Status', value: status.enabled ? 'Enabled' : 'Disabled', color: status.enabled ? 'text-green-600' : 'text-gray-500' },
-            { label: 'LAPI URL', value: status.lapi_url || '-', color: 'text-gray-900' },
-            { label: 'Decision Poll Interval', value: `${status.update_interval || 0}s`, color: 'text-gray-900' },
+            { label: 'API Key', value: status.api_key_configured ? 'Configured' : 'Missing', color: status.api_key_configured ? 'text-green-600' : 'text-orange-600' },
+            { label: 'Poll Interval', value: `${status.update_interval || 0}s`, color: 'text-gray-900' },
+            { label: 'Ban Alias', value: status.ban_alias_name || '-', color: 'text-gray-900' },
             { label: 'Active Decisions', value: String(decisions.length), color: 'text-gray-900' },
           ].map(({ label, value, color }) => (
-            <div key={label} className="bg-white rounded-lg border border-gray-200 shadow-sm px-6 py-5">
+            <div key={label} className="min-w-0 bg-white rounded-lg border border-gray-200 shadow-sm px-5 py-4">
               <p className="text-sm text-gray-500 mb-1">{label}</p>
-              <p className={`text-base font-semibold ${color}`}>{value}</p>
+              <p className={`break-words text-base font-semibold ${color}`}>{value}</p>
             </div>
           ))}
         </div>
@@ -333,6 +345,12 @@ function CrowdSecContent() {
               <dd className="font-medium text-gray-800 break-all">{status.lapi_url || '-'}</dd>
             </div>
             <div>
+              <dt className="text-gray-500">API Key</dt>
+              <dd className={`font-medium ${status.api_key_configured ? 'text-green-600' : 'text-orange-600'}`}>
+                {status.api_key_configured ? 'Configured' : 'Not configured'}
+              </dd>
+            </div>
+            <div>
               <dt className="text-gray-500">Update Interval</dt>
               <dd className="font-medium text-gray-800">{status.update_interval}s</dd>
             </div>
@@ -350,7 +368,7 @@ function CrowdSecContent() {
         subtitle="IP bans, captchas and throttles enforced by CrowdSec"
       >
         <Table
-          columns={decisionColumns(formatDateTime)}
+          columns={decisionColumns()}
           data={decisions}
           keyField="id"
           loading={false}

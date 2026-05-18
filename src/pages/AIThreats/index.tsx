@@ -67,10 +67,32 @@ const DEFAULT_AI_SETTINGS: AiEngineConfig = {
   automatic_blocking: false,
   risk_score_block_threshold: 0.9,
   escalation_window_seconds: 300,
-  block_duration_seconds: 3600,
-  model_type: 'local',
+  block_duration_seconds: 300,
   training_enabled: true,
   model_learning_rate: 0.25,
+}
+
+function formatPercent(value: number): string {
+  return Number.isFinite(value) ? `${Math.round(value * 100)}%` : '-'
+}
+
+function describeSeconds(seconds: number | null, zeroLabel = 'Permanent'): string {
+  if (seconds === null || !Number.isFinite(seconds)) return '-'
+  const wholeSeconds = Math.max(0, Math.round(seconds))
+  if (wholeSeconds === 0) return zeroLabel
+  if (wholeSeconds < 60) return `${wholeSeconds} sec`
+
+  if (wholeSeconds % 3600 === 0) {
+    const hours = wholeSeconds / 3600
+    return `${wholeSeconds} sec = ${hours} ${hours === 1 ? 'hour' : 'hours'}`
+  }
+
+  if (wholeSeconds % 60 === 0) {
+    const minutes = wholeSeconds / 60
+    return `${wholeSeconds} sec = ${minutes} min`
+  }
+
+  return `${wholeSeconds} sec ~= ${(wholeSeconds / 60).toFixed(1)} min`
 }
 
 function riskBadge(score: number) {
@@ -159,14 +181,32 @@ function AIThreatsContent() {
           ? 'Block duration must be 0 or greater.'
           : '',
       model_learning_rate:
-        !Number.isFinite(learningRate) || learningRate <= 0
-          ? 'Model learning rate must be greater than 0.'
+        !Number.isFinite(learningRate) || learningRate <= 0 || learningRate > 1
+          ? 'Model learning rate must be greater than 0 and no more than 1.'
           : '',
     }
 
     return {
       ...errors,
       isValid: Object.values(errors).every((e) => !e),
+    }
+  }, [aiForm])
+
+  const settingsDirty = useMemo(
+    () => JSON.stringify(aiForm) !== JSON.stringify(aiSettings),
+    [aiForm, aiSettings],
+  )
+
+  const policyPreview = useMemo(() => {
+    const threshold = formatPercent(Number(aiForm.risk_score_block_threshold))
+    const windowText = describeSeconds(Number(aiForm.escalation_window_seconds), '0 sec')
+    const durationText = describeSeconds(Number(aiForm.block_duration_seconds))
+
+    return {
+      threshold,
+      windowText,
+      durationText,
+      summary: `Scores at or above ${threshold} can block a source IP. Repeat high-risk events from the same IP within ${windowText} escalate the block; five events move it into quarantine.`,
     }
   }, [aiForm])
 
@@ -458,8 +498,8 @@ function AIThreatsContent() {
               <Detail label="Source" value={selectedThreat.event_source} />
               <Detail label="Action" value={selectedThreat.action ?? '-'} />
               <Detail label="Signature" value={selectedThreat.signature ?? '-'} />
-              <Detail label="Alert Severity" value={selectedThreat.alert_severity === undefined ? '-' : String(selectedThreat.alert_severity)} />
-              <Detail label="Model Label" value={selectedThreat.label === undefined ? '-' : String(selectedThreat.label)} />
+              <Detail label="Alert Severity" value={selectedThreat.alert_severity == null ? '-' : String(selectedThreat.alert_severity)} />
+              <Detail label="Model Label" value={selectedThreat.label == null ? '-' : String(selectedThreat.label)} />
               <Detail label="Risk Score" value={`${Math.round(selectedThreat.risk_score * 100)}%`} />
               <Detail label="Blocked" value={selectedThreat.blocked ? 'Yes' : 'No'} />
               <Detail label="Block Expires" value={selectedThreat.block_expires_at === null ? 'Permanent' : formatUnixDateTime(selectedThreat.block_expires_at)} />
@@ -512,7 +552,7 @@ function AIThreatsContent() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">AI Threat Engine</h1>
           <p className="mt-1 text-sm text-slate-500">
-            On-device, self-reliant AI threat detection - no third-party services required.
+            Local threat scoring, feedback learning, and automatic response controls.
           </p>
         </div>
         <div className="text-right">
@@ -524,42 +564,95 @@ function AIThreatsContent() {
         </div>
       </div>
 
-      <Card title="AI Threat Engine Settings" subtitle="Configure the local AI scoring engine, automatic blocking, and on-device training">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <SummaryMetric
+          label="Engine"
+          value={aiSettings.enabled ? 'Enabled' : 'Disabled'}
+          tone={aiSettings.enabled ? 'good' : 'muted'}
+          helper={aiSettings.training_enabled ? 'Feedback learning on' : 'Feedback learning paused'}
+        />
+        <SummaryMetric
+          label="Automatic Blocking"
+          value={aiSettings.automatic_blocking ? 'On' : 'Off'}
+          tone={aiSettings.automatic_blocking ? 'warning' : 'muted'}
+          helper={aiSettings.automatic_blocking ? 'High-risk sources can be blocked' : 'Events are recorded only'}
+        />
+        <SummaryMetric
+          label="Block Threshold"
+          value={formatPercent(aiSettings.risk_score_block_threshold)}
+          helper="Risk score required before blocking"
+        />
+        <SummaryMetric
+          label="Active Blocks"
+          value={String(blockedEntries.length)}
+          tone={blockedEntries.length > 0 ? 'danger' : 'good'}
+          helper={blockedEntries.length === 1 ? 'IP currently blocked' : 'IPs currently blocked'}
+        />
+      </div>
+
+      <Card title="AI Threat Engine Settings" subtitle="Tune local scoring, blocking, and feedback learning policy">
         {aiLoading ? (
-          <p className="text-sm text-slate-500">Loading AI settings…</p>
+          <p className="text-sm text-slate-500">Loading AI settings...</p>
         ) : (
-          <div className="space-y-4">
-            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={aiForm.enabled}
-                onChange={(e) =>
-                  setAiForm((prev) => ({
-                    ...prev,
-                    enabled: e.target.checked,
-                    automatic_blocking: e.target.checked ? prev.automatic_blocking : false,
-                  }))
-                }
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              Enable AI Threat Engine
-            </label>
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="space-y-3 lg:col-span-2">
+                <ToggleRow
+                  id="ai-enabled"
+                  title="Enable AI Threat Engine"
+                  description="Record scored threat events from Suricata, firewall logs, and reputation context."
+                  checked={aiForm.enabled}
+                  onChange={(checked) =>
+                    setAiForm((prev) => ({
+                      ...prev,
+                      enabled: checked,
+                      automatic_blocking: checked ? prev.automatic_blocking : false,
+                    }))
+                  }
+                />
+                <ToggleRow
+                  id="ai-automatic-blocking"
+                  title="Enable Automatic Blocking"
+                  description="Apply temporary or permanent firewall blocks when the risk score crosses the threshold."
+                  checked={aiForm.automatic_blocking}
+                  disabled={!aiForm.enabled}
+                  onChange={(checked) => setAiForm((prev) => ({ ...prev, automatic_blocking: checked }))}
+                />
+                {aiValidation.automatic_blocking && (
+                  <p className="text-xs text-red-600">{aiValidation.automatic_blocking}</p>
+                )}
+                <ToggleRow
+                  id="ai-training"
+                  title="Use Feedback To Tune Model"
+                  description="Operator feedback updates the local model; disabling this keeps scoring weights steady."
+                  checked={aiForm.training_enabled}
+                  onChange={(checked) => setAiForm((prev) => ({ ...prev, training_enabled: checked }))}
+                />
+              </div>
 
-            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={aiForm.automatic_blocking}
-                disabled={!aiForm.enabled}
-                onChange={(e) => setAiForm((prev) => ({ ...prev, automatic_blocking: e.target.checked }))}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
-              />
-              Enable Automatic Blocking
-            </label>
-            {aiValidation.automatic_blocking && (
-              <p className="text-xs text-red-600">{aiValidation.automatic_blocking}</p>
-            )}
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-900">Current Policy</p>
+                <p className="mt-2 text-sm text-slate-600">{policyPreview.summary}</p>
+                <dl className="mt-4 space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-slate-500">First block</dt>
+                    <dd className="font-medium text-slate-900">{policyPreview.durationText}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-slate-500">Escalation window</dt>
+                    <dd className="font-medium text-slate-900">{policyPreview.windowText}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-slate-500">Learning speed</dt>
+                    <dd className="font-medium text-slate-900">
+                      {aiForm.training_enabled ? aiForm.model_learning_rate : 'Paused'}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FormField
                 id="ai-risk-threshold"
                 label="Risk Score Block Threshold"
@@ -568,6 +661,7 @@ function AIThreatsContent() {
                 max={1}
                 step={0.01}
                 value={aiForm.risk_score_block_threshold}
+                hint={`Current: ${policyPreview.threshold}. Lower blocks sooner; higher waits for stronger confidence.`}
                 error={aiValidation.risk_score_block_threshold || undefined}
                 onChange={(e) => {
                   const parsed = Number(e.target.value)
@@ -583,7 +677,7 @@ function AIThreatsContent() {
                 type="number"
                 min={1}
                 value={aiForm.escalation_window_seconds}
-                hint="e.g. 300 = 5 min"
+                hint={`300 seconds = 5 min. Current: ${policyPreview.windowText}.`}
                 error={aiValidation.escalation_window_seconds || undefined}
                 onChange={(e) => {
                   const parsed = Number(e.target.value)
@@ -599,7 +693,7 @@ function AIThreatsContent() {
                 type="number"
                 min={0}
                 value={aiForm.block_duration_seconds}
-                hint="0 = permanent block"
+                hint={`300 seconds = 5 min. 0 = permanent block. Current: ${policyPreview.durationText}.`}
                 error={aiValidation.block_duration_seconds || undefined}
                 onChange={(e) => {
                   const parsed = Number(e.target.value)
@@ -614,9 +708,11 @@ function AIThreatsContent() {
                 label="Model Learning Rate"
                 type="number"
                 min={0.01}
+                max={1}
                 step={0.01}
                 value={aiForm.model_learning_rate}
-                hint="Controls how quickly the local AI model adapts from feedback."
+                disabled={!aiForm.training_enabled}
+                hint="Controls how quickly the local AI model adapts from feedback. Typical range: 0.05 to 0.25."
                 error={aiValidation.model_learning_rate || undefined}
                 onChange={(e) => {
                   const parsed = Number(e.target.value)
@@ -628,13 +724,24 @@ function AIThreatsContent() {
               />
             </div>
 
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-slate-500">
-                Current: {aiSettings.enabled ? 'Enabled' : 'Disabled'} · Threshold {Math.round(aiSettings.risk_score_block_threshold * 100)}%
+                Saved policy: {aiSettings.enabled ? 'Enabled' : 'Disabled'} | Threshold{' '}
+                {formatPercent(aiSettings.risk_score_block_threshold)} | Block duration{' '}
+                {describeSeconds(aiSettings.block_duration_seconds)}
               </p>
-              <Button variant="primary" onClick={handleSaveAiSettings} loading={aiSaving}>
-                Save
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setAiForm(aiSettings)}
+                  disabled={!settingsDirty || aiSaving}
+                >
+                  Discard Changes
+                </Button>
+                <Button variant="primary" onClick={handleSaveAiSettings} loading={aiSaving}>
+                  Save Settings
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -656,7 +763,7 @@ function AIThreatsContent() {
         )}
 
         {sourceLoading ? (
-          <p className="text-sm text-slate-500">Loading Suricata and CrowdSec source settings…</p>
+          <p className="text-sm text-slate-500">Loading Suricata and CrowdSec source settings...</p>
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -840,6 +947,74 @@ function AIThreatsContent() {
       </Card>
 
     </div>
+  )
+}
+
+type SummaryTone = 'good' | 'warning' | 'danger' | 'muted' | 'neutral'
+
+function SummaryMetric({
+  label,
+  value,
+  helper,
+  tone = 'neutral',
+}: {
+  label: string
+  value: ReactNode
+  helper?: string
+  tone?: SummaryTone
+}) {
+  const toneClass: Record<SummaryTone, string> = {
+    good: 'text-green-700',
+    warning: 'text-amber-700',
+    danger: 'text-red-700',
+    muted: 'text-slate-500',
+    neutral: 'text-slate-900',
+  }
+
+  return (
+    <div className="rounded-md border border-gray-200 bg-white px-4 py-4 shadow-sm">
+      <p className="text-xs font-medium uppercase text-gray-500">{label}</p>
+      <p className={`mt-1 text-lg font-semibold ${toneClass[tone]}`}>{value}</p>
+      {helper && <p className="mt-1 text-xs text-gray-500">{helper}</p>}
+    </div>
+  )
+}
+
+function ToggleRow({
+  id,
+  title,
+  description,
+  checked,
+  disabled = false,
+  onChange,
+}: {
+  id: string
+  title: string
+  description: string
+  checked: boolean
+  disabled?: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <label
+      htmlFor={id}
+      className={`flex cursor-pointer items-start gap-3 rounded-md border border-slate-200 bg-white p-3 ${
+        disabled ? 'opacity-60' : ''
+      }`}
+    >
+      <input
+        id={id}
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+      />
+      <span>
+        <span className="block text-sm font-medium text-slate-800">{title}</span>
+        <span className="mt-0.5 block text-sm text-slate-500">{description}</span>
+      </span>
+    </label>
   )
 }
 

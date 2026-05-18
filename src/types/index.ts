@@ -415,19 +415,19 @@ export interface CrowdSecStatus {
   enabled: boolean
   lapi_url: string
   api_key: string
+  api_key_configured?: boolean
   update_interval: number
   ban_alias_name: string
 }
 
-export type CrowdSecDecisionType = 'ban' | 'captcha' | 'throttle'
+export type CrowdSecDecisionType = string
 
 export interface CrowdSecDecision {
   id: number
   value: string        // IP or range
   type: CrowdSecDecisionType
-  origin: string
+  scope: string
   duration: string
-  createdAt: string
 }
 
 export interface CrowdSecAlert {
@@ -450,9 +450,9 @@ export interface ThreatEvent {
   dst_port: number | null
   protocol: string
   event_source: string
-  action?: string
-  signature?: string
-  alert_severity?: number
+  action?: string | null
+  signature?: string | null
+  alert_severity?: number | null
   risk_score: number
   reasons: string[]
   blocked: boolean
@@ -460,9 +460,9 @@ export interface ThreatEvent {
   escalated: boolean
   quarantine: boolean
   manually_unblocked: boolean
-  label?: number
-  feedback?: string
-  feedback_at?: number
+  label?: number | null
+  feedback?: string | null
+  feedback_at?: number | null
 }
 
 export interface BlockedEntry {
@@ -472,15 +472,12 @@ export interface BlockedEntry {
   quarantine: boolean
 }
 
-export type AiModelType = 'local'
-
 export interface AiEngineConfig {
   enabled: boolean
   automatic_blocking: boolean
   risk_score_block_threshold: number
   escalation_window_seconds: number
   block_duration_seconds: number
-  model_type: AiModelType
   training_enabled: boolean
   model_learning_rate: number
 }

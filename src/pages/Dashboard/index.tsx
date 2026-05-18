@@ -7,7 +7,6 @@ import { useAiEngineStatus } from '../../hooks/useAiEngineStatus'
 import { useMetrics } from '../../hooks/useMetrics'
 import { useMetricsHistory } from '../../hooks/useMetricsHistory'
 import Card from '../../components/Card'
-import Button from '../../components/Button'
 import ErrorBanner from '../../components/ErrorBanner'
 import Sparkline from '../../components/Sparkline'
 import CardLayoutManager from '../../components/CardLayoutManager'
@@ -611,7 +610,7 @@ export default function Dashboard() {
                 />
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Model</span>
-                  <span className="font-medium text-gray-800 uppercase">{ai.data.model_type}</span>
+                  <span className="font-medium text-gray-800">Local</span>
                 </div>
               </div>
             )}

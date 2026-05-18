@@ -63,8 +63,8 @@ function SuricataContent() {
   const [error, setError] = useState<string | null>(null)
 
   // Summary bar helpers
-  const monitoredCount = config?.interfaces.length ?? 0;
-  const totalIfaces = interfaces.length;
+  const monitoredCount = config?.interfaces.length ?? 0
+  const totalIfaces = interfaces.length
 
   const extractInterfaceIpv4Cidr = useCallback((iface?: NetworkInterface | null): string | null => {
     if (!iface) return null
@@ -317,7 +317,7 @@ function SuricataContent() {
     <div className="space-y-6">
       {loading && (
         <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600" role="status" aria-live="polite">
-          Loading Suricata configuration and alerts…
+          Loading Suricata configuration and alerts...
         </div>
       )}
       {error && (
@@ -330,7 +330,7 @@ function SuricataContent() {
       {config && (
         <Card
           title="Suricata Overview"
-          subtitle="Global IDS/IPS configuration and settings"
+          subtitle="Global IDS/IPS status, monitored interfaces, and trusted network ranges"
           actions={
             <div className="flex items-center gap-2">
               <button
@@ -370,7 +370,7 @@ function SuricataContent() {
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
               <dd className={`mt-1 text-lg font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}>
-                {config.enabled ? 'Running' : 'Stopped'}
+                {config.enabled ? 'Enabled' : 'Disabled'}
               </dd>
             </div>
             <div>
@@ -488,15 +488,15 @@ function SuricataContent() {
         </Card>
       )}
 
-      {/* Rulesets section, clearly labeled */}
-      <div className="mt-2">
-        <Card
-          title="Rulesets"
-          subtitle="Manage ruleset groups here, then open a dedicated page to inspect the rules inside each group."
-        >
-          <SuricataRulesetGroupsSection />
-        </Card>
-      </div>
+      <section className="space-y-3">
+        <div>
+          <h3 className="text-base font-semibold text-gray-900">Rulesets</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Enable complete rule groups here, or open a group to tune individual rules.
+          </p>
+        </div>
+        <SuricataRulesetGroupsSection />
+      </section>
 
 
       {/* Alerts */}
