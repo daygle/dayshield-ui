@@ -242,6 +242,25 @@ const navEntries: NavEntry[] = [
     ),
   },
   {
+    to: '/tools',
+    label: 'Tools',
+    icon: (
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M12 3v3m0 12v3m9-9h-3M6 12H3m15.364-6.364l-2.121 2.121M8.757 15.243l-2.121 2.121M16.243 15.243l2.121 2.121M8.757 8.757l2.121 2.121"
+        />
+      </svg>
+    ),
+  },
+  {
     to: '/security',
     label: 'Security',
     icon: (
@@ -446,7 +465,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   className={({ isActive }) =>
                     [
                       itemClassName,
-                      isActive || (item.to === '/security' && isSecurityRoute) ? 'active' : '',
+                      isActive || (item.to === '/security' && isSecurityRoute)
+                        ? 'active'
+                        : '',
                     ].join(' ')
                   }
                 >
