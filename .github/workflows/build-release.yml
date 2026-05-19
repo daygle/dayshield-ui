@@ -15,7 +15,7 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  build-release:
     name: Build and publish UI artifact
     runs-on: ubuntu-latest
 
