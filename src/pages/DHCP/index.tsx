@@ -25,6 +25,7 @@ import {
   deleteInterfaceDhcp6StaticLease,
 } from '../../api/dhcp';
 import { getInterfaces, getInterfacesInventory } from '../../api/interfaces';
+import { getSystemConfig } from '../../api/system';
 import type {
   Dhcp6Config,
   Dhcp6ConfigPerInterface,
@@ -214,6 +215,7 @@ export default function DHCP() {
   const [dnsInput, setDnsInput] = useState('');
   const [dns6Input, setDns6Input] = useState('');
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
+  const [ipv6Enabled, setIpv6Enabled] = useState(true);
 
   const subnetParts = useMemo(() => splitCidr(configForm.subnet, '24', 32), [configForm.subnet]);
   const subnet6Parts = useMemo(() => splitCidr(config6Form.subnet, '64', 128), [config6Form.subnet]);
@@ -263,17 +265,19 @@ export default function DHCP() {
     ? interfaceLabel(selectedInterfaceMeta)
     : selectedInterface || '';
 
-  const activeSection =
-    selectedSection === 'dhcp' || selectedSection === 'dhcp6' ? selectedSection : 'dhcp';
+  const activeSection = selectedSection === 'dhcp6' && ipv6Enabled ? 'dhcp6' : 'dhcp';
   const showDhcpSection = activeSection === 'dhcp';
-  const showDhcp6Section = activeSection === 'dhcp6';
+  const showDhcp6Section = activeSection === 'dhcp6' && ipv6Enabled;
 
-  const sectionTabs: Array<{ id: 'dhcp' | 'dhcp6'; label: string }> = [
-    { id: 'dhcp', label: 'DHCP' },
-    { id: 'dhcp6', label: 'DHCPv6' },
-  ];
+  const sectionTabs: Array<{ id: 'dhcp' | 'dhcp6'; label: string }> = ipv6Enabled
+    ? [
+        { id: 'dhcp', label: 'DHCP' },
+        { id: 'dhcp6', label: 'DHCPv6' },
+      ]
+    : [{ id: 'dhcp', label: 'DHCP' }];
 
   const setActiveSection = (section: 'dhcp' | 'dhcp6') => {
+    if (section === 'dhcp6' && !ipv6Enabled) return;
     const next = new URLSearchParams(searchParams);
     next.set('section', section);
     setSearchParams(next);
@@ -514,6 +518,25 @@ export default function DHCP() {
       })
       .catch(() => setInterfaces([]));
   }, []);
+
+  useEffect(() => {
+    getSystemConfig()
+      .then((res) => setIpv6Enabled(Boolean(res.data.ipv6Enabled)))
+      .catch(() => setIpv6Enabled(false));
+  }, []);
+
+  useEffect(() => {
+    if (ipv6Enabled || selectedSection !== 'dhcp6') return;
+
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('section', 'dhcp');
+        return next;
+      },
+      { replace: true }
+    );
+  }, [ipv6Enabled, selectedSection, setSearchParams]);
 
   const openConfigModal = () => {
     if (selectedInterface && interfaceConfig) {
