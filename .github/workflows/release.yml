@@ -1,4 +1,4 @@
-name: Release UI Artifact
+name: Build & Release
 
 on:
   push:
