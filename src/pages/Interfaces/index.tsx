@@ -7,6 +7,7 @@ import type { Ipv6Mode, Ipv6RaMode, NetworkInterface } from '../../types';
 import Card from '../../components/Card';
 import Modal from '../../components/Modal';
 import FormField from '../../components/FormField';
+import AddressPrefixField from '../../components/AddressPrefixField';
 import InterfaceDetails from './InterfaceDetails';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
@@ -56,7 +57,6 @@ export default function Interfaces() {
   const [unusedKernelNames, setUnusedKernelNames] = useState<string[]>([]);
   const [allInterfaceNames, setAllInterfaceNames] = useState<string[]>([]);
   const [configuredVlanNames, setConfiguredVlanNames] = useState<string[]>([]);
-  const [useCustomName, setUseCustomName] = useState(false);
   const [ipv6Enabled, setIpv6Enabled] = useState(false);
 
   const requestedInterface = searchParams.get('iface');
@@ -145,6 +145,10 @@ export default function Interfaces() {
       setError('Interface name is required.');
       return;
     }
+    if (!isVlanForm && !unusedKernelNames.includes(form.name.trim())) {
+      setError('Select an unused detected interface. Physical interface names cannot be renamed.');
+      return;
+    }
     if (isVlanForm) {
       const vlanId = Number(form.vlanId);
       if (!form.parentInterface?.trim()) {
@@ -170,7 +174,6 @@ export default function Interfaces() {
       .then(() => {
         setModalOpen(false);
         setForm(defaultForm);
-        setUseCustomName(false);
         load();
       })
       .catch((err: Error) => setError(err.message))
@@ -198,7 +201,6 @@ export default function Interfaces() {
         onClose={() => {
           setModalOpen(false);
           setForm(defaultForm);
-          setUseCustomName(false);
           setError(null);
         }}
         onConfirm={handleSave}
@@ -221,7 +223,6 @@ export default function Interfaces() {
                 enabled: form.enabled ?? true,
                 description: form.description ?? '',
               });
-              setUseCustomName(false);
             }}
           >
             <option value="ethernet">Ethernet</option>
@@ -229,22 +230,21 @@ export default function Interfaces() {
           </FormField>
           <FormField
             id="iface-name"
-            label="Interface Name"
+            label={isVlanForm ? 'Interface Name' : 'Detected Interface'}
             required
-            as={!isVlanForm && !useCustomName ? 'select' : undefined}
-            placeholder={isVlanForm ? 'e.g. eth0.100' : useCustomName ? 'e.g. eth0' : undefined}
+            as={!isVlanForm ? 'select' : undefined}
+            placeholder={isVlanForm ? 'e.g. eth0.100' : undefined}
             value={form.name ?? ''}
             onChange={(e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-              const value = e.target.value;
-              if (!isVlanForm && value === '__custom__') {
-                setUseCustomName(true);
-                setForm({ ...form, name: '' });
-                return;
-              }
-              setForm({ ...form, name: value });
+              setForm({ ...form, name: e.target.value });
             }}
+            hint={
+              !isVlanForm
+                ? 'Physical interface names come from Debian. Use Friendly Name for labels such as WAN, LAN, or IoT.'
+                : undefined
+            }
           >
-            {!isVlanForm && !useCustomName && (
+            {!isVlanForm && (
               <>
                 <option value="">Select unused NIC</option>
                 {unusedKernelNames.map((name) => (
@@ -252,7 +252,6 @@ export default function Interfaces() {
                     {interfaceNameLabel(name)}
                   </option>
                 ))}
-                <option value="__custom__">Custom name...</option>
               </>
             )}
           </FormField>
@@ -291,23 +290,9 @@ export default function Interfaces() {
               />
             </>
           )}
-          {!isVlanForm && useCustomName && (
-            <div className="col-span-2 -mt-2">
-              <button
-                type="button"
-                className="text-xs text-blue-600 hover:text-blue-700"
-                onClick={() => {
-                  setUseCustomName(false);
-                  setForm({ ...form, name: '' });
-                }}
-              >
-                Choose from unused NIC list instead
-              </button>
-            </div>
-          )}
           <FormField
             id="iface-desc"
-            label="Description"
+            label="Friendly Name"
             placeholder="WAN, LAN, DMZ…"
             value={form.description ?? ''}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -381,34 +366,18 @@ export default function Interfaces() {
               />
             </>
           )}
-          <FormField
-            id="iface-ip"
+          <AddressPrefixField
+            id="iface-ipv4"
             label="IPv4 Address"
-            placeholder="192.168.1.1"
-            value={form.ipv4Address ?? ''}
+            className="col-span-2"
+            addressPlaceholder="192.168.1.1"
+            addressValue={form.ipv4Address ?? ''}
+            prefixValue={String(form.ipv4Prefix ?? 24)}
+            prefixOptions={[...Array(33).keys()]}
             disabled={form.dhcp4 ?? false}
-            onChange={(e) => setForm({ ...form, ipv4Address: e.target.value })}
+            onAddressChange={(value) => setForm({ ...form, ipv4Address: value })}
+            onPrefixChange={(value) => setForm({ ...form, ipv4Prefix: Number(value) })}
           />
-          <FormField
-            id="iface-prefix"
-            label="Prefix Length"
-            type="number"
-            min={0}
-            max={32}
-            value={String(form.ipv4Prefix ?? 24)}
-            disabled={form.dhcp4 ?? false}
-            onChange={(e) => setForm({ ...form, ipv4Prefix: Number(e.target.value) })}
-          >
-            <select
-              className="input"
-              value={form.ipv4Prefix || ''}
-              onChange={(e) => setForm({ ...form, ipv4Prefix: Number(e.target.value) })}
-            >
-              {[...Array(33).keys()].map((prefix) => (
-                <option key={prefix} value={prefix}>{`/${prefix}`}</option>
-              ))}
-            </select>
-          </FormField>
           {isWanForm && (
             <div className="col-span-2 rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
               <p className="mb-3 text-sm font-semibold text-gray-900">WAN Source Protection</p>
@@ -558,23 +527,17 @@ export default function Interfaces() {
                   </FormField>
                 </>
               )}
-              <FormField
+              <AddressPrefixField
                 id="iface-ipv6"
                 label="IPv6 Address"
-                placeholder="2001:db8::1"
-                value={form.ipv6Address ?? ''}
+                className="col-span-2"
+                addressPlaceholder="2001:db8::1"
+                addressValue={form.ipv6Address ?? ''}
+                prefixValue={String(form.ipv6Prefix ?? 64)}
+                prefixOptions={[...Array(129).keys()]}
                 disabled={ipv6Mode !== 'static'}
-                onChange={(e) => setForm({ ...form, ipv6Address: e.target.value })}
-              />
-              <FormField
-                id="iface-ipv6-prefix"
-                label="IPv6 Prefix Length"
-                type="number"
-                min={0}
-                max={128}
-                value={String(form.ipv6Prefix ?? 64)}
-                disabled={ipv6Mode !== 'static'}
-                onChange={(e) => setForm({ ...form, ipv6Prefix: Number(e.target.value) })}
+                onAddressChange={(value) => setForm({ ...form, ipv6Address: value })}
+                onPrefixChange={(value) => setForm({ ...form, ipv6Prefix: Number(value) })}
               />
             </>
           )}

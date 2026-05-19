@@ -34,10 +34,15 @@ type GroupAction = 'install' | 'enable' | 'disable';
 
 const rulesetKey = (id: string | number) => String(id);
 
+const formatVersionLabel = (value?: string | null): string => {
+  if (!value) return '-';
+  return value.replace(/^"|"$/g, '').trim() || '-';
+};
+
 const labelFromSlug = (value: string): string => {
   const trimmed = value.trim();
   if (!trimmed) return trimmed;
-  if (trimmed === 'et-open') return 'ET open';
+  if (trimmed === 'et-open') return 'ET Open';
   return trimmed
     .split(/[-_\s]+/)
     .filter(Boolean)
@@ -54,17 +59,29 @@ const familyLabelFor = (ruleset: SuricataRuleset): string => {
   }
 
   if (vendor.toLowerCase().includes('emerging threats') || id.startsWith('et-')) {
-    return 'ET open';
+    return 'ET Open';
   }
 
   return vendor || 'Available';
 };
 
 const rulesetPathLabelFor = (ruleset: SuricataRuleset): string => {
+  const pathFromSource = (() => {
+    const source = sourceFileBasename(ruleset.source);
+    if (!source) return null;
+    return labelFromSlug(source.replace(/\.rules(?:\.gz)?$/i, ''));
+  })();
+
   const id = String(ruleset.id);
   const parts = id.split('/').filter(Boolean);
   if (parts.length > 1) {
-    return parts.map(labelFromSlug).join(' / ');
+    return parts
+      .map((part, index) => (index === parts.length - 1 ? labelFromSlug(part.replace(/\.rules(?:\.gz)?$/i, '')) : labelFromSlug(part)))
+      .join(' / ');
+  }
+
+  if (pathFromSource) {
+    return `${familyLabelFor(ruleset)} / ${pathFromSource}`;
   }
 
   return ruleset.name;
@@ -92,25 +109,19 @@ const sourceFileBasename = (source: string): string | null => {
 
 const subgroupLabelFor = (ruleset: SuricataRuleset): string => {
   const family = familyLabelFor(ruleset);
-  if (family !== 'ET open') return 'General';
-
-  const normalizeEtGroupLabel = (value: string): string => {
-    const trimmed = value.trim();
-    if (!trimmed) return 'et-open.rules';
-    return trimmed.endsWith('.rules') ? trimmed : `${trimmed}.rules`;
-  };
+  if (family !== 'ET Open') return 'General';
 
   const idParts = String(ruleset.id).split('/').filter(Boolean);
   if (idParts.length > 1 && idParts[1]) {
-    return normalizeEtGroupLabel(idParts[1]);
+    return labelFromSlug(idParts[1].replace(/\.rules(?:\.gz)?$/i, ''));
   }
 
   const basename = sourceFileBasename(ruleset.source);
   if (basename && basename.startsWith('emerging-')) {
-    return normalizeEtGroupLabel(basename);
+    return labelFromSlug(basename.replace(/\.rules(?:\.gz)?$/i, ''));
   }
 
-  return 'et-open.rules';
+  return 'ET Open';
 };
 
 const subgroupSort = (a: string, b: string): number => {
@@ -122,8 +133,8 @@ const subgroupSort = (a: string, b: string): number => {
 const groupSort = (a: string, b: string): number => {
   if (a === 'Installed') return -1;
   if (b === 'Installed') return 1;
-  if (a === 'ET open') return -1;
-  if (b === 'ET open') return 1;
+  if (a === 'ET Open') return -1;
+  if (b === 'ET Open') return 1;
   if (a === 'Available') return -1;
   if (b === 'Available') return 1;
   return a.localeCompare(b);
@@ -565,18 +576,17 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg
-                className="h-4 w-4"
+                className="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.25}
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14 10 10 0 01-14.14 0"
+                  d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
                 />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4" />
               </svg>
             </button>
             <button
@@ -588,13 +598,22 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg
-                className="h-4 w-4"
+                className="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.25}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 6v6l4 2"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 12a9 9 0 11-3.1-6.8"
+                />
               </svg>
             </button>
             {selectedRuleset && !selectedRuleset.installed && (
@@ -608,24 +627,25 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
               >
                 {installingRulesetId === selectedRulesetId ? (
                   <svg
-                    className="h-4 w-4 animate-spin"
+                    className="h-5 w-5 animate-spin"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth={2}
+                    strokeWidth={2.25}
                   >
                     <circle cx="12" cy="12" r="10" className="opacity-25" />
-                    <path d="M4 12a8 8 0 018-8V4" className="opacity-75" />
+                    <path d="M12 2a10 10 0 100 20" className="opacity-75" />
                   </svg>
                 ) : (
                   <svg
-                    className="h-4 w-4"
+                    className="h-5 w-5"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
-                    strokeWidth={2}
+                    strokeWidth={2.25}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
                   </svg>
                 )}
               </button>
@@ -674,7 +694,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
         }
       >
         {!scopedToSubgroup && (
-          <Card title="Rule Families" subtitle="Top-level groupings like ET open or OISF">
+          <Card title="Rule Families" subtitle="Top-level groupings like ET Open or OISF">
             <FormField
               label="Search families"
               type="text"
@@ -881,7 +901,9 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                 <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
                   <div className="text-gray-500">Version</div>
                   <div className="font-medium text-gray-900">
-                    {selectedRuleset.installedVersion ?? selectedRuleset.latestVersion ?? '-'}
+                    {formatVersionLabel(
+                      selectedRuleset.installedVersion ?? selectedRuleset.latestVersion
+                    )}
                   </div>
                 </div>
               </div>
@@ -927,7 +949,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                                   onChange={() => toggleRule(rule.id)}
                                 />
                                 <span className="text-xs text-gray-500">
-                                  {isDisabled ? 'Off' : 'On'}
+                                  {isDisabled ? 'Disabled' : 'Enabled'}
                                 </span>
                               </label>
                             </td>

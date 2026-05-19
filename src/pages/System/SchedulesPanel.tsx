@@ -12,71 +12,80 @@ const JOB_LABELS: Record<ScheduleJobType, string> = {
 };
 
 const JOB_DESCRIPTIONS: Record<ScheduleJobType, string> = {
-  dynamic_dns_update: 'Runs configured Dynamic DNS provider updates.',
-  acme_renew: 'Checks certificate expiry and renews ACME certificates when needed.',
-  suricata_rulesets_update:
-    'Checks managed Suricata rulesets for updates and applies available updates.',
-};
+            <div key={job.job} className="rounded-lg border border-gray-200 bg-white p-3 md:p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="text-sm font-semibold text-gray-900">{JOB_LABELS[job.job]}</h4>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${job.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}
+                    >
+                      {job.enabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">{JOB_DESCRIPTIONS[job.job]}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  loading={runningJob === job.job}
+                  disabled={busy || !job.enabled}
+                  onClick={() => handleRunNow(job.job)}
+                >
+                  Run Now
+                </Button>
+              </div>
 
-interface Props {
-  onError: (message: string | null) => void;
-}
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+                <div className="flex items-center gap-3 rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
+                  <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={job.enabled}
+                      disabled={busy}
+                      onChange={(e) => updateJob(job.job, { enabled: e.target.checked })}
+                    />
+                    Enabled
+                  </label>
+                  <div className="h-5 w-px bg-gray-200" />
+                  <FormField
+                    id={`schedule-interval-${job.job}`}
+                    label="Interval"
+                    type="number"
+                    min={1}
+                    max={10080}
+                    value={String(job.intervalMinutes)}
+                    disabled={busy}
+                    onChange={(e) =>
+                      updateJob(job.job, {
+                        intervalMinutes: Math.max(1, Math.min(10080, Number(e.target.value) || 1)),
+                      })
+                    }
+                  />
+                </div>
 
-function formatDate(value?: string | null): string {
-  if (!value) return 'Never';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString();
-}
-
-function normalizeSchedules(data: SystemSchedules): SystemSchedules {
-  const required: ScheduleJobType[] = [
-    'dynamic_dns_update',
-    'acme_renew',
-    'suricata_rulesets_update',
-  ];
-  const byJob = new Map(data.jobs.map((job) => [job.job, job]));
-
-  const jobs: SystemScheduleJob[] = required.map((job) => {
-    const existing = byJob.get(job);
-    if (existing) return existing;
-
-    return {
-      job,
-      enabled: false,
-      intervalMinutes: job === 'dynamic_dns_update' ? 10 : job === 'acme_renew' ? 360 : 240,
-      lastRunAt: null,
-      lastSuccess: null,
-      lastMessage: null,
-    };
-  });
-
-  return { jobs };
-}
-
-export default function SchedulesPanel({ onError }: Props) {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [runningJob, setRunningJob] = useState<ScheduleJobType | null>(null);
-  const [schedules, setSchedules] = useState<SystemSchedules>({ jobs: [] });
-
-  const busy = loading || saving;
-
-  const sortedJobs = useMemo(() => [...schedules.jobs], [schedules.jobs]);
-
-  const load = useCallback(() => {
-    setLoading(true);
-    getSystemSchedules()
-      .then((res) => {
-        setSchedules(normalizeSchedules(res.data));
-        onError(null);
-      })
-      .catch((err: Error) => onError(err.message))
-      .finally(() => setLoading(false));
-  }, [onError]);
-
-  useEffect(load, [load]);
-
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                    <div className="text-[11px] uppercase tracking-wide text-gray-500">Last Run</div>
+                    <div className="mt-1 text-sm font-medium text-gray-800">{formatDate(job.lastRunAt)}</div>
+                  </div>
+                  <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                    <div className="text-[11px] uppercase tracking-wide text-gray-500">Result</div>
+                    <div
+                      className={`mt-1 text-sm font-medium ${job.lastSuccess === false ? 'text-red-700' : 'text-gray-800'}`}
+                    >
+                      {job.lastSuccess == null ? 'Not yet run' : job.lastSuccess ? 'Success' : 'Failed'}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                    <div className="text-[11px] uppercase tracking-wide text-gray-500">Message</div>
+                    <div className="mt-1 text-sm text-gray-700 line-clamp-2">
+                      {job.lastMessage || 'No message'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
   const updateJob = (job: ScheduleJobType, patch: Partial<SystemScheduleJob>) => {
     setSchedules((prev) => ({
       jobs: prev.jobs.map((item) => (item.job === job ? { ...item, ...patch } : item)),

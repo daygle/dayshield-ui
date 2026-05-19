@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Ipv6Mode, Ipv6RaMode, NetworkInterface } from '../../types';
 import { updateInterface } from '../../api/interfaces';
 import FormField from '../../components/FormField';
+import AddressPrefixField from '../../components/AddressPrefixField';
 import Modal from '../../components/Modal';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
@@ -151,7 +152,7 @@ export default function InterfaceDetails({
     updateInterface({
       ...iface,
       ...form,
-      name: form.name ?? iface.name,
+      name: iface.name,
       description: form.description ?? iface.description,
       blockPrivateNetworks: isWanForm ? Boolean(form.blockPrivateNetworks) : false,
       blockBogonNetworks: isWanForm ? Boolean(form.blockBogonNetworks) : false,
@@ -178,14 +179,15 @@ export default function InterfaceDetails({
         <div className="grid grid-cols-2 gap-4">
           <FormField
             id="iface-name"
-            label="Interface Name"
+            label="Detected Interface"
             required
             value={form.name ?? ''}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            disabled
+            hint="Device name comes from Debian and cannot be renamed. Use Friendly Name for labels like WAN, LAN, or IoT."
           />
           <FormField
             id="iface-description"
-            label="Description"
+            label="Friendly Name"
             value={form.description ?? ''}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
@@ -315,20 +317,15 @@ export default function InterfaceDetails({
           )}
           {!form.dhcp4 && form.wanMode !== 'pppoe' && (
             <>
-              <FormField
-                id="iface-ipv4-address"
+              <AddressPrefixField
+                id="iface-ipv4"
                 label="IPv4 Address"
-                value={form.ipv4Address ?? ''}
-                onChange={(e) => setForm({ ...form, ipv4Address: e.target.value })}
-              />
-              <FormField
-                id="iface-ipv4-prefix"
-                label="Prefix Length"
-                type="number"
-                min={0}
-                max={32}
-                value={String(form.ipv4Prefix ?? 24)}
-                onChange={(e) => setForm({ ...form, ipv4Prefix: Number(e.target.value) })}
+                className="col-span-2"
+                addressValue={form.ipv4Address ?? ''}
+                prefixValue={String(form.ipv4Prefix ?? 24)}
+                prefixOptions={[...Array(33).keys()]}
+                onAddressChange={(value) => setForm({ ...form, ipv4Address: value })}
+                onPrefixChange={(value) => setForm({ ...form, ipv4Prefix: Number(value) })}
               />
               <FormField
                 id="iface-gateway"
@@ -486,22 +483,16 @@ export default function InterfaceDetails({
                   </FormField>
                 </>
               )}
-              <FormField
-                id="iface-ipv6-address"
+              <AddressPrefixField
+                id="iface-ipv6"
                 label="IPv6 Address"
-                value={form.ipv6Address ?? ''}
+                className="col-span-2"
+                addressValue={form.ipv6Address ?? ''}
+                prefixValue={String(form.ipv6Prefix ?? 64)}
+                prefixOptions={[...Array(129).keys()]}
                 disabled={formIpv6Mode !== 'static'}
-                onChange={(e) => setForm({ ...form, ipv6Address: e.target.value })}
-              />
-              <FormField
-                id="iface-ipv6-prefix"
-                label="IPv6 Prefix Length"
-                type="number"
-                min={0}
-                max={128}
-                value={String(form.ipv6Prefix ?? 64)}
-                disabled={formIpv6Mode !== 'static'}
-                onChange={(e) => setForm({ ...form, ipv6Prefix: Number(e.target.value) })}
+                onAddressChange={(value) => setForm({ ...form, ipv6Address: value })}
+                onPrefixChange={(value) => setForm({ ...form, ipv6Prefix: Number(value) })}
               />
             </>
           )}

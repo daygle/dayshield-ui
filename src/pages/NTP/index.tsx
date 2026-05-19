@@ -334,33 +334,28 @@ export default function NtpPage() {
             >
               {resyncing ? (
                 <svg
-                  className="h-4 w-4 animate-spin"
+                  className="h-5 w-5 animate-spin"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth={2}
+                  strokeWidth={2.25}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14 10 10 0 01-14.14 0"
-                  />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m8 6h-4" />
+                  <circle cx="12" cy="12" r="10" className="opacity-25" />
+                  <path className="opacity-75" d="M12 2a10 10 0 100 20" />
                 </svg>
               ) : (
                 <svg
-                  className="h-4 w-4"
+                  className="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                  strokeWidth={2}
+                  strokeWidth={2.25}
                 >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M4.93 4.93a10 10 0 0114.14 0L12 12"
+                    d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
                   />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 12V8h4" />
                 </svg>
               )}
             </button>
@@ -377,16 +372,21 @@ export default function NtpPage() {
               }`}
             >
               <svg
-                className="h-4 w-4"
+                className="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.25}
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M12 3v5m0 8a4 4 0 100-8 4 4 0 000 8z"
+                  d="M12 5v14"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 12h14"
                 />
               </svg>
             </button>
@@ -498,16 +498,16 @@ export default function NtpPage() {
                     title="Remove server"
                   >
                     <svg
-                      className="h-4 w-4"
+                        className="h-5 w-5"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
-                      strokeWidth={2}
+                        strokeWidth={2.25}
                     >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+                          d="M19 7H5l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12zM9 11v5m6-5v5M10 3h4l1 2h5v2H4V5h5l1-2z"
                       />
                     </svg>
                   </button>
@@ -548,13 +548,14 @@ export default function NtpPage() {
               title="Add server"
             >
               <svg
-                className="h-4 w-4"
+                className="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.25}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
               </svg>
             </button>
           </div>

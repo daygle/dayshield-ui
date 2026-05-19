@@ -277,22 +277,21 @@ function CloudflaredPageContent() {
                     stroke="currentColor"
                     strokeWidth="4"
                   />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  <path className="opacity-75" d="M12 2a10 10 0 100 20" />
                 </svg>
               ) : (
                 <svg
-                  className="h-4 w-4"
+                  className="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                  strokeWidth={2}
+                  strokeWidth={2.25}
                 >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M4.93 4.93a10 10 0 0114.14 0L12 12"
+                    d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
                   />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 12V8h4" />
                 </svg>
               )}
             </button>
@@ -308,11 +307,11 @@ function CloudflaredPageContent() {
             >
               {saving ? (
                 <svg
-                  className="h-4 w-4 animate-spin"
+                  className="h-5 w-5 animate-spin"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth={2}
+                  strokeWidth={2.25}
                 >
                   <circle
                     className="opacity-25"
@@ -322,15 +321,15 @@ function CloudflaredPageContent() {
                     stroke="currentColor"
                     strokeWidth="4"
                   />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  <path className="opacity-75" d="M12 2a10 10 0 100 20" />
                 </svg>
               ) : (
                 <svg
-                  className="h-4 w-4"
+                  className="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                  strokeWidth={2}
+                  strokeWidth={2.25}
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14" />

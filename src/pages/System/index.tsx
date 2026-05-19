@@ -39,9 +39,6 @@ import {
 import type { UpdateScheduleFrequency, UpdateScheduleWeekday } from '../../types';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
-// Registry manifest endpoint — the updater resolves per-component artifact versions
-// from this URL rather than assuming all components share the same release tag.
-const DEFAULT_GITHUB_REGISTRY_URL = 'https://api.github.com/repos/daygle/dayshield-core';
 const STATUS_REFRESH_INTERVAL_MS = 15000;
 const UPDATES_REFRESH_INTERVAL_MS = 5000;
 const UPDATE_SCHEDULE_FREQUENCY_OPTIONS: Array<{ value: UpdateScheduleFrequency; label: string }> =
@@ -137,6 +134,14 @@ function formatUpdateComponentName(component: string): string {
     default:
       return component.charAt(0).toUpperCase() + component.slice(1);
   }
+}
+
+function formatRootfsSlotName(slot?: string | null): string {
+  if (!slot) return '-';
+  const normalized = slot.trim().toLowerCase();
+  if (normalized === 'a') return 'Primary';
+  if (normalized === 'b') return 'Secondary';
+  return slot.toUpperCase();
 }
 
 function formatUpdateOperationName(operation: string): string {
@@ -420,10 +425,10 @@ function simplifyErrorMessage(error: string): string {
 
   // For HTTP errors, provide context
   if (simplified.includes('HTTP 401') || simplified.includes('HTTP 403')) {
-    return 'Authentication failed. Check if the update source URL is correct.';
+    return 'Authentication failed. Check update server credentials and connectivity.';
   }
   if (simplified.includes('HTTP 404')) {
-    return 'Update version not found at the specified source.';
+    return 'Update version not found on the update server.';
   }
   if (simplified.includes('HTTP')) {
     // Extract just the HTTP status without the full URL
@@ -564,7 +569,7 @@ export default function System() {
 
   const sectionTabs: Array<{ id: 'overview' | 'updates' | 'schedules' | 'reboot'; label: string }> =
     [
-      { id: 'overview', label: 'Overview' },
+      { id: 'overview', label: 'Settings' },
       { id: 'updates', label: 'Updates' },
       { id: 'schedules', label: 'Schedules' },
       { id: 'reboot', label: 'Reboot' },
@@ -825,34 +830,6 @@ export default function System() {
       .finally(() => setUpdateSaving(false));
   };
 
-  const handleSetDefaultRegistry = () => {
-    if (!updateSettings) return;
-    setUpdateSaving(true);
-    updateUpdateSettings({
-      ...updateSettings,
-      updateMode: 'registry',
-      registryUrl: DEFAULT_GITHUB_REGISTRY_URL,
-    })
-      .then((res) => {
-        setUpdateSettings(res.data);
-        setUpdates((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            settings: {
-              ...prev.settings,
-              registryUrl: res.data.registryUrl,
-            },
-          };
-        });
-        setUpdateActionMessage(
-          'Registry URL reset to the default manifest endpoint. Run Check Now to retry.'
-        );
-      })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setUpdateSaving(false));
-  };
-
   const handleMarkApplianceRebuildComplete = () => {
     setMarkingApplianceRebuildComplete(true);
     setUpdateActionMessage(null);
@@ -878,9 +855,18 @@ export default function System() {
     ? updates.components.filter((comp) => comp.component !== 'rootfs' && comp.updateAvailable)
         .length
     : 0;
+  const runtimeRollbackAvailable = updates
+    ? updates.components.some(
+        (comp) =>
+          comp.component !== 'rootfs' &&
+          Boolean(comp.rollbackVersion || comp.rollbackCommit)
+      )
+    : false;
   const rootfsComponent = updates?.components.find((comp) => comp.component === 'rootfs');
   const rootfsUpdateAvailable = Boolean(rootfsComponent?.updateAvailable);
   const rootfsSlotSupported = updates?.rootfsSlotStatus?.supported ?? false;
+  const rootfsInactiveSlotName = formatRootfsSlotName(updates?.rootfsSlotStatus?.inactiveSlot);
+  const rootfsPreviousSlotName = formatRootfsSlotName(updates?.rootfsUpdate?.previousSlot);
   const rootfsUpdatePending =
     updates?.rootfsUpdate?.status === 'staged' || updates?.rootfsUpdate?.status === 'booted';
 
@@ -1064,22 +1050,12 @@ export default function System() {
         onConfirm={handleSaveUpdateSettings}
         confirmLabel="Save"
         loading={updateSaving}
-        size="sm"
       >
         {updateSettings && (
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
               Choose whether DayShield checks for updates automatically and when it runs.
             </p>
-            <FormField
-              id="upd-registry-url"
-              label="Update Source"
-              hint="Registry manifest endpoint (GitHub repository URL or API endpoint). Each component resolves its version independently through this manifest."
-              value={updateSettings.registryUrl ?? ''}
-              onChange={(e) =>
-                setUpdateSettings({ ...updateSettings, registryUrl: e.target.value })
-              }
-            />
             <label className="flex items-start gap-3 rounded border border-gray-200 p-3 text-sm">
               <input
                 id="upd-rootfs-ab"
@@ -1091,7 +1067,9 @@ export default function System() {
                 }
               />
               <span>
-                <span className="block font-medium text-gray-800">Enable A/B rootfs updates</span>
+                <span className="block font-medium text-gray-800">
+                  Enable Primary/Secondary rootfs updates
+                </span>
                 <span className="block text-xs text-gray-500">
                   Requires DAYSHIELD_ROOT_A, DAYSHIELD_ROOT_B, and shared DAYSHIELD_BOOT partitions.
                 </span>
@@ -1473,16 +1451,6 @@ export default function System() {
                   This usually means the update server is unreachable, requires authentication, or
                   has no published releases.
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={handleSetDefaultRegistry}
-                    disabled={updateSaving || updateActionLoading}
-                  >
-                    Use default update source
-                  </Button>
-                </div>
               </div>
             )}
 
@@ -1495,14 +1463,14 @@ export default function System() {
                       comp.lastError ?? ''
                     );
                     const statusLabel = inferUpdateStatusLabel(comp.validRepo, comp.lastError);
-                    const statusClass = comp.validRepo
-                      ? isRootfs && comp.updateAvailable
-                        ? 'bg-orange-100 text-orange-800'
-                        : comp.updateAvailable
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-green-100 text-green-700'
-                      : isMissingFromManifest
-                        ? 'bg-gray-100 text-gray-600'
+                    const statusClass = isMissingFromManifest
+                      ? 'bg-gray-100 text-gray-600'
+                      : comp.validRepo
+                        ? isRootfs && comp.updateAvailable
+                          ? 'bg-orange-100 text-orange-800'
+                          : comp.updateAvailable
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-green-100 text-green-700'
                         : 'bg-red-100 text-red-700';
 
                     return (
@@ -1513,26 +1481,28 @@ export default function System() {
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusClass}`}
                         >
-                          {comp.validRepo
-                            ? comp.updateAvailable
-                              ? isRootfs
-                                ? 'Rebuild Required'
-                                : 'Update Available'
-                              : 'Up to Date'
-                            : statusLabel}
+                          {isMissingFromManifest
+                            ? 'Not in current release'
+                            : comp.validRepo
+                              ? comp.updateAvailable
+                                ? isRootfs
+                                  ? 'Rebuild Required'
+                                  : 'Update Available'
+                                : 'Up to Date'
+                              : statusLabel}
                         </span>
                       </div>
                     );
                   })()}
                   <dl className="mt-2 space-y-1 text-xs text-gray-600">
                     <div>
-                      <dt className="inline text-gray-500">Version Installed:</dt>
+                      <dt className="inline text-gray-500">Version Installed: </dt>
                       <dd className="inline font-mono text-gray-800">
                         {componentCurrentDisplay(comp)}
                       </dd>
                     </div>
                     <div>
-                      <dt className="inline text-gray-500">Latest Version:</dt>
+                      <dt className="inline text-gray-500">Latest Version: </dt>
                       <dd className="inline font-mono text-gray-800">
                         {componentRemoteDisplay(comp)}
                       </dd>
@@ -1541,7 +1511,7 @@ export default function System() {
                       <div>
                         <dt className="inline text-gray-500">Boot Slot: </dt>
                         <dd className="inline font-mono text-gray-800">
-                          {updates.rootfsSlotStatus.activeSlot?.toUpperCase() ?? '-'}
+                          {formatRootfsSlotName(updates.rootfsSlotStatus.activeSlot)}
                         </dd>
                       </div>
                     )}
@@ -1595,7 +1565,7 @@ export default function System() {
 
             {updates.rootfsSlotStatus && !updates.rootfsSlotStatus.supported && (
               <div className="rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
-                <p className="font-medium">A/B rootfs layout unavailable.</p>
+                <p className="font-medium">Primary/Secondary rootfs layout unavailable.</p>
                 <p className="mt-1">
                   {updates.rootfsSlotStatus.reason ??
                     'Required rootfs slot labels were not detected.'}
@@ -1607,7 +1577,7 @@ export default function System() {
                       ? `, target v${updates.rootfsUpdate.targetVersion}`
                       : ''}
                     {updates.rootfsUpdate.targetSlot
-                      ? `, slot ${updates.rootfsUpdate.targetSlot.toUpperCase()}`
+                      ? `, target slot ${formatRootfsSlotName(updates.rootfsUpdate.targetSlot)}`
                       : ''}
                   </p>
                 )}
@@ -1735,7 +1705,7 @@ export default function System() {
               )}
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 items-start">
               <Button size="sm" onClick={handleCheckUpdates} disabled={updateActionLoading}>
                 Check Now
               </Button>
@@ -1745,13 +1715,13 @@ export default function System() {
                 disabled={updateActionLoading || runtimeUpdateCount === 0}
                 title={
                   runtimeUpdateCount > 1
-                    ? `Apply ${runtimeUpdateCount} available runtime updates`
+                    ? `Update Core/UI (${runtimeUpdateCount} updates available)`
                     : runtimeUpdateCount === 1
-                      ? 'Apply 1 available runtime update'
-                      : 'No runtime updates available'
+                      ? 'Update Core/UI (1 update available)'
+                      : 'No Core/UI updates available'
                 }
               >
-                Apply Runtime Updates
+                Update Core/UI
               </Button>
               <Button
                 size="sm"
@@ -1766,38 +1736,58 @@ export default function System() {
                   !rootfsUpdateAvailable
                     ? 'No rootfs update available'
                     : !rootfsSlotSupported
-                      ? 'A/B rootfs layout is not available'
+                      ? 'Primary/Secondary rootfs layout is not available'
                       : rootfsUpdatePending
                         ? 'Rootfs update is already staged'
-                        : 'Stage rootfs into the inactive slot'
+                        : rootfsInactiveSlotName !== '-'
+                          ? `Stage/update root filesystem into ${rootfsInactiveSlotName} slot`
+                          : 'Stage/update root filesystem into the inactive slot'
                 }
               >
-                Stage Rootfs Update
+                Stage/Update Root Filesystem
               </Button>
-              <Button size="sm" onClick={handleValidateUpdates} disabled={updateActionLoading}>
-                Validate
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={handleRollbackUpdates}
-                disabled={updateActionLoading}
-              >
-                Rollback
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={handleRollbackRootfs}
-                disabled={updateActionLoading || !updates.rootfsUpdate?.previousSlot}
-                title={
-                  updates.rootfsUpdate?.previousSlot
-                    ? 'Schedule next boot into the previous rootfs slot'
-                    : 'No rootfs rollback slot recorded'
-                }
-              >
-                Rollback Rootfs
-              </Button>
+
+              <details className="group relative">
+                <summary className="list-none cursor-pointer">
+                  <span className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                    Advanced Actions
+                    <span className="transition-transform group-open:rotate-180">▾</span>
+                  </span>
+                </summary>
+                <div className="absolute z-20 mt-2 min-w-[220px] rounded-md border border-gray-200 bg-white p-2 shadow-lg space-y-2">
+                  <Button size="sm" onClick={handleValidateUpdates} disabled={updateActionLoading}>
+                    Validate Runtime
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={handleRollbackUpdates}
+                    disabled={updateActionLoading || !runtimeRollbackAvailable}
+                    title={
+                      runtimeRollbackAvailable
+                        ? 'Rollback runtime components to the previous deployed versions'
+                        : 'No runtime rollback snapshot available'
+                    }
+                  >
+                    Rollback Runtime
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={handleRollbackRootfs}
+                    disabled={updateActionLoading || !updates.rootfsUpdate?.previousSlot}
+                    title={
+                      updates.rootfsUpdate?.previousSlot
+                        ? rootfsPreviousSlotName !== '-'
+                          ? `Schedule next boot into ${rootfsPreviousSlotName} slot`
+                          : 'Schedule next boot into the previous rootfs slot'
+                        : 'No rootfs rollback slot recorded'
+                    }
+                  >
+                    Rollback Rootfs
+                  </Button>
+                </div>
+              </details>
             </div>
           </div>
         </Card>

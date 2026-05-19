@@ -8,7 +8,7 @@ import {
   updateInterfaceSuricataConfig,
   getSuricataAlerts,
 } from '../../api/suricata';
-import { getInterfaces, getInterfacesInventory } from '../../api/interfaces';
+import { getInterfacesInventory } from '../../api/interfaces';
 import { getSystemConfig } from '../../api/system';
 import type {
   SuricataConfig,
@@ -153,11 +153,14 @@ function SuricataContent() {
   }, [loadAll]);
 
   useEffect(() => {
-    Promise.all([getInterfaces(), getInterfacesInventory()])
-      .then(([ifacesRes, inventoryRes]) => {
-        const configured = (ifacesRes.data ?? []).filter((iface) => iface.enabled !== false);
+    getInterfacesInventory()
+      .then((inventoryRes) => {
+        const configured = (inventoryRes.data?.configured ?? []).filter(
+          (iface) => iface.enabled !== false
+        );
+        const names = inventoryRes.data?.names ?? [];
         const known = new Set(configured.map((iface) => iface.name));
-        const extras = (inventoryRes.data?.names ?? [])
+        const extras = names
           .filter((name) => name !== 'lo' && !known.has(name))
           .map((name) => ({
             name,
@@ -166,14 +169,14 @@ function SuricataContent() {
             enabled: true,
           }));
 
-        const merged = [...configured, ...extras];
-        setInterfaces(merged);
+        const nextInterfaces = [...configured, ...extras];
+        setInterfaces(nextInterfaces);
 
-        if (!selectedInterface && merged.length > 0) {
+        if (!selectedInterface && nextInterfaces.length > 0) {
           setSearchParams(
             (prev) => {
               const next = new URLSearchParams(prev);
-              next.set('iface', merged[0].name);
+              next.set('iface', nextInterfaces[0].name);
               return next;
             },
             { replace: true }
@@ -367,18 +370,17 @@ function SuricataContent() {
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <svg
-                  className="h-4 w-4"
+                  className="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                  strokeWidth={2}
+                  strokeWidth={2.25}
                 >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M4.93 4.93a10 10 0 0114.14 0L12 12"
+                    d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
                   />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M20 12a8 8 0 11-8-8" />
                 </svg>
               </button>
               <button
@@ -411,20 +413,20 @@ function SuricataContent() {
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
               <dd
-                className={`mt-1 text-lg font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}
+                className={`mt-1 text-sm font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-400'}`}
               >
                 {config.enabled ? 'Enabled' : 'Disabled'}
               </dd>
             </div>
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Mode</dt>
-              <dd className="mt-1 text-lg font-semibold text-gray-800 uppercase">{config.mode}</dd>
+              <dd className="mt-1 text-sm font-semibold text-gray-800 uppercase">{config.mode}</dd>
             </div>
             <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
                 Interfaces Monitored
               </dt>
-              <dd className="mt-1 text-lg font-semibold text-gray-800">
+              <dd className="mt-1 text-sm font-semibold text-gray-800">
                 {monitoredCount} / {totalIfaces}
               </dd>
             </div>
@@ -445,7 +447,7 @@ function SuricataContent() {
                     ))}
                   </div>
                 ) : (
-                  <span className="text-gray-400">Not configured</span>
+                  <div className="text-gray-500">Not configured</div>
                 )}
                 {config.homeNet.length === 0 && displayedHomeNets.length > 0 && (
                   <div className="mt-1 text-xs text-blue-700">
@@ -468,10 +470,12 @@ function SuricataContent() {
             {interfaces.map((iface) => {
               const isMonitored = config.interfaces.includes(iface.name);
               const isSelected = selectedInterface === iface.name;
-              const interfaceIp = extractInterfaceCidrs(iface).join(', ');
+              const interfaceIps = extractInterfaceCidrs(iface).join(', ');
+
               return (
                 <button
                   key={iface.name}
+                  type="button"
                   onClick={() => handleSelectInterface(iface.name)}
                   className={`rounded-lg border-2 p-3 text-left transition-colors ${
                     isSelected
@@ -481,11 +485,11 @@ function SuricataContent() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h4 className="font-medium text-gray-900">
+                      <h4 className="text-sm font-semibold text-gray-900">
                         {formatInterfaceDisplayName(iface.description, iface.name)}
                       </h4>
                       <p className="mt-1 text-xs text-gray-500">
-                        {interfaceIp || 'No IP configured'}
+                        {interfaceIps || 'No IP address detected'}
                       </p>
                     </div>
                     <span
@@ -525,14 +529,14 @@ function SuricataContent() {
         >
           <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
             <div>
-              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</dt>
+                  className="h-5 w-5"
               <dd
                 className={`mt-1 font-semibold ${interfaceConfig.monitored ? 'text-green-600' : 'text-gray-400'}`}
               >
-                {interfaceConfig.monitored ? 'Monitored' : 'Not monitored'}
+                  strokeWidth={2.25}
               </dd>
-            </div>
-            <div>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
                 IP Address
               </dt>
@@ -552,15 +556,12 @@ function SuricataContent() {
         </Card>
       )}
 
-      <section className="space-y-3">
-        <div>
-          <h3 className="text-base font-semibold text-gray-900">Rulesets</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Enable complete rule groups here, or open a group to tune individual rules.
-          </p>
-        </div>
+      <Card
+        title="Rulesets"
+        subtitle="Enable complete rule groups here, or open a group to tune individual rules."
+      >
         <SuricataRulesetGroupsSection />
-      </section>
+      </Card>
 
       {/* Alerts */}
       <Card
@@ -576,36 +577,33 @@ function SuricataContent() {
           >
             {loading ? (
               <svg
-                className="h-4 w-4 animate-spin"
+                className="h-5 w-5"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.25}
               >
                 <circle
                   className="opacity-25"
                   cx="12"
-                  cy="12"
                   r="10"
-                  stroke="currentColor"
                   strokeWidth="4"
                 />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                <path className="opacity-75" d="M12 2a10 10 0 100 20" />
               </svg>
             ) : (
               <svg
-                className="h-4 w-4"
+                className="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.25}
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14"
+                  d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
                 />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m0 12v4" />
               </svg>
             )}
           </button>

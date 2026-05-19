@@ -535,7 +535,7 @@ export default function Dashboard() {
                           </p>
                           <p className="text-xs text-gray-500">{net.data.wan_ip ?? '-'}</p>
                         </div>
-                        <Badge variant="green">WAN</Badge>
+                        <Badge variant="green">Up</Badge>
                       </div>
                     </div>
                     {net.data.lan_ifaces.map((iface) => (

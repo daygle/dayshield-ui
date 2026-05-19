@@ -52,7 +52,7 @@ export default function CreateBackupDialog({
     if (type === 'selective') req.components = components;
     if (encrypt) {
       req.encrypt = true;
-      if (password) req.password = password;
+      if (password) req.passphrase = password;
     }
     onConfirm(req);
   };

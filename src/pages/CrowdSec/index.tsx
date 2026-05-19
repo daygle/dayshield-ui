@@ -349,11 +349,11 @@ function CrowdSecContent() {
               >
                 {loading ? (
                   <svg
-                    className="h-4 w-4 animate-spin"
+                    className="h-5 w-5 animate-spin"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth={2}
+                    strokeWidth={2.25}
                   >
                     <circle
                       className="opacity-25"
@@ -363,22 +363,21 @@ function CrowdSecContent() {
                       stroke="currentColor"
                       strokeWidth="4"
                     />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    <path className="opacity-75" d="M12 2a10 10 0 100 20" />
                   </svg>
                 ) : (
                   <svg
-                    className="h-4 w-4"
+                    className="h-5 w-5"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
-                    strokeWidth={2}
+                    strokeWidth={2.25}
                   >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14"
+                      d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
                     />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m0 12v4" />
                   </svg>
                 )}
               </button>
@@ -390,16 +389,16 @@ function CrowdSecContent() {
                 aria-label="Edit CrowdSec settings"
               >
                 <svg
-                  className="h-4 w-4"
+                  className="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                  strokeWidth={2}
+                  strokeWidth={2.25}
                 >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    d="M4 20h4l10.5-10.5a1.5 1.5 0 00-4.5-4.5L4 15.5V20z"
                   />
                 </svg>
               </button>

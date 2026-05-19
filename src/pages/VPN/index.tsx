@@ -12,6 +12,7 @@ import Button from '../../components/Button';
 import Card from '../../components/Card';
 import Modal from '../../components/Modal';
 import FormField from '../../components/FormField';
+import AddressPrefixField from '../../components/AddressPrefixField';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
 type PeerRow = WgPeer & Record<string, unknown>;
@@ -53,7 +54,6 @@ export default function VPN() {
   const [peerSaving, setPeerSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [serverModalOpen, setServerModalOpen] = useState(false);
   const [serverSaving, setServerSaving] = useState(false);
   const [serverForm, setServerForm] = useState(defaultServerForm);
   const [showPrivateKey, setShowPrivateKey] = useState(false);
@@ -103,6 +103,20 @@ export default function VPN() {
 
   useEffect(loadAll, []);
 
+  useEffect(() => {
+    if (!server) return;
+    setServerForm({
+      interface: server.interface || defaultServerForm.interface,
+      description: server.description || defaultServerForm.description,
+      listenPort: server.listenPort || defaultServerForm.listenPort,
+      addresses: server.addresses?.join(', ') || defaultServerForm.addresses,
+      enabled: server.enabled ?? true,
+      publicKey: server.publicKey || '',
+      privateKey: '',
+    });
+    setShowPrivateKey(false);
+  }, [server]);
+
   const handleToggleEnabled = () => {
     if (!server) return;
     setServerSaving(true);
@@ -113,20 +127,6 @@ export default function VPN() {
       .then(() => loadAll())
       .catch((err: Error) => setError(err.message))
       .finally(() => setServerSaving(false));
-  };
-
-  const openServerModal = () => {
-    setServerForm({
-      interface: server?.interface || defaultServerForm.interface,
-      description: server?.description || defaultServerForm.description,
-      listenPort: server?.listenPort || defaultServerForm.listenPort,
-      addresses: server?.addresses?.join(', ') || defaultServerForm.addresses,
-      enabled: server?.enabled ?? true,
-      publicKey: server?.publicKey || '',
-      privateKey: '',
-    });
-    setShowPrivateKey(false);
-    setServerModalOpen(true);
   };
 
   const handleGenerateServerKeys = () => {
@@ -144,6 +144,15 @@ export default function VPN() {
   };
 
   const handleSaveServer = () => {
+    if (!serverForm.interface.trim()) {
+      setError('Interface is required.');
+      return;
+    }
+    if (!serverForm.addresses.trim()) {
+      setError('Server tunnel address is required.');
+      return;
+    }
+
     setServerSaving(true);
     createWgInterface({
       interface: serverForm.interface.trim(),
@@ -159,8 +168,8 @@ export default function VPN() {
       enabled: serverForm.enabled,
     })
       .then(() => {
-        setServerModalOpen(false);
         setServerForm((f) => ({ ...f, privateKey: '' }));
+        setShowPrivateKey(false);
         loadAll();
       })
       .catch((err: Error) => setError(err.message))
@@ -213,134 +222,10 @@ export default function VPN() {
     return formatInterfaceDisplayName(server.description, server.interface);
   }, [server]);
 
+  const isServerConfigured = Boolean(server?.interface);
+
   if (loading) {
     return <div className="text-center py-8 text-gray-500">Loading VPN configuration...</div>;
-  }
-
-  if (!server || !server.interface) {
-    return (
-      <div className="space-y-6">
-        {error && (
-          <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 text-center space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">No VPN configured</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Create a VPN interface first, then add peers and export client settings.
-            </p>
-          </div>
-          <Button onClick={openServerModal}>Create VPN</Button>
-        </div>
-
-        <Modal
-          open={serverModalOpen}
-          title="Create VPN"
-          onClose={() => setServerModalOpen(false)}
-          onConfirm={handleSaveServer}
-          confirmLabel="Create VPN"
-          loading={serverSaving}
-          size="lg"
-        >
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              id="server-description"
-              label="Name"
-              className="col-span-2"
-              placeholder="Remote Access"
-              value={serverForm.description}
-              onChange={(e) => setServerForm({ ...serverForm, description: e.target.value })}
-            />
-            <FormField
-              id="server-interface"
-              label="Interface"
-              required
-              value={serverForm.interface}
-              onChange={(e) => setServerForm({ ...serverForm, interface: e.target.value })}
-            />
-            <FormField
-              id="server-port"
-              label="Listen Port"
-              type="number"
-              min={1}
-              max={65535}
-              value={String(serverForm.listenPort)}
-              onChange={(e) =>
-                setServerForm({ ...serverForm, listenPort: Number(e.target.value) || 51820 })
-              }
-            />
-            <FormField
-              id="server-address-ip"
-              label="Server Tunnel IP Address"
-              placeholder="10.8.0.1"
-              value={primaryTunnelAddress.ip}
-              onChange={(e) => updatePrimaryTunnelAddress(e.target.value, undefined)}
-            />
-            <FormField
-              id="server-address-prefix"
-              label="Tunnel Prefix"
-              as="select"
-              value={primaryTunnelAddress.prefix}
-              onChange={(e) => updatePrimaryTunnelAddress(undefined, e.target.value)}
-            >
-              {[...Array(33).keys()].map((prefix) => (
-                <option key={prefix} value={String(prefix)}>{`/${prefix}`}</option>
-              ))}
-            </FormField>
-            <FormField
-              id="server-public-key"
-              label="Public Key"
-              className="col-span-2"
-              placeholder="Generate or paste a base64 public key"
-              value={serverForm.publicKey}
-              onChange={(e) => setServerForm({ ...serverForm, publicKey: e.target.value })}
-            />
-            <FormField
-              id="server-private-key"
-              label="Private Key"
-              type={showPrivateKey ? 'text' : 'password'}
-              autoComplete="new-password"
-              className="col-span-2"
-              placeholder="Generate a keypair to populate this"
-              value={serverForm.privateKey}
-              onChange={(e) => setServerForm({ ...serverForm, privateKey: e.target.value })}
-            />
-            <div className="col-span-2 flex items-center justify-end">
-              <button
-                type="button"
-                className="text-xs text-gray-600 hover:text-gray-900"
-                onClick={() => setShowPrivateKey((v) => !v)}
-              >
-                {showPrivateKey ? 'Hide private key' : 'Show private key'}
-              </button>
-            </div>
-            <div className="col-span-2 flex items-center gap-3">
-              <input
-                id="server-enabled"
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-blue-600"
-                checked={serverForm.enabled}
-                onChange={(e) => setServerForm({ ...serverForm, enabled: e.target.checked })}
-              />
-              <label htmlFor="server-enabled" className="text-sm font-medium text-gray-700">
-                Enabled
-              </label>
-            </div>
-            <div className="col-span-2 flex justify-between items-center gap-3">
-              <Button variant="secondary" size="sm" onClick={handleGenerateServerKeys}>
-                Generate Keys
-              </Button>
-              <p className="text-xs text-gray-500">
-                Generate a new keypair before creating the server.
-              </p>
-            </div>
-          </div>
-        </Modal>
-      </div>
-    );
   }
 
   return (
@@ -438,110 +323,6 @@ export default function VPN() {
         <p className="text-sm text-gray-600">Remove this VPN peer?</p>
       </Modal>
 
-      <Modal
-        open={serverModalOpen}
-        title={server?.interface ? `Edit VPN - ${vpnDisplayName}` : 'Create VPN'}
-        onClose={() => setServerModalOpen(false)}
-        onConfirm={handleSaveServer}
-        confirmLabel={server?.interface ? 'Save VPN' : 'Create VPN'}
-        loading={serverSaving}
-        size="lg"
-      >
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            id="server-description"
-            label="Name"
-            className="col-span-2"
-            placeholder="Remote Access"
-            value={serverForm.description}
-            onChange={(e) => setServerForm({ ...serverForm, description: e.target.value })}
-          />
-          <FormField
-            id="server-interface"
-            label="Interface"
-            required
-            value={serverForm.interface}
-            onChange={(e) => setServerForm({ ...serverForm, interface: e.target.value })}
-          />
-          <FormField
-            id="server-port"
-            label="Listen Port"
-            type="number"
-            min={1}
-            max={65535}
-            value={String(serverForm.listenPort)}
-            onChange={(e) =>
-              setServerForm({ ...serverForm, listenPort: Number(e.target.value) || 51820 })
-            }
-          />
-          <FormField
-            id="server-address-ip"
-            label="Server Tunnel IP Address"
-            placeholder="10.8.0.1"
-            value={primaryTunnelAddress.ip}
-            onChange={(e) => updatePrimaryTunnelAddress(e.target.value, undefined)}
-          />
-          <FormField
-            id="server-address-prefix"
-            label="Tunnel Prefix"
-            as="select"
-            value={primaryTunnelAddress.prefix}
-            onChange={(e) => updatePrimaryTunnelAddress(undefined, e.target.value)}
-          >
-            {[...Array(33).keys()].map((prefix) => (
-              <option key={prefix} value={String(prefix)}>{`/${prefix}`}</option>
-            ))}
-          </FormField>
-          <FormField
-            id="server-public-key"
-            label="Public Key"
-            className="col-span-2"
-            placeholder="Generate or paste a base64 public key"
-            value={serverForm.publicKey}
-            onChange={(e) => setServerForm({ ...serverForm, publicKey: e.target.value })}
-          />
-          <FormField
-            id="server-private-key"
-            label="Private Key"
-            type={showPrivateKey ? 'text' : 'password'}
-            autoComplete="new-password"
-            className="col-span-2"
-            placeholder="Generate a keypair to populate this"
-            value={serverForm.privateKey}
-            onChange={(e) => setServerForm({ ...serverForm, privateKey: e.target.value })}
-          />
-          <div className="col-span-2 flex items-center justify-end">
-            <button
-              type="button"
-              className="text-xs text-gray-600 hover:text-gray-900"
-              onClick={() => setShowPrivateKey((v) => !v)}
-            >
-              {showPrivateKey ? 'Hide private key' : 'Show private key'}
-            </button>
-          </div>
-          <div className="col-span-2 flex items-center gap-3">
-            <input
-              id="server-enabled"
-              type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-blue-600"
-              checked={serverForm.enabled}
-              onChange={(e) => setServerForm({ ...serverForm, enabled: e.target.checked })}
-            />
-            <label htmlFor="server-enabled" className="text-sm font-medium text-gray-700">
-              Enabled
-            </label>
-          </div>
-          <div className="col-span-2 flex justify-between items-center gap-3">
-            <Button variant="secondary" size="sm" onClick={handleGenerateServerKeys}>
-              Generate Keys
-            </Button>
-            <p className="text-xs text-gray-500">
-              Generate a new keypair before creating the server.
-            </p>
-          </div>
-        </div>
-      </Modal>
-
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {error}
@@ -562,18 +343,17 @@ export default function VPN() {
               aria-label="Refresh VPN status"
             >
               <svg
-                className="h-4 w-4"
+                className="h-5 w-5"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.25}
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14 10 10 0 01-14.14 0"
+                  d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
                 />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m8 6h-4" />
               </svg>
             </button>
             <button
@@ -589,38 +369,17 @@ export default function VPN() {
               aria-label={server?.enabled ? 'Disable VPN' : 'Enable VPN'}
             >
               <svg
-                className="h-4 w-4"
+                className="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.25}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16" />
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M5.636 5.636a9 9 0 0112.728 12.728"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={openServerModal}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Edit VPN"
-              aria-label="Edit VPN"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 5v4m0 6v4m7-7h-4M5 12H1"
+                  d="M5.636 18.364a9 9 0 1112.728-12.728"
                 />
               </svg>
             </button>
@@ -630,11 +389,11 @@ export default function VPN() {
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm">
           <div>
             <dt className="text-gray-500 mb-1">Status</dt>
-            <dd className="text-gray-900">{server.enabled ? 'Enabled' : 'Disabled'}</dd>
+            <dd className="text-gray-900">{server?.enabled ? 'Enabled' : 'Disabled'}</dd>
           </div>
           <div>
             <dt className="text-gray-500 mb-1">Interface</dt>
-            <dd className="font-mono text-gray-900">{server.interface}</dd>
+            <dd className="font-mono text-gray-900">{server?.interface || 'Not configured'}</dd>
           </div>
           <div>
             <dt className="text-gray-500 mb-1">Listen Port</dt>
@@ -659,49 +418,119 @@ export default function VPN() {
         </dl>
       </Card>
 
+      {!isServerConfigured && (
+        <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          No VPN interface is configured yet. Enter settings below and click Save VPN Settings.
+        </div>
+      )}
+
       <div className="grid gap-4 xl:grid-cols-2">
         <Card
-          title="Server Configuration"
-          subtitle="Edit your WireGuard VPN server settings"
+          title="VPN Settings"
+          subtitle="Configure WireGuard interface, tunnel, keys, and service state"
           actions={
-            <Button size="sm" variant="secondary" onClick={openServerModal}>
-              Edit VPN
+            <Button size="sm" onClick={handleSaveServer} loading={serverSaving}>
+              {isServerConfigured ? 'Save VPN Settings' : 'Create VPN'}
             </Button>
           }
         >
-          <dl className="grid grid-cols-1 gap-4 text-sm">
-            <div>
-              <dt className="text-gray-500 mb-1">Name</dt>
-              <dd className="text-gray-900">{server.description?.trim() || 'Not set'}</dd>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              id="server-description"
+              label="Name"
+              className="col-span-2"
+              placeholder="Remote Access"
+              value={serverForm.description}
+              onChange={(e) => setServerForm({ ...serverForm, description: e.target.value })}
+            />
+            <FormField
+              id="server-interface"
+              label="Interface"
+              required
+              value={serverForm.interface}
+              onChange={(e) => setServerForm({ ...serverForm, interface: e.target.value })}
+            />
+            <FormField
+              id="server-port"
+              label="Listen Port"
+              type="number"
+              min={1}
+              max={65535}
+              value={String(serverForm.listenPort)}
+              onChange={(e) =>
+                setServerForm({ ...serverForm, listenPort: Number(e.target.value) || 51820 })
+              }
+            />
+            <AddressPrefixField
+              id="server-address"
+              label="Server Tunnel Address"
+              className="col-span-2"
+              addressPlaceholder="10.8.0.1"
+              addressValue={primaryTunnelAddress.ip}
+              prefixValue={primaryTunnelAddress.prefix}
+              prefixOptions={[...Array(33).keys()]}
+              onAddressChange={(value) => updatePrimaryTunnelAddress(value, undefined)}
+              onPrefixChange={(value) => updatePrimaryTunnelAddress(undefined, value)}
+            />
+            <FormField
+              id="server-public-key"
+              label="Public Key"
+              className="col-span-2"
+              placeholder="Generate or paste a base64 public key"
+              value={serverForm.publicKey}
+              onChange={(e) => setServerForm({ ...serverForm, publicKey: e.target.value })}
+            />
+            <FormField
+              id="server-private-key"
+              label="Private Key"
+              type={showPrivateKey ? 'text' : 'password'}
+              autoComplete="new-password"
+              className="col-span-2"
+              placeholder="Generate a keypair to populate this"
+              value={serverForm.privateKey}
+              onChange={(e) => setServerForm({ ...serverForm, privateKey: e.target.value })}
+            />
+            <div className="col-span-2 flex items-center justify-end">
+              <button
+                type="button"
+                className="text-xs text-gray-600 hover:text-gray-900"
+                onClick={() => setShowPrivateKey((v) => !v)}
+              >
+                {showPrivateKey ? 'Hide private key' : 'Show private key'}
+              </button>
             </div>
-            <div>
-              <dt className="text-gray-500 mb-1">Interface</dt>
-              <dd className="font-mono text-gray-900">{server.interface}</dd>
+            <div className="col-span-2 flex items-center gap-3">
+              <input
+                id="server-enabled"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                checked={serverForm.enabled}
+                onChange={(e) => setServerForm({ ...serverForm, enabled: e.target.checked })}
+              />
+              <label htmlFor="server-enabled" className="text-sm font-medium text-gray-700">
+                Enabled
+              </label>
             </div>
-            <div>
-              <dt className="text-gray-500 mb-1">Listen Port</dt>
-              <dd className="font-mono text-gray-900">{listenPortLabel}</dd>
+            <div className="col-span-2 flex justify-between items-center gap-3">
+              <Button variant="secondary" size="sm" onClick={handleGenerateServerKeys}>
+                Generate Keys
+              </Button>
+              <p className="text-xs text-gray-500">
+                Generate a new keypair before saving settings.
+              </p>
             </div>
-            <div>
-              <dt className="text-gray-500 mb-1">Tunnel Addresses</dt>
-              <dd className="font-mono text-gray-900">
-                {server.addresses.length ? server.addresses.join(', ') : 'None configured'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 mb-1">Public Key</dt>
-              <dd className="font-mono text-xs text-gray-900 break-all p-2 bg-gray-50 rounded border border-gray-200">
-                {server.publicKey || 'Not available'}
-              </dd>
-            </div>
-          </dl>
+          </div>
         </Card>
 
         <Card
           title={`Peers (${peers.length})`}
           subtitle="Manage VPN peers and view their status"
           actions={
-            <Button size="sm" onClick={() => setPeerModalOpen(true)}>
+            <Button
+              size="sm"
+              onClick={() => setPeerModalOpen(true)}
+              disabled={!isServerConfigured}
+            >
               Add Peer
             </Button>
           }

@@ -41,6 +41,7 @@ import Button from '../../components/Button';
 import Table, { Column } from '../../components/Table';
 import Modal from '../../components/Modal';
 import FormField from '../../components/FormField';
+import AddressPrefixField from '../../components/AddressPrefixField';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
 
@@ -151,6 +152,27 @@ function ipv6InSubnet(address: string, cidr: string): boolean {
   return (ip & mask) === (networkIp & mask);
 }
 
+function splitCidr(value: string | undefined, fallbackPrefix: string, maxPrefix: number) {
+  const trimmed = (value ?? '').trim();
+  if (!trimmed) return { address: '', prefix: fallbackPrefix };
+
+  const [addressPart, prefixPart] = trimmed.split('/', 2);
+  const parsedPrefix = Number(prefixPart);
+  const hasValidPrefix =
+    Number.isInteger(parsedPrefix) && parsedPrefix >= 0 && parsedPrefix <= maxPrefix;
+
+  return {
+    address: (addressPart ?? '').trim(),
+    prefix: hasValidPrefix ? String(parsedPrefix) : fallbackPrefix,
+  };
+}
+
+function joinCidr(address: string, prefix: string, fallbackPrefix: string): string {
+  const cleanAddress = address.trim();
+  if (!cleanAddress) return '';
+  return `${cleanAddress}/${prefix || fallbackPrefix}`;
+}
+
 export default function DHCP() {
   const { formatDateTime } = useDisplayPreferences();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -192,6 +214,37 @@ export default function DHCP() {
   const [dnsInput, setDnsInput] = useState('');
   const [dns6Input, setDns6Input] = useState('');
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
+
+  const subnetParts = useMemo(() => splitCidr(configForm.subnet, '24', 32), [configForm.subnet]);
+  const subnet6Parts = useMemo(() => splitCidr(config6Form.subnet, '64', 128), [config6Form.subnet]);
+
+  const updateSubnetAddress = (address: string) => {
+    setConfigForm((current) => {
+      const parts = splitCidr(current.subnet, '24', 32);
+      return { ...current, subnet: joinCidr(address, parts.prefix, '24') };
+    });
+  };
+
+  const updateSubnetPrefix = (prefix: string) => {
+    setConfigForm((current) => {
+      const parts = splitCidr(current.subnet, '24', 32);
+      return { ...current, subnet: joinCidr(parts.address, prefix, '24') };
+    });
+  };
+
+  const updateSubnet6Address = (address: string) => {
+    setConfig6Form((current) => {
+      const parts = splitCidr(current.subnet, '64', 128);
+      return { ...current, subnet: joinCidr(address, parts.prefix, '64') };
+    });
+  };
+
+  const updateSubnet6Prefix = (prefix: string) => {
+    setConfig6Form((current) => {
+      const parts = splitCidr(current.subnet, '64', 128);
+      return { ...current, subnet: joinCidr(parts.address, prefix, '64') };
+    });
+  };
 
   const interfaceLabel = (iface: NetworkInterface): string =>
     formatInterfaceDisplayName(iface.description, iface.name);
@@ -796,28 +849,18 @@ export default function DHCP() {
                 </FormField>
               )}
 
-              <FormField
+              <AddressPrefixField
                 id="cfg-subnet"
                 label="Subnet (CIDR)"
                 required
-                placeholder="e.g. 192.168.1.0/24"
-                value={configForm.subnet ?? ''}
-                onChange={(e) => setConfigForm((f) => ({ ...f, subnet: e.target.value }))}
-              >
-                <select
-                  className="input"
-                  value={configForm.subnet?.split('/')[1] || ''}
-                  onChange={(e) => {
-                    const prefix = e.target.value;
-                    const base = configForm.subnet?.split('/')[0] || '192.168.1.0';
-                    setConfigForm((f) => ({ ...f, subnet: `${base}/${prefix}` }));
-                  }}
-                >
-                  {[...Array(33).keys()].map((prefix) => (
-                    <option key={prefix} value={prefix}>{`/${prefix}`}</option>
-                  ))}
-                </select>
-              </FormField>
+                className="col-span-2"
+                addressPlaceholder="e.g. 192.168.1.0"
+                addressValue={subnetParts.address}
+                prefixValue={subnetParts.prefix}
+                prefixOptions={[...Array(33).keys()]}
+                onAddressChange={updateSubnetAddress}
+                onPrefixChange={updateSubnetPrefix}
+              />
 
               <FormField
                 id="cfg-gw"
@@ -933,14 +976,17 @@ export default function DHCP() {
                 </FormField>
               )}
 
-              <FormField
+              <AddressPrefixField
                 id="cfg6-subnet"
                 label="Subnet (CIDR)"
                 required
                 className="col-span-2"
-                placeholder="e.g. fd00::/64"
-                value={config6Form.subnet ?? ''}
-                onChange={(e) => setConfig6Form((f) => ({ ...f, subnet: e.target.value }))}
+                addressPlaceholder="e.g. fd00::"
+                addressValue={subnet6Parts.address}
+                prefixValue={subnet6Parts.prefix}
+                prefixOptions={[...Array(129).keys()]}
+                onAddressChange={updateSubnet6Address}
+                onPrefixChange={updateSubnet6Prefix}
               />
 
               <FormField

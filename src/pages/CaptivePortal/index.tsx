@@ -488,17 +488,18 @@ export default function CaptivePortalPage() {
               }`}
             >
               <svg
-                className="h-4 w-4"
+                className="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.25}
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M12 4v5m0 8a4 4 0 100-8 4 4 0 000 8z"
+                  d="M12 5v14"
                 />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
               </svg>
             </button>
             <button
@@ -515,11 +516,11 @@ export default function CaptivePortalPage() {
             >
               {saving ? (
                 <svg
-                  className="h-4 w-4 animate-spin"
+                  className="h-5 w-5 animate-spin"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth={2}
+                  strokeWidth={2.25}
                 >
                   <circle
                     className="opacity-25"
@@ -529,22 +530,21 @@ export default function CaptivePortalPage() {
                     stroke="currentColor"
                     strokeWidth="4"
                   />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  <path className="opacity-75" d="M12 2a10 10 0 100 20" />
                 </svg>
               ) : (
                 <svg
-                  className="h-4 w-4"
+                  className="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                  strokeWidth={2}
+                  strokeWidth={2.25}
                 >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M4.93 4.93a10 10 0 0114.14 0L12 12"
+                    d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
                   />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 12V8h4" />
                 </svg>
               )}
             </button>
@@ -559,18 +559,17 @@ export default function CaptivePortalPage() {
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg
-                className="h-4 w-4"
+                className="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.25}
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M4.93 4.93a10 10 0 0114.14 0 10 10 0 010 14.14"
+                  d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
                 />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m0 12v4" />
               </svg>
             </button>
             <button
@@ -587,11 +586,11 @@ export default function CaptivePortalPage() {
             >
               {saving ? (
                 <svg
-                  className="h-4 w-4 animate-spin"
+                  className="h-5 w-5 animate-spin"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth={2}
+                  strokeWidth={2.25}
                 >
                   <circle
                     className="opacity-25"
@@ -601,20 +600,20 @@ export default function CaptivePortalPage() {
                     stroke="currentColor"
                     strokeWidth="4"
                   />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  <path className="opacity-75" d="M12 2a10 10 0 100 20" />
                 </svg>
               ) : (
                 <svg
-                  className="h-4 w-4"
+                  className="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                  strokeWidth={2}
+                  strokeWidth={2.25}
                 >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M5 5v14h14V5H5zm0 0l6 6m0-6v6"
+                    d="M4 20h4l10.5-10.5a1.5 1.5 0 00-4.5-4.5L4 15.5V20z"
                   />
                 </svg>
               )}

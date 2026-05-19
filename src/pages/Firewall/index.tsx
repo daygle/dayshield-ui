@@ -27,6 +27,7 @@ import Button from '../../components/Button';
 import Table, { Column } from '../../components/Table';
 import Modal from '../../components/Modal';
 import FormField from '../../components/FormField';
+import AddressPrefixField from '../../components/AddressPrefixField';
 import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
@@ -1571,34 +1572,22 @@ export default function Firewall() {
                         </option>
                       ))}
                     </FormField>
-                    <div className="col-span-2 grid gap-4 lg:grid-cols-[minmax(0,1fr)_10rem]">
-                      <FormField
-                        id="rule-src"
-                        label="Source (custom CIDR/IP/Alias)"
-                        value={sourceAddressInput}
-                        onChange={(e) => updateSourceAddress(e.target.value)}
-                      />
-                      <FormField
-                        id="rule-src-subnet"
-                        label="Subnet"
-                        as="select"
-                        value={isIpv4Address(sourceAddressInput) ? sourceSubnetInput : ''}
-                        onChange={(e) => updateSourceSubnet(e.target.value)}
-                        disabled={!isIpv4Address(sourceAddressInput)}
-                        hint={
-                          isIpv4Address(sourceAddressInput)
-                            ? 'Used for IPv4 addresses.'
-                            : 'Available after entering an IPv4 address.'
-                        }
-                      >
-                        <option value="">/32</option>
-                        {CIDR_PREFIX_OPTIONS.filter((prefix) => prefix !== '32').map((prefix) => (
-                          <option key={prefix} value={prefix}>
-                            /{prefix}
-                          </option>
-                        ))}
-                      </FormField>
-                    </div>
+                    <AddressPrefixField
+                      id="rule-src"
+                      label="Source (custom CIDR/IP/Alias)"
+                      className="col-span-2"
+                      addressValue={sourceAddressInput}
+                      prefixValue={isIpv4Address(sourceAddressInput) ? sourceSubnetInput : '32'}
+                      prefixOptions={CIDR_PREFIX_OPTIONS}
+                      onAddressChange={updateSourceAddress}
+                      onPrefixChange={updateSourceSubnet}
+                      prefixDisabled={!isIpv4Address(sourceAddressInput)}
+                      hint={
+                        isIpv4Address(sourceAddressInput)
+                          ? 'Used for IPv4 addresses.'
+                          : 'Available after entering an IPv4 address.'
+                      }
+                    />
                     <FormField
                       id="rule-src-port"
                       label="Source Port"
@@ -1625,34 +1614,24 @@ export default function Firewall() {
                         </option>
                       ))}
                     </FormField>
-                    <div className="col-span-2 grid gap-4 lg:grid-cols-[minmax(0,1fr)_10rem]">
-                      <FormField
-                        id="rule-dst"
-                        label="Destination (custom CIDR/IP/Alias)"
-                        value={destinationAddressInput}
-                        onChange={(e) => updateDestinationAddress(e.target.value)}
-                      />
-                      <FormField
-                        id="rule-dst-subnet"
-                        label="Subnet"
-                        as="select"
-                        value={isIpv4Address(destinationAddressInput) ? destinationSubnetInput : ''}
-                        onChange={(e) => updateDestinationSubnet(e.target.value)}
-                        disabled={!isIpv4Address(destinationAddressInput)}
-                        hint={
-                          isIpv4Address(destinationAddressInput)
-                            ? 'Used for IPv4 addresses.'
-                            : 'Available after entering an IPv4 address.'
-                        }
-                      >
-                        <option value="">/32</option>
-                        {CIDR_PREFIX_OPTIONS.filter((prefix) => prefix !== '32').map((prefix) => (
-                          <option key={prefix} value={prefix}>
-                            /{prefix}
-                          </option>
-                        ))}
-                      </FormField>
-                    </div>
+                    <AddressPrefixField
+                      id="rule-dst"
+                      label="Destination (custom CIDR/IP/Alias)"
+                      className="col-span-2"
+                      addressValue={destinationAddressInput}
+                      prefixValue={
+                        isIpv4Address(destinationAddressInput) ? destinationSubnetInput : '32'
+                      }
+                      prefixOptions={CIDR_PREFIX_OPTIONS}
+                      onAddressChange={updateDestinationAddress}
+                      onPrefixChange={updateDestinationSubnet}
+                      prefixDisabled={!isIpv4Address(destinationAddressInput)}
+                      hint={
+                        isIpv4Address(destinationAddressInput)
+                          ? 'Used for IPv4 addresses.'
+                          : 'Available after entering an IPv4 address.'
+                      }
+                    />
                     <p className="col-span-2 -mt-1 text-xs text-gray-500">
                       Aliases can be used in presets or typed directly; IPv4 / IPv6 limits only
                       apply to literal addresses and CIDRs.

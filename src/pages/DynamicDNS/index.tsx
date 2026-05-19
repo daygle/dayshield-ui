@@ -209,8 +209,8 @@ export default function DynamicDnsPage() {
   return (
     <div className="space-y-6">
       <Card
-        title="Dynamic DNS"
-        subtitle="Update DNS records automatically when your interface IP changes."
+        title="Dynamic DNS Overview"
+        subtitle="Service status, coverage, and latest update health."
         actions={
           <div className="flex items-center gap-2">
             <button
@@ -222,29 +222,13 @@ export default function DynamicDnsPage() {
               aria-label="Update DNS now"
             >
               {runningUpdate ? (
-                <svg
-                  className="animate-spin h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
+                <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25}>
                   <circle cx="12" cy="12" r="10" className="opacity-25" />
-                  <path d="M4 12a8 8 0 018-8v8H4" className="opacity-75" />
+                  <path className="opacity-75" d="M12 2a10 10 0 100 20" />
                 </svg>
               ) : (
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M4 4v6h6M20 20v-6h-6M5.6 6.4a9 9 0 0112.8 12.8M18.4 17.6a9 9 0 01-12.8-12.8"
-                  />
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.25}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4" />
                 </svg>
               )}
             </button>
@@ -261,23 +245,57 @@ export default function DynamicDnsPage() {
               title={config.enabled ? 'Disable Dynamic DNS' : 'Enable Dynamic DNS'}
               aria-label={config.enabled ? 'Disable Dynamic DNS' : 'Enable Dynamic DNS'}
             >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                />
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.25}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
               </svg>
             </button>
           </div>
         }
       >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4 text-sm">
+          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
+            <div className="text-gray-500">Service</div>
+            <div className={`mt-1 font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-500'}`}>
+              {config.enabled ? 'Enabled' : 'Disabled'}
+            </div>
+          </div>
+          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
+            <div className="text-gray-500">Entries</div>
+            <div className="mt-1 font-semibold text-gray-900">{config.entries.length}</div>
+          </div>
+          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
+            <div className="text-gray-500">Enabled Entries</div>
+            <div className="mt-1 font-semibold text-gray-900">{enabledCount}</div>
+          </div>
+          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
+            <div className="text-gray-500">Configured Interfaces</div>
+            <div className="mt-1 font-semibold text-gray-900">{configuredInterfaces.size}</div>
+          </div>
+          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3 md:col-span-2">
+            <div className="text-gray-500">Check Interval</div>
+            <div className="mt-1 font-semibold text-gray-900">{config.checkIntervalSeconds}s</div>
+          </div>
+          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3 md:col-span-2">
+            <div className="text-gray-500">Last Run</div>
+            <div className="mt-1 font-semibold text-gray-900">
+              {status?.lastRunAt ? new Date(status.lastRunAt).toLocaleString() : 'Never'}
+            </div>
+          </div>
+          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3 md:col-span-2">
+            <div className="text-gray-500">Latest Update</div>
+            <div className="mt-1 font-semibold text-gray-900">
+              {statusCount > 0 ? `${successfulUpdates} successful` : 'No results yet'}
+            </div>
+          </div>
+          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3 md:col-span-2">
+            <div className="text-gray-500">Failures</div>
+            <div className="mt-1 font-semibold text-gray-900">{status ? failedUpdates : '—'}</div>
+          </div>
+        </div>
+      </Card>
+
+      <Card title="Settings" subtitle="Control service-wide timing and update behavior.">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             label="Check Interval (seconds)"
@@ -295,6 +313,18 @@ export default function DynamicDnsPage() {
             }
             hint="Minimum 30 seconds."
           />
+          <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
+            <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Service State</div>
+            <div className={`mt-1 text-sm font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-500'}`}>
+              {config.enabled ? 'Enabled' : 'Disabled'}
+            </div>
+            <p className="mt-2 text-xs text-gray-500">When enabled, Dynamic DNS updates will run for all active entries.</p>
+          </div>
+          <div className="md:col-span-2 flex justify-end">
+            <Button disabled={busy} loading={saving} onClick={handleSave}>
+              Save Changes
+            </Button>
+          </div>
         </div>
       </Card>
 
@@ -310,14 +340,9 @@ export default function DynamicDnsPage() {
             title="Add Dynamic DNS entry"
             aria-label="Add Dynamic DNS entry"
           >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.25}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
             </svg>
           </button>
         }
@@ -331,7 +356,7 @@ export default function DynamicDnsPage() {
             {config.entries.map((entry, idx) => {
               const error = entryErrors.get(entry.id);
               return (
-                <div key={entry.id} className="rounded-lg border border-gray-200 p-4 space-y-3">
+                <div key={entry.id} className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold text-gray-900">Entry {idx + 1}</h4>
                     <div className="flex items-center gap-2">
@@ -352,12 +377,8 @@ export default function DynamicDnsPage() {
                         title="Delete entry"
                         aria-label="Delete entry"
                       >
-                        <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                          <path
-                            fillRule="evenodd"
-                            d="M8.5 2a1 1 0 00-.894.553L7 4H4a1 1 0 000 2h.293l.853 10.243A2 2 0 007.14 18h5.72a2 2 0 001.994-1.757L15.707 6H16a1 1 0 100-2h-3l-.606-1.447A1 1 0 0011.5 2h-3zm1 4a1 1 0 012 0v8a1 1 0 11-2 0V6z"
-                            clipRule="evenodd"
-                          />
+                        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M9 7V5h6v2m-7 0 1 12h6l1-12M10 11v5m4-5v5" />
                         </svg>
                       </button>
                     </div>
@@ -421,9 +442,7 @@ export default function DynamicDnsPage() {
                       </FormField>
                     ) : (
                       <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                          Address Family
-                        </p>
+                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Address Family</p>
                         <p className="mt-1 text-sm text-gray-700">IPv4 only</p>
                       </div>
                     )}
@@ -453,11 +472,7 @@ export default function DynamicDnsPage() {
                       type="password"
                       value={entry.password}
                       disabled={busy}
-                      placeholder={
-                        entry.passwordConfigured
-                          ? 'Stored value set. Enter a new value to replace it.'
-                          : ''
-                      }
+                      placeholder={entry.passwordConfigured ? 'Stored value set. Enter a new value to replace it.' : ''}
                       onChange={(e) => upsertEntry(entry.id, { password: e.target.value })}
                     />
 
@@ -475,9 +490,7 @@ export default function DynamicDnsPage() {
                   </div>
 
                   {error && (
-                    <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                      {error}
-                    </p>
+                    <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
                   )}
                 </div>
               );
@@ -485,81 +498,6 @@ export default function DynamicDnsPage() {
           </div>
         )}
       </Card>
-
-      <Card
-        title="Update Status"
-        subtitle="Most recent Dynamic DNS update results."
-        actions={
-          <button
-            type="button"
-            disabled={busy}
-            onClick={loadAll}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Refresh update status"
-            aria-label="Refresh update status"
-          >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4 4v6h6M20 20v-6h-6M5.6 6.4a9 9 0 0112.8 12.8M18.4 17.6a9 9 0 01-12.8-12.8"
-              />
-            </svg>
-          </button>
-        }
-      >
-        <div className="space-y-3">
-          <div className="text-xs text-gray-500">
-            Last run: {status?.lastRunAt ? new Date(status.lastRunAt).toLocaleString() : 'Never'}
-          </div>
-          {!status || status.entries.length === 0 ? (
-            <p className="text-sm text-gray-500">No update results yet.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600">Hostname</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600">Interface</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600">IP</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600">Result</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600">Message</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {status.entries.map((entry) => (
-                    <tr key={`${entry.id}-${entry.updatedAt}`}>
-                      <td className="px-3 py-2 text-gray-900">{entry.hostname}</td>
-                      <td className="px-3 py-2 text-gray-700">{entry.interface}</td>
-                      <td className="px-3 py-2 text-gray-700">{entry.ip ?? '-'}</td>
-                      <td className="px-3 py-2">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${entry.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
-                        >
-                          {entry.success ? 'Success' : 'Failed'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-gray-700">{entry.message}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      <div className="flex justify-end">
-        <Button disabled={busy} loading={saving} onClick={handleSave}>
-          Save
-        </Button>
-      </div>
     </div>
   );
 }
