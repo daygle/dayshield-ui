@@ -177,7 +177,7 @@ function HoneypotsContent() {
       errors.push('Port must be between 1 and 65535.');
     }
     if (!Number.isFinite(listener.riskScore) || listener.riskScore < 0 || listener.riskScore > 1) {
-      errors.push('Risk score must be between 0 and 1.');
+      errors.push('Risk score must be between 0 and 100.');
     }
     if ((listener.banner ?? '').length > 1024) {
       errors.push('Banner must be at most 1024 characters.');
@@ -335,12 +335,26 @@ function HoneypotsContent() {
       header: '',
       render: (row) => (
         <div className="flex justify-end gap-2">
-          <Button size="sm" variant="secondary" onClick={() => openEditListener(row)}>
-            Edit
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => removeListener(String(row.id))}>
-            Remove
-          </Button>
+          <button
+            onClick={() => openEditListener(row)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            title="Edit listener"
+            aria-label="Edit listener"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => removeListener(String(row.id))}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-red-50 text-gray-500 hover:text-red-600"
+            title="Remove listener"
+            aria-label="Remove listener"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
         </div>
       ),
       className: 'text-right',
@@ -491,17 +505,17 @@ function HoneypotsContent() {
           />
           <FormField
             id="honeypot-risk-score"
-            label="AI Risk Score"
+            label="AI Risk Score (%)"
             required
             type="number"
             min={0}
-            max={1}
-            step={0.01}
-            value={listenerForm.riskScore}
+            max={100}
+            step={1}
+            value={Math.round(listenerForm.riskScore * 100)}
             onChange={(event) =>
               setListenerForm((current) => ({
                 ...current,
-                riskScore: Number(event.target.value),
+                riskScore: Number(event.target.value) / 100,
               }))
             }
           />
@@ -586,9 +600,16 @@ function HoneypotsContent() {
       <Card
         title="Listeners"
         actions={
-          <Button size="sm" variant="secondary" onClick={() => openAddListener()}>
-            Add Listener
-          </Button>
+          <button
+            onClick={() => openAddListener()}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            title="Add listener"
+            aria-label="Add listener"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
         }
       >
         <Table

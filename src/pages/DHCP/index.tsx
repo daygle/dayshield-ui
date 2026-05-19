@@ -1150,7 +1150,7 @@ export default function DHCP() {
           <p className="text-xs text-gray-500">
             Provide a <strong>DUID</strong> (colon-separated hex, e.g.{' '}
             <span className="font-mono">00:03:00:01:aa:bb:cc:dd:ee:ff</span>) or a{' '}
-            <strong>MAC address</strong> — it will be auto-converted to a DUID-LL.
+            <strong>MAC address</strong> - it will be auto-converted to a DUID-LL.
           </p>
           <FormField
             id="l6-duid"

@@ -400,7 +400,7 @@ function inferUpdateStatusLabel(validRepo: boolean, lastError?: string): string 
   if (validRepo) return 'Up to Date';
   const err = (lastError ?? '').toLowerCase();
   // A component absent from the current manifest means no release was published for
-  // it yet — that is not an error; it simply means this component is already current.
+  // it yet - that is not an error; it simply means this component is already current.
   if (err.includes('missing from registry manifest') || err.includes('missing from manifest'))
     return 'Not in current release';
   if (err.includes('http 404')) return 'Update not available';
@@ -417,7 +417,7 @@ function simplifyErrorMessage(error: string): string {
     .replace(/^UPDATE ERROR:\s*/i, '')
     .replace(/^failed to query registry:\s*/i, '');
 
-  // A component not present in the manifest is not an error — it means no new release
+  // A component not present in the manifest is not an error - it means no new release
   // was published for this component in the latest manifest check.
   if (/missing from (registry )?manifest/i.test(simplified)) {
     return 'No new release for this component in the current manifest.';
@@ -1248,49 +1248,6 @@ export default function System() {
         </nav>
       </div>
 
-      {activeSection === 'overview' && status && (
-        <Card title="System Status">
-          <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
-            <div>
-              <dt className="text-gray-500">Hostname</dt>
-              <dd className="font-medium text-gray-800">{status.hostname}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Version</dt>
-              <dd className="font-medium text-gray-800">{status.version}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Uptime</dt>
-              <dd className="font-medium text-gray-800">{formatUptime(status.uptime)}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">CPU Usage</dt>
-              <dd
-                className={`font-medium ${status.cpuUsage > 80 ? 'text-red-600' : 'text-gray-800'}`}
-              >
-                {status.cpuUsage}%
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Last Updated</dt>
-              <dd className="font-medium text-gray-800">{formatDateTime(status.lastUpdated)}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Active Connections</dt>
-              <dd className="font-medium text-gray-800">{status.activeConnections}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Interfaces</dt>
-              <dd className="font-medium text-gray-800">{status.interfaces}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Firewall Rules</dt>
-              <dd className="font-medium text-gray-800">{status.firewallRules}</dd>
-            </div>
-          </dl>
-        </Card>
-      )}
-
       {activeSection === 'overview' && config && (
         <Card
           title="System Configuration"
@@ -1421,7 +1378,7 @@ export default function System() {
       {activeSection === 'updates' && updates && (
         <Card
           title="Software Updates"
-          subtitle="Core, Web UI, and Root Filesystem are versioned independently — each component resolves its latest release through the update registry manifest"
+          subtitle="Core, Web UI, and Root Filesystem are versioned independently - each component resolves its latest release through the update registry manifest"
           actions={
             <Button
               size="sm"

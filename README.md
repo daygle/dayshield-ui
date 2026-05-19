@@ -61,7 +61,7 @@ field.
 
 The on-device updater fetches the artifact URL from the central update manifest. The
 manifest maps each component (`core`, `ui`, `rootfs`) to its own latest release
-independently — updating one component does not require updating the others.
+independently - updating one component does not require updating the others.
 
 ## Notes
 
@@ -69,7 +69,7 @@ independently — updating one component does not require updating the others.
 - Suricata managed rulesets are configured from **Security → Suricata → Rulesets**
   (install, update checks, update, enable/disable, and removal actions when supported by backend API).
 - There is no supported development server or preview workflow in this package.
-- Each component — Core, Web UI, and Root Filesystem — carries its own independent
+- Each component - Core, Web UI, and Root Filesystem - carries its own independent
   version/tag. The UI artifact is published as `ui-vX.Y.Z.tar.zst` and its version
   need not match the core or rootfs release tags.
 - The update registry resolves the latest artifact version for each component

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g. v1.2.3) — used as the artifact version label when triggered manually'
+        description: 'Release tag (e.g. v1.2.3) - used as the artifact version label when triggered manually'
         required: true
         type: string
 

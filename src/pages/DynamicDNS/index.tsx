@@ -315,7 +315,7 @@ export default function DynamicDnsPage() {
           </div>
           <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3 md:col-span-2">
             <div className="text-gray-500">Failures</div>
-            <div className="mt-1 font-semibold text-gray-900">{status ? failedUpdates : '—'}</div>
+            <div className="mt-1 font-semibold text-gray-900">{status ? failedUpdates : '-'}</div>
           </div>
         </div>
       </Card>

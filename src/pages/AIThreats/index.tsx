@@ -179,7 +179,7 @@ function AIThreatsContent() {
           : '',
       risk_score_block_threshold:
         !Number.isFinite(threshold) || threshold < 0 || threshold > 1
-          ? 'Risk score threshold must be between 0.00 and 1.00.'
+          ? 'Risk score threshold must be between 0 and 100.'
           : '',
       escalation_window_seconds:
         !Number.isFinite(windowSeconds) || windowSeconds <= 0
@@ -749,12 +749,12 @@ function AIThreatsContent() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FormField
                 id="ai-risk-threshold"
-                label="Risk Score Block Threshold"
+                label="Risk Score Block Threshold (%)"
                 type="number"
                 min={0}
-                max={1}
-                step={0.01}
-                value={aiForm.risk_score_block_threshold}
+                max={100}
+                step={1}
+                value={Math.round(aiForm.risk_score_block_threshold * 100)}
                 hint={`Current: ${policyPreview.threshold}. Lower blocks sooner; higher waits for stronger confidence.`}
                 error={aiValidation.risk_score_block_threshold || undefined}
                 onChange={(e) => {
@@ -762,7 +762,7 @@ function AIThreatsContent() {
                   setAiForm((prev) => ({
                     ...prev,
                     risk_score_block_threshold: Number.isFinite(parsed)
-                      ? parsed
+                      ? parsed / 100
                       : prev.risk_score_block_threshold,
                   }));
                 }}

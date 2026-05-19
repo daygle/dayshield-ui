@@ -727,7 +727,7 @@ export interface ComponentUpdateStatus {
   registryVersion?: string;
   /**
    * Whether this component was found in the latest registry manifest.
-   * A component absent from the current manifest is not an error — it
+   * A component absent from the current manifest is not an error - it
    * simply means no new release has been published for it yet.
    */
   presentInManifest?: boolean;

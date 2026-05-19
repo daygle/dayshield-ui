@@ -180,85 +180,79 @@ export default function NotificationsPage() {
         )}
       </Card>
 
-      {/* SMTP Settings */}
+      {/* Email Configuration */}
       <Card
-        title="SMTP Settings"
-        subtitle="Configure the outbound mail server used to send notifications."
+        title="Email Configuration"
+        subtitle="Configure the outbound mail server, recipients, and test your setup."
       >
         {loading ? (
           <p className="text-sm text-gray-400">Loading…</p>
         ) : (
-          <SmtpForm
-            smtp={config.smtp}
-            errors={smtpErrors}
-            disabled={busy || !config.enabled}
-            onChange={(smtp) => setConfig((c) => ({ ...c, smtp }))}
-          />
-        )}
-      </Card>
-
-      {/* Recipients */}
-      <Card title="Recipients" subtitle="Email addresses that will receive alert notifications.">
-        {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
-        ) : (
-          <RecipientList
-            recipients={config.recipients}
-            disabled={busy || !config.enabled}
-            onChange={(recipients) => setConfig((c) => ({ ...c, recipients }))}
-          />
-        )}
-      </Card>
-
-      {/* Categories */}
-      <Card
-        title="Alert Categories"
-        subtitle="Choose which event categories trigger a notification."
-      >
-        {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
-        ) : (
-          <CategorySelector
-            selected={config.categories as NotifyCategory[]}
-            disabled={busy || !config.enabled}
-            onChange={(categories) => setConfig((c) => ({ ...c, categories }))}
-          />
-        )}
-      </Card>
-
-      {/* Rate Limit & Digest */}
-      <Card title="Delivery Options">
-        {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
-        ) : (
-          <div className="space-y-6">
-            <RateLimitInput
-              minutes={config.rateLimitMinutes}
-              disabled={busy || !config.enabled}
-              onChange={(rateLimitMinutes) => setConfig((c) => ({ ...c, rateLimitMinutes }))}
-            />
-            <DigestToggle
-              enabled={config.digestMode}
-              disabled={busy || !config.enabled}
-              onChange={(digestMode) => setConfig((c) => ({ ...c, digestMode }))}
-            />
+          <div className="space-y-8">
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">SMTP Settings</h3>
+              <SmtpForm
+                smtp={config.smtp}
+                errors={smtpErrors}
+                disabled={busy || !config.enabled}
+                onChange={(smtp) => setConfig((c) => ({ ...c, smtp }))}
+              />
+            </div>
+            <div className="border-t border-gray-100 pt-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Recipients</h3>
+              <p className="text-sm text-gray-500 mb-3">Email addresses that will receive alert notifications.</p>
+              <RecipientList
+                recipients={config.recipients}
+                disabled={busy || !config.enabled}
+                onChange={(recipients) => setConfig((c) => ({ ...c, recipients }))}
+              />
+            </div>
+            <div className="border-t border-gray-100 pt-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Test Email</h3>
+              <p className="text-sm text-gray-500 mb-3">Send a test message to verify your SMTP configuration is working.</p>
+              <TestEmailButton
+                defaultRecipient={config.recipients[0] ?? ''}
+                disabled={busy || !config.enabled}
+                onResult={(success, message) => addToast(success ? 'success' : 'error', message)}
+              />
+            </div>
           </div>
         )}
       </Card>
 
-      {/* Test Email */}
+      {/* Alert Settings */}
       <Card
-        title="Test Email"
-        subtitle="Send a test message to verify your SMTP configuration is working."
+        title="Alert Settings"
+        subtitle="Choose which events trigger notifications and how they are delivered."
       >
         {loading ? (
           <p className="text-sm text-gray-400">Loading…</p>
         ) : (
-          <TestEmailButton
-            defaultRecipient={config.recipients[0] ?? ''}
-            disabled={busy || !config.enabled}
-            onResult={(success, message) => addToast(success ? 'success' : 'error', message)}
-          />
+          <div className="space-y-8">
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Alert Categories</h3>
+              <CategorySelector
+                selected={config.categories as NotifyCategory[]}
+                disabled={busy || !config.enabled}
+                onChange={(categories) => setConfig((c) => ({ ...c, categories }))}
+              />
+            </div>
+            <div className="border-t border-gray-100 pt-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Delivery Options</h3>
+              <div className="space-y-6">
+                <RateLimitInput
+                  minutes={config.rateLimitMinutes}
+                  disabled={busy || !config.enabled}
+                  onChange={(rateLimitMinutes) => setConfig((c) => ({ ...c, rateLimitMinutes }))}
+                />
+                <DigestToggle
+                  enabled={config.digestMode}
+                  disabled={busy || !config.enabled}
+                  onChange={(digestMode) => setConfig((c) => ({ ...c, digestMode }))}
+                />
+              </div>
+            </div>
+          </div>
         )}
       </Card>
 
