@@ -2,12 +2,14 @@ import { useState } from 'react';
 import Suricata from '../Suricata';
 import CrowdSec from '../CrowdSec';
 import AIThreats from '../AIThreats';
+import Honeypots from '../Honeypots';
 
-type Tab = 'suricata' | 'crowdsec' | 'ai';
+type Tab = 'suricata' | 'crowdsec' | 'honeypots' | 'ai';
 
 const tabs: Array<{ id: Tab; label: string }> = [
   { id: 'suricata', label: 'Suricata' },
   { id: 'crowdsec', label: 'CrowdSec' },
+  { id: 'honeypots', label: 'Honeypots' },
   { id: 'ai', label: 'AI Threat Engine' },
 ];
 
@@ -42,6 +44,7 @@ export default function Security() {
 
       {activeTab === 'suricata' && <Suricata />}
       {activeTab === 'crowdsec' && <CrowdSec />}
+      {activeTab === 'honeypots' && <Honeypots />}
       {activeTab === 'ai' && <AIThreats />}
     </div>
   );

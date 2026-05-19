@@ -439,6 +439,70 @@ export interface CrowdSecAlert {
   decisions: number;
 }
 
+// -- Honeypots ----------------------------------------------------------------
+
+export type HoneypotType =
+  | 'ssh'
+  | 'telnet'
+  | 'http'
+  | 'ftp'
+  | 'smtp'
+  | 'mysql'
+  | 'rdp'
+  | 'generic_tcp';
+
+export interface HoneypotListenerConfig {
+  id: string;
+  name: string;
+  enabled: boolean;
+  honeypotType: HoneypotType;
+  bindAddress: string;
+  port: number;
+  riskScore: number;
+  banner?: string | null;
+}
+
+export interface HoneypotConfig {
+  enabled: boolean;
+  listeners: HoneypotListenerConfig[];
+}
+
+export interface HoneypotEvent {
+  id: string;
+  timestamp: number;
+  listener_id: string;
+  listener_name: string;
+  honeypot_type: HoneypotType;
+  src_ip: string;
+  src_port: number;
+  dst_ip: string;
+  dst_port: number;
+  protocol: string;
+  bytes_received: number;
+  payload_preview?: string | null;
+  user_agent?: string | null;
+  risk_score: number;
+  ai_threat_event_id?: string | null;
+}
+
+export interface HoneypotSourceIp {
+  ip: string;
+  last_seen: number;
+  event_count: number;
+  last_listener_id: string;
+  last_listener_name: string;
+  last_honeypot_type: HoneypotType;
+  last_ai_threat_event_id?: string | null;
+}
+
+export interface HoneypotRecommendation {
+  honeypotType: HoneypotType;
+  name: string;
+  defaultPort: number;
+  description: string;
+  expectedSignals: string[];
+}
+
 // ── AI Threat Engine ──────────────────────────────────────────────────────────
 
 export interface ThreatEvent {
@@ -549,6 +613,8 @@ export interface SecurityStatus {
   crowdsec_active_decisions: number;
   firewall_rule_count: number;
   firewall_state_count: number;
+  honeypot_events_last_24h?: number;
+  honeypot_unique_ips?: number;
 }
 
 export interface AcmeStatus {

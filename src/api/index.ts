@@ -14,6 +14,7 @@ export * from './dhcp';
 export * from './wireguard';
 export * from './suricata';
 export * from './crowdsec';
+export * from './honeypots';
 export * from './ai';
 export * from './acme';
 export * from './system';
