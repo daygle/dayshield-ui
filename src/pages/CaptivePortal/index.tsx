@@ -489,17 +489,14 @@ export default function CaptivePortalPage() {
             >
               <svg
                 className="h-5 w-5"
+                xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
                 strokeWidth={2.25}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 5v14"
-                />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v8.5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 5.5a7 7 0 109 0" />
               </svg>
             </button>
             <button
@@ -517,6 +514,7 @@ export default function CaptivePortalPage() {
               {saving ? (
                 <svg
                   className="h-5 w-5 animate-spin"
+                  xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -535,6 +533,7 @@ export default function CaptivePortalPage() {
               ) : (
                 <svg
                   className="h-5 w-5"
+                  xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -560,6 +559,7 @@ export default function CaptivePortalPage() {
             >
               <svg
                 className="h-5 w-5"
+                xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -587,6 +587,7 @@ export default function CaptivePortalPage() {
               {saving ? (
                 <svg
                   className="h-5 w-5 animate-spin"
+                  xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -605,6 +606,7 @@ export default function CaptivePortalPage() {
               ) : (
                 <svg
                   className="h-5 w-5"
+                  xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"

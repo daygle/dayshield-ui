@@ -529,14 +529,16 @@ function SuricataContent() {
         >
           <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
             <div>
-                  className="h-5 w-5"
+              <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                Monitoring Status
+              </dt>
               <dd
                 className={`mt-1 font-semibold ${interfaceConfig.monitored ? 'text-green-600' : 'text-gray-400'}`}
               >
-                  strokeWidth={2.25}
+                {interfaceConfig.monitored ? 'Enabled' : 'Disabled'}
               </dd>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
+            </div>
+            <div>
               <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
                 IP Address
               </dt>

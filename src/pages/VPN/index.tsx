@@ -339,6 +339,7 @@ export default function VPN() {
             >
               <svg
                 className="h-5 w-5"
+                xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -365,17 +366,14 @@ export default function VPN() {
             >
               <svg
                 className="h-5 w-5"
+                xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
                 strokeWidth={2.25}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16" />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5.636 18.364a9 9 0 1112.728-12.728"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v8.5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 5.5a7 7 0 109 0" />
               </svg>
             </button>
           </div>
@@ -413,20 +411,55 @@ export default function VPN() {
         </dl>
       </Card>
 
-      {!isServerConfigured && (
-        <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-          No VPN interface is configured yet. Enter settings below and click Save VPN Settings.
-        </div>
-      )}
-
       <div className="grid gap-4 xl:grid-cols-2">
         <Card
           title="VPN Settings"
           subtitle="Configure WireGuard interface, tunnel, keys, and service state"
           actions={
-            <Button size="sm" onClick={handleSaveServer} loading={serverSaving}>
-              {isServerConfigured ? 'Save VPN Settings' : 'Create VPN'}
-            </Button>
+            <button
+              type="button"
+              onClick={handleSaveServer}
+              disabled={serverSaving}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-600 bg-blue-600 text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              title={isServerConfigured ? 'Save VPN Settings' : 'Create VPN'}
+              aria-label={isServerConfigured ? 'Save VPN Settings' : 'Create VPN'}
+            >
+              {serverSaving ? (
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+                  <path fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              ) : isServerConfigured ? (
+                <svg
+                  className="h-4 w-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.25}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 3.75H6a2.25 2.25 0 00-2.25 2.25v12A2.25 2.25 0 006 20.25h12A2.25 2.25 0 0020.25 18V7.5L16.5 3.75z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3.75V9h7.5V3.75" />
+                </svg>
+              ) : (
+                <svg
+                  className="h-4 w-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.25}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 5.25v13.5M5.25 12h13.5" />
+                </svg>
+              )}
+            </button>
           }
         >
           <div className="grid grid-cols-2 gap-4">
@@ -521,13 +554,25 @@ export default function VPN() {
           title={`Peers (${peers.length})`}
           subtitle="Manage VPN peers and view their status"
           actions={
-            <Button
-              size="sm"
+            <button
+              type="button"
               onClick={() => setPeerModalOpen(true)}
               disabled={!isServerConfigured}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-600 bg-blue-600 text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Create Peer"
+              aria-label="Create Peer"
             >
-              Add Peer
-            </Button>
+              <svg
+                className="h-4 w-4"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.25}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 5.25v13.5M5.25 12h13.5" />
+              </svg>
+            </button>
           }
         >
           <div className="grid grid-cols-1 gap-4">

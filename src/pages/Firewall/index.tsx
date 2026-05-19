@@ -1575,7 +1575,6 @@ export default function Firewall() {
                     <AddressPrefixField
                       id="rule-src"
                       label="Source (custom CIDR/IP/Alias)"
-                      className="col-span-2"
                       addressValue={sourceAddressInput}
                       prefixValue={isIpv4Address(sourceAddressInput) ? sourceSubnetInput : '32'}
                       prefixOptions={CIDR_PREFIX_OPTIONS}
@@ -1617,7 +1616,6 @@ export default function Firewall() {
                     <AddressPrefixField
                       id="rule-dst"
                       label="Destination (custom CIDR/IP/Alias)"
-                      className="col-span-2"
                       addressValue={destinationAddressInput}
                       prefixValue={
                         isIpv4Address(destinationAddressInput) ? destinationSubnetInput : '32'

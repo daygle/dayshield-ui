@@ -243,12 +243,24 @@ function CloudflaredPageContent() {
             >
               <svg
                 className="h-4 w-4"
+                xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
                 strokeWidth={2}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                {config.enabled ? (
+                  <>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v8.5" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 5.5a7 7 0 109 0" />
+                  </>
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M8.25 6.75v10.5a.75.75 0 001.137.643l8.25-5.25a.75.75 0 000-1.286l-8.25-5.25a.75.75 0 00-1.137.643z"
+                  />
+                )}
               </svg>
             </button>
             <button
@@ -326,13 +338,18 @@ function CloudflaredPageContent() {
               ) : (
                 <svg
                   className="h-5 w-5"
+                  xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                   strokeWidth={2.25}
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M16.5 3.75H6a2.25 2.25 0 00-2.25 2.25v12A2.25 2.25 0 006 20.25h12A2.25 2.25 0 0020.25 18V7.5L16.5 3.75z"
+                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3.75V9h7.5V3.75" />
                 </svg>
               )}
             </button>

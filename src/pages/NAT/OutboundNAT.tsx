@@ -22,6 +22,7 @@ import Card from '../../components/Card';
 import Table, { Column } from '../../components/Table';
 import Modal from '../../components/Modal';
 import FormField from '../../components/FormField';
+import AddressPrefixField from '../../components/AddressPrefixField';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
 type RuleRow = NatRule & Record<string, unknown>;
@@ -42,6 +43,32 @@ const defaultRuleForm = (): Omit<NatRule, 'id'> => ({
   log: false,
   auto_firewall_rule: true,
 });
+
+function splitCidrValue(
+  value: string | null | undefined,
+  family: NatRule['address_family'] = 'ipv4'
+): { address: string; prefix: string } {
+  const maxPrefix = family === 'ipv6' ? 128 : 32;
+  const defaultPrefix = String(maxPrefix);
+  const trimmed = (value ?? '').trim();
+  if (!trimmed) return { address: '', prefix: defaultPrefix };
+
+  const [addressPart, prefixPart] = trimmed.split('/', 2);
+  const parsedPrefix = Number(prefixPart);
+  const validPrefix =
+    Number.isInteger(parsedPrefix) && parsedPrefix >= 0 && parsedPrefix <= maxPrefix;
+
+  return {
+    address: (addressPart ?? '').trim(),
+    prefix: validPrefix ? String(parsedPrefix) : defaultPrefix,
+  };
+}
+
+function joinCidrValue(address: string, prefix: string): string | null {
+  const cleanAddress = address.trim();
+  if (!cleanAddress) return null;
+  return `${cleanAddress}/${prefix}`;
+}
 
 function isWanInterface(iface: NetworkInterface): boolean {
   const desc = iface.description?.trim().toLowerCase() ?? '';
@@ -99,12 +126,23 @@ export default function OutboundNAT() {
   const [ruleModalOpen, setRuleModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<NatRule | null>(null);
   const [ruleForm, setRuleForm] = useState<Omit<NatRule, 'id'>>(defaultRuleForm());
+  const [sourceAddressInput, setSourceAddressInput] = useState('');
+  const [sourcePrefixInput, setSourcePrefixInput] = useState('32');
+  const [destinationAddressInput, setDestinationAddressInput] = useState('');
+  const [destinationPrefixInput, setDestinationPrefixInput] = useState('32');
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof NatRule, string>>>({});
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const openAddModal = () => {
     setEditingRule(null);
-    setRuleForm(defaultRuleForm());
+    const initial = defaultRuleForm();
+    setRuleForm(initial);
+    const sourceParts = splitCidrValue(initial.source, initial.address_family);
+    const destinationParts = splitCidrValue(initial.destination, initial.address_family);
+    setSourceAddressInput(sourceParts.address);
+    setSourcePrefixInput(sourceParts.prefix);
+    setDestinationAddressInput(destinationParts.address);
+    setDestinationPrefixInput(destinationParts.prefix);
     setFormErrors({});
     setRuleModalOpen(true);
   };
@@ -112,10 +150,21 @@ export default function OutboundNAT() {
   const openEditModal = (rule: NatRule) => {
     setEditingRule(rule);
     const { id: _id, ...rest } = rule;
-    setRuleForm({ ...rest, address_family: rest.address_family ?? 'ipv4' });
+    const next = { ...rest, address_family: rest.address_family ?? 'ipv4' };
+    setRuleForm(next);
+    const sourceParts = splitCidrValue(next.source, next.address_family);
+    const destinationParts = splitCidrValue(next.destination, next.address_family);
+    setSourceAddressInput(sourceParts.address);
+    setSourcePrefixInput(sourceParts.prefix);
+    setDestinationAddressInput(destinationParts.address);
+    setDestinationPrefixInput(destinationParts.prefix);
     setFormErrors({});
     setRuleModalOpen(true);
   };
+
+  const sourcePrefixOptions =
+    ruleForm.address_family === 'ipv6' ? [...Array(129).keys()] : [...Array(33).keys()];
+  const destinationPrefixOptions = sourcePrefixOptions;
 
   const validate = (): boolean => {
     const errors: Partial<Record<keyof NatRule, string>> = {};
@@ -353,12 +402,21 @@ export default function OutboundNAT() {
               as="select"
               value={ruleForm.address_family ?? 'ipv4'}
               error={formErrors.address_family}
-              onChange={(e) =>
+              onChange={(e) => {
+                const family = e.target.value as NatRule['address_family'];
+                const nextSource = splitCidrValue(ruleForm.source, family);
+                const nextDestination = splitCidrValue(ruleForm.destination, family);
+                setSourceAddressInput(nextSource.address);
+                setSourcePrefixInput(nextSource.prefix);
+                setDestinationAddressInput(nextDestination.address);
+                setDestinationPrefixInput(nextDestination.prefix);
                 setRuleForm({
                   ...ruleForm,
-                  address_family: e.target.value as NatRule['address_family'],
-                })
-              }
+                  address_family: family,
+                  source: joinCidrValue(nextSource.address, nextSource.prefix),
+                  destination: joinCidrValue(nextDestination.address, nextDestination.prefix),
+                });
+              }}
             >
               <option value="ipv4">IPv4</option>
               <option value="ipv6">IPv6</option>
@@ -371,19 +429,49 @@ export default function OutboundNAT() {
               <p className="mt-1 text-sm text-gray-700">IPv4 only</p>
             </div>
           )}
-          <FormField
+          <AddressPrefixField
             id="nat-src"
             label="Source"
-            placeholder="leave blank for any (CIDR, e.g. 192.168.1.0/24)"
-            value={ruleForm.source ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, source: e.target.value || null })}
+            addressPlaceholder="leave blank for any"
+            addressValue={sourceAddressInput}
+            prefixValue={sourcePrefixInput}
+            prefixOptions={sourcePrefixOptions}
+            onAddressChange={(value) => {
+              setSourceAddressInput(value);
+              setRuleForm({
+                ...ruleForm,
+                source: joinCidrValue(value, sourcePrefixInput),
+              });
+            }}
+            onPrefixChange={(value) => {
+              setSourcePrefixInput(value);
+              setRuleForm({
+                ...ruleForm,
+                source: joinCidrValue(sourceAddressInput, value),
+              });
+            }}
           />
-          <FormField
+          <AddressPrefixField
             id="nat-dst"
             label="Destination"
-            placeholder="leave blank for any (CIDR)"
-            value={ruleForm.destination ?? ''}
-            onChange={(e) => setRuleForm({ ...ruleForm, destination: e.target.value || null })}
+            addressPlaceholder="leave blank for any"
+            addressValue={destinationAddressInput}
+            prefixValue={destinationPrefixInput}
+            prefixOptions={destinationPrefixOptions}
+            onAddressChange={(value) => {
+              setDestinationAddressInput(value);
+              setRuleForm({
+                ...ruleForm,
+                destination: joinCidrValue(value, destinationPrefixInput),
+              });
+            }}
+            onPrefixChange={(value) => {
+              setDestinationPrefixInput(value);
+              setRuleForm({
+                ...ruleForm,
+                destination: joinCidrValue(destinationAddressInput, value),
+              });
+            }}
           />
           {ruleForm.rule_type === 'snat' && (
             <FormField
