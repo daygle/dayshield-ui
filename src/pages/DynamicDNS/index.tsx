@@ -206,6 +206,20 @@ export default function DynamicDnsPage() {
 
   const busy = loading || saving;
 
+  const enabledCount = useMemo(
+    () => config.entries.filter((entry) => entry.enabled).length,
+    [config.entries]
+  );
+
+  const configuredInterfaces = useMemo(
+    () => new Set(config.entries.map((entry) => entry.interface).filter(Boolean)),
+    [config.entries]
+  );
+
+  const statusCount = status?.entries?.length ?? 0;
+  const successfulUpdates = status?.entries?.filter((entry) => entry.success).length ?? 0;
+  const failedUpdates = status?.entries?.filter((entry) => !entry.success).length ?? 0;
+
   return (
     <div className="space-y-6">
       <Card

@@ -13,7 +13,7 @@ import Card from '../../components/Card';
 import Modal from '../../components/Modal';
 import FormField from '../../components/FormField';
 import AddressPrefixField from '../../components/AddressPrefixField';
-import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
+
 
 type PeerRow = WgPeer & Record<string, unknown>;
 
@@ -217,11 +217,6 @@ export default function VPN() {
     return server.listenPort > 0 ? String(server.listenPort) : 'Not configured';
   }, [server]);
 
-  const vpnDisplayName = useMemo(() => {
-    if (!server?.interface) return 'VPN';
-    return formatInterfaceDisplayName(server.description, server.interface);
-  }, [server]);
-
   const isServerConfigured = Boolean(server?.interface);
 
   if (loading) {
@@ -406,13 +401,13 @@ export default function VPN() {
           <div className="sm:col-span-2 lg:col-span-1">
             <dt className="text-gray-500 mb-1">Tunnel Addresses</dt>
             <dd className="font-mono text-gray-900">
-              {server.addresses.length ? server.addresses.join(', ') : 'None configured'}
+              {server?.addresses?.length ? server.addresses.join(', ') : 'None configured'}
             </dd>
           </div>
           <div className="sm:col-span-2 lg:col-span-1">
             <dt className="text-gray-500 mb-1">Public Key</dt>
             <dd className="font-mono text-xs text-gray-900 break-all p-2 bg-gray-50 rounded border border-gray-200">
-              {server.publicKey || 'Not available'}
+              {server?.publicKey || 'Not available'}
             </dd>
           </div>
         </dl>
