@@ -25,6 +25,7 @@ const PROVIDERS: Array<{ value: DynamicDnsProvider; label: string }> = [
   { value: 'no_ip', label: 'No-IP' },
   { value: 'dynu', label: 'Dynu' },
   { value: 'free_dns', label: 'FreeDNS (Afraid.org)' },
+  { value: 'cloudflare', label: 'Cloudflare DNS' },
   { value: 'custom', label: 'Custom URL' },
 ];
 
@@ -55,7 +56,7 @@ const DEFAULT_CONFIG: DynamicDnsConfig = {
 };
 
 function providerNeedsUsername(provider: DynamicDnsProvider): boolean {
-  return provider === 'no_ip' || provider === 'dynu';
+  return provider === 'no_ip' || provider === 'dynu' || provider === 'cloudflare';
 }
 
 function providerNeedsCustomUrl(provider: DynamicDnsProvider): boolean {
@@ -65,7 +66,13 @@ function providerNeedsCustomUrl(provider: DynamicDnsProvider): boolean {
 function providerSecretLabel(provider: DynamicDnsProvider): string {
   if (provider === 'duck_dns') return 'Token';
   if (provider === 'free_dns') return 'Update Token';
+  if (provider === 'cloudflare') return 'API Token';
   return 'Password / API Key';
+}
+
+function providerUsernameLabel(provider: DynamicDnsProvider): string {
+  if (provider === 'cloudflare') return 'Zone ID';
+  return 'Username';
 }
 
 function providerHelpText(provider: DynamicDnsProvider): string {
@@ -74,6 +81,9 @@ function providerHelpText(provider: DynamicDnsProvider): string {
   }
   if (provider === 'duck_dns') {
     return 'Hostname should be your DuckDNS subdomain (without .duckdns.org).';
+  }
+  if (provider === 'cloudflare') {
+    return 'Hostname should be the full DNS name (for example, host.example.com).';
   }
   return '';
 }
@@ -84,8 +94,9 @@ function validateEntry(entry: DynamicDnsEntry, ipv6Enabled: boolean): string | n
   if (entry.addressFamily === 'ipv6' && !ipv6Enabled)
     return 'IPv6 Dynamic DNS entries require IPv6 to be enabled in System settings.';
   if (!entry.hostname.trim()) return 'Hostname is required.';
-  if (providerNeedsUsername(entry.provider) && !entry.username?.trim())
-    return 'Username is required.';
+  if (providerNeedsUsername(entry.provider) && !entry.username?.trim()) {
+    return entry.provider === 'cloudflare' ? 'Zone ID is required.' : 'Username is required.';
+  }
   if (!entry.passwordConfigured && !entry.password.trim())
     return `${providerSecretLabel(entry.provider)} is required.`;
   if (providerNeedsCustomUrl(entry.provider)) {
@@ -473,10 +484,15 @@ export default function DynamicDnsPage() {
                     {providerNeedsUsername(entry.provider) && (
                       <FormField
                         id={`ddns-user-${entry.id}`}
-                        label="Username"
+                        label={providerUsernameLabel(entry.provider)}
                         value={entry.username ?? ''}
                         disabled={busy}
                         onChange={(e) => upsertEntry(entry.id, { username: e.target.value })}
+                        hint={
+                          entry.provider === 'cloudflare'
+                            ? 'Cloudflare Zone ID containing this hostname.'
+                            : undefined
+                        }
                       />
                     )}
 

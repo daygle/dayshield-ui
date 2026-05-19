@@ -937,7 +937,13 @@ export interface NtpStatus {
 
 // ── Dynamic DNS ─────────────────────────────────────────────────────────────
 
-export type DynamicDnsProvider = 'duck_dns' | 'no_ip' | 'dynu' | 'free_dns' | 'custom';
+export type DynamicDnsProvider =
+  | 'duck_dns'
+  | 'no_ip'
+  | 'dynu'
+  | 'free_dns'
+  | 'cloudflare'
+  | 'custom';
 export type AddressFamily = 'ipv4' | 'ipv6';
 
 export interface DynamicDnsEntry {
