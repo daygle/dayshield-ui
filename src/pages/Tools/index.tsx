@@ -1,12 +1,18 @@
 import { useState } from 'react';
 import WakeOnLan from './WakeOnLan';
 import SMART from './SMART';
+import DNSLookup from './DNSLookup';
+import TraceRoute from './TraceRoute';
+import Ping from './Ping';
 
-type ToolTab = 'wake-on-lan' | 'smart';
+type ToolTab = 'wake-on-lan' | 'smart' | 'dns-lookup' | 'trace-route' | 'ping';
 
 const tabs: { id: ToolTab; label: string }[] = [
   { id: 'wake-on-lan', label: 'Wake on LAN' },
   { id: 'smart', label: 'SMART' },
+  { id: 'dns-lookup', label: 'DNS Lookup' },
+  { id: 'trace-route', label: 'Trace Route' },
+  { id: 'ping', label: 'Ping' },
 ];
 
 export default function Tools() {
@@ -49,6 +55,9 @@ export default function Tools() {
 
       {activeTab === 'wake-on-lan' && <WakeOnLan />}
       {activeTab === 'smart' && <SMART />}
+      {activeTab === 'dns-lookup' && <DNSLookup />}
+      {activeTab === 'trace-route' && <TraceRoute />}
+      {activeTab === 'ping' && <Ping />}
     </div>
   );
 }

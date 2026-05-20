@@ -45,6 +45,7 @@ export default function ACME() {
 
   const [accountEditOpen, setAccountEditOpen] = useState(false);
   const [accountForm, setAccountForm] = useState<Partial<AcmeAccount>>({});
+  const [accountDomains, setAccountDomains] = useState('');
   const [accountSaving, setAccountSaving] = useState(false);
 
   const [issueOpen, setIssueOpen] = useState(false);
@@ -57,6 +58,7 @@ export default function ACME() {
       .then(([acc, c]) => {
         setAccount(acc.data);
         setAccountForm(acc.data);
+        setAccountDomains((acc.data.domains ?? []).join(', '));
         setCerts(Array.isArray(c.data) ? (c.data as CertRow[]) : []);
       })
       .catch((err: Error) => setError(err.message))
@@ -67,10 +69,17 @@ export default function ACME() {
 
   const handleSaveAccount = () => {
     setAccountSaving(true);
-    updateAcmeAccount(accountForm)
+    updateAcmeAccount({
+      ...accountForm,
+      domains: accountDomains
+        .split(',')
+        .map((domain) => domain.trim())
+        .filter(Boolean),
+    })
       .then((res) => {
         setAccount(res.data);
         setAccountForm(res.data);
+        setAccountDomains((res.data.domains ?? []).join(', '));
         setAccountEditOpen(false);
       })
       .catch((err: Error) => setError(err.message))
@@ -176,6 +185,37 @@ export default function ACME() {
             value={accountForm.directory_url ?? ''}
             onChange={(e) => setAccountForm({ ...accountForm, directory_url: e.target.value })}
           />
+          <FormField
+            id="acme-challenge-type"
+            label="ACME Challenge Type"
+            as="select"
+            value={accountForm.challenge_type ?? 'http01'}
+            onChange={(e) =>
+              setAccountForm({
+                ...accountForm,
+                challenge_type: e.target.value as 'http01' | 'dns01',
+              })
+            }
+          >
+            <option value="http01">HTTP-01 (port 80)</option>
+            <option value="dns01">DNS-01 (manual TXT record)</option>
+          </FormField>
+          <FormField
+            id="acme-domains"
+            label="Domains"
+            as="textarea"
+            rows={3}
+            placeholder="example.com, www.example.com, *.example.com"
+            hint="Comma-separated list of domains to request certificates for. Use *.example.com for wildcard certificates."
+            value={accountDomains}
+            onChange={(e) => setAccountDomains(e.target.value)}
+          />
+          {accountForm.challenge_type === 'http01' && accountDomains.includes('*.') && (
+            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              Wildcard certificates require DNS-01 validation. Change the challenge type to
+              DNS-01 before saving this configuration.
+            </div>
+          )}
           <p className="text-xs text-gray-500">
             Use{' '}
             <code className="font-mono">
@@ -260,6 +300,16 @@ export default function ACME() {
               <dt className="text-gray-500">ACME Server</dt>
               <dd className="font-medium text-gray-800 break-all">
                 {account.directory_url || '-'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Challenge Type</dt>
+              <dd className="font-medium text-gray-800">{account.challenge_type ?? '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Domains</dt>
+              <dd className="font-medium text-gray-800">
+                {account.domains && account.domains.length > 0 ? account.domains.join(', ') : '-'}
               </dd>
             </div>
             <div>

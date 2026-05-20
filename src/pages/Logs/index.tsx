@@ -9,6 +9,11 @@ type LogsTab = 'logs' | 'live';
 const DEFAULT_SOURCE: LogSource | 'all' = 'all';
 const DEFAULT_LEVEL: LogLevel | 'all' = 'all';
 
+const tabs: { id: LogsTab; label: string }[] = [
+  { id: 'logs', label: 'Logs' },
+  { id: 'live', label: 'Live Logs' },
+];
+
 const VALID_SOURCES = new Set<LogSource | 'all'>([
   'all',
   'suricata',
@@ -172,37 +177,39 @@ export default function Logs() {
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0 space-y-3">
-      <div className="flex items-center justify-between shrink-0">
-        <h1 className="text-xl font-semibold text-gray-900">Logs</h1>
+    <div className="flex h-full min-h-0 flex-col space-y-6">
+      <div className="flex flex-col gap-3 shrink-0 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Logs</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Search historical logs or monitor live appliance events.
+          </p>
+        </div>
         <p className="text-xs text-gray-400">{titleCount.toLocaleString()} events buffered</p>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-1.5 shrink-0 inline-flex gap-1.5 w-fit shadow-sm">
-        <button
-          type="button"
-          onClick={() => setTab('logs')}
-          className={[
-            'rounded-lg px-4 py-2 text-sm font-semibold transition-all',
-            activeTab === 'logs'
-              ? 'bg-slate-900 text-white shadow-sm'
-              : 'text-slate-700 hover:bg-slate-100',
-          ].join(' ')}
-        >
-          Logs
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('live')}
-          className={[
-            'rounded-lg px-4 py-2 text-sm font-semibold transition-all',
-            activeTab === 'live'
-              ? 'bg-slate-900 text-white shadow-sm'
-              : 'text-slate-700 hover:bg-slate-100',
-          ].join(' ')}
-        >
-          Live Logs
-        </button>
+      <div className="border-b border-gray-200 shrink-0">
+        <nav className="-mb-px flex gap-1" aria-label="Logs tabs">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setTab(tab.id)}
+                className={[
+                  'px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
+                  isActive
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                ].join(' ')}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
       {activeTab === 'logs' ? (
