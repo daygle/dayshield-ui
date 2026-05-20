@@ -1,17 +1,23 @@
-# DayShield Firewall UI
+# DayShield UI
 
-React + Vite frontend for DayShield Firewall management.
+`dayshield-ui` is the frontend package for the DayShield appliance. It builds the static management UI bundle consumed by the DayShield backend and update appliance.
 
-This package produces the static management UI bundle used by DayShield Firewall.
-The `.github/workflows/release.yml` workflow builds and publishes the release artifact
-automatically when a version tag is pushed; local builds are for development validation only.
+## What this repo contains
+
+This repository provides the web application for DayShield management, including:
+
+- UI pages and components for firewall, DNS, NTP, backup, and system status
+- build configuration for Vite, TypeScript, and Tailwind CSS
+- production asset packaging for appliance deployment
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 18 or newer
 - npm
 
-## Install dependencies
+## Install
+
+Install dependencies once before development or build:
 
 ```sh
 npm install
@@ -19,59 +25,47 @@ npm install
 
 ## Build
 
+Create the production UI bundle:
+
 ```sh
 npm run build
 ```
 
-The production assets are emitted to `dist/`.
+Production assets are emitted to `dist/`.
 
-## Releasing
+## Development
 
-This repo manages its own release lifecycle independently of `dayshield-core` and
-`dayshield-rootfs`. The release workflow (`.github/workflows/release.yml`) is triggered
-by a tag push matching `v*` **or** via manual workflow dispatch.
-
-### Create a release
+Use the local development workflow for editing UI code and verifying changes.
 
 ```sh
-git tag v1.2.3
-git push origin v1.2.3
+npm run dev
 ```
 
-The workflow will:
+This package is intended to produce a static frontend bundle. In deployed environments, the backend service provides the API surface and serves the UI assets.
 
-1. Install dependencies and run `npm run build` (passing the tag as `GITHUB_RELEASE_TAG`
-   so the bundle embeds the correct version string).
-2. Package the built `dist/` directory as `ui-v1.2.3.tar.zst`.
-3. Compute a `ui-v1.2.3.tar.zst.sha256` checksum file.
-4. Create a GitHub Release tagged `v1.2.3` and attach both files as release assets.
+## Test
 
-### Manual dispatch
+Run any available UI tests or validation commands configured in the package.
 
-If you need to re-publish an artifact without creating a new tag (e.g. a CI retry), use
-**Actions → Release UI Artifact → Run workflow** and supply the tag name in the input
-field.
+```sh
+npm test
+```
 
-### Artifact naming convention
+## Release model
 
-| Asset                      | Description                                     |
-| -------------------------- | ----------------------------------------------- |
-| `ui-vX.Y.Z.tar.zst`        | zstd-compressed tarball of the production build |
-| `ui-vX.Y.Z.tar.zst.sha256` | SHA-256 checksum of the tarball                 |
+The UI package is released independently from `dayshield-core` and `dayshield-rootfs`. Release automation produces versioned UI artifacts that are consumed by the update manifest.
 
-The on-device updater fetches the artifact URL from the central update manifest. The
-manifest maps each component (`core`, `ui`, `rootfs`) to its own latest release
-independently - updating one component does not require updating the others.
+### Artifact naming
+
+- `ui-vX.Y.Z.tar.zst` — production build archive
+- `ui-vX.Y.Z.tar.zst.sha256` — checksum file
+
+### Release trigger
+
+The repository release workflow is typically triggered by pushing a `v*` tag or via manual workflow dispatch.
 
 ## Notes
 
-- The backend API is provided by `dayshield-core` (default service port `8443`).
-- Suricata managed rulesets are configured from **Security → Suricata → Rulesets**
-  (install, update checks, update, enable/disable, and removal actions when supported by backend API).
-- There is no supported development server or preview workflow in this package.
-- Each component - Core, Web UI, and Root Filesystem - carries its own independent
-  version/tag. The UI artifact is published as `ui-vX.Y.Z.tar.zst` and its version
-  need not match the core or rootfs release tags.
-- The update registry resolves the latest artifact version for each component
-  independently through a manifest-driven model; a component absent from a given
-  manifest release is not treated as an error.
+- The backend API is provided by `dayshield-core`.
+- This repo is focused on frontend code, build output, and release packaging.
+- UI versioning is independent from core and rootfs components.

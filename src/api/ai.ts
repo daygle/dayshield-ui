@@ -7,8 +7,10 @@ import type {
   Suggestion,
   Intent,
   AutomationMode,
-  RuleAudit,
   TrafficCandidate,
+  ApplySuggestionResponse,
+  UndoResponse,
+  AIAutomationSettings,
 } from '../types';
 
 function normalizeResponse<T>(payload: unknown): ApiResponse<T> {
@@ -80,13 +82,13 @@ export const getAiSuggestions = (): Promise<ApiResponse<Suggestion[]>> =>
 
 export const applyAiSuggestion = (
   payload: ApplyAiSuggestionRequest
-): Promise<ApiResponse<RuleAudit | Suggestion | null>> =>
+): Promise<ApiResponse<ApplySuggestionResponse>> =>
   apiClient
-    .post<ApiResponse<RuleAudit | Suggestion | null>>('/api/ai/apply', {
+    .post<ApiResponse<ApplySuggestionResponse>>('/api/ai/apply', {
       suggestion_id: payload.suggestion_id,
       approve: payload.apply,
     })
-    .then((r) => normalizeResponse<RuleAudit | Suggestion | null>(r.data));
+    .then((r) => normalizeResponse<ApplySuggestionResponse>(r.data));
 
 export const getAiIntents = (): Promise<ApiResponse<Intent[]>> =>
   apiClient.get<ApiResponse<Intent[]>>('/api/ai/intents').then((r) => normalizeResponse<Intent[]>(r.data));
@@ -117,7 +119,19 @@ export const setAiAutomationMode = (
     )
     .then((r) => normalizeResponse<AutomationMode | { mode: AutomationMode }>(r.data));
 
-export const undoLastAiAction = (): Promise<ApiResponse<RuleAudit | null>> =>
+export const getAiAutomationSettings = (): Promise<ApiResponse<AIAutomationSettings>> =>
   apiClient
-    .post<ApiResponse<RuleAudit | null>>('/api/ai/undo_last_action')
-    .then((r) => normalizeResponse<RuleAudit | null>(r.data));
+    .get<ApiResponse<AIAutomationSettings>>('/api/ai/automation_settings')
+    .then((r) => normalizeResponse<AIAutomationSettings>(r.data));
+
+export const saveAiAutomationSettings = (
+  settings: AIAutomationSettings
+): Promise<ApiResponse<AIAutomationSettings>> =>
+  apiClient
+    .post<ApiResponse<AIAutomationSettings>>('/api/ai/automation_settings', settings)
+    .then((r) => normalizeResponse<AIAutomationSettings>(r.data));
+
+export const undoLastAiAction = (): Promise<ApiResponse<UndoResponse>> =>
+  apiClient
+    .post<ApiResponse<UndoResponse>>('/api/ai/undo_last_action')
+    .then((r) => normalizeResponse<UndoResponse>(r.data));

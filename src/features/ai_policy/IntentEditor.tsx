@@ -3,6 +3,7 @@ import type { DecisionAction, Intent } from '../../types';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import FormField from '../../components/FormField';
+import { actionToLabel, normalizeDecisionAction } from './constants';
 
 interface IntentEditorProps {
   intents: Intent[];
@@ -11,7 +12,7 @@ interface IntentEditorProps {
   onSave: (intents: Intent[]) => Promise<void>;
 }
 
-const ACTION_OPTIONS: DecisionAction[] = ['Allow', 'Deny', 'EditRule', 'RemoveRule'];
+const ACTION_OPTIONS: DecisionAction[] = ['allow', 'deny', 'edit_rule', 'remove_rule'];
 
 function formatJson(intents: Intent[]): string {
   return JSON.stringify(intents, null, 2);
@@ -24,7 +25,7 @@ export default function IntentEditor({ intents, loading, saving, onSave }: Inten
   const [description, setDescription] = useState('');
   const [conditionKey, setConditionKey] = useState('dst_port');
   const [conditionValue, setConditionValue] = useState('443');
-  const [desiredAction, setDesiredAction] = useState<DecisionAction>('Deny');
+  const [desiredAction, setDesiredAction] = useState<DecisionAction>('deny');
   const [showJson, setShowJson] = useState(false);
 
   useEffect(() => {
@@ -51,8 +52,20 @@ export default function IntentEditor({ intents, loading, saving, onSave }: Inten
       setJsonError(parsedIntents.error);
       return;
     }
+    const normalizedIntents: Intent[] = [];
+    for (const intent of parsedIntents.value) {
+      const action = normalizeDecisionAction(intent.desired_action);
+      if (!action) {
+        setJsonError(`Invalid desired_action for intent "${intent.name || 'unnamed intent'}".`);
+        return;
+      }
+      normalizedIntents.push({
+        ...intent,
+        desired_action: action,
+      });
+    }
     setJsonError(null);
-    await onSave(parsedIntents.value);
+    await onSave(normalizedIntents);
   };
 
   const handleAddFromForm = () => {
@@ -61,12 +74,23 @@ export default function IntentEditor({ intents, loading, saving, onSave }: Inten
       return;
     }
 
+    const key = conditionKey.trim();
+    let value: string | number = conditionValue.trim();
+    if (key === 'src_port' || key === 'dst_port' || key === 'port') {
+      const port = Number(value);
+      if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        setJsonError('Port match values must be whole numbers between 1 and 65535.');
+        return;
+      }
+      value = port;
+    }
+
     const nextIntent: Intent = {
       name: name.trim(),
       description: description.trim() || undefined,
       enabled: true,
       desired_action: desiredAction,
-      condition: { [conditionKey.trim()]: conditionValue.trim() },
+      condition: { [key]: value },
     };
 
     const current = parsedIntents.value ?? intents;
@@ -77,7 +101,7 @@ export default function IntentEditor({ intents, loading, saving, onSave }: Inten
     setDescription('');
     setConditionKey('dst_port');
     setConditionValue('443');
-    setDesiredAction('Deny');
+    setDesiredAction('deny');
     setShowJson(true);
   };
 
@@ -104,7 +128,7 @@ export default function IntentEditor({ intents, loading, saving, onSave }: Inten
             >
               {ACTION_OPTIONS.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {actionToLabel(option)}
                 </option>
               ))}
             </FormField>
@@ -174,7 +198,7 @@ export default function IntentEditor({ intents, loading, saving, onSave }: Inten
                     <dl className="mt-4 grid gap-2 sm:grid-cols-2 text-sm text-slate-700">
                       <div>
                         <dt className="font-semibold text-slate-900">Action</dt>
-                        <dd>{intent.desired_action}</dd>
+                        <dd>{actionToLabel(intent.desired_action)}</dd>
                       </div>
                       <div>
                         <dt className="font-semibold text-slate-900">Enabled</dt>

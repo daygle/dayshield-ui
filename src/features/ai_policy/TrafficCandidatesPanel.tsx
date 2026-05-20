@@ -43,7 +43,7 @@ export default function TrafficCandidatesPanel({
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${confidenceClass(candidate.confidence)}`}
                   >
-                    {actionToLabel(candidate.recommended_action)} • {confidencePct}%
+                    {actionToLabel(candidate.recommended_action)} - {confidencePct}%
                   </span>
                   <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                     {candidate.observation_count} observation{candidate.observation_count === 1 ? '' : 's'}

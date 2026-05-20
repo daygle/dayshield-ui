@@ -1,6 +1,6 @@
 import type { Suggestion } from '../../types';
 import Button from '../../components/Button';
-import { actionToLabel, confidenceClass } from './constants';
+import { actionToLabel, confidenceClass, normalizeDecisionAction } from './constants';
 
 interface SuggestionCardProps {
   suggestion: Suggestion;
@@ -10,7 +10,9 @@ interface SuggestionCardProps {
 }
 
 function ActionIcon({ action }: { action: Suggestion['decision']['action'] }) {
-  if (action === 'Allow' || action === 'SuggestAllow') {
+  const normalizedAction = normalizeDecisionAction(action);
+
+  if (normalizedAction === 'allow' || normalizedAction === 'suggest_allow') {
     return (
       <svg className="h-5 w-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -18,7 +20,7 @@ function ActionIcon({ action }: { action: Suggestion['decision']['action'] }) {
     );
   }
 
-  if (action === 'Deny' || action === 'SuggestDeny' || action === 'RemoveRule') {
+  if (normalizedAction === 'deny' || normalizedAction === 'suggest_deny' || normalizedAction === 'remove_rule') {
     return (
       <svg className="h-5 w-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -45,8 +47,13 @@ export default function SuggestionCard({ suggestion, busyAction = null, onApply,
   const eventDetails = [
     { label: 'Source', value: event.src_ip },
     { label: 'Source port', value: event.src_port != null ? String(event.src_port) : undefined },
-    { label: 'Destination', value: event.dst_ip },
-    { label: 'Destination port', value: event.dst_port != null ? String(event.dst_port) : undefined },
+    { label: 'Destination', value: event.dest_ip ?? event.dst_ip },
+    {
+      label: 'Destination port',
+      value: event.dest_port != null || event.dst_port != null
+        ? String(event.dest_port ?? event.dst_port)
+        : undefined,
+    },
     { label: 'Protocol', value: event.protocol },
     { label: 'Service', value: event.service },
     { label: 'Interface', value: eventInterface },

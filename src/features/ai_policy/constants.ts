@@ -29,22 +29,48 @@ export function normalizeAutomationMode(value: unknown): AutomationMode {
   return 'monitor_only';
 }
 
-export function actionToLabel(action: DecisionAction): string {
-  switch (action) {
+export function normalizeDecisionAction(value: unknown): DecisionAction | null {
+  switch (value) {
+    case 'allow':
     case 'Allow':
-      return 'Allow';
+      return 'allow';
+    case 'deny':
     case 'Deny':
-      return 'Deny';
+      return 'deny';
+    case 'suggest_allow':
     case 'SuggestAllow':
-      return 'Suggest Allow';
+      return 'suggest_allow';
+    case 'suggest_deny':
     case 'SuggestDeny':
-      return 'Suggest Deny';
+      return 'suggest_deny';
+    case 'edit_rule':
     case 'EditRule':
-      return 'Edit Rule';
+      return 'edit_rule';
+    case 'remove_rule':
     case 'RemoveRule':
-      return 'Remove Rule';
+      return 'remove_rule';
     default:
-      return action;
+      return null;
+  }
+}
+
+export function actionToLabel(action: DecisionAction | string): string {
+  const normalized = normalizeDecisionAction(action);
+  if (!normalized) return String(action);
+
+  switch (normalized) {
+    case 'allow':
+      return 'Allow';
+    case 'deny':
+      return 'Deny';
+    case 'suggest_allow':
+      return 'Suggest Allow';
+    case 'suggest_deny':
+      return 'Suggest Deny';
+    case 'edit_rule':
+      return 'Edit Rule';
+    case 'remove_rule':
+      return 'Remove Rule';
   }
 }
 

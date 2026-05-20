@@ -2,18 +2,9 @@ import { useState, useEffect } from 'react';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import FormField from '../../components/FormField';
+import type { AIAutomationSettings } from '../../types';
 
-export interface AIAutomationSettings {
-  autoApplyConfidenceThreshold: number;
-  requireIntentMatch: boolean;
-  requireProtocol: boolean;
-  requireDestinationPort: boolean;
-  requireIpFamily: boolean;
-  maxAutoApplyPerHour: number;
-  allowEditRule: boolean;
-  allowRemoveRule: boolean;
-  protectManagementInterface: boolean;
-}
+export type { AIAutomationSettings };
 
 interface AIAutomationSettingsProps {
   settings: AIAutomationSettings;

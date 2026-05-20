@@ -10,16 +10,17 @@ interface AutoActionHistoryProps {
   onUndo: () => void;
 }
 
-function formatTimestamp(unixSeconds: number): string {
-  if (!Number.isFinite(unixSeconds)) return '-';
-  return new Date(unixSeconds * 1000).toLocaleString();
+function formatTimestamp(timestamp: string): string {
+  const parsed = new Date(timestamp);
+  if (Number.isNaN(parsed.getTime())) return '-';
+  return parsed.toLocaleString();
 }
 
 export default function AutoActionHistory({ history, loading, undoing, onUndo }: AutoActionHistoryProps) {
   return (
     <Card
-      title="Auto Action History"
-      subtitle="Recent AI auto-applied policy actions"
+      title="AI Action History"
+      subtitle="Recent AI policy actions that can be undone"
       actions={
         <Button size="sm" variant="secondary" onClick={onUndo} loading={undoing} disabled={history.length === 0}>
           Undo last action
@@ -30,7 +31,7 @@ export default function AutoActionHistory({ history, loading, undoing, onUndo }:
         <p className="text-sm text-gray-500">Loading history...</p>
       ) : history.length === 0 ? (
         <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
-          No auto-applied actions yet.
+          No AI-applied actions yet.
         </div>
       ) : (
         <div className="space-y-2">

@@ -48,7 +48,7 @@ export default function AutomationModeSelector({
                     ].join(' ')}
                     aria-hidden="true"
                   >
-                    ✓
+                    v
                   </span>
                 </div>
               </button>

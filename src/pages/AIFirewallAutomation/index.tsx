@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   applyAiSuggestion,
+  getAiAutomationSettings,
   getAiAutomationMode,
   getAiIntents,
   getAiTrafficCandidates,
   getAiSuggestions,
+  saveAiAutomationSettings,
   saveAiIntents,
   setAiAutomationMode,
   undoLastAiAction,
@@ -12,6 +14,8 @@ import {
 import { getFirewallSettings } from '../../api/firewall';
 import type {
   AutomationMode,
+  AIAutomationSettings as AIAutomationSettingsType,
+  Decision,
   Intent,
   LogPosition,
   NetworkInterface,
@@ -27,24 +31,38 @@ import SuggestionsPanel from '../../features/ai_policy/SuggestionsPanel';
 import AutomationModeSelector from '../../features/ai_policy/AutomationModeSelector';
 import IntentEditor from '../../features/ai_policy/IntentEditor';
 import AutoActionHistory from '../../features/ai_policy/AutoActionHistory';
-import AIAutomationSettingsPanel, {
-  AIAutomationSettings as AIAutomationSettingsType,
-} from '../../features/ai_policy/AIAutomationSettings';
+import AIAutomationSettingsPanel from '../../features/ai_policy/AIAutomationSettings';
 import TrafficCandidatesPanel from '../../features/ai_policy/TrafficCandidatesPanel';
 import { normalizeAutomationMode } from '../../features/ai_policy/constants';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
-function toAuditFromSuggestion(suggestion: Suggestion): RuleAudit | null {
-  if (!suggestion.decision.auto_applied) return null;
+function timestampMillis(timestamp: string): number {
+  const parsed = new Date(timestamp).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
+function compareHistoryDesc(a: RuleAudit, b: RuleAudit): number {
+  return timestampMillis(b.timestamp) - timestampMillis(a.timestamp);
+}
+
+function toAuditFromDecision(id: string, decision: Decision, ruleId?: string | null): RuleAudit {
   return {
-    id: `suggestion-${suggestion.id}`,
-    timestamp: suggestion.decision.timestamp,
-    action: suggestion.decision.action,
-    reason: suggestion.decision.reason,
-    auto_applied: true,
-    rule_id: suggestion.rule_id ?? null,
+    id,
+    timestamp: decision.timestamp,
+    action: decision.action,
+    reason: decision.reason,
+    auto_applied: decision.auto_applied,
+    rule_id: ruleId ?? null,
   };
+}
+
+function toAuditFromSuggestion(suggestion: Suggestion): RuleAudit | null {
+  if (!suggestion.applied && !suggestion.decision.auto_applied) return null;
+  return toAuditFromDecision(
+    `suggestion-${suggestion.id}`,
+    suggestion.decision,
+    suggestion.target_rule_id ?? suggestion.rule_id ?? null
+  );
 }
 
 function dedupeHistory(entries: RuleAudit[]): RuleAudit[] {
@@ -103,8 +121,6 @@ function AIFirewallAutomationContent({
   const [firewallLogPositionLoading, setFirewallLogPositionLoading] = useState(true);
   const [firewallLogPositionError, setFirewallLogPositionError] = useState<string | null>(null);
 
-  const AUTOMATION_SETTINGS_STORAGE_KEY = 'dayshield_ai_firewall_automation_settings';
-
   const [history, setHistory] = useState<RuleAudit[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [undoing, setUndoing] = useState(false);
@@ -131,11 +147,16 @@ function AIFirewallAutomationContent({
     try {
       const res = await getAiSuggestions();
       const allSuggestions = res.data ?? [];
-      const pending = allSuggestions.filter((item) => !item.status || item.status === 'pending');
+      const pending = allSuggestions.filter(
+        (item) =>
+          !item.applied &&
+          !item.rejected &&
+          (!item.status || item.status === 'pending')
+      );
       setSuggestions(pending);
 
       const fromSuggestions = allSuggestions.map(toAuditFromSuggestion).filter(Boolean) as RuleAudit[];
-      setHistory((prev) => dedupeHistory([...fromSuggestions, ...prev]).sort((a, b) => b.timestamp - a.timestamp));
+      setHistory((prev) => dedupeHistory([...fromSuggestions, ...prev]).sort(compareHistoryDesc));
     } catch (err) {
       setSuggestionsError(err instanceof Error ? err.message : 'Failed to load AI suggestions');
     } finally {
@@ -170,20 +191,17 @@ function AIFirewallAutomationContent({
     }
   }, [addToast, selectedInterface]);
 
-  const loadAutomationSettings = useCallback(() => {
+  const loadAutomationSettings = useCallback(async () => {
     setAutomationSettingsLoading(true);
     try {
-      const raw = window.localStorage.getItem(AUTOMATION_SETTINGS_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as AIAutomationSettingsType;
-        setAutomationSettings(parsed);
-      }
-    } catch {
-      // ignore invalid stored settings and use defaults
+      const res = await getAiAutomationSettings();
+      setAutomationSettings(res.data);
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Failed to load automation settings', 'error');
     } finally {
       setAutomationSettingsLoading(false);
     }
-  }, []);
+  }, [addToast]);
 
   const loadFirewallLogPosition = useCallback(async () => {
     setFirewallLogPositionLoading(true);
@@ -204,11 +222,8 @@ function AIFirewallAutomationContent({
   const handleSaveAutomationSettings = async (nextSettings: AIAutomationSettingsType) => {
     setAutomationSettingsSaving(true);
     try {
-      window.localStorage.setItem(
-        AUTOMATION_SETTINGS_STORAGE_KEY,
-        JSON.stringify(nextSettings)
-      );
-      setAutomationSettings(nextSettings);
+      const res = await saveAiAutomationSettings(nextSettings);
+      setAutomationSettings(res.data ?? nextSettings);
       addToast('Automation settings saved', 'success');
     } catch (err) {
       addToast(err instanceof Error ? err.message : 'Failed to save automation settings', 'error');
@@ -265,15 +280,22 @@ function AIFirewallAutomationContent({
     setBusyAction(apply ? 'apply' : 'reject');
     try {
       const res = await applyAiSuggestion({ suggestion_id: suggestionId, apply });
-      setSuggestions((prev) => prev.filter((s) => s.id !== suggestionId));
-
       const result = res.data;
-      if (result && typeof result === 'object' && 'action' in result && 'timestamp' in result && apply) {
-        const audit = result as RuleAudit;
-        setHistory((prev) => dedupeHistory([audit, ...prev]).sort((a, b) => b.timestamp - a.timestamp));
+
+      if (apply && !result.applied) {
+        addToast(result.message || 'Suggestion was not applied', 'error');
+        await loadSuggestions();
+        return;
       }
 
-      addToast(apply ? 'Suggestion applied' : 'Suggestion rejected', 'success');
+      setSuggestions((prev) => prev.filter((s) => s.id !== suggestionId));
+
+      if (apply && result.decision) {
+        const audit = toAuditFromDecision(`manual-${suggestionId}`, result.decision);
+        setHistory((prev) => dedupeHistory([audit, ...prev]).sort(compareHistoryDesc));
+      }
+
+      addToast(result.message || (apply ? 'Suggestion applied' : 'Suggestion rejected'), 'success');
       await loadTrafficCandidates();
       await loadSuggestions();
     } catch (err) {
@@ -317,9 +339,13 @@ function AIFirewallAutomationContent({
   const handleUndo = async () => {
     setUndoing(true);
     try {
-      await undoLastAiAction();
+      const res = await undoLastAiAction();
+      if (!res.data?.undone) {
+        addToast(res.data?.message || 'No AI action is available to undo', 'info');
+        return;
+      }
       setHistory((prev) => prev.slice(1));
-      addToast('Last auto-applied action has been undone', 'success');
+      addToast(res.data.message || 'Last AI action has been undone', 'success');
       await loadSuggestions();
     } catch (err) {
       addToast(err instanceof Error ? err.message : 'Failed to undo action', 'error');

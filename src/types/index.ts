@@ -547,27 +547,30 @@ export interface AiEngineConfig {
 }
 
 export type DecisionAction =
-  | 'Allow'
-  | 'Deny'
-  | 'SuggestAllow'
-  | 'SuggestDeny'
-  | 'EditRule'
-  | 'RemoveRule';
+  | 'allow'
+  | 'deny'
+  | 'suggest_allow'
+  | 'suggest_deny'
+  | 'edit_rule'
+  | 'remove_rule';
 
 export type AutomationMode = 'monitor_only' | 'suggest_edits' | 'full_ai_control';
 
 export interface Event {
-  id: string;
-  timestamp: number;
+  id?: string;
+  timestamp: string;
+  action?: string;
   src_ip?: string;
+  dest_ip?: string;
   dst_ip?: string;
   src_port?: number | null;
+  dest_port?: number | null;
   dst_port?: number | null;
   protocol?: string;
   service?: string;
   iface?: string;
   interface?: string;
-  direction?: 'inbound' | 'outbound' | 'internal';
+  direction?: string;
   event_type?: string;
   metadata?: Record<string, unknown>;
 }
@@ -577,16 +580,19 @@ export interface Decision {
   reason: string;
   confidence: number;
   auto_applied: boolean;
-  timestamp: number;
+  timestamp: string;
 }
 
 export interface Suggestion {
   id: string;
   event: Event;
   decision: Decision;
+  target_rule_id?: string | null;
   rule_id?: string | null;
   suggestion_text?: string;
   status?: 'pending' | 'applied' | 'rejected';
+  applied?: boolean;
+  rejected?: boolean;
 }
 
 export interface TrafficCandidate {
@@ -622,13 +628,37 @@ export interface Intent {
 
 export interface RuleAudit {
   id: string;
-  timestamp: number;
+  timestamp: string;
   action: DecisionAction;
   reason: string;
   auto_applied: boolean;
   rule_id?: string | null;
   undone?: boolean;
   metadata?: Record<string, unknown>;
+}
+
+export interface ApplySuggestionResponse {
+  applied: boolean;
+  message: string;
+  decision?: Decision | null;
+}
+
+export interface UndoResponse {
+  undone: boolean;
+  message: string;
+  decision?: Decision | null;
+}
+
+export interface AIAutomationSettings {
+  autoApplyConfidenceThreshold: number;
+  requireIntentMatch: boolean;
+  requireProtocol: boolean;
+  requireDestinationPort: boolean;
+  requireIpFamily: boolean;
+  maxAutoApplyPerHour: number;
+  allowEditRule: boolean;
+  allowRemoveRule: boolean;
+  protectManagementInterface: boolean;
 }
 
 // ── ACME / Certificates ───────────────────────────────────────────────────────
