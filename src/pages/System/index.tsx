@@ -1209,7 +1209,7 @@ export default function System() {
         confirmLabel="Reboot"
         confirmVariant="danger"
         loading={rebooting}
-        size="sm"
+        size="xl"
       >
         <p className="text-sm text-gray-600">
           Are you sure you want to reboot the system? All active connections will be interrupted.
