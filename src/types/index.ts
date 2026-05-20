@@ -546,6 +546,68 @@ export interface AiEngineConfig {
   model_learning_rate: number;
 }
 
+export type DecisionAction =
+  | 'Allow'
+  | 'Deny'
+  | 'SuggestAllow'
+  | 'SuggestDeny'
+  | 'EditRule'
+  | 'RemoveRule';
+
+export type AutomationMode = 'monitor_only' | 'suggest_edits' | 'full_ai_control';
+
+export interface Event {
+  id: string;
+  timestamp: number;
+  src_ip?: string;
+  dst_ip?: string;
+  src_port?: number | null;
+  dst_port?: number | null;
+  protocol?: string;
+  service?: string;
+  direction?: 'inbound' | 'outbound' | 'internal';
+  event_type?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface Decision {
+  action: DecisionAction;
+  reason: string;
+  confidence: number;
+  auto_applied: boolean;
+  timestamp: number;
+}
+
+export interface Suggestion {
+  id: string;
+  event: Event;
+  decision: Decision;
+  rule_id?: string | null;
+  suggestion_text?: string;
+  status?: 'pending' | 'applied' | 'rejected';
+}
+
+export interface Intent {
+  id?: string;
+  name: string;
+  description?: string;
+  enabled?: boolean;
+  condition?: Record<string, unknown>;
+  desired_action: DecisionAction;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RuleAudit {
+  id: string;
+  timestamp: number;
+  action: DecisionAction;
+  reason: string;
+  auto_applied: boolean;
+  rule_id?: string | null;
+  undone?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
 // ── ACME / Certificates ───────────────────────────────────────────────────────
 
 export type AcmeCertificateStatus = 'valid' | 'pending' | 'expired' | 'error';

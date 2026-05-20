@@ -3,14 +3,16 @@ import Suricata from '../Suricata';
 import CrowdSec from '../CrowdSec';
 import AIThreats from '../AIThreats';
 import Honeypots from '../Honeypots';
+import AIFirewallAutomation from '../AIFirewallAutomation';
 
-type Tab = 'suricata' | 'crowdsec' | 'honeypots' | 'ai';
+type Tab = 'suricata' | 'crowdsec' | 'honeypots' | 'ai' | 'aiAutomation';
 
 const tabs: Array<{ id: Tab; label: string }> = [
   { id: 'suricata', label: 'Suricata' },
   { id: 'crowdsec', label: 'CrowdSec' },
   { id: 'honeypots', label: 'Honeypots' },
   { id: 'ai', label: 'AI Threat Engine' },
+  { id: 'aiAutomation', label: 'AI Firewall Automation' },
 ];
 
 export default function Security() {
@@ -46,6 +48,7 @@ export default function Security() {
       {activeTab === 'crowdsec' && <CrowdSec />}
       {activeTab === 'honeypots' && <Honeypots />}
       {activeTab === 'ai' && <AIThreats />}
+      {activeTab === 'aiAutomation' && <AIFirewallAutomation />}
     </div>
   );
 }
