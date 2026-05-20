@@ -280,6 +280,26 @@ const navEntries: NavEntry[] = [
     ),
   },
   {
+    to: '/ai-threats',
+    label: 'AI Threats',
+    level: 1,
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v4m0 8v4m8-8h-4M8 12H4m11.314-5.314l-2.828 2.828m0 4.972l2.828 2.828m-9.9-2.828l2.828-2.828m0-4.972L5.414 9.514" />
+      </svg>
+    ),
+  },
+  {
+    to: '/ai-firewall-automation',
+    label: 'AI Firewall Automation',
+    level: 1,
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h10M17 14l3 3m0 0l-3 3m3-3h-7" />
+      </svg>
+    ),
+  },
+  {
     to: '/acme',
     label: 'ACME / TLS',
     icon: (
@@ -388,7 +408,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     location.pathname.startsWith('/security') ||
     location.pathname.startsWith('/suricata') ||
     location.pathname.startsWith('/crowdsec') ||
-    location.pathname.startsWith('/ai-threats');
+    location.pathname.startsWith('/ai-threats') ||
+    location.pathname.startsWith('/ai-firewall-automation');
 
   return (
     <>
