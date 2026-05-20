@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
@@ -28,54 +28,162 @@ import Tools from './pages/Tools';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import AdminSecurity from './pages/AdminSecurity';
 
-function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public route */}
-        <Route path="/login" element={<LoginPage />} />
+const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: <LoginPage />,
+  },
+  {
+    path: '/',
+    element: (
+      <ProtectedRoute>
+        <MainLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/dashboard" replace />,
+      },
+      {
+        path: 'dashboard',
+        element: <Dashboard />,
+        handle: { title: 'Dashboard' },
+      },
+      {
+        path: 'metrics',
+        element: <Navigate to="/dashboard" replace />,
+      },
+      {
+        path: 'interfaces',
+        element: <Interfaces />,
+        handle: { title: 'Network Interfaces' },
+      },
+      {
+        path: 'gateways',
+        element: <Gateways />,
+        handle: { title: 'Gateways' },
+      },
+      {
+        path: 'firewall',
+        element: <Firewall />,
+        handle: { title: 'Firewall' },
+      },
+      {
+        path: 'nat',
+        element: <NAT />,
+        handle: { title: 'NAT' },
+      },
+      {
+        path: 'vpn',
+        element: <VPN />,
+        handle: { title: 'VPN' },
+      },
+      {
+        path: 'dns',
+        element: <DNS />,
+        handle: { title: 'DNS' },
+      },
+      {
+        path: 'dynamic-dns',
+        element: <DynamicDNS />,
+        handle: { title: 'Dynamic DNS' },
+      },
+      {
+        path: 'dhcp',
+        element: <DHCP />,
+        handle: { title: 'DHCP' },
+      },
+      {
+        path: 'captive-portal',
+        element: <CaptivePortal />,
+        handle: { title: 'Captive Portal' },
+      },
+      {
+        path: 'suricata',
+        element: <Suricata />,
+        handle: { title: 'Suricata' },
+      },
+      {
+        path: 'suricata/rulesets',
+        element: <SuricataRulesetsPage />,
+        handle: { title: 'Suricata Rulesets' },
+      },
+      {
+        path: 'crowdsec',
+        element: <CrowdSec />,
+        handle: { title: 'CrowdSec' },
+      },
+      {
+        path: 'ai-threats',
+        element: <AIThreats />,
+        handle: { title: 'AI Threats' },
+      },
+      {
+        path: 'security',
+        element: <Security />,
+        handle: { title: 'Security' },
+      },
+      {
+        path: 'acme',
+        element: <ACME />,
+        handle: { title: 'ACME' },
+      },
+      {
+        path: 'system',
+        element: <System />,
+        handle: { title: 'System' },
+      },
+      {
+        path: 'logs',
+        element: <Logs />,
+        handle: { title: 'Logs' },
+      },
+      {
+        path: 'live-logs',
+        element: <Navigate to="/logs?tab=live" replace />,
+      },
+      {
+        path: 'backup',
+        element: <Backup />,
+        handle: { title: 'Backup' },
+      },
+      {
+        path: 'notifications',
+        element: <Notifications />,
+        handle: { title: 'Notifications' },
+      },
+      {
+        path: 'ntp',
+        element: <NTP />,
+        handle: { title: 'NTP' },
+      },
+      {
+        path: 'cloudflared',
+        element: <Cloudflared />,
+        handle: { title: 'Cloudflared' },
+      },
+      {
+        path: 'tools',
+        element: <Tools />,
+        handle: { title: 'Tools' },
+      },
+      {
+        path: 'change-password',
+        element: <ChangePasswordPage />,
+        handle: { title: 'Change Password' },
+      },
+      {
+        path: 'admin-security',
+        element: <AdminSecurity />,
+        handle: { title: 'Admin Security' },
+      },
+    ],
+  },
+]);
 
-        {/* Protected routes wrapped in MainLayout */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <MainLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="metrics" element={<Navigate to="/dashboard" replace />} />
-          <Route path="interfaces" element={<Interfaces />} />
-          <Route path="gateways" element={<Gateways />} />
-          <Route path="firewall" element={<Firewall />} />
-          <Route path="nat" element={<NAT />} />
-          <Route path="vpn" element={<VPN />} />
-          <Route path="dns" element={<DNS />} />
-          <Route path="dynamic-dns" element={<DynamicDNS />} />
-          <Route path="dhcp" element={<DHCP />} />
-          <Route path="captive-portal" element={<CaptivePortal />} />
-          <Route path="suricata" element={<Suricata />} />
-          <Route path="suricata/rulesets" element={<SuricataRulesetsPage />} />
-          <Route path="crowdsec" element={<CrowdSec />} />
-          <Route path="ai-threats" element={<AIThreats />} />
-          <Route path="security" element={<Security />} />
-          <Route path="acme" element={<ACME />} />
-          <Route path="system" element={<System />} />
-          <Route path="logs" element={<Logs />} />
-          <Route path="live-logs" element={<Navigate to="/logs?tab=live" replace />} />
-          <Route path="backup" element={<Backup />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="ntp" element={<NTP />} />
-          <Route path="cloudflared" element={<Cloudflared />} />
-          <Route path="tools" element={<Tools />} />
-          <Route path="change-password" element={<ChangePasswordPage />} />
-          <Route path="admin-security" element={<AdminSecurity />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
-  );
+function App() {
+  return <RouterProvider router={router} />;
 }
 
 export default App;

@@ -1,27 +1,20 @@
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { Link, useMatches, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import Button from '../components/Button';
-
-const pageTitles: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/interfaces': 'Network Interfaces',
-  '/firewall': 'Firewall Rules',
-  '/vpn': 'VPN',
-  '/dns': 'DNS',
-  '/dhcp': 'DHCP',
-  '/captive-portal': 'Captive Portal',
-  '/system': 'System',
-  '/change-password': 'Change Password',
-};
 
 interface TopBarProps {
   onOpenSidebar: () => void;
 }
 
 export default function TopBar({ onOpenSidebar }: TopBarProps) {
-  const { pathname } = useLocation();
-  const title = pageTitles[pathname] ?? 'DayShield';
+  const matches = useMatches();
+  const title =
+    matches
+      .slice()
+      .reverse()
+      .map((match) => (match.handle as { title?: string } | undefined)?.title)
+      .find((value): value is string => typeof value === 'string') || 'DayShield';
   const { user, signOut } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
