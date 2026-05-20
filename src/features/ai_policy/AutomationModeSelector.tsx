@@ -55,7 +55,10 @@ export default function AutomationModeSelector({
             );
           })}
 
-          <p className="pt-1 text-xs text-gray-500">{saving ? 'Saving mode...' : 'Mode saves instantly.'}</p>
+          <div className="space-y-1">
+            <p className="pt-1 text-xs text-gray-500">{saving ? 'Saving mode...' : 'Mode saves instantly.'}</p>
+            <p className="text-xs text-gray-500">If an interface is selected, this mode applies only to that interface; otherwise it updates the default mode.</p>
+          </div>
         </div>
       )}
     </Card>

@@ -159,7 +159,7 @@ function AIFirewallAutomationContent({
   const loadMode = useCallback(async () => {
     setModeLoading(true);
     try {
-      const res = await getAiAutomationMode();
+      const res = await getAiAutomationMode(selectedInterface ?? undefined);
       const payload = res.data;
       const rawMode = typeof payload === 'string' ? payload : payload.mode;
       setMode(normalizeAutomationMode(rawMode));
@@ -168,7 +168,7 @@ function AIFirewallAutomationContent({
     } finally {
       setModeLoading(false);
     }
-  }, [addToast]);
+  }, [addToast, selectedInterface]);
 
   const loadAutomationSettings = useCallback(() => {
     setAutomationSettingsLoading(true);
@@ -302,7 +302,7 @@ function AIFirewallAutomationContent({
     if (nextMode === mode) return;
     setModeSaving(true);
     try {
-      const res = await setAiAutomationMode(nextMode);
+      const res = await setAiAutomationMode(nextMode, selectedInterface ?? undefined);
       const payload = res.data;
       const rawMode = typeof payload === 'string' ? payload : payload.mode;
       setMode(normalizeAutomationMode(rawMode));
@@ -360,19 +360,24 @@ function AIFirewallAutomationContent({
             </p>
           )}
           {interfaces.length > 0 && (
-            <FormField
-              as="select"
-              label="Interface"
-              value={selectedInterface ?? ''}
-              onChange={(e) => onSelectInterface(e.target.value || null)}
-            >
-              <option value="">All interfaces</option>
-              {interfaces.map((iface) => (
-                <option key={iface.name} value={iface.name}>
-                  {formatInterfaceDisplayName(iface.description, iface.name)}
-                </option>
-              ))}
-            </FormField>
+            <>
+              <FormField
+                as="select"
+                label="Interface"
+                value={selectedInterface ?? ''}
+                onChange={(e) => onSelectInterface(e.target.value || null)}
+              >
+                <option value="">All interfaces</option>
+                {interfaces.map((iface) => (
+                  <option key={iface.name} value={iface.name}>
+                    {formatInterfaceDisplayName(iface.description, iface.name)}
+                  </option>
+                ))}
+              </FormField>
+              <p className="text-xs text-gray-500">
+                Interface selection filters the displayed traffic candidates and suggestions. When an interface is selected, the mode panel shows and updates the automation mode for that interface.
+              </p>
+            </>
           )}
         </div>
       </Card>

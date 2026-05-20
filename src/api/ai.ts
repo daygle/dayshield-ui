@@ -96,16 +96,25 @@ export const saveAiIntents = (intents: Intent[]): Promise<ApiResponse<Intent[]>>
     .post<ApiResponse<Intent[]>>('/api/ai/intents', { intents })
     .then((r) => normalizeResponse<Intent[]>(r.data));
 
-export const getAiAutomationMode = (): Promise<ApiResponse<AutomationMode | { mode: AutomationMode }>> =>
+export const getAiAutomationMode = (
+  iface?: string
+): Promise<ApiResponse<AutomationMode | { mode: AutomationMode }>> =>
   apiClient
-    .get<ApiResponse<AutomationMode | { mode: AutomationMode }>>('/api/ai/mode')
+    .get<ApiResponse<AutomationMode | { mode: AutomationMode }>>('/api/ai/mode', {
+      params: iface ? { iface } : undefined,
+    })
     .then((r) => normalizeResponse<AutomationMode | { mode: AutomationMode }>(r.data));
 
 export const setAiAutomationMode = (
-  mode: AutomationMode
+  mode: AutomationMode,
+  iface?: string
 ): Promise<ApiResponse<AutomationMode | { mode: AutomationMode }>> =>
   apiClient
-    .post<ApiResponse<AutomationMode | { mode: AutomationMode }>>('/api/ai/mode', { mode })
+    .post<ApiResponse<AutomationMode | { mode: AutomationMode }>>(
+      '/api/ai/mode',
+      { mode },
+      { params: iface ? { iface } : undefined }
+    )
     .then((r) => normalizeResponse<AutomationMode | { mode: AutomationMode }>(r.data));
 
 export const undoLastAiAction = (): Promise<ApiResponse<RuleAudit | null>> =>
