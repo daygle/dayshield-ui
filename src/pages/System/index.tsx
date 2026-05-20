@@ -123,6 +123,16 @@ function componentRemoteDisplay(comp: { remoteVersion?: string; remoteCommit?: s
   return comp.remoteVersion ?? (comp.remoteCommit ? shortCommit(comp.remoteCommit) : 'Unknown');
 }
 
+function hasResolvedRemoteVersion(comp: {
+  remoteVersion?: string;
+  remoteCommit?: string;
+  lastError?: string;
+}): boolean {
+  if (comp.remoteVersion || comp.remoteCommit) return true;
+  const err = (comp.lastError ?? '').toLowerCase();
+  return err.includes('missing from registry manifest') || err.includes('missing from manifest');
+}
+
 function formatUpdateComponentName(component: string): string {
   switch (component.toLowerCase()) {
     case 'core':
@@ -396,9 +406,19 @@ function normalizeRegistryUrl(input?: string): string {
   return trimmed;
 }
 
-function inferUpdateStatusLabel(validRepo: boolean, lastError?: string): string {
-  if (validRepo) return 'Up to Date';
-  const err = (lastError ?? '').toLowerCase();
+function inferUpdateStatusLabel(comp: {
+  validRepo: boolean;
+  updateAvailable: boolean;
+  remoteVersion?: string;
+  remoteCommit?: string;
+  lastError?: string;
+}): string {
+  const err = (comp.lastError ?? '').toLowerCase();
+  if (comp.validRepo) {
+    if (comp.updateAvailable) return 'Update Available';
+    if (hasResolvedRemoteVersion(comp)) return 'Up to Date';
+    return 'Status Unknown';
+  }
   // A component absent from the current manifest means no release was published for
   // it yet - that is not an error; it simply means this component is already current.
   if (err.includes('missing from registry manifest') || err.includes('missing from manifest'))
@@ -1419,15 +1439,18 @@ export default function System() {
                     const isMissingFromManifest = /missing from (registry )?manifest/i.test(
                       comp.lastError ?? ''
                     );
-                    const statusLabel = inferUpdateStatusLabel(comp.validRepo, comp.lastError);
+                    const statusLabel = inferUpdateStatusLabel(comp);
+                    const hasRemoteVersion = hasResolvedRemoteVersion(comp);
                     const statusClass = isMissingFromManifest
                       ? 'bg-gray-100 text-gray-600'
                       : comp.validRepo
-                        ? isRootfs && comp.updateAvailable
-                          ? 'bg-orange-100 text-orange-800'
-                          : comp.updateAvailable
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-green-100 text-green-700'
+                        ? !hasRemoteVersion && !comp.updateAvailable
+                          ? 'bg-gray-100 text-gray-600'
+                          : isRootfs && comp.updateAvailable
+                            ? 'bg-orange-100 text-orange-800'
+                            : comp.updateAvailable
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-green-100 text-green-700'
                         : 'bg-red-100 text-red-700';
 
                     return (
@@ -1440,12 +1463,8 @@ export default function System() {
                         >
                           {isMissingFromManifest
                             ? 'Not in current release'
-                            : comp.validRepo
-                              ? comp.updateAvailable
-                                ? isRootfs
-                                  ? 'Rebuild Required'
-                                  : 'Update Available'
-                                : 'Up to Date'
+                            : comp.validRepo && comp.updateAvailable && isRootfs
+                              ? 'Rebuild Required'
                               : statusLabel}
                         </span>
                       </div>
