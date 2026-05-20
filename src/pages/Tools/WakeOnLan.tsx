@@ -41,7 +41,7 @@ export default function WakeOnLan() {
         </div>
       </div>
 
-      <Card title="Wake on LAN" subtitle="Send a Wake-on-LAN packet." className="max-w-3xl">
+      <Card title="Wake on LAN" subtitle="Send a Wake-on-LAN packet.">
         <form className="space-y-6" onSubmit={handleSubmit}>
           <FormField
             id="wol-mac"

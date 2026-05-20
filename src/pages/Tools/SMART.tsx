@@ -41,7 +41,7 @@ export default function SMART() {
         </div>
       </div>
 
-      <Card title="SMART Storage Check" subtitle="Query storage device SMART health information." className="max-w-3xl">
+      <Card title="SMART Storage Check" subtitle="Query storage device SMART health information.">
         <div className="space-y-6">
           <FormField
             id="smart-device"
