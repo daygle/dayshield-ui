@@ -565,6 +565,8 @@ export interface Event {
   dst_port?: number | null;
   protocol?: string;
   service?: string;
+  iface?: string;
+  interface?: string;
   direction?: 'inbound' | 'outbound' | 'internal';
   event_type?: string;
   metadata?: Record<string, unknown>;
@@ -585,6 +587,27 @@ export interface Suggestion {
   rule_id?: string | null;
   suggestion_text?: string;
   status?: 'pending' | 'applied' | 'rejected';
+}
+
+export interface TrafficCandidate {
+  id: string;
+  timestamp: string;
+  first_seen: string;
+  last_seen: string;
+  direction: string;
+  observed_action: string;
+  src_ip: string;
+  dst_ip: string;
+  protocol: string;
+  src_port?: number | null;
+  dst_port?: number | null;
+  iface: string;
+  observation_count: number;
+  recommended_action: DecisionAction;
+  confidence: number;
+  reason: string;
+  matched_intent_id?: string | null;
+  matched_intent_name?: string | null;
 }
 
 export interface Intent {

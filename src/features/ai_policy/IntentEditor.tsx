@@ -22,8 +22,8 @@ export default function IntentEditor({ intents, loading, saving, onSave }: Inten
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [conditionKey, setConditionKey] = useState('service');
-  const [conditionValue, setConditionValue] = useState('ssh');
+  const [conditionKey, setConditionKey] = useState('dst_port');
+  const [conditionValue, setConditionValue] = useState('443');
   const [desiredAction, setDesiredAction] = useState<DecisionAction>('Deny');
   const [showJson, setShowJson] = useState(false);
 
@@ -75,8 +75,8 @@ export default function IntentEditor({ intents, loading, saving, onSave }: Inten
     setJsonError(null);
     setName('');
     setDescription('');
-    setConditionKey('service');
-    setConditionValue('ssh');
+    setConditionKey('dst_port');
+    setConditionValue('443');
     setDesiredAction('Deny');
     setShowJson(true);
   };
@@ -89,7 +89,7 @@ export default function IntentEditor({ intents, loading, saving, onSave }: Inten
   };
 
   return (
-    <Card title="Intent Editor" subtitle="Build, preview, and save AI firewall intents with a guided form">
+    <Card title="Traffic Policy Intents" subtitle="Define the traffic patterns the automation engine should allow, block, or tighten into scoped rules">
       {loading ? (
         <p className="text-sm text-gray-500">Loading intents...</p>
       ) : (
@@ -109,15 +109,16 @@ export default function IntentEditor({ intents, loading, saving, onSave }: Inten
               ))}
             </FormField>
             <FormField
-              label="Condition key"
+              label="Traffic match field"
               value={conditionKey}
               onChange={(e) => setConditionKey(e.target.value)}
-              hint="Examples: service, src_ip, dst_port"
+              hint="Examples: iface, direction, protocol, src_ip, dst_ip, dst_port, traffic_scope"
             />
             <FormField
-              label="Condition value"
+              label="Match value"
               value={conditionValue}
               onChange={(e) => setConditionValue(e.target.value)}
+              hint="Examples: wan, inbound, tcp, 443, lan"
             />
           </div>
 
@@ -142,7 +143,7 @@ export default function IntentEditor({ intents, loading, saving, onSave }: Inten
             <div className="mb-3 flex items-center justify-between gap-4">
               <div>
                 <h3 className="text-sm font-semibold text-slate-900">Intent preview</h3>
-                <p className="text-sm text-slate-500">Review the current intent draft as structured entries.</p>
+                <p className="text-sm text-slate-500">Review traffic-policy intents before they guide allow, deny, or rule-tightening decisions.</p>
               </div>
               <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
                 {intentItems.length} intent{intentItems.length === 1 ? '' : 's'}

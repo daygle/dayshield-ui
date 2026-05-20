@@ -16,7 +16,6 @@ import Suricata from './pages/Suricata';
 import SuricataRulesetsPage from './pages/Suricata/RulesetsPage';
 import CrowdSec from './pages/CrowdSec';
 import AIThreats from './pages/AIThreats';
-import AIFirewallAutomation from './pages/AIFirewallAutomation';
 import Security from './pages/Security';
 import ACME from './pages/ACME';
 import System from './pages/System';
@@ -119,11 +118,6 @@ const router = createBrowserRouter([
         path: 'ai-threats',
         element: <AIThreats />,
         handle: { title: 'AI Threats' },
-      },
-      {
-        path: 'ai-firewall-automation',
-        element: <AIFirewallAutomation />,
-        handle: { title: 'AI Firewall Automation' },
       },
       {
         path: 'security',

@@ -37,6 +37,23 @@ export default function SuggestionCard({ suggestion, busyAction = null, onApply,
   const confidencePct = Math.round(Math.max(0, Math.min(1, suggestion.decision.confidence)) * 100);
   const event = suggestion.event;
 
+  const eventInterface =
+    event.iface ??
+    event.interface ??
+    (typeof event.metadata?.iface === 'string' ? event.metadata.iface : undefined);
+
+  const eventDetails = [
+    { label: 'Source', value: event.src_ip },
+    { label: 'Source port', value: event.src_port != null ? String(event.src_port) : undefined },
+    { label: 'Destination', value: event.dst_ip },
+    { label: 'Destination port', value: event.dst_port != null ? String(event.dst_port) : undefined },
+    { label: 'Protocol', value: event.protocol },
+    { label: 'Service', value: event.service },
+    { label: 'Interface', value: eventInterface },
+    { label: 'Direction', value: event.direction },
+    { label: 'Event type', value: event.event_type },
+  ].filter((item) => item.value != null && item.value !== '');
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -50,10 +67,15 @@ export default function SuggestionCard({ suggestion, busyAction = null, onApply,
           </div>
           <p className="mt-2 text-sm text-gray-600">{suggestion.decision.reason || suggestion.suggestion_text || 'No reason provided.'}</p>
           <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-gray-500 sm:grid-cols-2">
-            <span>Source: {event.src_ip ?? 'n/a'}</span>
-            <span>Destination: {event.dst_ip ?? 'n/a'}</span>
-            <span>Protocol: {event.protocol ?? 'n/a'}</span>
-            <span>Service: {event.service ?? 'n/a'}</span>
+            {eventDetails.length > 0 ? (
+              eventDetails.map((detail) => (
+                <span key={detail.label}>
+                  {detail.label}: {detail.value}
+                </span>
+              ))
+            ) : (
+              <span>No event details available.</span>
+            )}
           </div>
         </div>
       </div>

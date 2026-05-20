@@ -388,8 +388,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     location.pathname.startsWith('/security') ||
     location.pathname.startsWith('/suricata') ||
     location.pathname.startsWith('/crowdsec') ||
-    location.pathname.startsWith('/ai-threats') ||
-    location.pathname.startsWith('/ai-firewall-automation');
+    location.pathname.startsWith('/ai-threats');
 
   return (
     <>

@@ -441,9 +441,17 @@ export default function Firewall() {
   const setActiveSection = (section: 'settings' | 'rules' | 'aliases' | 'aiAutomation') => {
     const next = new URLSearchParams(searchParams);
     next.set('section', section);
-    if (section !== 'rules') {
+    if (section !== 'rules' && section !== 'aiAutomation') {
       next.delete('iface');
     }
+    setSearchParams(next);
+  };
+
+  const setAiAutomationInterface = (iface: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('section', 'aiAutomation');
+    if (iface) next.set('iface', iface);
+    else next.delete('iface');
     setSearchParams(next);
   };
 
@@ -2058,7 +2066,11 @@ export default function Firewall() {
 
       {showAutomationSection && (
         <div id="firewall-ai-automation">
-          <AIFirewallAutomation />
+          <AIFirewallAutomation
+            interfaces={interfaces}
+            selectedInterface={selectedInterface}
+            onSelectInterface={setAiAutomationInterface}
+          />
         </div>
       )}
 
