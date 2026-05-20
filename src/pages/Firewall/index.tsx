@@ -22,6 +22,7 @@ import type {
   FirewallSettings,
   NetworkInterface,
 } from '../../types';
+import AIFirewallAutomation from '../AIFirewallAutomation';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Table, { Column } from '../../components/Table';
@@ -419,20 +420,25 @@ export default function Firewall() {
     : 'No firewall rules defined.';
 
   const activeSection =
-    selectedSection === 'aliases' || selectedSection === 'settings' || selectedSection === 'rules'
+    selectedSection === 'aliases' ||
+    selectedSection === 'settings' ||
+    selectedSection === 'rules' ||
+    selectedSection === 'aiAutomation'
       ? selectedSection
       : 'settings';
   const showRulesSection = activeSection === 'rules';
   const showAliasesSection = activeSection === 'aliases';
   const showSettingsSection = activeSection === 'settings';
+  const showAutomationSection = activeSection === 'aiAutomation';
 
-  const sectionTabs: Array<{ id: 'settings' | 'rules' | 'aliases'; label: string }> = [
+  const sectionTabs: Array<{ id: 'settings' | 'rules' | 'aliases' | 'aiAutomation'; label: string }> = [
     { id: 'settings', label: 'Settings' },
     { id: 'rules', label: 'Rules' },
     { id: 'aliases', label: 'Aliases' },
+    { id: 'aiAutomation', label: 'AI Firewall Automation' },
   ];
 
-  const setActiveSection = (section: 'settings' | 'rules' | 'aliases') => {
+  const setActiveSection = (section: 'settings' | 'rules' | 'aliases' | 'aiAutomation') => {
     const next = new URLSearchParams(searchParams);
     next.set('section', section);
     if (section !== 'rules') {
@@ -2047,6 +2053,12 @@ export default function Firewall() {
               emptyMessage={rulesEmptyMessage}
             />
           </Card>
+        </div>
+      )}
+
+      {showAutomationSection && (
+        <div id="firewall-ai-automation">
+          <AIFirewallAutomation />
         </div>
       )}
 
