@@ -907,16 +907,18 @@ export default function Firewall() {
         const rowIndex = visibleRules.findIndex((item) => item.id === row.id);
         const isFirst = rowIndex <= 0;
         const isLast = rowIndex === -1 || rowIndex >= visibleRules.length - 1;
+        const positionLabel = rowIndex >= 0 ? String(rowIndex + 1) : '-';
 
         return (
-          <div className="inline-flex rounded-md shadow-sm">
-            <button
-              title="Run earlier"
-              aria-label="Move rule earlier"
-              onClick={() => handleReorderRule(ruleData, 'earlier')}
-              disabled={ruleSaving || isFirst || system}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-l-md border border-gray-300 bg-white transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
+          <div className="flex items-center gap-2">
+            <div className="inline-flex rounded-md shadow-sm">
+              <button
+                title="Run earlier"
+                aria-label="Move rule earlier"
+                onClick={() => handleReorderRule(ruleData, 'earlier')}
+                disabled={ruleSaving || isFirst || system}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-l-md border border-gray-300 bg-white transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
                 <svg
                   className="h-4 w-4"
                   fill="none"
@@ -2295,6 +2297,7 @@ export default function Firewall() {
         </div>
       )}
 
+      <Modal
         open={deleteAliasName !== null}
         title="Delete Alias"
         onClose={() => setDeleteAliasName(null)}
