@@ -188,7 +188,7 @@ export default function OneToOneNAT() {
         const iface = (row as NatRule).interface;
         if (!iface) return '-';
         const found = (interfacesData?.data ?? []).find((i) => i.name === iface);
-        return found ? formatInterfaceDisplayName(found) : iface;
+        return found ? formatInterfaceDisplayName(found.description, found.name) : iface;
       },
     },
     { key: 'source', header: 'Internal Address', render: (row) => (row as NatRule).source ?? '-' },
@@ -282,12 +282,12 @@ export default function OneToOneNAT() {
             No One-to-One NAT rules configured. Create one to get started.
           </div>
         ) : (
-          <Table data={rules} columns={columns} />
+          <Table data={rules} columns={columns} keyField="id" />
         )}
       </Card>
 
       {/* Add/Edit Modal */}
-      <Modal open={ruleModalOpen} onOpenChange={setRuleModalOpen} title="One-to-One NAT Rule">
+      <Modal open={ruleModalOpen} onClose={() => setRuleModalOpen(false)} title="One-to-One NAT Rule">
         <div className="space-y-4">
           <div className="rounded-md bg-blue-50 p-3 text-sm text-blue-800">
             <p>
@@ -320,7 +320,7 @@ export default function OneToOneNAT() {
               <option value="">Select interface...</option>
               {wanInterfaces.map((iface) => (
                 <option key={iface.name} value={iface.name}>
-                  {formatInterfaceDisplayName(iface)}
+                  {formatInterfaceDisplayName(iface.description, iface.name)}
                 </option>
               ))}
             </select>
@@ -418,7 +418,7 @@ export default function OneToOneNAT() {
       {/* Delete Confirmation */}
       <Modal
         open={deleteId !== null}
-        onOpenChange={(open) => !open && setDeleteId(null)}
+        onClose={() => setDeleteId(null)}
         title="Confirm Deletion"
       >
         <div className="space-y-4">

@@ -15,7 +15,6 @@ import type {
   NatRule,
   NatOutboundMode,
   NatProtocol,
-  NatRuleType,
   NetworkInterface,
 } from '../../types';
 import Card from '../../components/Card';

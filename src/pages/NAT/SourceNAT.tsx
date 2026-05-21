@@ -224,7 +224,7 @@ export default function SourceNAT() {
         const iface = (row as NatRule).interface;
         if (!iface) return '-';
         const found = (interfacesData?.data ?? []).find((i) => i.name === iface);
-        return found ? formatInterfaceDisplayName(found) : iface;
+        return found ? formatInterfaceDisplayName(found.description, found.name) : iface;
       },
     },
     { key: 'source', header: 'Source', render: (row) => (row as NatRule).source ?? 'any' },
@@ -318,12 +318,12 @@ export default function SourceNAT() {
             No Source NAT rules configured. Create one to get started.
           </div>
         ) : (
-          <Table data={rules} columns={columns} />
+          <Table data={rules} columns={columns} keyField="id" />
         )}
       </Card>
 
       {/* Add/Edit Modal */}
-      <Modal open={ruleModalOpen} onOpenChange={setRuleModalOpen} title="Source NAT Rule">
+      <Modal open={ruleModalOpen} onClose={() => setRuleModalOpen(false)} title="Source NAT Rule">
         <div className="space-y-4">
           <FormField
             label="Enabled"
@@ -349,7 +349,7 @@ export default function SourceNAT() {
               <option value="">Select interface...</option>
               {wanInterfaces.map((iface) => (
                 <option key={iface.name} value={iface.name}>
-                  {formatInterfaceDisplayName(iface)}
+                  {formatInterfaceDisplayName(iface.description, iface.name)}
                 </option>
               ))}
             </select>
@@ -373,6 +373,8 @@ export default function SourceNAT() {
 
           <FormField label="Source Address (CIDR)" error={formErrors.source}>
             <AddressPrefixField
+              id="source-cidr"
+              label="Source Address (CIDR)"
               addressValue={sourceAddressInput}
               prefixValue={sourcePrefixInput}
               addressPlaceholder="e.g., 192.168.1.0"
@@ -448,7 +450,7 @@ export default function SourceNAT() {
       {/* Delete Confirmation */}
       <Modal
         open={deleteId !== null}
-        onOpenChange={(open) => !open && setDeleteId(null)}
+        onClose={() => setDeleteId(null)}
         title="Confirm Deletion"
       >
         <div className="space-y-4">
