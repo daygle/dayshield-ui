@@ -21,6 +21,7 @@ export default function SuggestionsPanel({
   error,
   busySuggestionId = null,
   busyAction = null,
+  interfaceLabels,
   onRefresh,
   onApply,
   onReject,
