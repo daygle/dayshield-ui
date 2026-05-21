@@ -33,16 +33,6 @@ npm run build
 
 Production assets are emitted to `dist/`.
 
-## Development
-
-Use the local development workflow for editing UI code and verifying changes.
-
-```sh
-npm run dev
-```
-
-This package is intended to produce a static frontend bundle. In deployed environments, the backend service provides the API surface and serves the UI assets.
-
 ## Test
 
 Run any available UI tests or validation commands configured in the package.
