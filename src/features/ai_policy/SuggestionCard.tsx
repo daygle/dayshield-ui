@@ -1,7 +1,6 @@
 import type { Suggestion } from '../../types';
 import Button from '../../components/Button';
 import { actionToLabel, confidenceClass, normalizeDecisionAction } from './constants';
-import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
 interface SuggestionCardProps {
   suggestion: Suggestion;
@@ -37,7 +36,7 @@ function ActionIcon({ action }: { action: Suggestion['decision']['action'] }) {
   );
 }
 
-export default function SuggestionCard({ suggestion, busyAction = null, onApply, onReject }: SuggestionCardProps) {
+export default function SuggestionCard({ suggestion, interfaceLabels, busyAction = null, onApply, onReject }: SuggestionCardProps) {
   const confidencePct = Math.round(Math.max(0, Math.min(1, suggestion.decision.confidence)) * 100);
   const event = suggestion.event;
 
