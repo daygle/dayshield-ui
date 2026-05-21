@@ -41,19 +41,6 @@ Run any available UI tests or validation commands configured in the package.
 npm test
 ```
 
-## Release model
-
-The UI package is released independently from `dayshield-core` and `dayshield-rootfs`. Release automation produces versioned UI artifacts that are consumed by the update manifest.
-
-### Artifact naming
-
-- `ui-vX.Y.Z.tar.zst` — production build archive
-- `ui-vX.Y.Z.tar.zst.sha256` — checksum file
-
-### Release trigger
-
-The repository release workflow is typically triggered by pushing a `v*` tag or via manual workflow dispatch.
-
 ## Notes
 
 - The backend API is provided by `dayshield-core`.
