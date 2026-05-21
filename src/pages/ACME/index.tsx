@@ -5,7 +5,12 @@ import {
   getAcmeCertificates,
   issueAcmeCertificate,
 } from '../../api/acme';
-import type { AcmeAccount, AcmeCertificate, AcmeCertificateStatus } from '../../types';
+import type {
+  AcmeAccount,
+  AcmeCertificate,
+  AcmeCertificateStatus,
+  AcmeDnsProvider,
+} from '../../types';
 import Card from '../../components/Card';
 import Table, { Column } from '../../components/Table';
 import Modal from '../../components/Modal';
@@ -194,12 +199,63 @@ export default function ACME() {
               setAccountForm({
                 ...accountForm,
                 challenge_type: e.target.value as 'http01' | 'dns01',
+                dns_provider:
+                  e.target.value === 'dns01'
+                    ? (accountForm.dns_provider ?? 'manual')
+                    : undefined,
               })
             }
           >
             <option value="http01">HTTP-01 (port 80)</option>
-            <option value="dns01">DNS-01 (manual TXT record)</option>
+            <option value="dns01">DNS-01 (manual TXT record or Cloudflare)</option>
           </FormField>
+          {accountForm.challenge_type === 'dns01' && (
+            <FormField
+              id="acme-dns-provider"
+              label="DNS provider"
+              as="select"
+              value={accountForm.dns_provider ?? 'manual'}
+              onChange={(e) =>
+                setAccountForm({
+                  ...accountForm,
+                  dns_provider: e.target.value as AcmeDnsProvider,
+                })
+              }
+            >
+              <option value="manual">Manual TXT record</option>
+              <option value="cloudflare">Cloudflare DNS API</option>
+            </FormField>
+          )}
+          {accountForm.challenge_type === 'dns01' &&
+            accountForm.dns_provider === 'cloudflare' && (
+              <>
+                <FormField
+                  id="acme-cloudflare-zone-id"
+                  label="Cloudflare Zone ID"
+                  placeholder="Enter Cloudflare zone ID"
+                  value={accountForm.cloudflare_zone_id ?? ''}
+                  onChange={(e) =>
+                    setAccountForm({
+                      ...accountForm,
+                      cloudflare_zone_id: e.target.value,
+                    })
+                  }
+                />
+                <FormField
+                  id="acme-cloudflare-api-token"
+                  label="Cloudflare API Token"
+                  type="password"
+                  placeholder="Enter Cloudflare API token"
+                  value={accountForm.cloudflare_api_token ?? ''}
+                  onChange={(e) =>
+                    setAccountForm({
+                      ...accountForm,
+                      cloudflare_api_token: e.target.value,
+                    })
+                  }
+                />
+              </>
+            )}
           <FormField
             id="acme-domains"
             label="Domains"
@@ -312,6 +368,24 @@ export default function ACME() {
                 {account.domains && account.domains.length > 0 ? account.domains.join(', ') : '-'}
               </dd>
             </div>
+            {account.challenge_type === 'dns01' && (
+              <>
+                <div>
+                  <dt className="text-gray-500">DNS Provider</dt>
+                  <dd className="font-medium text-gray-800">
+                    {account.dns_provider === 'cloudflare' ? 'Cloudflare DNS API' : 'Manual TXT record'}
+                  </dd>
+                </div>
+                {account.dns_provider === 'cloudflare' && (
+                  <div>
+                    <dt className="text-gray-500">Cloudflare Zone</dt>
+                    <dd className="font-medium text-gray-800">
+                      {account.cloudflare_zone_id ?? '-'}
+                    </dd>
+                  </div>
+                )}
+              </>
+            )}
             <div>
               <dt className="text-gray-500">Registered</dt>
               <dd

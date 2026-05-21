@@ -667,12 +667,17 @@ export type AcmeCertificateStatus = 'valid' | 'pending' | 'expired' | 'error';
 
 export type AcmeChallengeType = 'http01' | 'dns01';
 
+export type AcmeDnsProvider = 'manual' | 'cloudflare';
+
 export interface AcmeAccount {
   enabled: boolean;
   directory_url: string;
   email: string;
   domains: string[];
   challenge_type: AcmeChallengeType;
+  dns_provider?: AcmeDnsProvider;
+  cloudflare_zone_id?: string;
+  cloudflare_api_token?: string;
   renew_interval_hours: number;
   provider?: string;
   cert_storage_path: string;
