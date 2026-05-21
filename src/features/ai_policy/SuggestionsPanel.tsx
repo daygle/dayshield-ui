@@ -9,6 +9,7 @@ interface SuggestionsPanelProps {
   error: string | null;
   busySuggestionId?: string | null;
   busyAction?: 'apply' | 'reject' | null;
+  interfaceLabels?: Record<string, string>;
   onRefresh: () => void;
   onApply: (suggestionId: string) => void;
   onReject: (suggestionId: string) => void;
@@ -48,6 +49,7 @@ export default function SuggestionsPanel({
             <SuggestionCard
               key={suggestion.id}
               suggestion={suggestion}
+              interfaceLabels={interfaceLabels}
               busyAction={busySuggestionId === suggestion.id ? busyAction : null}
               onApply={onApply}
               onReject={onReject}

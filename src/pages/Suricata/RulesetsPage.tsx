@@ -1165,7 +1165,7 @@ export function SuricataRulesetGroupsSection() {
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3">
         {visibleSubgroupCards.map((subgroup) => {
           const groupKey = `${subgroup.familyLabel}:${subgroup.label}`;
           const action = getGroupAction(subgroup.rulesets);
@@ -1190,7 +1190,7 @@ export function SuricataRulesetGroupsSection() {
                 <div>
                   <h4 className="text-sm font-semibold text-gray-900">{subgroup.label}</h4>
                   <p className="mt-1 text-xs text-gray-500">
-                    Rulesets: {ruleCount !== null ? ruleCount : '—'}
+                    Rulesets: {ruleCount !== null ? ruleCount : '-'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

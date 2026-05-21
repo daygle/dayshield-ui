@@ -421,6 +421,10 @@ function AIFirewallAutomationContent({
             error={suggestionsError}
             busySuggestionId={busySuggestionId}
             busyAction={busyAction}
+            interfaceLabels={interfaces.reduce(
+              (map, iface) => ({ ...map, [iface.name]: formatInterfaceDisplayName(iface.description, iface.name) }),
+              {} as Record<string, string>
+            )}
             onRefresh={loadSuggestions}
             onApply={(id) => handleApplyOrReject(id, true)}
             onReject={(id) => handleApplyOrReject(id, false)}

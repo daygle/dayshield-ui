@@ -1,9 +1,11 @@
 import type { Suggestion } from '../../types';
 import Button from '../../components/Button';
 import { actionToLabel, confidenceClass, normalizeDecisionAction } from './constants';
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
 interface SuggestionCardProps {
   suggestion: Suggestion;
+  interfaceLabels?: Record<string, string>;
   busyAction?: 'apply' | 'reject' | null;
   onApply: (suggestionId: string) => void;
   onReject: (suggestionId: string) => void;
@@ -39,10 +41,16 @@ export default function SuggestionCard({ suggestion, busyAction = null, onApply,
   const confidencePct = Math.round(Math.max(0, Math.min(1, suggestion.decision.confidence)) * 100);
   const event = suggestion.event;
 
-  const eventInterface =
+  const rawEventInterface =
     event.iface ??
     event.interface ??
     (typeof event.metadata?.iface === 'string' ? event.metadata.iface : undefined);
+  const eventInterface = rawEventInterface
+    ? interfaceLabels?.[rawEventInterface] ?? rawEventInterface
+    : undefined;
+
+  const directionLabel = event.direction?.trim().toLowerCase() === 'audit' ? 'Mode' : 'Direction';
+  const directionValue = event.direction?.trim().toLowerCase() === 'audit' ? 'Audit' : event.direction;
 
   const eventDetails = [
     { label: 'Source', value: event.src_ip },
@@ -57,7 +65,7 @@ export default function SuggestionCard({ suggestion, busyAction = null, onApply,
     { label: 'Protocol', value: event.protocol },
     { label: 'Service', value: event.service },
     { label: 'Interface', value: eventInterface },
-    { label: 'Direction', value: event.direction },
+    { label: directionLabel, value: directionValue },
     { label: 'Event type', value: event.event_type },
   ].filter((item) => item.value != null && item.value !== '');
 

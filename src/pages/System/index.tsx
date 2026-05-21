@@ -964,7 +964,8 @@ export default function System() {
             id="cfg-ntp"
             label="NTP Servers (comma-separated)"
             className="col-span-2"
-            placeholder="0.pool.ntp.org, 1.pool.ntp.org"
+            placeholder="127.0.0.1"
+            hint="Use the appliance itself as the NTP source by pointing to 127.0.0.1."
             value={(editConfig.ntpServers ?? []).join(', ')}
             onChange={(e) =>
               setEditConfig({
@@ -1409,31 +1410,51 @@ export default function System() {
       </div>
 
       {activeSection === 'overview' && config && (
-        <Card
-          title="Core System"
-          actions={
-            <button
-              onClick={openEditModal}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-              title="Edit system configuration"
-              aria-label="Edit system configuration"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
-            </button>
-          }
-        >
+        <div className="grid gap-4 xl:grid-cols-3 mb-4">
+          <Card
+            title="Edit System"
+            subtitle="Hostname, timezone, NTP, DNS, and web UI settings"
+          >
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-gray-600">
+                Modify the primary appliance settings used across the system.
+              </p>
+              <Button onClick={openEditModal} className="w-full">
+                Edit system configuration
+              </Button>
+            </div>
+          </Card>
+          <Card
+            title="Edit Management Interface"
+            subtitle="Web UI access, allowed sources, and ACME certificate"
+          >
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-gray-600">
+                Update management access, port, and certificate settings.
+              </p>
+              <Button onClick={openEditModal} className="w-full">
+                Edit management settings
+              </Button>
+            </div>
+          </Card>
+          <Card
+            title="Edit SSH Settings"
+            subtitle="SSH service, port, and authentication configuration"
+          >
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-gray-600">
+                Adjust SSH access controls and authentication options.
+              </p>
+              <Button onClick={openEditModal} className="w-full">
+                Edit SSH settings
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {activeSection === 'overview' && config && (
+        <Card title="System Overview">
           <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
             <div>
               <dt className="text-gray-500">Hostname</dt>
@@ -1453,7 +1474,11 @@ export default function System() {
             </div>
             <div>
               <dt className="text-gray-500">NTP Servers</dt>
-              <dd className="font-medium text-gray-800">{config.ntpServers.join(', ') || '-'}</dd>
+              <dd className="font-medium text-gray-800">
+                {config.ntpServers.length > 0
+                  ? config.ntpServers.join(', ')
+                  : '127.0.0.1 (this appliance)'}
+              </dd>
             </div>
             <div>
               <dt className="text-gray-500">DNS Servers</dt>
@@ -1479,28 +1504,6 @@ export default function System() {
         <Card
           title="Management Interface"
           subtitle="Management access scope, ACME certificate selection, and UI session timeout"
-          actions={
-            <button
-              onClick={openEditModal}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-              title="Edit management interface settings"
-              aria-label="Edit management interface settings"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
-            </button>
-          }
         >
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <div>
@@ -1548,28 +1551,6 @@ export default function System() {
         <Card
           title="SSH"
           subtitle="Daemon state, auth methods, keys, and interface bindings"
-          actions={
-            <button
-              onClick={openEditModal}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-              title="Edit SSH settings"
-              aria-label="Edit SSH settings"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
-            </button>
-          }
         >
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <div>
