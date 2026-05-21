@@ -392,6 +392,7 @@ function AIFirewallAutomationContent({
                 label="Interface"
                 value={selectedInterface ?? ''}
                 onChange={(e) => onSelectInterface(e.target.value || null)}
+                inputClassName="max-w-xs"
               >
                 <option value="">All interfaces</option>
                 {interfaces.map((iface) => (

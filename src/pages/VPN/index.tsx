@@ -428,13 +428,13 @@ export default function VPN() {
       <div className="grid gap-4 xl:grid-cols-2">
         <Card
           title="VPN Settings"
-          subtitle="Configure WireGuard interface, tunnel, keys, and service state"
+          subtitle="Configure VPN interface, tunnel, keys, and service state"
           actions={
             <button
               type="button"
               onClick={handleSaveServer}
               disabled={serverSaving}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-600 bg-blue-600 text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
               title={isServerConfigured ? 'Save VPN Settings' : 'Create VPN'}
               aria-label={isServerConfigured ? 'Save VPN Settings' : 'Create VPN'}
             >
@@ -582,7 +582,7 @@ export default function VPN() {
               type="button"
               onClick={() => setPeerModalOpen(true)}
               disabled={!isServerConfigured}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-600 bg-blue-600 text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
               title="Create Peer"
               aria-label="Create Peer"
             >

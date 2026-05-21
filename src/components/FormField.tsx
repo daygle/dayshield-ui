@@ -12,6 +12,7 @@ interface BaseProps {
   hint?: string;
   required?: boolean;
   className?: string;
+  inputClassName?: string;
 }
 
 type InputProps = BaseProps &
@@ -43,6 +44,7 @@ export default function FormField(props: FormFieldProps) {
     hint,
     required,
     className = '',
+    inputClassName = '',
     as = 'input',
     children,
     ...rest
@@ -54,6 +56,8 @@ export default function FormField(props: FormFieldProps) {
     'focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 ' +
     (error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : '');
 
+  const inputClass = `${baseInputClass} ${inputClassName}`.trim();
+
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
       <label htmlFor={id} className="text-sm font-medium text-gray-700">
@@ -64,7 +68,7 @@ export default function FormField(props: FormFieldProps) {
       {as === 'select' ? (
         <select
           id={id}
-          className={baseInputClass}
+          className={inputClass}
           {...(rest as SelectHTMLAttributes<HTMLSelectElement>)}
         >
           {children}
@@ -73,7 +77,7 @@ export default function FormField(props: FormFieldProps) {
         <textarea
           id={id}
           rows={(props as TextareaProps).rows ?? 3}
-          className={baseInputClass}
+          className={inputClass}
           {...(rest as TextareaHTMLAttributes<HTMLTextAreaElement>)}
         />
       ) : children ? (
@@ -81,7 +85,7 @@ export default function FormField(props: FormFieldProps) {
       ) : (
         <input
           id={id}
-          className={baseInputClass}
+          className={inputClass}
           {...(rest as InputHTMLAttributes<HTMLInputElement>)}
         />
       )}

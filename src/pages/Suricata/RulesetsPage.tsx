@@ -657,19 +657,19 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
           <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
             <div className="text-gray-500">Total Rulesets</div>
             <div className="text-lg font-semibold text-gray-900">
-              {selectedRulesetRuleCount !== null ? selectedRulesetRuleCount : '—'}
+              {selectedRulesetRuleCount !== null ? selectedRulesetRuleCount : '-'}
             </div>
           </div>
           <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
             <div className="text-gray-500">Enabled</div>
             <div className="text-lg font-semibold text-green-700">
-              {selectedRulesetEnabledCount !== null ? selectedRulesetEnabledCount : '—'}
+              {selectedRulesetEnabledCount !== null ? selectedRulesetEnabledCount : '-'}
             </div>
           </div>
           <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
             <div className="text-gray-500">Disabled</div>
             <div className="text-lg font-semibold text-orange-700">
-              {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '—'}
+              {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '-'}
             </div>
           </div>
         </div>
@@ -871,7 +871,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
           actions={
             selectedRuleset ? (
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '—'}{' '}
+                {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '-'}{' '}
                 disabled
               </span>
             ) : undefined
@@ -975,11 +975,11 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
                 <div className="text-xs text-gray-500">
-                  {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '—'}{' '}
+                  {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '-'}{' '}
                   disabled,{' '}
                   {selectedRulesetRuleCount !== null
                     ? selectedRulesetRuleCount - selectedRulesetDisabledCount!
-                    : '—'}{' '}
+                    : '-'}{' '}
                   enabled
                 </div>
                 <div className="flex gap-2">
@@ -1195,7 +1195,7 @@ export function SuricataRulesetGroupsSection() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                    {enabledCount !== null ? enabledCount : '—'} enabled
+                    {enabledCount !== null ? enabledCount : '-'} enabled
                   </span>
                   <Button
                     size="sm"

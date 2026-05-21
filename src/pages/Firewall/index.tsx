@@ -729,6 +729,30 @@ export default function Firewall() {
       .catch((err: Error) => setRulesError(err.message));
   };
 
+  const handleDuplicateRule = (rule: FirewallRule) => {
+    if (rule.system) return;
+    const nextPriority =
+      rules.length > 0
+        ? Math.max(...rules.map((item) => (item.priority as number) ?? 100)) + 10
+        : 100;
+    const duplicatedRule: Partial<FirewallRule> = { ...rule, priority: nextPriority };
+    delete duplicatedRule.id;
+
+    const sourceParts = splitAddressValue(rule.source);
+    const destinationParts = splitAddressValue(rule.destination);
+    setRuleForm({
+      ...duplicatedRule,
+      ip_family: duplicatedRule.ip_family ?? 'ipv4_ipv6',
+    });
+    setSourceAddressInput(sourceParts.address);
+    setSourceSubnetInput(sourceParts.subnet || '32');
+    setDestinationAddressInput(destinationParts.address);
+    setDestinationSubnetInput(destinationParts.subnet || '32');
+    setRuleFormError(null);
+    setEditRule(null);
+    setRuleModalOpen(true);
+  };
+
   const handleToggleRuleLog = (rule: FirewallRule) => {
     if (rule.system) return;
     updateFirewallRule(rule.id, { ...rule, log: !rule.log })
@@ -883,18 +907,16 @@ export default function Firewall() {
         const rowIndex = visibleRules.findIndex((item) => item.id === row.id);
         const isFirst = rowIndex <= 0;
         const isLast = rowIndex === -1 || rowIndex >= visibleRules.length - 1;
-        const positionLabel = isFirst ? 'First' : isLast ? 'Last' : 'Middle';
 
         return (
-          <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-md shadow-sm">
-              <button
-                title="Run earlier"
-                aria-label="Move rule earlier"
-                onClick={() => handleReorderRule(ruleData, 'earlier')}
-                disabled={ruleSaving || isFirst || system}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-l-md border border-gray-300 bg-white transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
+          <div className="inline-flex rounded-md shadow-sm">
+            <button
+              title="Run earlier"
+              aria-label="Move rule earlier"
+              onClick={() => handleReorderRule(ruleData, 'earlier')}
+              disabled={ruleSaving || isFirst || system}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-l-md border border-gray-300 bg-white transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
                 <svg
                   className="h-4 w-4"
                   fill="none"
@@ -1114,6 +1136,30 @@ export default function Firewall() {
               </svg>
             </button>
             <button
+              title="Duplicate rule"
+              onClick={() => handleDuplicateRule(ruleData)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8.25 5.25h-1.5A2.25 2.25 0 004.5 7.5v10.5A2.25 2.25 0 006.75 20.25h10.5A2.25 2.25 0 0019.5 18V7.5A2.25 2.25 0 0017.25 5.25h-1.5"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8.25 7.5h7.5A2.25 2.25 0 0118 9.75v7.5a2.25 2.25 0 01-2.25 2.25h-7.5A2.25 2.25 0 016 17.25v-7.5A2.25 2.25 0 018.25 7.5z"
+                />
+              </svg>
+            </button>
+            <button
               title="Delete rule"
               onClick={() => setDeleteRuleId(row.id as string)}
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
@@ -1193,7 +1239,7 @@ export default function Firewall() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full">
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex gap-1" aria-label="Firewall tabs">
           {sectionTabs.map((tab) => {
@@ -1217,6 +1263,35 @@ export default function Firewall() {
           })}
         </nav>
       </div>
+
+      {activeSection === 'rules' && deleteRuleId !== null && (
+        <div className="max-w-full">
+          <Card title="Delete Firewall Rule" className="w-full">
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">Delete this firewall rule?</p>
+              {rules.find((rule) => rule.id === deleteRuleId) ? (
+                <p className="text-sm text-gray-700">
+                  {rules.find((rule) => rule.id === deleteRuleId)?.description ||
+                    'This will remove the selected rule from the firewall.'}
+                </p>
+              ) : null}
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button size="sm" variant="secondary" onClick={() => setDeleteRuleId(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={handleDeleteRule}
+                  loading={deletingRule}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {showSettingsSection && (
         <div id="firewall-settings">
@@ -2220,20 +2295,6 @@ export default function Firewall() {
         </div>
       )}
 
-      <Modal
-        open={deleteRuleId !== null}
-        title="Delete Firewall Rule"
-        onClose={() => setDeleteRuleId(null)}
-        onConfirm={handleDeleteRule}
-        confirmLabel="Delete"
-        confirmVariant="danger"
-        loading={deletingRule}
-        size="sm"
-      >
-        <p className="text-sm text-gray-600">Delete this firewall rule?</p>
-      </Modal>
-
-      <Modal
         open={deleteAliasName !== null}
         title="Delete Alias"
         onClose={() => setDeleteAliasName(null)}
