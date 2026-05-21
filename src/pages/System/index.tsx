@@ -976,7 +976,7 @@ export default function System() {
             type="number"
             min={1}
             max={65535}
-            value={String(editConfig.webPort ?? 8080)}
+            value={String(editConfig.webPort ?? 8443)}
             onChange={(e) => setEditConfig({ ...editConfig, webPort: Number(e.target.value) })}
           />
           <div className="col-span-2 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
