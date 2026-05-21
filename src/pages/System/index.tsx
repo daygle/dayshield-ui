@@ -14,10 +14,12 @@ import {
   validateUpdates,
   markApplianceRebuildComplete,
 } from '../../api/system';
+import { getAdminSecurity, updateAdminSecurity } from '../../api/admin';
 import { getFirewallSettings, updateFirewallSettings } from '../../api/firewall';
 import { getAcmeConfig } from '../../api/acme';
 import { getInterfaces, getInterfacesInventory } from '../../api/interfaces';
 import type {
+  AdminSecuritySettings,
   SystemStatus,
   SystemConfig,
   UpdatesStatus,
@@ -89,8 +91,18 @@ const DEFAULT_FIREWALL_SETTINGS: FirewallSettings = {
   management_anti_lockout: true,
   management_interface: null,
   management_allowed_sources: [],
-  management_ports: [22, 443, 8443],
+  management_ports: [8443],
   log_position: 'after',
+};
+
+const DEFAULT_ADMIN_SECURITY: AdminSecuritySettings = {
+  session_timeout_minutes: 480,
+  max_login_attempts: 5,
+  lockout_duration_minutes: 15,
+  min_password_length: 8,
+  require_uppercase: false,
+  require_number: false,
+  require_special: false,
 };
 
 function formatUptime(seconds: number): string {
@@ -560,9 +572,12 @@ export default function System() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [acmeDomains, setAcmeDomains] = useState<string[]>([]);
+  const [adminSecurity, setAdminSecurity] = useState<AdminSecuritySettings>(DEFAULT_ADMIN_SECURITY);
   const [editConfig, setEditConfig] = useState<Partial<SystemConfig>>({});
+  const [editAdminSecurity, setEditAdminSecurity] =
+    useState<AdminSecuritySettings>(DEFAULT_ADMIN_SECURITY);
   const [managementAllowedSourcesInput, setManagementAllowedSourcesInput] = useState('');
-  const [managementPortsInput, setManagementPortsInput] = useState('22, 443, 8443');
+  const [managementPortsInput, setManagementPortsInput] = useState('8443');
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -620,6 +635,14 @@ export default function System() {
   const interfaceLabel = (iface: NetworkInterface): string =>
     formatInterfaceDisplayName(iface.description, iface.name);
 
+  const openEditModal = () => {
+    if (config) {
+      setEditConfig(config);
+    }
+    setEditAdminSecurity(adminSecurity);
+    setEditOpen(true);
+  };
+
   const loadAll = () => {
     setLoading(true);
     Promise.all([
@@ -628,17 +651,20 @@ export default function System() {
       getUpdatesStatus(),
       getUpdateSettings(),
       getAcmeConfig(),
+      getAdminSecurity(),
       getFirewallSettings(),
       getInterfaces(),
       getInterfacesInventory(),
     ])
-      .then(([st, cfg, upd, updSettings, acme, fw, ifacesRes, inventoryRes]) => {
+      .then(([st, cfg, upd, updSettings, acme, adminSec, fw, ifacesRes, inventoryRes]) => {
         setStatus(st.data);
         setConfig(cfg.data);
         setEditConfig(cfg.data);
         setUpdates(upd.data);
         setUpdateSettings(updSettings.data);
         setAcmeDomains(acme.data.domains ?? []);
+        setAdminSecurity(adminSec);
+        setEditAdminSecurity(adminSec);
 
         const mergedFirewallSettings = { ...DEFAULT_FIREWALL_SETTINGS, ...fw.data };
         setFirewallSettings(mergedFirewallSettings);
@@ -710,16 +736,21 @@ export default function System() {
       ...firewallSettings,
       management_interface: firewallSettings.management_interface || null,
       management_allowed_sources: managementAllowedSources,
-      management_ports: managementPorts.length ? managementPorts : [22, 443, 8443],
+      management_ports: managementPorts,
       syn_flood_rate: Math.max(1, Number(firewallSettings.syn_flood_rate || 1)),
       syn_flood_burst: Math.max(1, Number(firewallSettings.syn_flood_burst || 1)),
     };
 
     setSaving(true);
-    Promise.all([updateSystemConfig(editConfig), updateFirewallSettings(firewallPayload)])
+    Promise.all([
+      updateSystemConfig(editConfig),
+      updateFirewallSettings(firewallPayload),
+      updateAdminSecurity(editAdminSecurity),
+    ])
       .then(([systemRes, firewallRes]) => {
         setConfig(systemRes.data);
         setEditConfig(systemRes.data);
+        setAdminSecurity(editAdminSecurity);
         const mergedFirewallSettings = { ...DEFAULT_FIREWALL_SETTINGS, ...firewallRes.data };
         setFirewallSettings(mergedFirewallSettings);
         setManagementAllowedSourcesInput(
@@ -970,6 +1001,45 @@ export default function System() {
             value={String(editConfig.sshPort ?? 22)}
             onChange={(e) => setEditConfig({ ...editConfig, sshPort: Number(e.target.value) })}
           />
+          <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+              <input
+                id="cfg-ssh-enabled"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                checked={editConfig.sshEnabled ?? true}
+                onChange={(e) => setEditConfig({ ...editConfig, sshEnabled: e.target.checked })}
+              />
+              <span className="text-sm font-medium text-gray-700">Enable SSH</span>
+            </label>
+            <label className="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+              <input
+                id="cfg-ssh-root-login"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                checked={editConfig.sshPermitRootLogin ?? true}
+                onChange={(e) =>
+                  setEditConfig({ ...editConfig, sshPermitRootLogin: e.target.checked })
+                }
+              />
+              <span className="text-sm font-medium text-gray-700">Permit root login</span>
+            </label>
+            <label className="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 md:col-span-2">
+              <input
+                id="cfg-ssh-password-auth"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                checked={editConfig.sshPasswordAuthentication ?? true}
+                onChange={(e) =>
+                  setEditConfig({
+                    ...editConfig,
+                    sshPasswordAuthentication: e.target.checked,
+                  })
+                }
+              />
+              <span className="text-sm font-medium text-gray-700">Permit password authentication</span>
+            </label>
+          </div>
           <FormField
             id="cfg-web-port"
             label="Web UI Port"
@@ -1017,6 +1087,22 @@ export default function System() {
               Select an issued ACME certificate to use for the DayShield management UI.
             </p>
           </div>
+          <FormField
+            id="cfg-login-timeout"
+            label="Login Timeout (minutes)"
+            type="number"
+            min={1}
+            value={String(editAdminSecurity.session_timeout_minutes)}
+            onChange={(e) =>
+              setEditAdminSecurity({
+                ...editAdminSecurity,
+                session_timeout_minutes: Math.max(1, Number(e.target.value) || 1),
+              })
+            }
+          />
+          <div className="col-span-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            HTTPS listener controls are not available here yet because the current DayShield core runtime still serves HTTP only. The ACME certificate selection above is stored for the future TLS listener path.
+          </div>
           <div className="col-span-2 border-t border-gray-200 pt-3">
             <p className="text-sm font-semibold text-gray-900">Management Access Controls</p>
             <p className="text-xs text-gray-500 mt-1">
@@ -1055,10 +1141,64 @@ export default function System() {
             id="cfg-management-ports"
             className="col-span-2"
             label="Management Ports (comma-separated)"
-            placeholder="e.g. 22, 443, 8443"
+            placeholder="e.g. 8443, 9443"
             value={managementPortsInput}
             onChange={(e) => setManagementPortsInput(e.target.value)}
           />
+          <div className="col-span-2 border-t border-gray-200 pt-3">
+            <p className="text-sm font-semibold text-gray-900">SSH Authentication</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Public keys are written to the root account authorized_keys file.
+            </p>
+          </div>
+          <FormField
+            id="cfg-ssh-authorized-keys"
+            className="col-span-2"
+            as="textarea"
+            rows={5}
+            label="Authorized SSH Keys (one per line)"
+            placeholder="ssh-ed25519 AAAAC3... admin@example"
+            value={(editConfig.sshAuthorizedKeys ?? []).join('\n')}
+            onChange={(e) =>
+              setEditConfig({
+                ...editConfig,
+                sshAuthorizedKeys: e.target.value
+                  .split('\n')
+                  .map((value) => value.trim())
+                  .filter(Boolean),
+              })
+            }
+          />
+          <div className="col-span-2">
+            <p className="text-sm font-medium text-gray-700">SSH Listen Interfaces</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Leave all unchecked to allow SSH on every interface.
+            </p>
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 rounded-md border border-gray-200 p-3">
+              {interfaces.map((iface) => {
+                const selected = (editConfig.sshListenInterfaces ?? []).includes(iface.name);
+                return (
+                  <label key={iface.name} className="flex items-center gap-3 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={selected}
+                      onChange={(e) => {
+                        const current = new Set(editConfig.sshListenInterfaces ?? []);
+                        if (e.target.checked) current.add(iface.name);
+                        else current.delete(iface.name);
+                        setEditConfig({
+                          ...editConfig,
+                          sshListenInterfaces: Array.from(current),
+                        });
+                      }}
+                    />
+                    <span>{interfaceLabel(iface)}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </Modal>
 
@@ -1270,13 +1410,10 @@ export default function System() {
 
       {activeSection === 'overview' && config && (
         <Card
-          title="System Configuration"
+          title="Core System"
           actions={
             <button
-              onClick={() => {
-                setEditConfig(config);
-                setEditOpen(true);
-              }}
+              onClick={openEditModal}
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
               title="Edit system configuration"
               aria-label="Edit system configuration"
@@ -1334,6 +1471,38 @@ export default function System() {
                 {config.ipv6Enabled ? 'Enabled' : 'Disabled'}
               </dd>
             </div>
+          </dl>
+        </Card>
+      )}
+
+      {activeSection === 'overview' && config && (
+        <Card
+          title="Management Interface"
+          subtitle="Management access scope, ACME certificate selection, and UI session timeout"
+          actions={
+            <button
+              onClick={openEditModal}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+              title="Edit management interface settings"
+              aria-label="Edit management interface settings"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </button>
+          }
+        >
+          <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <div>
               <dt className="text-gray-500">Management Interface</dt>
               <dd className="font-medium text-gray-800">
@@ -1349,7 +1518,92 @@ export default function System() {
             <div>
               <dt className="text-gray-500">Management Ports</dt>
               <dd className="font-medium text-gray-800">
-                {(firewallSettings.management_ports ?? []).join(', ') || '-'}
+                {(firewallSettings.management_ports ?? []).join(', ') || 'Web/SSH derived only'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Web UI Port</dt>
+              <dd className="font-medium text-gray-800">{config.webPort}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">TLS Certificate</dt>
+              <dd className="font-medium text-gray-800">
+                {config.managementTlsAcmeDomain || 'Default management certificate'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Login Timeout</dt>
+              <dd className="font-medium text-gray-800">
+                {adminSecurity.session_timeout_minutes} minutes
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-3 text-xs text-gray-500">
+            Core still serves the management UI over HTTP only. The ACME certificate selection is stored now and will be used once runtime HTTPS support lands.
+          </p>
+        </Card>
+      )}
+
+      {activeSection === 'overview' && config && (
+        <Card
+          title="SSH"
+          subtitle="Daemon state, auth methods, keys, and interface bindings"
+          actions={
+            <button
+              onClick={openEditModal}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+              title="Edit SSH settings"
+              aria-label="Edit SSH settings"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </button>
+          }
+        >
+          <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <div>
+              <dt className="text-gray-500">SSH Service</dt>
+              <dd className={`font-medium ${config.sshEnabled ? 'text-green-600' : 'text-gray-400'}`}>
+                {config.sshEnabled ? 'Enabled' : 'Disabled'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">SSH Port</dt>
+              <dd className="font-medium text-gray-800">{config.sshPort}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Permit Root Login</dt>
+              <dd className="font-medium text-gray-800">
+                {config.sshPermitRootLogin ? 'Enabled' : 'Disabled'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Password Authentication</dt>
+              <dd className="font-medium text-gray-800">
+                {config.sshPasswordAuthentication ? 'Enabled' : 'Disabled'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Authorized Keys</dt>
+              <dd className="font-medium text-gray-800">
+                {(config.sshAuthorizedKeys ?? []).length} configured
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Listen Interfaces</dt>
+              <dd className="font-medium text-gray-800">
+                {(config.sshListenInterfaces ?? []).join(', ') || 'All interfaces'}
               </dd>
             </div>
           </dl>

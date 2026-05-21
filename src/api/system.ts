@@ -30,6 +30,10 @@ interface BackendSystemConfig {
   dnsServers?: string[];
   sshEnabled?: boolean;
   sshPort?: number;
+  sshPermitRootLogin?: boolean;
+  sshPasswordAuthentication?: boolean;
+  sshAuthorizedKeys?: string[];
+  sshListenInterfaces?: string[];
   webPort?: number;
   ipv6Enabled?: boolean;
   managementTlsAcmeDomain?: string | null;
@@ -37,6 +41,10 @@ interface BackendSystemConfig {
   dns_servers?: string[];
   ssh_enabled?: boolean;
   ssh_port?: number;
+  ssh_permit_root_login?: boolean;
+  ssh_password_authentication?: boolean;
+  ssh_authorized_keys?: string[];
+  ssh_listen_interfaces?: string[];
   web_port?: number;
   ipv6_enabled?: boolean;
   management_tls_acme_domain?: string;
@@ -124,6 +132,10 @@ function normalizeSystemConfig(raw: unknown): SystemConfig {
       dnsServers: Array.isArray(cfg.dnsServers) ? cfg.dnsServers : [],
       sshEnabled: Boolean(cfg.sshEnabled),
       sshPort: typeof cfg.sshPort === 'number' ? cfg.sshPort : 22,
+      sshPermitRootLogin: cfg.sshPermitRootLogin ?? true,
+      sshPasswordAuthentication: cfg.sshPasswordAuthentication ?? true,
+      sshAuthorizedKeys: Array.isArray(cfg.sshAuthorizedKeys) ? cfg.sshAuthorizedKeys : [],
+      sshListenInterfaces: Array.isArray(cfg.sshListenInterfaces) ? cfg.sshListenInterfaces : [],
       webPort: typeof cfg.webPort === 'number' ? cfg.webPort : 8443,
       ipv6Enabled: Boolean(cfg.ipv6Enabled),
       managementTlsAcmeDomain: cfg.managementTlsAcmeDomain ?? null,
@@ -152,6 +164,28 @@ function normalizeSystemConfig(raw: unknown): SystemConfig {
         : typeof cfg.ssh_port === 'number'
           ? cfg.ssh_port
           : 22,
+    sshPermitRootLogin:
+      typeof cfg.sshPermitRootLogin === 'boolean'
+        ? cfg.sshPermitRootLogin
+        : typeof cfg.ssh_permit_root_login === 'boolean'
+          ? cfg.ssh_permit_root_login
+          : true,
+    sshPasswordAuthentication:
+      typeof cfg.sshPasswordAuthentication === 'boolean'
+        ? cfg.sshPasswordAuthentication
+        : typeof cfg.ssh_password_authentication === 'boolean'
+          ? cfg.ssh_password_authentication
+          : true,
+    sshAuthorizedKeys: Array.isArray(cfg.sshAuthorizedKeys)
+      ? cfg.sshAuthorizedKeys
+      : Array.isArray(cfg.ssh_authorized_keys)
+        ? cfg.ssh_authorized_keys
+        : [],
+    sshListenInterfaces: Array.isArray(cfg.sshListenInterfaces)
+      ? cfg.sshListenInterfaces
+      : Array.isArray(cfg.ssh_listen_interfaces)
+        ? cfg.ssh_listen_interfaces
+        : [],
     webPort:
       typeof cfg.webPort === 'number'
         ? cfg.webPort
@@ -176,6 +210,10 @@ function toBackendSystemConfig(config: Partial<SystemConfig>): Partial<BackendSy
     dnsServers: config.dnsServers,
     sshEnabled: config.sshEnabled,
     sshPort: config.sshPort,
+    sshPermitRootLogin: config.sshPermitRootLogin,
+    sshPasswordAuthentication: config.sshPasswordAuthentication,
+    sshAuthorizedKeys: config.sshAuthorizedKeys,
+    sshListenInterfaces: config.sshListenInterfaces,
     webPort: config.webPort,
     ipv6Enabled: config.ipv6Enabled,
     managementTlsAcmeDomain: config.managementTlsAcmeDomain ?? undefined,

@@ -764,6 +764,10 @@ export interface SystemConfig {
   dnsServers: string[];
   sshEnabled: boolean;
   sshPort: number;
+  sshPermitRootLogin: boolean;
+  sshPasswordAuthentication: boolean;
+  sshAuthorizedKeys: string[];
+  sshListenInterfaces: string[];
   webPort: number;
   ipv6Enabled: boolean;
   managementTlsAcmeDomain?: string | null;
