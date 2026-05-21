@@ -264,12 +264,12 @@ function validateFirewallRuleForm(rule: Partial<FirewallRule>): string | null {
   const limits = rule.state_limits;
   if (limits) {
     const entries: Array<[string, number | null | undefined]> = [
-      ['Max states', limits.max_states],
-      ['Max source nodes', limits.max_source_nodes],
-      ['Max source states', limits.max_source_states],
-      ['Max source connections', limits.max_source_connections],
-      ['Max new connections [c]', limits.max_new_connections],
-      ['Max new connections [s]', limits.max_new_connections_seconds],
+      ['State table limit', limits.max_states],
+      ['Source node limit', limits.max_source_nodes],
+      ['Source state limit', limits.max_source_states],
+      ['Source connection limit', limits.max_source_connections],
+      ['New connection limit', limits.max_new_connections],
+      ['New connection window (s)', limits.max_new_connections_seconds],
     ];
     for (const [label, value] of entries) {
       if (value != null && (!Number.isInteger(value) || value < 1)) {
@@ -1475,11 +1475,11 @@ export default function Firewall() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <FormField
                       id="rule-desc"
                       label="Description"
-                      className="col-span-2"
+                      className="col-span-1 lg:col-span-3"
                       placeholder="Brief rule description"
                       value={ruleForm.description ?? ''}
                       onChange={(e) =>
@@ -1589,6 +1589,7 @@ export default function Firewall() {
                     <AddressPrefixField
                       id="rule-src"
                       label="Source (custom CIDR/IP/Alias)"
+                      className="lg:col-span-3"
                       addressValue={sourceAddressInput}
                       prefixValue={isIpv4Address(sourceAddressInput) ? sourceSubnetInput : '32'}
                       prefixOptions={CIDR_PREFIX_OPTIONS}
@@ -1630,6 +1631,7 @@ export default function Firewall() {
                     <AddressPrefixField
                       id="rule-dst"
                       label="Destination (custom CIDR/IP/Alias)"
+                      className="lg:col-span-3"
                       addressValue={destinationAddressInput}
                       prefixValue={
                         isIpv4Address(destinationAddressInput) ? destinationSubnetInput : '32'
@@ -1644,7 +1646,7 @@ export default function Firewall() {
                           : 'Available after entering an IPv4 address.'
                       }
                     />
-                    <p className="col-span-2 -mt-1 text-xs text-gray-500">
+                    <p className="lg:col-span-3 -mt-1 text-xs text-gray-500">
                       Aliases can be used in presets or typed directly; IPv4 / IPv6 limits only
                       apply to literal addresses and CIDRs.
                     </p>
@@ -1663,14 +1665,14 @@ export default function Firewall() {
                       }
                     />
 
-                    <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
+                    <details className="lg:col-span-3 overflow-hidden rounded border border-gray-200 bg-white">
                       <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
                         Advanced Match Limits
                       </summary>
-                      <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-2 gap-4">
+                      <div className="border-t border-gray-200 px-4 py-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <FormField
                           id="rule-max-states"
-                          label="Max states"
+                          label="State table limit"
                           type="number"
                           min={1}
                           value={
@@ -1690,7 +1692,7 @@ export default function Firewall() {
                         />
                         <FormField
                           id="rule-max-source-nodes"
-                          label="Max source nodes"
+                          label="Source node limit"
                           type="number"
                           min={1}
                           value={
@@ -1712,7 +1714,7 @@ export default function Firewall() {
                         />
                         <FormField
                           id="rule-max-source-states"
-                          label="Max source states"
+                          label="Source state limit"
                           type="number"
                           min={1}
                           value={
@@ -1734,7 +1736,7 @@ export default function Firewall() {
                         />
                         <FormField
                           id="rule-max-source-connections"
-                          label="Max source connections"
+                          label="Source connection limit"
                           type="number"
                           min={1}
                           value={
@@ -1756,7 +1758,8 @@ export default function Firewall() {
                         />
                         <FormField
                           id="rule-max-new-connections"
-                          label="Max new connections [c]"
+                          label="New connection limit"
+                          hint="Maximum new connections created while this rule is active."
                           type="number"
                           min={1}
                           value={
@@ -1778,7 +1781,8 @@ export default function Firewall() {
                         />
                         <FormField
                           id="rule-max-new-connections-seconds"
-                          label="Max new connections [s]"
+                          label="New connection window (s)"
+                          hint="Sliding window in seconds for the new connection limit."
                           type="number"
                           min={1}
                           value={
@@ -1801,7 +1805,7 @@ export default function Firewall() {
                       </div>
                     </details>
 
-                    <div className="flex gap-6 col-span-2">
+                    <div className="flex gap-6 lg:col-span-3">
                       <label className="flex items-center gap-3">
                         <input
                           type="checkbox"
@@ -1820,7 +1824,7 @@ export default function Firewall() {
                       </label>
                     </div>
 
-                    <details className="col-span-2 overflow-hidden rounded border border-gray-200 bg-white">
+                    <details className="lg:col-span-3 overflow-hidden rounded border border-gray-200 bg-white">
                       <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
                         Schedule (optional)
                       </summary>

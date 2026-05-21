@@ -18,6 +18,7 @@ type BackendWgInterface = {
   listen_port?: number;
   addresses?: string[];
   peers?: BackendWgPeer[];
+  mtu?: number;
   enabled?: boolean;
 };
 
@@ -44,6 +45,7 @@ function toUiInterface(raw: BackendWgInterface): WgServer {
     listenPort: raw.listen_port ?? 0,
     addresses: Array.isArray(raw.addresses) ? raw.addresses : [],
     peers,
+    mtu: raw.mtu,
     enabled: raw.enabled ?? false,
   };
 }
@@ -56,6 +58,7 @@ function toBackendInterface(iface: WgServer): BackendWgInterface {
     public_key: iface.publicKey,
     listen_port: iface.listenPort,
     addresses: iface.addresses,
+    mtu: iface.mtu,
     peers: (iface.peers ?? []).map((peer) => ({
       name: peer.name,
       public_key: peer.publicKey,

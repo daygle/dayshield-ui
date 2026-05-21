@@ -488,12 +488,12 @@ export default function CaptivePortalPage() {
               }`}
             >
               <svg
-                className="h-5 w-5"
+                className="h-4 w-4"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2.25}
+                strokeWidth={2}
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v8.5" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 5.5a7 7 0 109 0" />
@@ -513,12 +513,12 @@ export default function CaptivePortalPage() {
             >
               {saving ? (
                 <svg
-                  className="h-5 w-5 animate-spin"
+                  className="h-4 w-4 animate-spin"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth={2.25}
+                  strokeWidth={2}
                 >
                   <circle
                     className="opacity-25"
@@ -532,12 +532,12 @@ export default function CaptivePortalPage() {
                 </svg>
               ) : (
                 <svg
-                  className="h-5 w-5"
+                  className="h-4 w-4"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                  strokeWidth={2.25}
+                  strokeWidth={2}
                 >
                   <path
                     strokeLinecap="round"
@@ -558,12 +558,12 @@ export default function CaptivePortalPage() {
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg
-                className="h-5 w-5"
+                className="h-4 w-4"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2.25}
+                strokeWidth={2}
               >
                 <path
                   strokeLinecap="round"
@@ -586,12 +586,12 @@ export default function CaptivePortalPage() {
             >
               {saving ? (
                 <svg
-                  className="h-5 w-5 animate-spin"
+                  className="h-4 w-4 animate-spin"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth={2.25}
+                  strokeWidth={2}
                 >
                   <circle
                     className="opacity-25"
@@ -605,12 +605,12 @@ export default function CaptivePortalPage() {
                 </svg>
               ) : (
                 <svg
-                  className="h-5 w-5"
+                  className="h-4 w-4"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                  strokeWidth={2.25}
+                  strokeWidth={2}
                 >
                   <path
                     strokeLinecap="round"

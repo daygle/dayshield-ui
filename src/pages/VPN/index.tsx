@@ -32,6 +32,7 @@ const defaultServerForm = {
   description: '',
   listenPort: 51820,
   addresses: '10.8.0.1/24',
+  mtu: '',
   enabled: true,
   publicKey: '',
   privateKey: '',
@@ -110,6 +111,7 @@ export default function VPN() {
       description: server.description || defaultServerForm.description,
       listenPort: server.listenPort || defaultServerForm.listenPort,
       addresses: server.addresses?.join(', ') || defaultServerForm.addresses,
+      mtu: server.mtu ? String(server.mtu) : '',
       enabled: server.enabled ?? true,
       publicKey: server.publicKey || '',
       privateKey: '',
@@ -160,6 +162,12 @@ export default function VPN() {
       publicKey: serverForm.publicKey.trim(),
       privateKey: serverForm.privateKey.trim(),
       listenPort: Number(serverForm.listenPort) || defaultServerForm.listenPort,
+      mtu:
+        serverForm.mtu.trim() === ''
+          ? undefined
+          : Number.isNaN(Number(serverForm.mtu))
+          ? undefined
+          : Number(serverForm.mtu),
       addresses: serverForm.addresses
         .split(',')
         .map((s) => s.trim())
@@ -393,6 +401,12 @@ export default function VPN() {
             <dd className="font-mono text-gray-900">{listenPortLabel}</dd>
           </div>
           <div>
+            <dt className="text-gray-500 mb-1">MTU</dt>
+            <dd className="font-mono text-gray-900">
+              {server?.mtu ? String(server.mtu) : 'Default'}
+            </dd>
+          </div>
+          <div>
             <dt className="text-gray-500 mb-1">Peers</dt>
             <dd className="text-gray-900">{peers.length}</dd>
           </div>
@@ -488,6 +502,16 @@ export default function VPN() {
               onChange={(e) =>
                 setServerForm({ ...serverForm, listenPort: Number(e.target.value) || 51820 })
               }
+            />
+            <FormField
+              id="server-mtu"
+              label="MTU"
+              type="number"
+              min={68}
+              max={65535}
+              placeholder="Leave blank for default"
+              value={serverForm.mtu}
+              onChange={(e) => setServerForm({ ...serverForm, mtu: e.target.value })}
             />
             <AddressPrefixField
               id="server-address"

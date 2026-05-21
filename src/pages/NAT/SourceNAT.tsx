@@ -299,13 +299,14 @@ export default function SourceNAT() {
           <h3 className="text-lg font-semibold">Source NAT Rules</h3>
           <button
             onClick={openAddModal}
-            className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            title="Add NAT rule"
+            aria-label="Add NAT rule"
             disabled={rulesLoading}
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Add Rule
           </button>
         </div>
       </Card>
@@ -324,7 +325,7 @@ export default function SourceNAT() {
 
       {/* Add/Edit Modal */}
       <Modal open={ruleModalOpen} onClose={() => setRuleModalOpen(false)} title="Source NAT Rule">
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <FormField
             label="Enabled"
             error={formErrors.enabled}
@@ -394,7 +395,7 @@ export default function SourceNAT() {
             />
           </FormField>
 
-          <FormField label="Description">
+          <FormField label="Description" className="lg:col-span-3">
             <input
               type="text"
               value={ruleForm.description ?? ''}
@@ -404,7 +405,7 @@ export default function SourceNAT() {
             />
           </FormField>
 
-          <FormField label="Logging">
+          <FormField label="Logging" className="lg:col-span-3">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -416,7 +417,7 @@ export default function SourceNAT() {
             </label>
           </FormField>
 
-          <FormField label="Auto Firewall Rule">
+          <FormField label="Auto Firewall Rule" className="lg:col-span-3">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"

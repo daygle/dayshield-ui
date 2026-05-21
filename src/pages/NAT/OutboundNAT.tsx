@@ -346,7 +346,7 @@ export default function OutboundNAT() {
         loading={isSaving}
         size="xl"
       >
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <FormField
             id="nat-iface"
             label="Interface"
@@ -402,7 +402,7 @@ export default function OutboundNAT() {
               <option value="ipv6">IPv6</option>
             </FormField>
           ) : (
-            <div className="col-span-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+            <div className="lg:col-span-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                 Address Family
               </p>
@@ -456,12 +456,12 @@ export default function OutboundNAT() {
           <FormField
             id="nat-desc"
             label="Description"
-            className="col-span-2"
+            className="lg:col-span-3"
             placeholder="Optional description"
             value={ruleForm.description ?? ''}
             onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value || null })}
           />
-          <div className="col-span-2 flex items-center gap-2">
+          <div className="lg:col-span-3 flex items-center gap-2">
             <input
               id="nat-enabled"
               type="checkbox"
@@ -473,7 +473,7 @@ export default function OutboundNAT() {
               Enable Rule
             </label>
           </div>
-          <div className="col-span-2 flex items-center gap-2">
+          <div className="lg:col-span-3 flex items-center gap-2">
             <input
               id="nat-log"
               type="checkbox"

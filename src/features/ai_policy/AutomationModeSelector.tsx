@@ -44,11 +44,13 @@ export default function AutomationModeSelector({
                   <span
                     className={[
                       'inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs',
-                      selected ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 text-transparent',
+                      selected
+                        ? 'border-blue-600 bg-blue-600 text-white'
+                        : 'border-gray-300 bg-white text-transparent',
                     ].join(' ')}
                     aria-hidden="true"
                   >
-                    v
+                    ✓
                   </span>
                 </div>
               </button>

@@ -261,7 +261,7 @@ export default function PortForwardPage() {
         loading={isSaving}
         size="xl"
       >
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <FormField
             id="pf-wan"
             label="WAN Interface"
@@ -305,7 +305,7 @@ export default function PortForwardPage() {
               <option value="ipv6">IPv6</option>
             </FormField>
           ) : (
-            <div className="col-span-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+            <div className="lg:col-span-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                 Address Family
               </p>
@@ -371,12 +371,12 @@ export default function PortForwardPage() {
           <FormField
             id="pf-desc"
             label="Description"
-            className="col-span-2"
+            className="lg:col-span-3"
             placeholder="Optional description"
             value={form.description ?? ''}
             onChange={(e) => setForm({ ...form, description: e.target.value || null })}
           />
-          <div className="col-span-2 space-y-3 pt-1">
+          <div className="lg:col-span-3 space-y-3 pt-1">
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
