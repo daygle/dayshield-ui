@@ -1003,7 +1003,7 @@ export interface NotifyTestResult {
 
 export type NatOutboundMode = 'automatic' | 'hybrid' | 'manual';
 export type NatProtocol = 'tcp' | 'udp' | 'tcp_udp' | 'any';
-export type NatRuleType = 'masquerade' | 'snat' | 'dnat';
+export type NatRuleType = 'masquerade' | 'snat' | 'dnat' | 'one_to_one';
 
 export interface NatTranslation {
   address: string | null;

@@ -2,12 +2,16 @@ import { useState } from 'react';
 import OutboundNAT from './OutboundNAT';
 import PortForward from './PortForward';
 import NATReflection from './NATReflection';
+import SourceNAT from './SourceNAT';
+import OneToOneNAT from './OneToOneNAT';
 
-type Tab = 'outbound' | 'portforward' | 'reflection';
+type Tab = 'outbound' | 'snat' | 'portforward' | 'one_to_one' | 'reflection';
 
 const tabs: { id: Tab; label: string }[] = [
   { id: 'outbound', label: 'Outbound NAT' },
+  { id: 'snat', label: 'Source NAT' },
   { id: 'portforward', label: 'Port Forward' },
+  { id: 'one_to_one', label: 'One-to-One NAT' },
   { id: 'reflection', label: 'NAT Reflection' },
 ];
 
@@ -42,7 +46,9 @@ export default function NAT() {
 
       {/* Tab content */}
       {activeTab === 'outbound' && <OutboundNAT />}
+      {activeTab === 'snat' && <SourceNAT />}
       {activeTab === 'portforward' && <PortForward />}
+      {activeTab === 'one_to_one' && <OneToOneNAT />}
       {activeTab === 'reflection' && <NATReflection />}
     </div>
   );

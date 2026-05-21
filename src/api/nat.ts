@@ -44,3 +44,33 @@ export const updatePortForward = (
 ): Promise<ApiResponse<NatRule>> => updateNatRule(id, rule);
 
 export const deletePortForward = (id: string): Promise<ApiResponse<void>> => deleteNatRule(id);
+
+// Source NAT (SNAT) rules
+
+export const getSourceNatRules = (): Promise<ApiResponse<NatRule[]>> =>
+  getNatRules().then((r) => ({ ...r, data: r.data.filter((rule) => rule.rule_type === 'snat') }));
+
+export const createSourceNatRule = (rule: Omit<NatRule, 'id'>): Promise<ApiResponse<NatRule>> =>
+  createNatRule({ ...rule, rule_type: 'snat' });
+
+export const updateSourceNatRule = (
+  id: string,
+  rule: Partial<Omit<NatRule, 'id'>>
+): Promise<ApiResponse<NatRule>> => updateNatRule(id, rule);
+
+export const deleteSourceNatRule = (id: string): Promise<ApiResponse<void>> => deleteNatRule(id);
+
+// One-to-One NAT rules
+
+export const getOneToOneNatRules = (): Promise<ApiResponse<NatRule[]>> =>
+  getNatRules().then((r) => ({ ...r, data: r.data.filter((rule) => rule.rule_type === 'one_to_one') }));
+
+export const createOneToOneNatRule = (rule: Omit<NatRule, 'id'>): Promise<ApiResponse<NatRule>> =>
+  createNatRule({ ...rule, rule_type: 'one_to_one' });
+
+export const updateOneToOneNatRule = (
+  id: string,
+  rule: Partial<Omit<NatRule, 'id'>>
+): Promise<ApiResponse<NatRule>> => updateNatRule(id, rule);
+
+export const deleteOneToOneNatRule = (id: string): Promise<ApiResponse<void>> => deleteNatRule(id);

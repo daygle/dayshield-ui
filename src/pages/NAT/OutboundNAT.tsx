@@ -105,8 +105,8 @@ export default function OutboundNAT() {
   });
 
   const config = configData?.data;
-  // Outbound NAT page shows masquerade + SNAT rules only; DNAT lives in Port Forwards.
-  const rules = (rulesData?.data ?? []).filter((r) => r.rule_type !== 'dnat') as RuleRow[];
+  // Outbound NAT page shows masquerade rules only; SNAT, DNAT, and OneToOne live in their own tabs.
+  const rules = (rulesData?.data ?? []).filter((r) => r.rule_type === 'masquerade') as RuleRow[];
   const wanInterfaces = (interfacesData?.data ?? []).filter(
     (iface) => iface.enabled !== false && isWanInterface(iface)
   );
@@ -171,9 +171,6 @@ export default function OutboundNAT() {
     if (!ruleForm.interface?.trim()) errors.interface = 'Interface is required';
     if (ruleForm.address_family === 'ipv6' && !ipv6Enabled) {
       errors.address_family = 'IPv6 NAT requires IPv6 to be enabled in System settings';
-    }
-    if (ruleForm.rule_type === 'snat' && !ruleForm.translation?.address?.trim()) {
-      errors.translation = 'Translation address is required for SNAT';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -352,22 +349,6 @@ export default function OutboundNAT() {
       >
         <div className="grid grid-cols-2 gap-4">
           <FormField
-            id="nat-type"
-            label="Rule Type"
-            as="select"
-            value={ruleForm.rule_type}
-            onChange={(e) =>
-              setRuleForm({
-                ...ruleForm,
-                rule_type: e.target.value as NatRuleType,
-                translation: null,
-              })
-            }
-          >
-            <option value="masquerade">Masquerade</option>
-            <option value="snat">SNAT (Static NAT)</option>
-          </FormField>
-          <FormField
             id="nat-iface"
             label="Interface"
             as="select"
@@ -473,27 +454,6 @@ export default function OutboundNAT() {
               });
             }}
           />
-          {ruleForm.rule_type === 'snat' && (
-            <FormField
-              id="nat-translation"
-              label="Translation Address"
-              required
-              placeholder="e.g. 203.0.113.5"
-              className="col-span-2"
-              value={ruleForm.translation?.address ?? ''}
-              error={formErrors.translation}
-              onChange={(e) =>
-                setRuleForm({
-                  ...ruleForm,
-                  translation: {
-                    address: e.target.value || null,
-                    port: ruleForm.translation?.port ?? null,
-                    port_end: ruleForm.translation?.port_end ?? null,
-                  },
-                })
-              }
-            />
-          )}
           <FormField
             id="nat-desc"
             label="Description"
