@@ -525,12 +525,12 @@ function SuricataContent() {
               size="sm"
               aria-label={
                 interfaceConfig.monitored
-                  ? 'Disable Suricata monitoring'
-                  : 'Enable Suricata monitoring'
+                  ? 'Disable Interface'
+                  : 'Enable Interface'
               }
               onClick={handleToggleSelectedInterface}
             >
-              {interfaceConfig.monitored ? 'Disable Monitoring' : 'Enable Monitoring'}
+              {interfaceConfig.monitored ? 'Disable Interface' : 'Enable Interface'}
             </Button>
           }
         >
