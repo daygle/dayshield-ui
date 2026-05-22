@@ -9,7 +9,7 @@ import {
   updateFirewallSettings,
   getFirewallStats,
 } from '../../api/firewall';
-import { getAliases, createAlias, deleteAlias } from '../../api/aliases';
+import { getAliases, createAlias, updateAlias, deleteAlias } from '../../api/aliases';
 import { getInterfaces, getInterfacesInventory } from '../../api/interfaces';
 import { getWgInterfaces } from '../../api/wireguard';
 import type {
@@ -345,6 +345,7 @@ export default function Firewall() {
   const [aliasesError, setAliasesError] = useState<string | null>(null);
   const [aliasModalOpen, setAliasModalOpen] = useState(false);
   const [aliasForm, setAliasForm] = useState<Alias>(defaultAliasForm);
+  const [editingAliasName, setEditingAliasName] = useState<string | null>(null);
   const [aliasSaving, setAliasSaving] = useState(false);
   const [deleteAliasName, setDeleteAliasName] = useState<string | null>(null);
   const [deletingAlias, setDeletingAlias] = useState(false);
@@ -814,10 +815,12 @@ export default function Firewall() {
 
     setAliasFormError(null);
     setAliasSaving(true);
-    createAlias(aliasForm)
+    const request = editingAliasName ? updateAlias(editingAliasName, aliasForm) : createAlias(aliasForm);
+    request
       .then(() => {
         setAliasModalOpen(false);
         setAliasForm(defaultAliasForm);
+        setEditingAliasName(null);
         loadAliases();
       })
       .catch((err: Error) => setAliasesError(err.message))
@@ -1214,28 +1217,51 @@ export default function Firewall() {
     {
       key: 'actions',
       header: '',
-      className: 'w-16 text-right',
+      className: 'w-24 text-right',
       render: (row) => (
-        <button
-          onClick={() => setDeleteAliasName(row.name)}
-          className="btn-icon btn-icon-danger"
-          title="Delete alias"
-          aria-label="Delete alias"
-        >
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
+        <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={() => {
+              setEditingAliasName(String(row.name));
+              setAliasForm({
+                ...defaultAliasForm,
+                name: String(row.name),
+                alias_type: row.alias_type as AliasType,
+                description: row.description ? String(row.description) : null,
+                values: Array.isArray(row.values) ? (row.values as string[]) : [],
+              });
+              setAliasFormError(null);
+              setAliasModalOpen(true);
+            }}
+            className="btn-icon"
+            title="Edit alias"
+            aria-label="Edit alias"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
-            />
-          </svg>
-        </button>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.1 2.1 0 113.03 2.9L8.63 18.12l-4.38 1.46 1.459-4.379 11.153-11.714z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setDeleteAliasName(row.name)}
+            className="btn-icon btn-icon-danger"
+            title="Delete alias"
+            aria-label="Delete alias"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+              />
+            </svg>
+          </button>
+        </div>
       ),
     },
   ];
@@ -2160,10 +2186,11 @@ export default function Firewall() {
           {aliasModalOpen && (
             <div className="mb-4">
               <Card
-                title="Add Alias"
+                title={editingAliasName ? `Edit Alias: ${editingAliasName}` : 'Add Alias'}
                 onClose={() => {
                   setAliasModalOpen(false);
                   setAliasFormError(null);
+                  setEditingAliasName(null);
                 }}
               >
                 <div className="space-y-4">
@@ -2184,6 +2211,7 @@ export default function Firewall() {
                         placeholder="e.g. RFC1918_NETWORKS"
                         value={aliasForm.name}
                         onChange={(e) => setAliasForm({ ...aliasForm, name: e.target.value })}
+                        disabled={Boolean(editingAliasName)}
                       />
                       <FormField
                         id="alias-type"
@@ -2251,6 +2279,7 @@ export default function Firewall() {
                       onClick={() => {
                         setAliasModalOpen(false);
                         setAliasFormError(null);
+                        setEditingAliasName(null);
                       }}
                     >
                       Cancel
@@ -2267,6 +2296,8 @@ export default function Firewall() {
               <button
                 onClick={() => {
                   setAliasFormError(null);
+                  setAliasForm(defaultAliasForm);
+                  setEditingAliasName(null);
                   setAliasModalOpen(true);
                 }}
                 className="btn-icon btn-icon-secondary"
