@@ -249,7 +249,7 @@ export default function SourceNAT() {
         <div className="flex items-center justify-end gap-2">
           <button
             onClick={() => openEditModal(row as NatRule)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            className="btn-icon btn-icon-secondary"
             title="Edit rule"
             aria-label="Edit Source NAT rule"
           >
@@ -269,7 +269,7 @@ export default function SourceNAT() {
           </button>
           <button
             onClick={() => setDeleteId(row.id as string)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+            className="btn-icon btn-icon-danger"
             title="Delete rule"
             aria-label="Delete Source NAT rule"
           >
@@ -299,7 +299,7 @@ export default function SourceNAT() {
           <h3 className="text-lg font-semibold">Source NAT Rules</h3>
           <button
             onClick={openAddModal}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            className="btn-icon btn-icon-secondary"
             title="Add NAT rule"
             aria-label="Add NAT rule"
             disabled={rulesLoading}

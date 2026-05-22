@@ -863,7 +863,7 @@ export default function Dashboard() {
           {!layoutLocked && (
             <button
               onClick={() => setCustomizeOpen(true)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+              className="btn-icon btn-icon-secondary"
               title="Edit layout"
               aria-label="Edit layout"
             >

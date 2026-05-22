@@ -337,11 +337,13 @@ export default function VPN() {
         subtitle="Service status and tunnel details"
         actions={
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
               onClick={loadAll}
               disabled={loading || serverSaving}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              variant="secondary"
+              size="sm"
+              className="h-8 w-8 justify-center p-0"
               title="Refresh VPN status"
               aria-label="Refresh VPN status"
             >
@@ -359,16 +361,14 @@ export default function VPN() {
                   d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
                 />
               </svg>
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={handleToggleEnabled}
               disabled={!server || serverSaving}
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                server?.enabled
-                  ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-900'
-                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-              }`}
+              variant={server?.enabled ? 'danger' : 'secondary'}
+              size="sm"
+              className="h-8 w-8 justify-center p-0"
               title={server?.enabled ? 'Disable VPN' : 'Enable VPN'}
               aria-label={server?.enabled ? 'Disable VPN' : 'Enable VPN'}
             >
@@ -383,7 +383,7 @@ export default function VPN() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v8.5" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 5.5a7 7 0 109 0" />
               </svg>
-            </button>
+            </Button>
           </div>
         }
       >
@@ -430,11 +430,13 @@ export default function VPN() {
           title="VPN Settings"
           subtitle="Configure VPN interface, tunnel, keys, and service state"
           actions={
-            <button
+            <Button
               type="button"
               onClick={handleSaveServer}
               disabled={serverSaving}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              variant="secondary"
+              size="sm"
+              className="h-8 w-8 justify-center p-0"
               title={isServerConfigured ? 'Save VPN Settings' : 'Create VPN'}
               aria-label={isServerConfigured ? 'Save VPN Settings' : 'Create VPN'}
             >
@@ -473,7 +475,7 @@ export default function VPN() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 5.25v13.5M5.25 12h13.5" />
                 </svg>
               )}
-            </button>
+            </Button>
           }
         >
           <div className="grid grid-cols-2 gap-4">
@@ -578,11 +580,13 @@ export default function VPN() {
           title={`Peers (${peers.length})`}
           subtitle="Manage VPN peers and view their status"
           actions={
-            <button
+            <Button
               type="button"
               onClick={() => setPeerModalOpen(true)}
               disabled={!isServerConfigured}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              variant="secondary"
+              size="sm"
+              className="h-8 w-8 justify-center p-0"
               title="Create Peer"
               aria-label="Create Peer"
             >
@@ -596,7 +600,7 @@ export default function VPN() {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 5.25v13.5M5.25 12h13.5" />
               </svg>
-            </button>
+            </Button>
           }
         >
           <div className="grid grid-cols-1 gap-4">
@@ -642,9 +646,11 @@ export default function VPN() {
                         <p className="mt-1 text-xs text-gray-500">Endpoint: {peer.endpoint}</p>
                       )}
                     </div>
-                    <button
+                    <Button
                       onClick={() => setDeleteId(peer.id as number)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                      variant="danger"
+                      size="sm"
+                      className="h-8 w-8 justify-center p-0"
                       title="Delete peer"
                       aria-label="Delete peer"
                     >
@@ -661,7 +667,7 @@ export default function VPN() {
                           d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
                         />
                       </svg>
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>

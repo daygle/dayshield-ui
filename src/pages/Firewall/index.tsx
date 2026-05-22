@@ -1121,7 +1121,7 @@ export default function Firewall() {
             <button
               title="Edit rule"
               onClick={() => openEditRulePanel(ruleData)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+              className="btn-icon btn-icon-secondary"
             >
               <svg
                 className="h-4 w-4"
@@ -1140,7 +1140,7 @@ export default function Firewall() {
             <button
               title="Duplicate rule"
               onClick={() => handleDuplicateRule(ruleData)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+              className="btn-icon btn-icon-secondary"
             >
               <svg
                 className="h-4 w-4"
@@ -1164,7 +1164,7 @@ export default function Firewall() {
             <button
               title="Delete rule"
               onClick={() => setDeleteRuleId(row.id as string)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+              className="btn-icon btn-icon-danger"
             >
               <svg
                 className="h-4 w-4"
@@ -1218,7 +1218,7 @@ export default function Firewall() {
       render: (row) => (
         <button
           onClick={() => setDeleteAliasName(row.name)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+          className="btn-icon btn-icon-danger"
           title="Delete alias"
           aria-label="Delete alias"
         >
@@ -1474,7 +1474,7 @@ export default function Firewall() {
             actions={
               <button
                 onClick={openSettingsModal}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                className="btn-icon btn-icon-secondary"
                 title="Edit settings"
                 aria-label="Edit firewall settings"
               >
@@ -2071,7 +2071,7 @@ export default function Firewall() {
               <div className="flex gap-2">
                 <button
                   onClick={loadStats}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                  className="btn-icon btn-icon-secondary"
                   title="Refresh counters"
                   aria-label="Refresh firewall rule counters"
                 >
@@ -2092,7 +2092,7 @@ export default function Firewall() {
                 <button
                   onClick={openAddRuleModal}
                   disabled={showingSystemRules}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                  className="btn-icon btn-icon-secondary"
                   title={showingSystemRules ? 'System rules are managed automatically' : 'Add rule'}
                   aria-label="Add firewall rule"
                 >
@@ -2269,7 +2269,7 @@ export default function Firewall() {
                   setAliasFormError(null);
                   setAliasModalOpen(true);
                 }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                className="btn-icon btn-icon-secondary"
                 title="Add alias"
                 aria-label="Add firewall alias"
               >

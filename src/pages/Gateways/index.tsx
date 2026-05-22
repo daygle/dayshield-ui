@@ -205,7 +205,7 @@ export default function Gateways() {
         <div className="flex justify-end gap-2">
           <button
             onClick={() => openEdit(row)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            className="btn-icon btn-icon-secondary"
             title={String(row.name).endsWith('_AUTO') ? 'Configure gateway' : 'Edit gateway'}
             aria-label={String(row.name).endsWith('_AUTO') ? 'Configure gateway' : 'Edit gateway'}
           >
@@ -225,7 +225,7 @@ export default function Gateways() {
           </button>
           <button
             onClick={() => setDeleteName(row.name)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+            className="btn-icon btn-icon-danger"
             title="Delete gateway"
             aria-label="Delete gateway"
           >
@@ -405,7 +405,7 @@ export default function Gateways() {
         </div>
         <button
           onClick={openAdd}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+          className="btn-icon btn-icon-secondary"
           title="Add gateway"
           aria-label="Add gateway"
         >

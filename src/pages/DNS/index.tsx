@@ -547,7 +547,7 @@ export default function DNS() {
               setHostForm({ hostname: row.hostname as string, address: row.address as string });
               setHostModalOpen(true);
             }}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            className="btn-icon btn-icon-secondary"
             title="Edit host override"
             aria-label="Edit host override"
           >
@@ -567,7 +567,7 @@ export default function DNS() {
           </button>
           <button
             onClick={() => setHostDeleteName(row.hostname as string)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+            className="btn-icon btn-icon-danger"
             title="Delete host override"
             aria-label="Delete host override"
           >
@@ -604,7 +604,7 @@ export default function DNS() {
               setDomainForm({ domain: row.domain as string, forward_to: row.forward_to as string });
               setDomainModalOpen(true);
             }}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            className="btn-icon btn-icon-secondary"
             title="Edit domain override"
             aria-label="Edit domain override"
           >
@@ -624,7 +624,7 @@ export default function DNS() {
           </button>
           <button
             onClick={() => setDomainDeleteName(row.domain as string)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+            className="btn-icon btn-icon-danger"
             title="Delete domain override"
             aria-label="Delete domain override"
           >
@@ -684,7 +684,7 @@ export default function DNS() {
               setSelectedPreset('');
               setBlocklistModalOpen(true);
             }}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            className="btn-icon btn-icon-secondary"
             title="Edit blocklist"
             aria-label="Edit blocklist"
           >
@@ -704,7 +704,7 @@ export default function DNS() {
           </button>
           <button
             onClick={() => setBlocklistDeleteId(String(row.id))}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+            className="btn-icon btn-icon-danger"
             title="Delete blocklist"
             aria-label="Delete blocklist"
           >
@@ -1195,7 +1195,7 @@ export default function DNS() {
             actions={
               <button
                 onClick={openConfigModal}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                className="btn-icon btn-icon-secondary"
                 title="Edit resolver"
                 aria-label="Edit resolver"
               >
@@ -1297,7 +1297,7 @@ export default function DNS() {
             <button
               type="button"
               onClick={openDotModal}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="btn-icon btn-icon-secondary"
               title="Edit DoT"
               aria-label="Edit DoT"
             >
@@ -1374,7 +1374,7 @@ export default function DNS() {
                   setHostForm({ hostname: '', address: '' });
                   setHostModalOpen(true);
                 }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                className="btn-icon btn-icon-secondary"
                 title="Add host override"
                 aria-label="Add host override"
               >
@@ -1409,7 +1409,7 @@ export default function DNS() {
                   setDomainForm({ domain: '', forward_to: '' });
                   setDomainModalOpen(true);
                 }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                className="btn-icon btn-icon-secondary"
                 title="Add domain override"
                 aria-label="Add domain override"
               >
@@ -1444,7 +1444,7 @@ export default function DNS() {
             <button
               onClick={openAddBlocklistModal}
               disabled={!effectiveInterface}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-icon btn-icon-secondary"
               title="Add blocklist"
               aria-label="Add blocklist"
             >

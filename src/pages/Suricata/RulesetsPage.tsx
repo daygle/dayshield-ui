@@ -579,7 +579,7 @@ function RulesetsPageContent({
                 to="/suricata"
                 title="Back to Suricata"
                 aria-label="Back to Suricata"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                className="btn-icon btn-icon-secondary"
               >
                 <svg
                   className="h-5 w-5"
@@ -598,7 +598,7 @@ function RulesetsPageContent({
               disabled={loading}
               title="Refresh"
               aria-label="Refresh Suricata rulesets"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-icon btn-icon-secondary"
             >
               <svg
                 className="h-5 w-5"
@@ -620,7 +620,7 @@ function RulesetsPageContent({
               disabled={checkingUpdates}
               title="Check updates"
               aria-label="Check Suricata ruleset updates"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-icon btn-icon-secondary"
             >
               <svg
                 className="h-5 w-5"
@@ -648,7 +648,7 @@ function RulesetsPageContent({
                 disabled={Boolean(installingRulesetId)}
                 title="Install selected ruleset"
                 aria-label="Install selected ruleset"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-icon btn-icon-secondary"
               >
                 {installingRulesetId === selectedRulesetId ? (
                   <svg

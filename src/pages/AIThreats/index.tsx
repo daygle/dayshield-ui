@@ -915,7 +915,7 @@ function AIThreatsContent() {
                   </div>
                   <Link
                     to="/suricata"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                    className="btn-icon btn-icon-secondary"
                     title="Open Suricata settings"
                     aria-label="Open Suricata settings"
                   >
@@ -987,7 +987,7 @@ function AIThreatsContent() {
                   </div>
                   <Link
                     to="/crowdsec"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                    className="btn-icon btn-icon-secondary"
                     title="Open CrowdSec settings"
                     aria-label="Open CrowdSec settings"
                   >
