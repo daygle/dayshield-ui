@@ -5,12 +5,59 @@ import type { LiveLogsFilter, LogEntry, LogLevel, LogSource, WsStatus } from '..
 
 const MAX_BUFFER = 2000;
 
-function levelFromSystemMessage(message: string): LogLevel {
+function explicitLevelFromSystemMessage(message: string): LogLevel | null {
+  const match = message
+    .trim()
+    .toUpperCase()
+    .match(/^(?:<\d+>)?\s*(CRITICAL|PANIC|ERROR|ERR|WARNING|WARN|INFO|DEBUG|TRACE)\b/);
+  if (!match) return null;
+
+  switch (match[1]) {
+    case 'CRITICAL':
+    case 'PANIC':
+      return 'critical';
+    case 'ERROR':
+    case 'ERR':
+      return 'error';
+    case 'WARNING':
+    case 'WARN':
+      return 'warning';
+    case 'DEBUG':
+    case 'TRACE':
+      return 'debug';
+    default:
+      return 'info';
+  }
+}
+
+function levelFromJournalPriority(priority: unknown): LogLevel | null {
+  const value =
+    typeof priority === 'number'
+      ? priority
+      : typeof priority === 'string'
+        ? Number.parseInt(priority, 10)
+        : Number.NaN;
+
+  if (!Number.isFinite(value)) return null;
+  if (value <= 2) return 'critical';
+  if (value === 3) return 'error';
+  if (value === 4) return 'warning';
+  if (value >= 7) return 'debug';
+  return 'info';
+}
+
+function levelFromSystemMessage(message: string, priority?: unknown): LogLevel {
+  const explicit = explicitLevelFromSystemMessage(message);
+  if (explicit) return explicit;
+
+  const journalLevel = levelFromJournalPriority(priority);
+  if (journalLevel) return journalLevel;
+
   const upper = message.toUpperCase();
-  if (upper.includes('CRITICAL') || upper.includes('PANIC')) return 'critical';
-  if (upper.includes('ERROR') || upper.includes('FAILED')) return 'error';
-  if (upper.includes('WARN')) return 'warning';
-  if (upper.includes('DEBUG') || upper.includes('TRACE')) return 'debug';
+  if (/\b(CRITICAL|PANIC)\b/.test(upper)) return 'critical';
+  if (/\b(ERROR|ERR|FAILED|FAILURE)\b/.test(upper)) return 'error';
+  if (/\b(WARN|WARNING)\b/.test(upper)) return 'warning';
+  if (/\b(DEBUG|TRACE)\b/.test(upper)) return 'debug';
   return 'info';
 }
 
@@ -176,7 +223,7 @@ function normalizeWsEvent(raw: unknown, seq: number): LogEntry | null {
       id: `${timestamp}-system-${seq}`,
       timestamp,
       source: sourceFromSystemEvent(unit, safeMessage),
-      level: levelFromSystemMessage(safeMessage),
+      level: levelFromSystemMessage(safeMessage, event.priority),
       message: safeMessage,
       raw: JSON.stringify(event),
       meta: event,

@@ -5,9 +5,10 @@ import { getSystemConfig } from '../../api/system';
 import type { NtpConfig, NtpStatus, NetworkInterface } from '../../types';
 import Card from '../../components/Card';
 import FormField from '../../components/FormField';
+import Button from '../../components/Button';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
-// ── NTP server validation ───────────────────────────────────────────────────
+// NTP server validation
 
 const IPV4_RE = /^(\d{1,3}\.){3}\d{1,3}$/;
 
@@ -79,7 +80,7 @@ function hasDefaultNtpServers(servers: string[]): boolean {
   return normalized.every((server, idx) => server === defaults[idx]);
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
+// Toast
 
 type ToastKind = 'success' | 'error';
 
@@ -137,7 +138,7 @@ function Toast({ messages }: { messages: ToastMessage[] }) {
   );
 }
 
-// ── Defaults ──────────────────────────────────────────────────────────────────
+// Defaults
 
 const DEFAULT_CONFIG: NtpConfig = {
   enabled: true,
@@ -146,7 +147,43 @@ const DEFAULT_CONFIG: NtpConfig = {
   listenInterfaces: [],
 };
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+type IconProps = { className?: string };
+
+function RefreshIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20 12a8 8 0 10-2.34 5.66" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20 12V8m0 4h-4" />
+    </svg>
+  );
+}
+
+function SaveIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 4h11l3 3v13H5V4z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 4v6h8V4M8 20v-6h8v6" />
+    </svg>
+  );
+}
+
+function PlusIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function XIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
+// Page
 
 export default function NtpPage() {
   const [config, setConfig] = useState<NtpConfig>(DEFAULT_CONFIG);
@@ -315,108 +352,36 @@ export default function NtpPage() {
     : ntpIsSynchronizing
       ? 'bg-amber-500'
       : 'bg-red-500';
+  const statusSummary = !config.enabled
+    ? 'NTP is disabled. The system clock will not be synchronized automatically.'
+    : status?.synced
+      ? 'NTP is enabled and the system clock is synchronized with an upstream server.'
+      : ntpIsSynchronizing
+        ? 'NTP is enabled and still synchronizing with an upstream server.'
+        : 'NTP is enabled but the system clock is not synchronized yet.';
 
   return (
     <div className="space-y-6">
-      {/* NTP Overview */}
+      {/* NTP Status */}
       <Card
-        title="NTP Overview"
+        title="NTP Status"
         subtitle="Service status and synchronization health"
         actions={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
-              disabled={busy || resyncing}
-              onClick={handleResync}
-              title={resyncing ? 'Restarting NTP service' : 'Restart NTP service'}
-              aria-label={resyncing ? 'Restarting NTP service' : 'Restart NTP service'}
-            >
-              {resyncing ? (
-                <svg
-                  className="h-5 w-5 animate-spin"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2.25}
-                >
-                  <circle cx="12" cy="12" r="10" className="opacity-25" />
-                  <path className="opacity-75" d="M12 2a10 10 0 100 20" />
-                </svg>
-              ) : (
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2.25}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
-                  />
-                </svg>
-              )}
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => setConfig((c) => ({ ...c, enabled: !c.enabled }))}
-              title={config.enabled ? 'Disable NTP' : 'Enable NTP'}
-              aria-label={config.enabled ? 'Disable NTP' : 'Enable NTP'}
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                config.enabled
-                  ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-900'
-                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-            >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.25}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 5v14"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 12h14"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={handleSave}
-              title="Save NTP configuration"
-              aria-label="Save NTP configuration"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5.5 7.5H18.5M5.5 7.5V18.5H18.5V7.5M9.5 7.5V4.5H14.5V7.5"
-                />
-              </svg>
-            </button>
-          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={busy || resyncing}
+            loading={resyncing}
+            onClick={handleResync}
+          >
+            {!resyncing && <RefreshIcon />}
+            Resync Now
+          </Button>
         }
       >
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">Loading...</p>
         ) : status ? (
           <dl className="grid grid-cols-2 md:grid-cols-6 gap-x-6 gap-y-3 text-sm">
             <div>
@@ -463,9 +428,7 @@ export default function NtpPage() {
           <p className="text-sm text-gray-400">NTP status unavailable.</p>
         )}
         <p className="text-sm text-gray-500">
-          {config.enabled
-            ? 'NTP is enabled. The system clock is synchronised with upstream servers.'
-            : 'NTP is disabled. The system clock will not be synchronised automatically.'}
+          {statusSummary}
         </p>
       </Card>
 
@@ -473,8 +436,49 @@ export default function NtpPage() {
       <Card
         title="NTP Configuration"
         subtitle="Manage upstream time servers and LAN interfaces that are allowed to serve NTP"
+        actions={
+          <Button
+            type="button"
+            size="sm"
+            disabled={loading}
+            loading={saving}
+            onClick={handleSave}
+          >
+            {!saving && <SaveIcon />}
+            Save Changes
+          </Button>
+        }
       >
         <div className="space-y-4">
+          <div className="flex flex-col gap-3 rounded-md border border-gray-200 bg-gray-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">NTP Service</h3>
+              <p className="mt-1 text-xs text-gray-500">
+                Enable clock synchronization and optionally serve time to selected LAN interfaces.
+                Save Changes applies this setting.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={config.enabled}
+              disabled={busy}
+              onClick={() => setConfig((c) => ({ ...c, enabled: !c.enabled }))}
+              className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                config.enabled
+                  ? 'border-green-300 bg-green-50 text-green-700'
+                  : 'border-gray-300 bg-white text-gray-600'
+              }`}
+            >
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${
+                  config.enabled ? 'bg-green-500' : 'bg-gray-400'
+                }`}
+              />
+              {config.enabled ? 'Enabled' : 'Disabled'}
+            </button>
+          </div>
+
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Upstream Servers</h3>
             <p className="mt-1 text-xs text-gray-500">
@@ -492,24 +496,15 @@ export default function NtpPage() {
                 <li key={server} className="flex items-center justify-between px-4 py-2.5 text-sm">
                   <span className="font-mono text-gray-800">{server}</span>
                   <button
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900 disabled:opacity-40 disabled:cursor-not-allowed"
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 shadow-sm transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-40"
                     disabled={busy}
                     onClick={() => handleRemoveServer(server)}
-                    title="Remove server"
+                    title={`Remove ${server}`}
+                    aria-label={`Remove ${server}`}
                   >
-                    <svg
-                        className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                        strokeWidth={2.25}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                          d="M19 7H5l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12zM9 11v5m6-5v5M10 3h4l1 2h5v2H4V5h5l1-2z"
-                      />
-                    </svg>
+                    <XIcon className="h-3.5 w-3.5" />
+                    Remove
                   </button>
                 </li>
               ))}
@@ -517,7 +512,7 @@ export default function NtpPage() {
           )}
 
           {/* Add server input */}
-          <div className="flex items-end gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <FormField
               id="ntp-server-input"
               label={ipv6Enabled ? 'Add Server (IP or hostname)' : 'Add Server (IPv4 or hostname)'}
@@ -541,23 +536,16 @@ export default function NtpPage() {
                 }
               }}
             />
-            <button
+            <Button
+              type="button"
+              variant="secondary"
               disabled={busy}
               onClick={handleAddServer}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Add server"
+              className="mb-0.5 shrink-0 justify-center"
             >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.25}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
-              </svg>
-            </button>
+              <PlusIcon />
+              Add Server
+            </Button>
           </div>
 
           <div className="border-t border-gray-200 pt-4">
@@ -569,7 +557,7 @@ export default function NtpPage() {
           </div>
 
           {loading ? (
-            <p className="text-sm text-gray-400">Loading interfaces…</p>
+            <p className="text-sm text-gray-400">Loading interfaces...</p>
           ) : interfaces.length === 0 ? (
             <p className="text-sm text-gray-400">No network interfaces available.</p>
           ) : (

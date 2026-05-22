@@ -80,6 +80,11 @@ const TIME_FORMAT_OPTIONS: Array<{ value: TimeFormatPreference; label: string }>
   { value: '12h', label: '12-hour (HH:MM:SS AM/PM)' },
 ];
 
+const DEFAULT_NTP_SERVERS = ['127.0.0.1'];
+
+type SystemSection = 'overview' | 'management' | 'ssh' | 'updates' | 'schedules' | 'reboot';
+type EditScope = 'system' | 'management' | 'ssh';
+
 const DEFAULT_FIREWALL_SETTINGS: FirewallSettings = {
   input_policy: 'drop',
   forward_policy: 'drop',
@@ -168,6 +173,15 @@ function formatRootfsSlotName(slot?: string | null): string {
 
 function normalizedRootfsSlot(slot?: string | null): string {
   return slot?.trim().toLowerCase() ?? '';
+}
+
+function ntpServersWithDefault(servers?: string[] | null): string[] {
+  const cleaned = (servers ?? []).map((server) => server.trim()).filter(Boolean);
+  return cleaned.length > 0 ? cleaned : DEFAULT_NTP_SERVERS;
+}
+
+function configWithNtpDefault(config: SystemConfig): SystemConfig {
+  return { ...config, ntpServers: ntpServersWithDefault(config.ntpServers) };
 }
 
 function formatUpdateOperationName(operation: string): string {
@@ -583,6 +597,7 @@ export default function System() {
   const [managementAllowedSourcesInput, setManagementAllowedSourcesInput] = useState('');
   const [managementPortsInput, setManagementPortsInput] = useState('8443');
   const [editOpen, setEditOpen] = useState(false);
+  const [editScope, setEditScope] = useState<EditScope>('system');
   const [saving, setSaving] = useState(false);
 
   const [rebootOpen, setRebootOpen] = useState(false);
@@ -597,24 +612,26 @@ export default function System() {
   const [markingApplianceRebuildComplete, setMarkingApplianceRebuildComplete] = useState(false);
   const [rollbackConfirmOpen, setRollbackConfirmOpen] = useState(false);
 
-  const activeSection =
-    searchParams.get('section') === 'updates'
-      ? 'updates'
-      : searchParams.get('section') === 'reboot'
-        ? 'reboot'
-        : searchParams.get('section') === 'schedules'
-          ? 'schedules'
-          : 'overview';
+  const sectionParam = searchParams.get('section');
+  const activeSection: SystemSection =
+    sectionParam === 'management' ||
+    sectionParam === 'ssh' ||
+    sectionParam === 'updates' ||
+    sectionParam === 'schedules' ||
+    sectionParam === 'reboot'
+      ? sectionParam
+      : 'overview';
 
-  const sectionTabs: Array<{ id: 'overview' | 'updates' | 'schedules' | 'reboot'; label: string }> =
-    [
-      { id: 'overview', label: 'Settings' },
-      { id: 'updates', label: 'Updates' },
-      { id: 'schedules', label: 'Schedules' },
-      { id: 'reboot', label: 'Reboot' },
-    ];
+  const sectionTabs: Array<{ id: SystemSection; label: string }> = [
+    { id: 'overview', label: 'Settings' },
+    { id: 'management', label: 'Management' },
+    { id: 'ssh', label: 'SSH' },
+    { id: 'updates', label: 'Updates' },
+    { id: 'schedules', label: 'Schedules' },
+    { id: 'reboot', label: 'Reboot' },
+  ];
 
-  const setActiveSection = (section: 'overview' | 'updates' | 'schedules' | 'reboot') => {
+  const setActiveSection = (section: SystemSection) => {
     const next = new URLSearchParams(searchParams);
     if (section === 'overview') next.delete('section');
     else next.set('section', section);
@@ -639,11 +656,19 @@ export default function System() {
   const interfaceLabel = (iface: NetworkInterface): string =>
     formatInterfaceDisplayName(iface.description, iface.name);
 
-  const openEditModal = () => {
+  const editModalTitle =
+    editScope === 'management'
+      ? 'Edit Management Interface'
+      : editScope === 'ssh'
+        ? 'Edit SSH Settings'
+        : 'Edit System Settings';
+
+  const openEditModal = (scope: EditScope = 'system') => {
     if (config) {
-      setEditConfig(config);
+      setEditConfig(configWithNtpDefault(config));
     }
     setEditAdminSecurity(adminSecurity);
+    setEditScope(scope);
     setEditOpen(true);
   };
 
@@ -663,7 +688,7 @@ export default function System() {
       .then(([st, cfg, upd, updSettings, acme, adminSec, fw, ifacesRes, inventoryRes]) => {
         setStatus(st.data);
         setConfig(cfg.data);
-        setEditConfig(cfg.data);
+        setEditConfig(configWithNtpDefault(cfg.data));
         setUpdates(upd.data);
         setUpdateSettings(updSettings.data);
         setAcmeDomains(acme.data.domains ?? []);
@@ -702,6 +727,11 @@ export default function System() {
       getSystemStatus()
         .then((st) => setStatus(st.data))
         .catch((err: Error) => setError(err.message));
+      getUpdatesStatus()
+        .then((res) => setUpdates(res.data))
+        .catch(() => {
+          // Keep current boot-slot display on transient poll failures.
+        });
     };
 
     const timer = window.setInterval(refreshStatus, STATUS_REFRESH_INTERVAL_MS);
@@ -725,16 +755,26 @@ export default function System() {
   }, [activeSection]);
 
   const handleSaveConfig = () => {
-    const managementAllowedSources = managementAllowedSourcesInput
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean);
-    const managementPorts = parseCommaSeparatedNumbers(managementPortsInput);
+    const shouldSaveManagement = editScope === 'management';
+    const managementAllowedSources = shouldSaveManagement
+      ? managementAllowedSourcesInput
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : [];
+    const managementPorts = shouldSaveManagement
+      ? parseCommaSeparatedNumbers(managementPortsInput)
+      : [];
 
-    if (managementPortsInput.trim() && managementPorts.length === 0) {
+    if (shouldSaveManagement && managementPortsInput.trim() && managementPorts.length === 0) {
       setError('Enter valid management ports as comma-separated numbers.');
       return;
     }
+
+    const systemPayload: Partial<SystemConfig> = {
+      ...editConfig,
+      ntpServers: ntpServersWithDefault(editConfig.ntpServers),
+    };
 
     const firewallPayload: FirewallSettings = {
       ...firewallSettings,
@@ -746,14 +786,18 @@ export default function System() {
     };
 
     setSaving(true);
-    Promise.all([
-      updateSystemConfig(editConfig),
-      updateFirewallSettings(firewallPayload),
-      updateAdminSecurity(editAdminSecurity),
-    ])
+    const systemRequest = updateSystemConfig(systemPayload);
+    const firewallRequest = shouldSaveManagement
+      ? updateFirewallSettings(firewallPayload)
+      : Promise.resolve({ data: firewallSettings });
+    const adminRequest = shouldSaveManagement
+      ? updateAdminSecurity(editAdminSecurity)
+      : Promise.resolve(adminSecurity);
+
+    Promise.all([systemRequest, firewallRequest, adminRequest])
       .then(([systemRes, firewallRes]) => {
         setConfig(systemRes.data);
-        setEditConfig(systemRes.data);
+        setEditConfig(configWithNtpDefault(systemRes.data));
         setAdminSecurity(editAdminSecurity);
         const mergedFirewallSettings = { ...DEFAULT_FIREWALL_SETTINGS, ...firewallRes.data };
         setFirewallSettings(mergedFirewallSettings);
@@ -959,7 +1003,7 @@ export default function System() {
       {/* Edit Config Modal */}
       <Modal
         open={editOpen}
-        title="Edit System Configuration"
+        title={editModalTitle}
         onClose={() => setEditOpen(false)}
         onConfirm={handleSaveConfig}
         confirmLabel="Save"
@@ -967,6 +1011,8 @@ export default function System() {
         size="lg"
       >
         <div className="grid grid-cols-2 gap-4">
+          {editScope === 'system' && (
+            <>
           <FormField
             id="cfg-hostname"
             label="Hostname"
@@ -999,7 +1045,7 @@ export default function System() {
             className="col-span-2"
             placeholder="127.0.0.1"
             hint="Use the appliance itself as the NTP source by pointing to 127.0.0.1."
-            value={(editConfig.ntpServers ?? []).join(', ')}
+            value={(editConfig.ntpServers ?? DEFAULT_NTP_SERVERS).join(', ')}
             onChange={(e) =>
               setEditConfig({
                 ...editConfig,
@@ -1026,6 +1072,22 @@ export default function System() {
               })
             }
           />
+          <div className="col-span-2 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+            <input
+              id="cfg-ipv6-enabled"
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              checked={editConfig.ipv6Enabled ?? false}
+              onChange={(e) => setEditConfig({ ...editConfig, ipv6Enabled: e.target.checked })}
+            />
+            <label htmlFor="cfg-ipv6-enabled" className="text-sm font-medium text-gray-700">
+              Enable IPv6
+            </label>
+          </div>
+            </>
+          )}
+          {editScope === 'ssh' && (
+            <>
           <FormField
             id="cfg-ssh-port"
             label="SSH Port"
@@ -1074,6 +1136,10 @@ export default function System() {
               <span className="text-sm font-medium text-gray-700">Permit password authentication</span>
             </label>
           </div>
+            </>
+          )}
+          {editScope === 'management' && (
+            <>
           <FormField
             id="cfg-web-port"
             label="Web UI Port"
@@ -1083,18 +1149,6 @@ export default function System() {
             value={String(editConfig.webPort ?? 8443)}
             onChange={(e) => setEditConfig({ ...editConfig, webPort: Number(e.target.value) })}
           />
-          <div className="col-span-2 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-            <input
-              id="cfg-ipv6-enabled"
-              type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              checked={editConfig.ipv6Enabled ?? false}
-              onChange={(e) => setEditConfig({ ...editConfig, ipv6Enabled: e.target.checked })}
-            />
-            <label htmlFor="cfg-ipv6-enabled" className="text-sm font-medium text-gray-700">
-              Enable IPv6
-            </label>
-          </div>
           <div className="col-span-2">
             <label
               htmlFor="cfg-management-tls-domain"
@@ -1179,6 +1233,10 @@ export default function System() {
             value={managementPortsInput}
             onChange={(e) => setManagementPortsInput(e.target.value)}
           />
+            </>
+          )}
+          {editScope === 'ssh' && (
+            <>
           <div className="col-span-2 border-t border-gray-200 pt-3">
             <p className="text-sm font-semibold text-gray-900">SSH Authentication</p>
             <p className="text-xs text-gray-500 mt-1">
@@ -1233,6 +1291,8 @@ export default function System() {
               })}
             </div>
           </div>
+            </>
+          )}
         </div>
       </Modal>
 
@@ -1443,51 +1503,14 @@ export default function System() {
       </div>
 
       {activeSection === 'overview' && config && (
-        <div className="grid gap-4 xl:grid-cols-3 mb-4">
-          <Card
-            title="Edit System"
-            subtitle="Hostname, timezone, NTP, DNS, and web UI settings"
-          >
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-gray-600">
-                Modify the primary appliance settings used across the system.
-              </p>
-              <Button onClick={openEditModal} className="w-full">
-                Edit system configuration
-              </Button>
-            </div>
-          </Card>
-          <Card
-            title="Edit Management Interface"
-            subtitle="Web UI access, allowed sources, and ACME certificate"
-          >
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-gray-600">
-                Update management access, port, and certificate settings.
-              </p>
-              <Button onClick={openEditModal} className="w-full">
-                Edit management settings
-              </Button>
-            </div>
-          </Card>
-          <Card
-            title="Edit SSH Settings"
-            subtitle="SSH service, port, and authentication configuration"
-          >
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-gray-600">
-                Adjust SSH access controls and authentication options.
-              </p>
-              <Button onClick={openEditModal} className="w-full">
-                Edit SSH settings
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {activeSection === 'overview' && config && (
-        <Card title="System Overview">
+        <Card
+          title="System Overview"
+          actions={
+            <Button size="sm" onClick={() => openEditModal('system')}>
+              Edit System
+            </Button>
+          }
+        >
           <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
             <div>
               <dt className="text-gray-500">Hostname</dt>
@@ -1498,28 +1521,14 @@ export default function System() {
               <dd className="font-medium text-gray-800">{config.timezone}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">SSH</dt>
-              <dd
-                className={`font-medium ${config.sshEnabled ? 'text-green-600' : 'text-gray-400'}`}
-              >
-                {config.sshEnabled ? `Enabled (port ${config.sshPort})` : 'Disabled'}
-              </dd>
-            </div>
-            <div>
               <dt className="text-gray-500">NTP Servers</dt>
               <dd className="font-medium text-gray-800">
-                {config.ntpServers.length > 0
-                  ? config.ntpServers.join(', ')
-                  : '127.0.0.1 (this appliance)'}
+                {ntpServersWithDefault(config.ntpServers).join(', ')}
               </dd>
             </div>
             <div>
               <dt className="text-gray-500">DNS Servers</dt>
               <dd className="font-medium text-gray-800">{config.dnsServers.join(', ') || '-'}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Web Port</dt>
-              <dd className="font-medium text-gray-800">{config.webPort}</dd>
             </div>
             <div>
               <dt className="text-gray-500">IPv6</dt>
@@ -1551,10 +1560,15 @@ export default function System() {
         </Card>
       )}
 
-      {activeSection === 'overview' && config && (
+      {activeSection === 'management' && config && (
         <Card
           title="Management Interface"
           subtitle="Management access scope, ACME certificate selection, and UI session timeout"
+          actions={
+            <Button size="sm" onClick={() => openEditModal('management')}>
+              Edit Management
+            </Button>
+          }
         >
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <div>
@@ -1598,10 +1612,15 @@ export default function System() {
         </Card>
       )}
 
-      {activeSection === 'overview' && config && (
+      {activeSection === 'ssh' && config && (
         <Card
           title="SSH"
           subtitle="Daemon state, auth methods, keys, and interface bindings"
+          actions={
+            <Button size="sm" onClick={() => openEditModal('ssh')}>
+              Edit SSH
+            </Button>
+          }
         >
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <div>
