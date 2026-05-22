@@ -708,7 +708,7 @@ export default function DHCP() {
       render: (row) => (
         <button
           onClick={() => setDelete6Id(row.id as string)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+          className="btn-icon btn-icon-danger"
           title="Delete DHCPv6 static lease"
           aria-label="Delete DHCPv6 static lease"
         >
@@ -795,7 +795,7 @@ export default function DHCP() {
       render: (row) => (
         <button
           onClick={() => setDeleteId(row.id as string)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+          className="btn-icon btn-icon-danger"
           title="Delete static lease"
           aria-label="Delete static lease"
         >
@@ -1273,7 +1273,7 @@ export default function DHCP() {
             actions={
               <button
                 onClick={openConfigModal}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                className="btn-icon btn-icon-secondary"
                 title={selectedInterface ? 'Edit interface DHCP settings' : 'Edit DHCP settings'}
               >
                 <svg
@@ -1400,7 +1400,7 @@ export default function DHCP() {
             actions={
               <button
                 onClick={() => setLeaseModalOpen(true)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                className="btn-icon btn-icon-secondary"
                 title="Add new lease"
               >
                 <svg
@@ -1453,7 +1453,7 @@ export default function DHCP() {
             actions={
               <button
                 onClick={openConfig6Modal}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                className="btn-icon btn-icon-secondary"
                 title={
                   selectedInterface ? 'Edit interface DHCPv6 settings' : 'Edit DHCPv6 settings'
                 }
@@ -1568,7 +1568,7 @@ export default function DHCP() {
                   setLease6Form(defaultLease6Form);
                   setLease6ModalOpen(true);
                 }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                className="btn-icon btn-icon-secondary"
                 title="Add DHCPv6 static reservation"
               >
                 <svg

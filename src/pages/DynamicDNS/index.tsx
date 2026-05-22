@@ -242,7 +242,7 @@ export default function DynamicDnsPage() {
               type="button"
               disabled={busy || runningUpdate || !config.enabled}
               onClick={handleUpdateNow}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-icon btn-icon-secondary"
               title="Update DNS now"
               aria-label="Update DNS now"
             >
@@ -361,7 +361,7 @@ export default function DynamicDnsPage() {
             type="button"
             disabled={busy}
             onClick={addEntry}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="btn-icon btn-icon-secondary"
             title="Add Dynamic DNS entry"
             aria-label="Add Dynamic DNS entry"
           >
@@ -398,7 +398,7 @@ export default function DynamicDnsPage() {
                         type="button"
                         disabled={busy}
                         onClick={() => removeEntry(entry.id)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="btn-icon btn-icon-secondary"
                         title="Delete entry"
                         aria-label="Delete entry"
                       >

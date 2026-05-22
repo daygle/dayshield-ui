@@ -676,7 +676,7 @@ export default function Interfaces() {
         actions={
           <button
             onClick={() => setModalOpen(true)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+            className="btn-icon btn-icon-secondary"
             title="Add interface"
             aria-label="Add interface"
           >
@@ -752,7 +752,7 @@ export default function Interfaces() {
                         </div>
                       </button>
                       <button
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900"
+                        className="btn-icon btn-icon-danger"
                         onClick={() => setDeleteName(iface.name)}
                         title="Delete interface"
                         aria-label="Delete interface"

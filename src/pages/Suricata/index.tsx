@@ -367,7 +367,7 @@ function SuricataContent() {
                 onClick={handleToggleMode}
                 title={`Switch Suricata to ${config.mode === 'ips' ? 'IDS' : 'IPS'} mode`}
                 aria-label={`Switch Suricata to ${config.mode === 'ips' ? 'IDS' : 'IPS'} mode`}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-icon btn-icon-secondary"
               >
                 <svg
                   className="h-5 w-5"
@@ -582,7 +582,7 @@ function SuricataContent() {
             onClick={loadAll}
             title={loading ? 'Refreshing alerts' : 'Refresh alerts'}
             aria-label={loading ? 'Refreshing alerts' : 'Refresh alerts'}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="btn-icon btn-icon-secondary"
           >
             {loading ? (
               <svg

@@ -271,7 +271,7 @@ function CloudflaredPageContent() {
               aria-label={
                 restarting ? 'Restarting Cloudflared service' : 'Restart Cloudflared service'
               }
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-icon btn-icon-secondary"
             >
               {restarting ? (
                 <svg
@@ -315,7 +315,7 @@ function CloudflaredPageContent() {
               aria-label={
                 saving ? 'Saving Cloudflared configuration' : 'Save Cloudflared configuration'
               }
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-icon btn-icon-secondary"
             >
               {saving ? (
                 <svg
@@ -464,7 +464,7 @@ function CloudflaredPageContent() {
           <button
             disabled={busy}
             onClick={addIngress}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="btn-icon btn-icon-secondary"
             title="Add new route"
           >
             <svg
@@ -552,7 +552,7 @@ function CloudflaredPageContent() {
                     ↓
                   </Button>
                   <button
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-300 bg-red-50 shadow-sm transition-colors hover:bg-red-100 text-red-700 hover:text-red-900 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="btn-icon btn-icon-danger"
                     aria-label={`Remove ingress rule ${index + 1}`}
                     disabled={busy}
                     onClick={() => removeIngress(index)}

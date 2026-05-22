@@ -509,7 +509,7 @@ export default function CaptivePortalPage() {
               aria-label={
                 saving ? 'Restarting captive portal service' : 'Restart captive portal service'
               }
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-icon btn-icon-secondary"
             >
               {saving ? (
                 <svg
@@ -555,7 +555,7 @@ export default function CaptivePortalPage() {
               aria-label={
                 loading ? 'Refreshing captive portal status' : 'Refresh captive portal status'
               }
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-icon btn-icon-secondary"
             >
               <svg
                 className="h-4 w-4"
@@ -582,7 +582,7 @@ export default function CaptivePortalPage() {
               aria-label={
                 saving ? 'Saving captive portal configuration' : 'Save captive portal configuration'
               }
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-icon btn-icon-secondary"
             >
               {saving ? (
                 <svg
