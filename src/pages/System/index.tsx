@@ -166,6 +166,10 @@ function formatRootfsSlotName(slot?: string | null): string {
   return slot.toUpperCase();
 }
 
+function normalizedRootfsSlot(slot?: string | null): string {
+  return slot?.trim().toLowerCase() ?? '';
+}
+
 function formatUpdateOperationName(operation: string): string {
   switch (operation) {
     case 'apply':
@@ -916,10 +920,39 @@ export default function System() {
   const rootfsComponent = updates?.components.find((comp) => comp.component === 'rootfs');
   const rootfsUpdateAvailable = Boolean(rootfsComponent?.updateAvailable);
   const rootfsSlotSupported = updates?.rootfsSlotStatus?.supported ?? false;
+  const rootfsActiveSlot = normalizedRootfsSlot(updates?.rootfsSlotStatus?.activeSlot);
+  const rootfsActiveSlotName = formatRootfsSlotName(updates?.rootfsSlotStatus?.activeSlot);
   const rootfsInactiveSlotName = formatRootfsSlotName(updates?.rootfsSlotStatus?.inactiveSlot);
   const rootfsPreviousSlotName = formatRootfsSlotName(updates?.rootfsUpdate?.previousSlot);
   const rootfsUpdatePending =
     updates?.rootfsUpdate?.status === 'staged' || updates?.rootfsUpdate?.status === 'booted';
+  const rootfsBootIsSecondary = rootfsActiveSlot === 'b';
+  const rootfsPromotionConfirmed =
+    rootfsBootIsSecondary && updates?.rootfsUpdate?.status === 'confirmed';
+  const rootfsBootLabel = rootfsSlotSupported
+    ? `${rootfsActiveSlotName}${rootfsBootIsSecondary && rootfsUpdatePending ? ' trial' : ''}`
+    : 'Unavailable';
+  const rootfsBootHint = !updates?.rootfsSlotStatus
+    ? 'Boot slot status has not loaded yet.'
+    : !rootfsSlotSupported
+      ? (updates.rootfsSlotStatus.reason ?? 'Primary/Secondary rootfs labels were not detected.')
+      : rootfsBootIsSecondary && rootfsUpdatePending
+        ? 'The appliance is trial-booted from Secondary; a healthy boot will be promoted back to Primary automatically.'
+        : rootfsPromotionConfirmed
+          ? 'The appliance is currently running from Secondary; Primary has been promoted and will be used on the next normal boot.'
+          : rootfsBootIsSecondary
+            ? 'The appliance is running from Secondary. Primary remains the preferred slot for normal operation.'
+            : 'The appliance is running from Primary.';
+  const rootfsBootPanelClass = !rootfsSlotSupported
+    ? 'border-orange-200 bg-orange-50 text-orange-800'
+    : rootfsBootIsSecondary
+      ? 'border-amber-200 bg-amber-50 text-amber-800'
+      : 'border-green-200 bg-green-50 text-green-800';
+  const rootfsBootBadgeClass = !rootfsSlotSupported
+    ? 'bg-orange-100 text-orange-800'
+    : rootfsBootIsSecondary
+      ? 'bg-amber-100 text-amber-800'
+      : 'bg-green-100 text-green-800';
 
   return (
     <div className="space-y-6">
@@ -1496,6 +1529,24 @@ export default function System() {
                 {config.ipv6Enabled ? 'Enabled' : 'Disabled'}
               </dd>
             </div>
+            <div>
+              <dt className="text-gray-500">Rootfs Boot</dt>
+              <dd
+                className={[
+                  'font-medium',
+                  !updates?.rootfsSlotStatus
+                    ? 'text-gray-400'
+                    : rootfsSlotSupported
+                      ? rootfsBootIsSecondary
+                        ? 'text-amber-700'
+                        : 'text-green-700'
+                      : 'text-orange-700',
+                ].join(' ')}
+                title={rootfsBootHint}
+              >
+                {rootfsBootLabel}
+              </dd>
+            </div>
           </dl>
         </Card>
       )}
@@ -1647,6 +1698,22 @@ export default function System() {
           }
         >
           <div className="space-y-4">
+            {updates.rootfsSlotStatus && (
+              <div className={`rounded-md border px-4 py-3 text-sm ${rootfsBootPanelClass}`}>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium">Currently Booted</p>
+                    <p className="mt-1 text-xs">{rootfsBootHint}</p>
+                  </div>
+                  <span
+                    className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-medium ${rootfsBootBadgeClass}`}
+                  >
+                    {rootfsBootLabel}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="rounded border border-gray-200 p-3 bg-gray-50">
               <p className="text-gray-500 text-sm">Automatic Update Check</p>
               <p className="font-medium text-gray-900">
