@@ -192,7 +192,11 @@ const groupActionLabel: Record<GroupAction, string> = {
   disable: 'Disable',
 };
 
-const runGroupAction = async (rulesets: SuricataRuleset[], action: GroupAction) => {
+const runGroupAction = async (
+  rulesets: SuricataRuleset[],
+  action: GroupAction,
+  interfaceName?: string
+) => {
   if (action === 'install') {
     await Promise.all(
       rulesets
@@ -206,12 +210,19 @@ const runGroupAction = async (rulesets: SuricataRuleset[], action: GroupAction) 
   await Promise.all(
     rulesets
       .filter((ruleset) => Boolean(ruleset.installed) && ruleset.enabled !== enabled)
-      .map((ruleset) => updateSuricataRuleset(ruleset.id, { enabled }))
+      .map((ruleset) => updateSuricataRuleset(ruleset.id, { enabled }, interfaceName))
   );
 };
 
-function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
+function RulesetsPageContent({
+  embedded = false,
+  interfaceName,
+}: {
+  embedded?: boolean;
+  interfaceName?: string;
+}) {
   const [searchParams] = useSearchParams();
+  const activeInterface = interfaceName ?? searchParams.get('iface') ?? undefined;
   const scopedFamily = embedded ? '' : (searchParams.get('group') ?? '');
   const scopedSubgroup = embedded ? '' : (searchParams.get('subgroup') ?? '');
   const scopedToSubgroup = Boolean(scopedFamily && scopedSubgroup);
@@ -236,7 +247,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
 
   const loadRulesets = useCallback(() => {
     setLoading(true);
-    return getSuricataRulesets()
+    return getSuricataRulesets(activeInterface)
       .then((res) => {
         const nextRulesets = res.data ?? [];
         setRulesets(nextRulesets);
@@ -274,7 +285,7 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [activeInterface]);
 
   useEffect(() => {
     loadRulesets();
@@ -827,9 +838,13 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
                           variant={ruleset.enabled ? 'secondary' : 'primary'}
                           onClick={(event) => {
                             event.stopPropagation();
-                            updateSuricataRuleset(ruleset.id, {
-                              enabled: !ruleset.enabled,
-                            }).then(() => loadRulesets());
+                            updateSuricataRuleset(
+                              ruleset.id,
+                              {
+                                enabled: !ruleset.enabled,
+                              },
+                              activeInterface
+                            ).then(() => loadRulesets());
                           }}
                         >
                           {ruleset.enabled ? 'Disable' : 'Enable'}
@@ -1012,6 +1027,8 @@ function RulesetsPageContent({ embedded = false }: { embedded?: boolean }) {
 }
 
 export function SuricataRulesetGroupsSection() {
+  const [searchParams] = useSearchParams();
+  const activeInterface = searchParams.get('iface') ?? undefined;
   const [rulesets, setRulesets] = useState<SuricataRuleset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1025,14 +1042,14 @@ export function SuricataRulesetGroupsSection() {
 
   const loadRulesets = useCallback(() => {
     setLoading(true);
-    return getSuricataRulesets()
+    return getSuricataRulesets(activeInterface)
       .then((res) => {
         setRulesets(res.data ?? []);
         setError(null);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [activeInterface]);
 
   useEffect(() => {
     loadRulesets();
@@ -1102,7 +1119,7 @@ export function SuricataRulesetGroupsSection() {
     setError(null);
 
     try {
-      await runGroupAction(subgroup.rulesets, action);
+      await runGroupAction(subgroup.rulesets, action, activeInterface);
       setSuccess(`${groupActionLabel[action]} completed for ${subgroup.label}.`);
       await loadRulesets();
     } catch (err) {
@@ -1194,9 +1211,11 @@ export function SuricataRulesetGroupsSection() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                    {enabledCount !== null ? enabledCount : '-'} enabled
-                  </span>
+                  {enabledCount && enabledCount > 0 ? (
+                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                      {enabledCount} enabled
+                    </span>
+                  ) : null}
                   <Button
                     size="sm"
                     variant={action === 'disable' ? 'secondary' : 'primary'}
@@ -1209,7 +1228,9 @@ export function SuricataRulesetGroupsSection() {
                   <Link
                     to={`/suricata/rulesets?group=${encodeURIComponent(
                       subgroup.familyLabel
-                    )}&subgroup=${encodeURIComponent(subgroup.label)}`}
+                    )}&subgroup=${encodeURIComponent(subgroup.label)}${
+                      activeInterface ? `&iface=${encodeURIComponent(activeInterface)}` : ''
+                    }`}
                     className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
                   >
                     Rules

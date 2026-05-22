@@ -102,11 +102,14 @@ export const updateSuricataConfig = (
   apiClient.post<ApiResponse<SuricataConfig>>('/suricata/config', config).then((r) => r.data);
 
 /** List all Suricata rulesets. */
-export const getSuricataRulesets = async (): Promise<ApiResponse<SuricataRuleset[]>> => {
+export const getSuricataRulesets = async (
+  interfaceName?: string
+): Promise<ApiResponse<SuricataRuleset[]>> => {
+  const params = interfaceName ? { iface: interfaceName } : undefined;
   try {
     const [availableRes, installedRes] = await Promise.all([
       apiClient.get<ApiResponse<ManagedAvailableRulesetApi[]>>('/rulesets/available'),
-      apiClient.get<ApiResponse<ManagedInstalledRulesetApi[]>>('/rulesets'),
+      apiClient.get<ApiResponse<ManagedInstalledRulesetApi[]>>('/rulesets', { params }),
     ]);
 
     const installedRulesets = installedRes.data.data ?? [];
@@ -152,12 +155,15 @@ const encodeRulesetId = (id: string | number) => encodeURIComponent(String(id));
 /** Update a Suricata ruleset. */
 export const updateSuricataRuleset = (
   id: string | number,
-  patch: Pick<SuricataRuleset, 'enabled'>
+  patch: Pick<SuricataRuleset, 'enabled'>,
+  interfaceName?: string
 ): Promise<ApiResponse<SuricataRuleset>> =>
   apiClient
     .post<
       ApiResponse<SuricataRuleset>
-    >(`/rulesets/${encodeRulesetId(id)}/${patch.enabled ? 'enable' : 'disable'}`)
+    >(`/rulesets/${encodeRulesetId(id)}/${patch.enabled ? 'enable' : 'disable'}`, null, {
+      params: interfaceName ? { iface: interfaceName } : undefined,
+    })
     .then((r) => r.data);
 
 /** Trigger a check for updates for all managed Suricata rulesets. */
@@ -166,10 +172,13 @@ export const checkSuricataRulesetUpdates = (): Promise<ApiResponse<SuricataRules
 
 const postRulesetAction = (
   id: string | number,
-  action: 'install' | 'check-update' | 'update' | 'enable' | 'disable'
+  action: 'install' | 'check-update' | 'update' | 'enable' | 'disable',
+  interfaceName?: string
 ): Promise<ApiResponse<SuricataRuleset>> =>
   apiClient
-    .post<ApiResponse<SuricataRuleset>>(`/rulesets/${encodeRulesetId(id)}/${action}`)
+    .post<ApiResponse<SuricataRuleset>>(`/rulesets/${encodeRulesetId(id)}/${action}`, null, {
+      params: interfaceName ? { iface: interfaceName } : undefined,
+    })
     .then((r) => r.data);
 
 export const installSuricataRuleset = (
@@ -185,12 +194,14 @@ export const updateManagedSuricataRuleset = (
 ): Promise<ApiResponse<SuricataRuleset>> => postRulesetAction(id, 'update');
 
 export const enableManagedSuricataRuleset = (
-  id: string | number
-): Promise<ApiResponse<SuricataRuleset>> => postRulesetAction(id, 'enable');
+  id: string | number,
+  interfaceName?: string
+): Promise<ApiResponse<SuricataRuleset>> => postRulesetAction(id, 'enable', interfaceName);
 
 export const disableManagedSuricataRuleset = (
-  id: string | number
-): Promise<ApiResponse<SuricataRuleset>> => postRulesetAction(id, 'disable');
+  id: string | number,
+  interfaceName?: string
+): Promise<ApiResponse<SuricataRuleset>> => postRulesetAction(id, 'disable', interfaceName);
 
 export const removeSuricataRuleset = (id: string | number): Promise<ApiResponse<void>> =>
   apiClient.delete<ApiResponse<void>>(`/rulesets/${encodeRulesetId(id)}`).then((r) => r.data);

@@ -402,8 +402,15 @@ function SuricataContent() {
                   stroke="currentColor"
                   strokeWidth={2}
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v6" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12a3 3 0 006 0" />
+                  {config.enabled ? (
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                  ) : (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M8 5.5l10 6.5-10 6.5V5.5z"
+                    />
+                  )}
                 </svg>
               </button>
             </div>
