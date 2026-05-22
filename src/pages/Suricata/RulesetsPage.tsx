@@ -558,6 +558,10 @@ function RulesetsPageContent({
     selectedRulesetRuleCount !== null
       ? selectedRulesetRuleCount - selectedRulesetDisabledCount!
       : null;
+  const hasSelectedRulesetCounts =
+    selectedRulesetRuleCount !== null &&
+    selectedRulesetDisabledCount !== null &&
+    selectedRulesetEnabledCount !== null;
 
   return (
     <div className="space-y-6">
@@ -573,9 +577,19 @@ function RulesetsPageContent({
             {!embedded && (
               <Link
                 to="/suricata"
-                className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                title="Back to Suricata"
+                aria-label="Back to Suricata"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
               >
-                Back to Suricata
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.25}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
+                </svg>
               </Link>
             )}
             <button
@@ -655,8 +669,9 @@ function RulesetsPageContent({
                     stroke="currentColor"
                     strokeWidth={2.25}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v10" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 10.5L12 14l3.5-3.5" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 18h15" />
                   </svg>
                 )}
               </button>
@@ -884,10 +899,9 @@ function RulesetsPageContent({
               : 'Select a ruleset to drill into its rules'
           }
           actions={
-            selectedRuleset ? (
+            selectedRuleset && hasSelectedRulesetCounts ? (
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '-'}{' '}
-                disabled
+                {selectedRulesetDisabledCount} disabled
               </span>
             ) : undefined
           }
@@ -990,20 +1004,27 @@ function RulesetsPageContent({
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
                 <div className="text-xs text-gray-500">
-                  {selectedRulesetDisabledCount !== null ? selectedRulesetDisabledCount : '-'}{' '}
-                  disabled,{' '}
-                  {selectedRulesetRuleCount !== null
-                    ? selectedRulesetRuleCount - selectedRulesetDisabledCount!
-                    : '-'}{' '}
-                  enabled
+                  {hasSelectedRulesetCounts
+                    ? `${selectedRulesetDisabledCount} disabled, ${selectedRulesetEnabledCount} enabled`
+                    : ''}
                 </div>
                 <div className="flex gap-2">
                   {!embedded && !scopedToSubgroup && (
                     <Link
                       to="/suricata"
-                      className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      title="Back to Suricata"
+                      aria-label="Back to Suricata"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-gray-300 bg-white shadow-sm transition-colors hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                     >
-                      Back to Suricata
+                      <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2.25}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
+                      </svg>
                     </Link>
                   )}
                   <Button
