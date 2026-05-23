@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import FormField from '../../components/FormField';
+import TrashIcon from '../../components/TrashIcon';
 import { useToast } from '../../context/ToastContext';
 import { getInterfacesInventory } from '../../api/interfaces';
 import { getSystemConfig } from '../../api/system';
@@ -402,9 +403,7 @@ export default function DynamicDnsPage() {
                         title="Delete entry"
                         aria-label="Delete entry"
                       >
-                        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M9 7V5h6v2m-7 0 1 12h6l1-12M10 11v5m4-5v5" />
-                        </svg>
+                        <TrashIcon className="h-5 w-5" />
                       </button>
                     </div>
                   </div>

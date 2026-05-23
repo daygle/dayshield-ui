@@ -206,6 +206,16 @@ function SuricataContent() {
       .catch((err: Error) => setError(err.message));
   };
 
+  const handleToggleSuricataEnabled = () => {
+    if (!config) return;
+    updateSuricataConfig({ enabled: !config.enabled })
+      .then((res) => {
+        setConfig(res.data);
+        setError(null);
+      })
+      .catch((err: Error) => setError(err.message));
+  };
+
   const handleToggleInterfaceMonitoring = (interfaceName: string, monitored: boolean) => {
     updateInterfaceSuricataConfig(interfaceName, monitored)
       .then((res) => {
@@ -352,13 +362,21 @@ function SuricataContent() {
           title="Suricata Overview"
           subtitle="Global IDS/IPS status, monitored interfaces, and trusted network ranges"
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <ServiceControlCluster
                 serviceId="suricata"
                 disabled={loading}
                 onError={setError}
                 onSuccess={() => setError(null)}
               />
+              <Button
+                size="sm"
+                variant={config?.enabled ? 'secondary' : 'primary'}
+                disabled={loading}
+                onClick={handleToggleSuricataEnabled}
+              >
+                {config?.enabled ? 'Disable Suricata' : 'Enable Suricata'}
+              </Button>
               <Button size="sm" variant="secondary" disabled={loading} onClick={loadAll}>
                 Refresh
               </Button>

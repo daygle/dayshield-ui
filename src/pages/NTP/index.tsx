@@ -6,6 +6,7 @@ import type { NtpConfig, NtpStatus, NetworkInterface } from '../../types';
 import Card from '../../components/Card';
 import FormField from '../../components/FormField';
 import Button from '../../components/Button';
+import TrashIcon from '../../components/TrashIcon';
 import { ServiceControlCluster } from '../../components/ServiceControlButtons';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
@@ -190,20 +191,6 @@ function PlusIcon({ className = 'h-4 w-4' }: IconProps) {
       strokeWidth={2}
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-    </svg>
-  );
-}
-
-function XIcon({ className = 'h-4 w-4' }: IconProps) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
     </svg>
   );
 }
@@ -528,7 +515,7 @@ export default function NtpPage() {
                     title={`Remove ${server}`}
                     aria-label={`Remove ${server}`}
                   >
-                    <XIcon className="h-4 w-4" />
+                    <TrashIcon className="h-4 w-4" />
                   </button>
                 </li>
               ))}

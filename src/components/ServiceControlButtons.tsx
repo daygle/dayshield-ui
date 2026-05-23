@@ -26,6 +26,7 @@ interface ServiceControlClusterProps {
   serviceId: string;
   disabled?: boolean;
   className?: string;
+  showStatusBadge?: boolean;
   onServiceChanged?: (service: ServiceRuntimeStatus) => void;
   onError?: (message: string) => void;
   onSuccess?: (message: string) => void;
@@ -192,6 +193,7 @@ export function ServiceControlCluster({
   serviceId,
   disabled = false,
   className = '',
+  showStatusBadge = true,
   onServiceChanged,
   onError,
   onSuccess,
@@ -249,7 +251,7 @@ export function ServiceControlCluster({
 
   return (
     <div className={`inline-flex items-center gap-2 ${className}`}>
-      <ServiceStatusBadge service={service} loading={loading} />
+      {showStatusBadge && <ServiceStatusBadge service={service} loading={loading} />}
       <ServiceControlButtons
         service={service}
         busyAction={busyAction}
