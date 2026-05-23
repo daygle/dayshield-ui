@@ -112,9 +112,9 @@ const columns = (
       const entry = row as BackupEntry;
       return (
         <div className="flex items-center gap-2 justify-end">
-          <Button
-            size="sm"
-            variant="ghost"
+          <button
+            type="button"
+            className="btn-icon btn-icon-secondary"
             onClick={() => onDownload(entry)}
             disabled={restoring}
             title="Download backup"
@@ -134,10 +134,10 @@ const columns = (
                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
               />
             </svg>
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
+          </button>
+          <button
+            type="button"
+            className="btn-icon btn-icon-secondary"
             onClick={() => onRestore(entry)}
             disabled={restoring}
             title="Restore backup"
@@ -157,7 +157,7 @@ const columns = (
                 d="M3 12a9 9 0 109-9m0 0v4m0-4h4m-4 0L5 10"
               />
             </svg>
-          </Button>
+          </button>
           <button
             type="button"
             className="btn-icon btn-icon-danger"

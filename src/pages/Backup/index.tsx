@@ -338,49 +338,26 @@ export default function BackupRestorePage() {
         subtitle="Create, upload, and restore backups from one place."
         actions={
           <>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={loadBackups}
-              disabled={listLoading || restoring}
-              title="Refresh backups"
-              aria-label="Refresh backups"
-              className="px-2 py-2"
-            >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.25}
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
-                />
-              </svg>
-            </Button>
-            <Button
+              <button
+              type="button"
+              className="btn-icon btn-icon-secondary"
               onClick={() => setCreateOpen(true)}
               disabled={restoring}
               title="Create new backup"
               aria-label="Create new backup"
-              className="px-2 py-2"
             >
               <svg
-                className="h-5 w-5"
+                className="h-4 w-4"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2.25}
+                strokeWidth={2}
                 aria-hidden="true"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
               </svg>
-            </Button>
+            </button>
           </>
         }
       >
