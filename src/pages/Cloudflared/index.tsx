@@ -42,23 +42,6 @@ function formatServiceState(value: string | null | undefined): string {
     .join(' ');
 }
 
-function statusBadge(status: CloudflaredStatus | null) {
-  if (!status) return null;
-
-  const tone = status.running
-    ? 'bg-green-100 text-green-700'
-    : status.enabled
-      ? 'bg-amber-100 text-amber-700'
-      : 'bg-gray-100 text-gray-600';
-
-  const label = status.running ? 'Running' : status.enabled ? 'Configured / stopped' : 'Disabled';
-
-  return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${tone}`}>
-      {label}
-    </span>
-  );
-}
 
 function CloudflaredPageContent() {
   const [config, setConfig] = useState<CloudflaredConfig>(DEFAULT_CONFIG);
@@ -221,9 +204,11 @@ function CloudflaredPageContent() {
                 loadAll();
               }}
             />
-            <button
+            <Button
               type="button"
               disabled={busy}
+              variant={config.enabled ? 'danger' : 'secondary'}
+              size="sm"
               onClick={toggleEnabled}
               title={
                 config.enabled
@@ -235,80 +220,30 @@ function CloudflaredPageContent() {
                   ? 'Disable Cloudflared configuration'
                   : 'Enable Cloudflared configuration'
               }
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                config.enabled
-                  ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-900'
-                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-              }`}
             >
-              <svg
-                className="h-4 w-4"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                {config.enabled ? (
-                  <>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v8.5" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 5.5a7 7 0 109 0" />
-                  </>
-                ) : (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M8.25 6.75v10.5a.75.75 0 001.137.643l8.25-5.25a.75.75 0 000-1.286l-8.25-5.25a.75.75 0 00-1.137.643z"
-                  />
-                )}
-              </svg>
-            </button>
-            <button
+              {config.enabled ? 'Disable' : 'Enable'}
+            </Button>
+            <Button
               type="button"
               disabled={busy || hasIngressErrors}
+              loading={saving}
+              variant="secondary"
+              size="sm"
               onClick={handleSave}
-              title={saving ? 'Saving Cloudflared configuration' : 'Save Cloudflared configuration'}
-              aria-label={
-                saving ? 'Saving Cloudflared configuration' : 'Save Cloudflared configuration'
-              }
-              className="btn-icon btn-icon-secondary"
             >
-              {saving ? (
-                <svg
-                  className="h-5 w-5 animate-spin"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2.25}
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path className="opacity-75" d="M12 2a10 10 0 100 20" />
-                </svg>
-              ) : (
-                <svg
-                  className="h-5 w-5"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2.25}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M16.5 3.75H6a2.25 2.25 0 00-2.25 2.25v12A2.25 2.25 0 006 20.25h12A2.25 2.25 0 0020.25 18V7.5L16.5 3.75z"
-                  />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3.75V9h7.5V3.75" />
-                </svg>
-              )}
-            </button>
+              Save
+            </Button>
+            <Button
+              type="button"
+              disabled={busy}
+              variant="ghost"
+              size="sm"
+              onClick={loadAll}
+              title={loading ? 'Refreshing Cloudflared status' : 'Refresh Cloudflared status'}
+              aria-label={loading ? 'Refreshing Cloudflared status' : 'Refresh Cloudflared status'}
+            >
+              Refresh
+            </Button>
           </div>
         }
       >

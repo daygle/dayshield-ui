@@ -6,6 +6,7 @@ import Table, { Column } from '../../components/Table';
 import Modal from '../../components/Modal';
 import FormField from '../../components/FormField';
 import ErrorBoundary from '../../components/ErrorBoundary';
+import Button from '../../components/Button';
 import { ServiceControlCluster } from '../../components/ServiceControlButtons';
 import { useToast } from '../../context/ToastContext';
 
@@ -349,69 +350,28 @@ function CrowdSecContent() {
                   addToast(message, 'success');
                 }}
               />
-              <button
+              <Button
                 type="button"
                 disabled={loading}
+                variant="secondary"
+                size="sm"
                 onClick={loadAll}
                 title={loading ? 'Refreshing CrowdSec status' : 'Refresh CrowdSec status'}
                 aria-label={loading ? 'Refreshing CrowdSec status' : 'Refresh CrowdSec status'}
-                className="btn-icon btn-icon-secondary"
+                loading={loading}
               >
-                {loading ? (
-                  <svg
-                    className="h-5 w-5 animate-spin"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2.25}
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path className="opacity-75" d="M12 2a10 10 0 100 20" />
-                  </svg>
-                ) : (
-                  <svg
-                    className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2.25}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
-                    />
-                  </svg>
-                )}
-              </button>
-              <button
+                Refresh
+              </Button>
+              <Button
                 type="button"
                 onClick={() => setConfigModalOpen(true)}
-                className="btn-icon btn-icon-secondary"
-                title="Edit settings"
+                variant="ghost"
+                size="sm"
+                title="Edit CrowdSec settings"
                 aria-label="Edit CrowdSec settings"
               >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2.25}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M4 20h4l10.5-10.5a1.5 1.5 0 00-4.5-4.5L4 15.5V20z"
-                  />
-                </svg>
-              </button>
+                Edit settings
+              </Button>
             </div>
           }
         >

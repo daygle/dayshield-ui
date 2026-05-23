@@ -1172,6 +1172,7 @@ export default function Firewall() {
             </button>
             <button
               title="Delete rule"
+              aria-label="Delete firewall rule"
               onClick={() => setDeleteRuleId(row.id as string)}
               className="btn-icon btn-icon-danger"
             >

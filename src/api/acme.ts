@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { ApiResponse, AcmeAccount, AcmeCertificate } from '../types';
+import type { ApiResponse, AcmeAccount, AcmeCertificate, AcmeCertStatus } from '../types';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 // Core ACME API: GET/POST /acme/config, POST /acme/issue, GET /acme/status
@@ -19,16 +19,36 @@ export const updateAcmeConfig = (config: Partial<AcmeAccount>): Promise<ApiRespo
 export const issueAcmeCertificates = (): Promise<ApiResponse<void>> =>
   apiClient.post<ApiResponse<void>>('/acme/issue').then((r: { data: ApiResponse<void> }) => r.data);
 
-export const getAcmeCertStatus = (): Promise<ApiResponse<AcmeCertificate>> =>
+export const getAcmeCertStatus = (): Promise<ApiResponse<AcmeCertStatus>> =>
   apiClient
-    .get<ApiResponse<AcmeCertificate>>('/acme/status')
-    .then((r: { data: ApiResponse<AcmeCertificate> }) => r.data);
+    .get<ApiResponse<AcmeCertStatus>>('/acme/status')
+    .then((r: { data: ApiResponse<AcmeCertStatus> }) => r.data);
+
+export const deleteAcmeCertificate = (): Promise<ApiResponse<void>> =>
+  apiClient.delete<ApiResponse<void>>('/acme/cert').then((r: { data: ApiResponse<void> }) => r.data);
 
 // Legacy / compatibility wrappers for older UI pages
 export const getAcmeAccount = getAcmeConfig;
 export const updateAcmeAccount = updateAcmeConfig;
 export const getAcmeCertificates = (): Promise<ApiResponse<AcmeCertificate[]>> =>
-  getAcmeCertStatus().then((r) => ({ ...r, data: r.data ? [r.data] : [] }));
+  getAcmeCertStatus().then((r) => {
+    if (!r.data || !r.data.domain || !r.data.cert_exists) {
+      return { ...r, data: [] };
+    }
+
+    const certificate: AcmeCertificate = {
+      id: 0,
+      domain: r.data.domain,
+      sans: [],
+      status: r.data.needs_renewal ? 'pending' : 'valid',
+      issuer: 'ACME',
+      notBefore: '',
+      notAfter: '',
+      autoRenew: true,
+    };
+
+    return { ...r, data: [certificate] };
+  });
 export const issueAcmeCertificate = (payload: {
   domain: string;
   sans: string[];

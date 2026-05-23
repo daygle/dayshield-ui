@@ -473,153 +473,25 @@ export default function CaptivePortalPage() {
         title="Captive Portal Overview"
         subtitle="Control network access for selected interfaces using click-through or voucher authorization."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {statusBadge}
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant={config.enabled ? 'danger' : 'secondary'}
               disabled={busy}
               onClick={() => setConfig((current) => ({ ...current, enabled: !current.enabled }))}
-              title={config.enabled ? 'Disable captive portal' : 'Enable captive portal'}
-              aria-label={config.enabled ? 'Disable captive portal' : 'Enable captive portal'}
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                config.enabled
-                  ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-900'
-                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-              }`}
             >
-              <svg
-                className="h-4 w-4"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v8.5" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 5.5a7 7 0 109 0" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={handleRestart}
-              title={
-                saving ? 'Restarting captive portal service' : 'Restart captive portal service'
-              }
-              aria-label={
-                saving ? 'Restarting captive portal service' : 'Restart captive portal service'
-              }
-              className="btn-icon btn-icon-secondary"
-            >
-              {saving ? (
-                <svg
-                  className="h-4 w-4 animate-spin"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path className="opacity-75" d="M12 2a10 10 0 100 20" />
-                </svg>
-              ) : (
-                <svg
-                  className="h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
-                  />
-                </svg>
-              )}
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={loadAll}
-              title={loading ? 'Refreshing captive portal status' : 'Refresh captive portal status'}
-              aria-label={
-                loading ? 'Refreshing captive portal status' : 'Refresh captive portal status'
-              }
-              className="btn-icon btn-icon-secondary"
-            >
-              <svg
-                className="h-4 w-4"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={handleSave}
-              title={
-                saving ? 'Saving captive portal configuration' : 'Save captive portal configuration'
-              }
-              aria-label={
-                saving ? 'Saving captive portal configuration' : 'Save captive portal configuration'
-              }
-              className="btn-icon btn-icon-secondary"
-            >
-              {saving ? (
-                <svg
-                  className="h-4 w-4 animate-spin"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path className="opacity-75" d="M12 2a10 10 0 100 20" />
-                </svg>
-              ) : (
-                <svg
-                  className="h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M4 20h4l10.5-10.5a1.5 1.5 0 00-4.5-4.5L4 15.5V20z"
-                  />
-                </svg>
-              )}
-            </button>
+              {config.enabled ? 'Disable' : 'Enable'}
+            </Button>
+            <Button size="sm" variant="secondary" loading={loading} disabled={busy} onClick={loadAll}>
+              Refresh
+            </Button>
+            <Button size="sm" variant="secondary" loading={saving} disabled={busy} onClick={handleRestart}>
+              Restart
+            </Button>
+            <Button size="sm" loading={saving} disabled={busy} onClick={handleSave}>
+              Save
+            </Button>
           </div>
         }
       >

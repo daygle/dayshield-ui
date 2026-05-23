@@ -697,6 +697,12 @@ export interface AcmeCertificate {
   lastRenewed?: string; // ISO timestamp
 }
 
+export interface AcmeCertStatus {
+  domain?: string;
+  cert_exists: boolean;
+  needs_renewal: boolean;
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export interface DashboardSystemStatus {

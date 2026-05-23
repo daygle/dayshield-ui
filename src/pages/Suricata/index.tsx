@@ -196,16 +196,6 @@ function SuricataContent() {
     });
   };
 
-  const handleToggleEnabled = () => {
-    if (!config) return;
-    updateSuricataConfig({ enabled: !config.enabled })
-      .then((res) => {
-        setConfig(res.data);
-        setError(null);
-      })
-      .catch((err: Error) => setError(err.message));
-  };
-
   const handleToggleMode = () => {
     if (!config) return;
     updateSuricataConfig({ mode: config.mode === 'ids' ? 'ips' : 'ids' })
@@ -216,12 +206,13 @@ function SuricataContent() {
       .catch((err: Error) => setError(err.message));
   };
 
-  const handleToggleSelectedInterface = () => {
-    if (!selectedInterface || !interfaceConfig) return;
-    updateInterfaceSuricataConfig(selectedInterface, !interfaceConfig.monitored)
+  const handleToggleInterfaceMonitoring = (interfaceName: string, monitored: boolean) => {
+    updateInterfaceSuricataConfig(interfaceName, monitored)
       .then((res) => {
-        setInterfaceConfig(res.data);
         setConfig((prev) => (prev ? { ...prev, interfaces: res.data.interfaces } : prev));
+        if (selectedInterface === interfaceName) {
+          setInterfaceConfig(res.data);
+        }
         setError(null);
       })
       .catch((err: Error) => setError(err.message));
@@ -368,66 +359,9 @@ function SuricataContent() {
                 onError={setError}
                 onSuccess={() => setError(null)}
               />
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleToggleMode}
-                title={`Switch Suricata to ${config.mode === 'ips' ? 'IDS' : 'IPS'} mode`}
-                aria-label={`Switch Suricata to ${config.mode === 'ips' ? 'IDS' : 'IPS'} mode`}
-                className="btn-icon btn-icon-secondary"
-              >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2.25}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
-                  />
-                </svg>
-              </button>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleToggleEnabled}
-                title={
-                  config.enabled
-                    ? 'Disable Suricata configuration'
-                    : 'Enable Suricata configuration'
-                }
-                aria-label={
-                  config.enabled
-                    ? 'Disable Suricata configuration'
-                    : 'Enable Suricata configuration'
-                }
-                className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                  config.enabled
-                    ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-900'
-                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                }`}
-              >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  {config.enabled ? (
-                    <rect x="6" y="6" width="12" height="12" rx="2" />
-                  ) : (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M8 5.5l10 6.5-10 6.5V5.5z"
-                    />
-                  )}
-                </svg>
-              </button>
+              <Button size="sm" variant="secondary" disabled={loading} onClick={loadAll}>
+                Refresh
+              </Button>
             </div>
           }
         >
@@ -514,13 +448,26 @@ function SuricataContent() {
                         {interfaceIps || 'No IP address detected'}
                       </p>
                     </div>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${
-                        isMonitored ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {isMonitored ? 'Monitored' : 'Not monitored'}
-                    </span>
+                    <div className="flex flex-col items-end gap-2">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${
+                          isMonitored ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        {isMonitored ? 'Monitored' : 'Not monitored'}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant={isMonitored ? 'secondary' : 'primary'}
+                        disabled={loading}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleToggleInterfaceMonitoring(iface.name, !isMonitored);
+                        }}
+                      >
+                        {isMonitored ? 'Disable monitoring' : 'Enable monitoring'}
+                      </Button>
+                    </div>
                   </div>
                 </button>
               );
@@ -536,12 +483,12 @@ function SuricataContent() {
           subtitle={`Configure monitoring for ${selectedInterfaceLabel}`}
           actions={
             <Button
-              variant={interfaceConfig.monitored ? 'secondary' : 'primary'}
               size="sm"
-              aria-label={interfaceConfig.monitored ? 'Disable Interface' : 'Enable Interface'}
-              onClick={handleToggleSelectedInterface}
+              variant="secondary"
+              disabled={loading}
+              onClick={handleToggleMode}
             >
-              {interfaceConfig.monitored ? 'Disable Interface' : 'Enable Interface'}
+              Switch to {config.mode === 'ips' ? 'IDS' : 'IPS'}
             </Button>
           }
         >

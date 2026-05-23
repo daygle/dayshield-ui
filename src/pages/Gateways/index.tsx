@@ -266,10 +266,10 @@ export default function Gateways() {
         onClose={() => setModalOpen(false)}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
+            <Button size="sm" variant="secondary" onClick={() => setModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} loading={saving}>
+            <Button size="sm" onClick={handleSave} loading={saving}>
               Save
             </Button>
           </>
@@ -378,10 +378,10 @@ export default function Gateways() {
         onClose={() => setDeleteName(null)}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setDeleteName(null)}>
+            <Button size="sm" variant="secondary" onClick={() => setDeleteName(null)}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={handleDelete} loading={deleting}>
+            <Button size="sm" variant="danger" onClick={handleDelete} loading={deleting}>
               Delete
             </Button>
           </>

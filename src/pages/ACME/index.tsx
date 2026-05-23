@@ -3,17 +3,22 @@ import {
   getAcmeAccount,
   updateAcmeAccount,
   getAcmeCertificates,
+  getAcmeCertStatus,
   issueAcmeCertificate,
+  issueAcmeCertificates,
+  deleteAcmeCertificate,
 } from '../../api/acme';
 import type {
   AcmeAccount,
   AcmeCertificate,
   AcmeCertificateStatus,
+  AcmeCertStatus,
   AcmeDnsProvider,
 } from '../../types';
 import Card from '../../components/Card';
 import Table, { Column } from '../../components/Table';
 import Modal from '../../components/Modal';
+import Button from '../../components/Button';
 import FormField from '../../components/FormField';
 import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
 
@@ -48,6 +53,11 @@ export default function ACME() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [status, setStatus] = useState<AcmeCertStatus | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteSaving, setDeleteSaving] = useState(false);
+  const [reissueSaving, setReissueSaving] = useState(false);
+
   const [accountEditOpen, setAccountEditOpen] = useState(false);
   const [accountForm, setAccountForm] = useState<Partial<AcmeAccount>>({});
   const [accountDomains, setAccountDomains] = useState('');
@@ -59,12 +69,13 @@ export default function ACME() {
 
   const loadAll = () => {
     setLoading(true);
-    Promise.all([getAcmeAccount(), getAcmeCertificates()])
-      .then(([acc, c]) => {
+    Promise.all([getAcmeAccount(), getAcmeCertificates(), getAcmeCertStatus()])
+      .then(([acc, c, statusRes]) => {
         setAccount(acc.data);
         setAccountForm(acc.data);
         setAccountDomains((acc.data.domains ?? []).join(', '));
         setCerts(Array.isArray(c.data) ? (c.data as CertRow[]) : []);
+        setStatus(statusRes.data);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
@@ -104,10 +115,31 @@ export default function ACME() {
       .then(() => {
         setIssueOpen(false);
         setCertForm(defaultCertForm);
-        getAcmeCertificates().then((r) => setCerts(r.data as CertRow[]));
+        loadAll();
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setIssueSaving(false));
+  };
+
+  const handleReissue = () => {
+    setReissueSaving(true);
+    issueAcmeCertificates()
+      .then(() => {
+        loadAll();
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setReissueSaving(false));
+  };
+
+  const handleDeleteCertificate = () => {
+    setDeleteSaving(true);
+    deleteAcmeCertificate()
+      .then(() => {
+        setDeleteOpen(false);
+        loadAll();
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setDeleteSaving(false));
   };
 
   const certColumns: Column<CertRow>[] = [
@@ -409,22 +441,39 @@ export default function ACME() {
         title="Certificates"
         subtitle="TLS certificates issued via the ACME protocol. Use Issue Certificate to add or renew certificates."
         actions={
-          <button
-            onClick={() => setIssueOpen(true)}
-            className="btn-icon btn-icon-secondary"
-            title="Issue certificate"
-            aria-label="Issue certificate"
-          >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setIssueOpen(true)}
+              disabled={issueSaving || loading}
+              title="Issue certificate"
+              aria-label="Issue certificate"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
+              Issue certificate
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleReissue}
+              disabled={reissueSaving || loading || !status?.cert_exists}
+              loading={reissueSaving}
+              title="Reissue certificate"
+              aria-label="Reissue certificate"
+            >
+              Reissue
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => setDeleteOpen(true)}
+              disabled={deleteSaving || loading || !status?.cert_exists}
+              title="Delete certificate"
+              aria-label="Delete certificate"
+            >
+              Delete
+            </Button>
+          </div>
         }
       >
         <Table
@@ -435,6 +484,17 @@ export default function ACME() {
           emptyMessage="No certificates issued yet."
         />
       </Card>
+      <Modal
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        title="Delete ACME Certificate"
+        onConfirm={handleDeleteCertificate}
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        loading={deleteSaving}
+      >
+        <p>Delete the current ACME certificate for {status?.domain ?? 'the configured domain'}? This action cannot be undone.</p>
+      </Modal>
     </div>
   );
 }

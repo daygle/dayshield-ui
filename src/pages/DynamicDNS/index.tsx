@@ -398,7 +398,7 @@ export default function DynamicDnsPage() {
                         type="button"
                         disabled={busy}
                         onClick={() => removeEntry(entry.id)}
-                        className="btn-icon btn-icon-secondary"
+                        className="btn-icon btn-icon-danger"
                         title="Delete entry"
                         aria-label="Delete entry"
                       >

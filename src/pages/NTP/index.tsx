@@ -522,14 +522,13 @@ export default function NtpPage() {
                   <span className="font-mono text-gray-800">{server}</span>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 shadow-sm transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="btn-icon btn-icon-danger"
                     disabled={busy}
                     onClick={() => handleRemoveServer(server)}
                     title={`Remove ${server}`}
                     aria-label={`Remove ${server}`}
                   >
-                    <XIcon className="h-3.5 w-3.5" />
-                    Remove
+                    <XIcon className="h-4 w-4" />
                   </button>
                 </li>
               ))}
