@@ -941,6 +941,18 @@ export default function System() {
       .finally(() => setMarkingApplianceRebuildComplete(false));
   };
 
+  useEffect(() => {
+    if (!updateActionMessage) return;
+    const normalized = updateActionMessage.trim().toLowerCase();
+    if (
+      normalized.includes('post-update service health check passed') ||
+      normalized.includes('post-apply service health check passed')
+    ) {
+      getUpdatesStatus().then((res) => setUpdates(res.data)).catch(() => {});
+      getSystemStatus().then((res) => setStatus(res.data)).catch(() => {});
+    }
+  }, [updateActionMessage]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-40 text-gray-400">
