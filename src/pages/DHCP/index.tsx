@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   getDhcpConfig,
@@ -220,6 +220,7 @@ export default function DHCP() {
   const [dns6Input, setDns6Input] = useState('');
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
   const [ipv6Enabled, setIpv6Enabled] = useState(true);
+  const activeLeasePollInFlight = useRef(false);
 
   const subnetParts = useMemo(() => splitCidr(configForm.subnet, '24', 32), [configForm.subnet]);
   const subnet6Parts = useMemo(
@@ -422,17 +423,31 @@ export default function DHCP() {
   useEffect(loadAll, [selectedInterface]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
+    const pollLeases = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (activeLeasePollInFlight.current) return;
+      activeLeasePollInFlight.current = true;
       Promise.all([getDhcpLeases(), getDhcp6Leases()])
         .then(([active, active6]) => {
           setActiveLeases(active.data as ActiveLeaseRow[]);
           setActive6Leases(active6.data as Active6LeaseRow[]);
         })
-        .catch((err: Error) => setError(err.message));
-    }, ACTIVE_LEASES_REFRESH_INTERVAL_MS);
+        .catch((err: Error) => setError(`Failed to refresh DHCP leases: ${err.message}`))
+        .finally(() => {
+          activeLeasePollInFlight.current = false;
+        });
+    };
 
-    return () => window.clearInterval(timer);
-  }, []);
+    pollLeases();
+    const timer = window.setInterval(pollLeases, ACTIVE_LEASES_REFRESH_INTERVAL_MS);
+    document.addEventListener('visibilitychange', pollLeases);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', pollLeases);
+      activeLeasePollInFlight.current = false;
+    };
+  }, [selectedInterface]);
 
   useEffect(() => {
     if (!selectedInterface || selectableInterfaces.length === 0) return;

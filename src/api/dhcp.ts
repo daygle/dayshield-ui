@@ -54,12 +54,25 @@ function normalizeDhcpLeases(raw: unknown): DhcpLease[] {
 
   if (Array.isArray(raw)) return mapLeases(raw);
   const value = (raw ?? {}) as Record<string, unknown>;
-  const leases = value.leases ?? value.active_leases ?? value.items ?? value.clients ?? value.data;
-  if (Array.isArray(leases)) return mapLeases(leases);
-  if (leases && typeof leases === 'object') {
-    return Object.values(leases).flatMap((entry) => (Array.isArray(entry) ? mapLeases(entry) : []));
+  const rawLeaseData = value.data ?? value.leases ?? value.active_leases ?? value.items ?? value.clients;
+  if (Array.isArray(rawLeaseData)) return mapLeases(rawLeaseData);
+  if (rawLeaseData && typeof rawLeaseData === 'object') {
+    const entries = Object.entries(rawLeaseData);
+    const leaseGroups = entries.filter(([, entry]) => Array.isArray(entry)).map(([, entry]) => entry);
+    if (leaseGroups.length !== entries.length) {
+      const ignoredKeys = entries.filter(([, entry]) => !Array.isArray(entry)).map(([key]) => key);
+      console.warn(
+        `Unexpected DHCP lease container entries returned by API (ignored keys: ${ignoredKeys.length > 0 ? ignoredKeys.join(', ') : '(none)'}).`
+      );
+    }
+    return leaseGroups.flatMap((group) => mapLeases(group));
   }
-  return Object.values(value).flatMap((entry) => (Array.isArray(entry) ? mapLeases(entry) : []));
+  if (rawLeaseData != null) {
+    console.warn(
+      `Unexpected DHCP leases payload type "${typeof rawLeaseData}" returned by API; expected array data.`
+    );
+  }
+  return [];
 }
 
 // ── Config ────────────────────────────────────────────────────────────────────
