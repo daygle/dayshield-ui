@@ -1715,7 +1715,7 @@ export default function System() {
       {activeSection === 'updates' && updates && (
         <Card
           title="Software Updates"
-          subtitle="Core, Web UI, and Root Filesystem are versioned independently - each component resolves its latest release through the update registry manifest"
+          subtitle="Manage updates for Core, Web UI, and Root Filesystem."
           actions={
             <Button
               size="sm"
