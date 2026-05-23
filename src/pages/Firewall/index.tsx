@@ -29,6 +29,7 @@ import Table, { Column } from '../../components/Table';
 import Modal from '../../components/Modal';
 import FormField from '../../components/FormField';
 import AddressPrefixField from '../../components/AddressPrefixField';
+import { ServiceControlCluster } from '../../components/ServiceControlButtons';
 import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
@@ -432,7 +433,10 @@ export default function Firewall() {
   const showSettingsSection = activeSection === 'settings';
   const showAutomationSection = activeSection === 'aiAutomation';
 
-  const sectionTabs: Array<{ id: 'settings' | 'rules' | 'aliases' | 'aiAutomation'; label: string }> = [
+  const sectionTabs: Array<{
+    id: 'settings' | 'rules' | 'aliases' | 'aiAutomation';
+    label: string;
+  }> = [
     { id: 'settings', label: 'Settings' },
     { id: 'rules', label: 'Rules' },
     { id: 'aliases', label: 'Aliases' },
@@ -815,7 +819,9 @@ export default function Firewall() {
 
     setAliasFormError(null);
     setAliasSaving(true);
-    const request = editingAliasName ? updateAlias(editingAliasName, aliasForm) : createAlias(aliasForm);
+    const request = editingAliasName
+      ? updateAlias(editingAliasName, aliasForm)
+      : createAlias(aliasForm);
     request
       .then(() => {
         setAliasModalOpen(false);
@@ -1237,8 +1243,18 @@ export default function Firewall() {
             title="Edit alias"
             aria-label="Edit alias"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.1 2.1 0 113.03 2.9L8.63 18.12l-4.38 1.46 1.459-4.379 11.153-11.714z" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16.862 3.487a2.1 2.1 0 113.03 2.9L8.63 18.12l-4.38 1.46 1.459-4.379 11.153-11.714z"
+              />
             </svg>
           </button>
           <button
@@ -1498,26 +1514,34 @@ export default function Firewall() {
             title="Firewall Settings"
             subtitle="Global chain policies, management-plane protection, and advanced stateful controls"
             actions={
-              <button
-                onClick={openSettingsModal}
-                className="btn-icon btn-icon-secondary"
-                title="Edit settings"
-                aria-label="Edit firewall settings"
-              >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <ServiceControlCluster
+                  serviceId="nftables"
+                  disabled={settingsSaving}
+                  onError={setSettingsError}
+                  onSuccess={() => setSettingsError(null)}
+                />
+                <button
+                  onClick={openSettingsModal}
+                  className="btn-icon btn-icon-secondary"
+                  title="Edit settings"
+                  aria-label="Edit firewall settings"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-              </button>
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                </button>
+              </div>
             }
           >
             {settingsError && <p className="text-sm text-red-600 mb-3">{settingsError}</p>}

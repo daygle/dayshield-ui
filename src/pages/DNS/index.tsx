@@ -27,6 +27,7 @@ import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 import Table, { Column } from '../../components/Table';
 import Modal from '../../components/Modal';
 import FormField from '../../components/FormField';
+import { ServiceControlCluster } from '../../components/ServiceControlButtons';
 
 type HostRow = DnsHostOverride & Record<string, unknown>;
 type DomainRow = DnsDomainOverride & Record<string, unknown>;
@@ -1193,26 +1194,34 @@ export default function DNS() {
             title="DNS Resolver (Unbound)"
             subtitle="Recursive resolver / forwarder configuration"
             actions={
-              <button
-                onClick={openConfigModal}
-                className="btn-icon btn-icon-secondary"
-                title="Edit resolver"
-                aria-label="Edit resolver"
-              >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <ServiceControlCluster
+                  serviceId="dns"
+                  disabled={loading}
+                  onError={setError}
+                  onSuccess={() => setError(null)}
+                />
+                <button
+                  onClick={openConfigModal}
+                  className="btn-icon btn-icon-secondary"
+                  title="Edit resolver"
+                  aria-label="Edit resolver"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-              </button>
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                </button>
+              </div>
             }
           >
             {loading ? (
@@ -1294,27 +1303,35 @@ export default function DNS() {
           title="DoT"
           subtitle="Encrypted private DNS listener on the configured DoT port"
           actions={
-            <button
-              type="button"
-              onClick={openDotModal}
-              className="btn-icon btn-icon-secondary"
-              title="Edit DoT"
-              aria-label="Edit DoT"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <ServiceControlCluster
+                serviceId="dns"
+                disabled={loading}
+                onError={setError}
+                onSuccess={() => setError(null)}
+              />
+              <button
+                type="button"
+                onClick={openDotModal}
+                className="btn-icon btn-icon-secondary"
+                title="Edit DoT"
+                aria-label="Edit DoT"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
-            </button>
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+              </button>
+            </div>
           }
         >
           {loading ? (

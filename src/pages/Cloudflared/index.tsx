@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   getCloudflaredConfig,
   getCloudflaredStatus,
-  restartCloudflared,
   updateCloudflaredConfig,
 } from '../../api/cloudflared';
 import type { CloudflaredConfig, CloudflaredIngressRule, CloudflaredStatus } from '../../types';
@@ -12,6 +11,7 @@ import FormField from '../../components/FormField';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../../components/Modal';
+import { ServiceControlCluster } from '../../components/ServiceControlButtons';
 
 const DEFAULT_INGRESS: CloudflaredIngressRule = {
   hostname: '',
@@ -65,7 +65,6 @@ function CloudflaredPageContent() {
   const [status, setStatus] = useState<CloudflaredStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [restarting, setRestarting] = useState(false);
   const [disableConfirmOpen, setDisableConfirmOpen] = useState(false);
   const { addToast } = useToast();
 
@@ -158,20 +157,6 @@ function CloudflaredPageContent() {
       .finally(() => setSaving(false));
   };
 
-  const handleRestart = () => {
-    setRestarting(true);
-    restartCloudflared()
-      .then(() => {
-        notifySuccess('Cloudflared service restarted.');
-        return getCloudflaredStatus();
-      })
-      .then((stat) => {
-        setStatus(stat.data);
-      })
-      .catch((err: Error) => notifyError(`Restart failed: ${err.message}`))
-      .finally(() => setRestarting(false));
-  };
-
   const updateIngress = (index: number, next: CloudflaredIngressRule) => {
     setConfig((current) => ({
       ...current,
@@ -199,7 +184,7 @@ function CloudflaredPageContent() {
     setConfig((current) => ({ ...current, enabled: !current.enabled }));
   };
 
-  const busy = loading || saving || restarting;
+  const busy = loading || saving;
 
   return (
     <div className="space-y-6">
@@ -227,13 +212,28 @@ function CloudflaredPageContent() {
         actions={
           <div className="flex items-center gap-2">
             {statusBadge(status)}
+            <ServiceControlCluster
+              serviceId="cloudflared"
+              disabled={busy}
+              onError={notifyError}
+              onSuccess={(message) => {
+                notifySuccess(message);
+                loadAll();
+              }}
+            />
             <button
               type="button"
               disabled={busy}
               onClick={toggleEnabled}
-              title={config.enabled ? 'Disable Cloudflared tunnel' : 'Enable Cloudflared tunnel'}
+              title={
+                config.enabled
+                  ? 'Disable Cloudflared configuration'
+                  : 'Enable Cloudflared configuration'
+              }
               aria-label={
-                config.enabled ? 'Disable Cloudflared tunnel' : 'Enable Cloudflared tunnel'
+                config.enabled
+                  ? 'Disable Cloudflared configuration'
+                  : 'Enable Cloudflared configuration'
               }
               className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 config.enabled
@@ -262,50 +262,6 @@ function CloudflaredPageContent() {
                   />
                 )}
               </svg>
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={handleRestart}
-              title={restarting ? 'Restarting Cloudflared service' : 'Restart Cloudflared service'}
-              aria-label={
-                restarting ? 'Restarting Cloudflared service' : 'Restart Cloudflared service'
-              }
-              className="btn-icon btn-icon-secondary"
-            >
-              {restarting ? (
-                <svg
-                  className="h-4 w-4 animate-spin"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path className="opacity-75" d="M12 2a10 10 0 100 20" />
-                </svg>
-              ) : (
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2.25}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M20 12a8 8 0 10-2.343 5.657M20 12V8m0 4h-4"
-                  />
-                </svg>
-              )}
             </button>
             <button
               type="button"

@@ -48,12 +48,6 @@ export default function TopBar({ onOpenSidebar }: TopBarProps) {
       </div>
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        {/* Status indicator */}
-        <span className="hidden items-center gap-1.5 text-xs text-gray-500 sm:inline-flex">
-          <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-          Connected
-        </span>
-
         {/* Username + change-password link */}
         {user && (
           <Link

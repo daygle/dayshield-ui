@@ -671,7 +671,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Automatic Blocking</span>
                   {ai.data.automatic_blocking ? (
-                    <Badge variant="red">Enabled</Badge>
+                    <Badge variant="green">Enabled</Badge>
                   ) : (
                     <Badge variant="gray">Disabled</Badge>
                   )}
@@ -682,10 +682,6 @@ export default function Dashboard() {
                   bar={toFiniteNumber(ai.data.risk_score_block_threshold) * 100}
                   warn={90}
                 />
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Model</span>
-                  <span className="font-medium text-gray-800">Local</span>
-                </div>
               </div>
             )}
           </>

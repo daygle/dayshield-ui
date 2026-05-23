@@ -43,6 +43,7 @@ import Table, { Column } from '../../components/Table';
 import Modal from '../../components/Modal';
 import FormField from '../../components/FormField';
 import AddressPrefixField from '../../components/AddressPrefixField';
+import { ServiceControlCluster } from '../../components/ServiceControlButtons';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
 
@@ -218,7 +219,10 @@ export default function DHCP() {
   const [ipv6Enabled, setIpv6Enabled] = useState(true);
 
   const subnetParts = useMemo(() => splitCidr(configForm.subnet, '24', 32), [configForm.subnet]);
-  const subnet6Parts = useMemo(() => splitCidr(config6Form.subnet, '64', 128), [config6Form.subnet]);
+  const subnet6Parts = useMemo(
+    () => splitCidr(config6Form.subnet, '64', 128),
+    [config6Form.subnet]
+  );
 
   const updateSubnetAddress = (address: string) => {
     setConfigForm((current) => {
@@ -1271,25 +1275,33 @@ export default function DHCP() {
                 : 'Kea DHCPv4 configuration'
             }
             actions={
-              <button
-                onClick={openConfigModal}
-                className="btn-icon btn-icon-secondary"
-                title={selectedInterface ? 'Edit interface DHCP settings' : 'Edit DHCP settings'}
-              >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <ServiceControlCluster
+                  serviceId="dhcp"
+                  disabled={loading}
+                  onError={setError}
+                  onSuccess={() => setError(null)}
+                />
+                <button
+                  onClick={openConfigModal}
+                  className="btn-icon btn-icon-secondary"
+                  title={selectedInterface ? 'Edit interface DHCP settings' : 'Edit DHCP settings'}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-              </button>
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                </button>
+              </div>
             }
           >
             {loading ? (
@@ -1451,27 +1463,35 @@ export default function DHCP() {
               selectedInterface ? 'Per-interface DHCPv6 scope settings' : 'Kea DHCPv6 configuration'
             }
             actions={
-              <button
-                onClick={openConfig6Modal}
-                className="btn-icon btn-icon-secondary"
-                title={
-                  selectedInterface ? 'Edit interface DHCPv6 settings' : 'Edit DHCPv6 settings'
-                }
-              >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <ServiceControlCluster
+                  serviceId="dhcp"
+                  disabled={loading}
+                  onError={setError}
+                  onSuccess={() => setError(null)}
+                />
+                <button
+                  onClick={openConfig6Modal}
+                  className="btn-icon btn-icon-secondary"
+                  title={
+                    selectedInterface ? 'Edit interface DHCPv6 settings' : 'Edit DHCPv6 settings'
+                  }
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-              </button>
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                </button>
+              </div>
             }
           >
             {loading ? (

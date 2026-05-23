@@ -19,6 +19,7 @@ import type {
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Table, { Column } from '../../components/Table';
+import { ServiceControlCluster } from '../../components/ServiceControlButtons';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
@@ -361,6 +362,12 @@ function SuricataContent() {
           subtitle="Global IDS/IPS status, monitored interfaces, and trusted network ranges"
           actions={
             <div className="flex items-center gap-2">
+              <ServiceControlCluster
+                serviceId="suricata"
+                disabled={loading}
+                onError={setError}
+                onSuccess={() => setError(null)}
+              />
               <button
                 type="button"
                 disabled={loading}
@@ -387,8 +394,16 @@ function SuricataContent() {
                 type="button"
                 disabled={loading}
                 onClick={handleToggleEnabled}
-                title={config.enabled ? 'Stop Suricata' : 'Start Suricata'}
-                aria-label={config.enabled ? 'Stop Suricata' : 'Start Suricata'}
+                title={
+                  config.enabled
+                    ? 'Disable Suricata configuration'
+                    : 'Enable Suricata configuration'
+                }
+                aria-label={
+                  config.enabled
+                    ? 'Disable Suricata configuration'
+                    : 'Enable Suricata configuration'
+                }
                 className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                   config.enabled
                     ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-900'
@@ -523,11 +538,7 @@ function SuricataContent() {
             <Button
               variant={interfaceConfig.monitored ? 'secondary' : 'primary'}
               size="sm"
-              aria-label={
-                interfaceConfig.monitored
-                  ? 'Disable Interface'
-                  : 'Enable Interface'
-              }
+              aria-label={interfaceConfig.monitored ? 'Disable Interface' : 'Enable Interface'}
               onClick={handleToggleSelectedInterface}
             >
               {interfaceConfig.monitored ? 'Disable Interface' : 'Enable Interface'}
@@ -592,12 +603,7 @@ function SuricataContent() {
                 stroke="currentColor"
                 strokeWidth={2.25}
               >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  r="10"
-                  strokeWidth="4"
-                />
+                <circle className="opacity-25" cx="12" r="10" strokeWidth="4" />
                 <path className="opacity-75" d="M12 2a10 10 0 100 20" />
               </svg>
             ) : (

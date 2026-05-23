@@ -293,6 +293,74 @@ export const rebootSystem = (): Promise<ApiResponse<void>> =>
 export const shutdownSystem = (): Promise<ApiResponse<void>> =>
   apiClient.post<ApiResponse<void>>('/system/shutdown').then((r) => r.data);
 
+export type ServiceAction = 'start' | 'stop' | 'restart';
+
+export interface ServiceUnitStatus {
+  unit: string;
+  available: boolean;
+  running: boolean;
+  loadState: string;
+  activeState: string;
+  subState: string;
+  unitFileState: string;
+  lastError?: string | null;
+}
+
+export interface ServiceActionDescriptor {
+  id: ServiceAction;
+  label: string;
+  method: 'POST';
+  href: string;
+  variant: 'primary' | 'neutral' | 'danger';
+  requiresConfirmation: boolean;
+  enabled: boolean;
+  disabledReason?: string | null;
+}
+
+export interface ServiceRuntimeStatus {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  configured: boolean;
+  status: string;
+  statusLabel: string;
+  configuredUnits: string[];
+  units: ServiceUnitStatus[];
+  actions: ServiceActionDescriptor[];
+  updatedAt: string;
+}
+
+export interface ServiceListResponse {
+  generatedAt: string;
+  services: ServiceRuntimeStatus[];
+}
+
+export interface ServiceActionResponse {
+  action: ServiceAction;
+  message: string;
+  affectedUnits: string[];
+  service: ServiceRuntimeStatus;
+}
+
+export const getSystemServices = (): Promise<ApiResponse<ServiceListResponse>> =>
+  apiClient.get<ApiResponse<ServiceListResponse>>('/system/services').then((r) => r.data);
+
+export const getSystemService = (serviceId: string): Promise<ApiResponse<ServiceRuntimeStatus>> =>
+  apiClient
+    .get<ApiResponse<ServiceRuntimeStatus>>(`/system/services/${encodeURIComponent(serviceId)}`)
+    .then((r) => r.data);
+
+export const controlSystemService = (
+  serviceId: string,
+  action: ServiceAction
+): Promise<ApiResponse<ServiceActionResponse>> =>
+  apiClient
+    .post<
+      ApiResponse<ServiceActionResponse>
+    >(`/system/services/${encodeURIComponent(serviceId)}/${action}`)
+    .then((r) => r.data);
+
 export const getUpdatesStatus = (): Promise<ApiResponse<UpdatesStatus>> =>
   apiClient.get<ApiResponse<UpdatesStatus>>('/system/updates/status').then((r) => r.data);
 

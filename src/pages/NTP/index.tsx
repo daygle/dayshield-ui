@@ -6,6 +6,7 @@ import type { NtpConfig, NtpStatus, NetworkInterface } from '../../types';
 import Card from '../../components/Card';
 import FormField from '../../components/FormField';
 import Button from '../../components/Button';
+import { ServiceControlCluster } from '../../components/ServiceControlButtons';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
 // NTP server validation
@@ -151,7 +152,13 @@ type IconProps = { className?: string };
 
 function RefreshIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d="M20 12a8 8 0 10-2.34 5.66" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M20 12V8m0 4h-4" />
     </svg>
@@ -160,7 +167,13 @@ function RefreshIcon({ className = 'h-4 w-4' }: IconProps) {
 
 function SaveIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 4h11l3 3v13H5V4z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M8 4v6h8V4M8 20v-6h8v6" />
     </svg>
@@ -169,7 +182,13 @@ function SaveIcon({ className = 'h-4 w-4' }: IconProps) {
 
 function PlusIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
     </svg>
   );
@@ -177,7 +196,13 @@ function PlusIcon({ className = 'h-4 w-4' }: IconProps) {
 
 function XIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
     </svg>
   );
@@ -367,17 +392,25 @@ export default function NtpPage() {
         title="NTP Status"
         subtitle="Service status and synchronization health"
         actions={
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            disabled={busy || resyncing}
-            loading={resyncing}
-            onClick={handleResync}
-          >
-            {!resyncing && <RefreshIcon />}
-            Resync Now
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <ServiceControlCluster
+              serviceId="ntp"
+              disabled={busy || resyncing}
+              onError={(message) => addToast('error', message)}
+              onSuccess={(message) => addToast('success', message)}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={busy || resyncing}
+              loading={resyncing}
+              onClick={handleResync}
+            >
+              {!resyncing && <RefreshIcon />}
+              Resync Now
+            </Button>
+          </div>
         }
       >
         {loading ? (
@@ -427,9 +460,7 @@ export default function NtpPage() {
         ) : (
           <p className="text-sm text-gray-400">NTP status unavailable.</p>
         )}
-        <p className="text-sm text-gray-500">
-          {statusSummary}
-        </p>
+        <p className="text-sm text-gray-500">{statusSummary}</p>
       </Card>
 
       {/* Consolidated configuration */}
@@ -437,13 +468,7 @@ export default function NtpPage() {
         title="NTP Configuration"
         subtitle="Manage upstream time servers and LAN interfaces that are allowed to serve NTP"
         actions={
-          <Button
-            type="button"
-            size="sm"
-            disabled={loading}
-            loading={saving}
-            onClick={handleSave}
-          >
+          <Button type="button" size="sm" disabled={loading} loading={saving} onClick={handleSave}>
             {!saving && <SaveIcon />}
             Save Changes
           </Button>

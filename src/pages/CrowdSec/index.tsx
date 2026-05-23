@@ -6,6 +6,7 @@ import Table, { Column } from '../../components/Table';
 import Modal from '../../components/Modal';
 import FormField from '../../components/FormField';
 import ErrorBoundary from '../../components/ErrorBoundary';
+import { ServiceControlCluster } from '../../components/ServiceControlButtons';
 import { useToast } from '../../context/ToastContext';
 
 type DecisionRow = CrowdSecDecision & Record<string, unknown>;
@@ -339,6 +340,15 @@ function CrowdSecContent() {
           subtitle="Configure CrowdSec Local API integration and decision synchronization"
           actions={
             <div className="flex items-center gap-2">
+              <ServiceControlCluster
+                serviceId="crowdsec"
+                disabled={loading}
+                onError={setError}
+                onSuccess={(message) => {
+                  setSuccess(message);
+                  addToast(message, 'success');
+                }}
+              />
               <button
                 type="button"
                 disabled={loading}
