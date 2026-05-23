@@ -1729,22 +1729,6 @@ export default function System() {
           }
         >
           <div className="space-y-4">
-            {updates.rootfsSlotStatus && (
-              <div className={`rounded-md border px-4 py-3 text-sm ${rootfsBootPanelClass}`}>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-medium">Currently Booted</p>
-                    <p className="mt-1 text-xs">{rootfsBootHint}</p>
-                  </div>
-                  <span
-                    className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-medium ${rootfsBootBadgeClass}`}
-                  >
-                    {rootfsBootLabel}
-                  </span>
-                </div>
-              </div>
-            )}
-
             <div className="rounded border border-gray-200 p-3 bg-gray-50">
               <p className="text-gray-500 text-sm">Automatic Update Check</p>
               <p className="font-medium text-gray-900">
@@ -1764,7 +1748,7 @@ export default function System() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {updates.components.map((comp) => (
                 <div key={comp.component} className="rounded border border-gray-200 p-3">
                   {(() => {
