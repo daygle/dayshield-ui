@@ -11,6 +11,7 @@ import { getSystemConfig } from '../../api/system';
 import { useToast } from '../../context/ToastContext';
 import type { NatRule, NetworkInterface } from '../../types';
 import Card from '../../components/Card';
+import TrashIcon from '../../components/TrashIcon';
 import Table, { Column } from '../../components/Table';
 import Modal from '../../components/Modal';
 import FormField from '../../components/FormField';
