@@ -111,6 +111,12 @@ export default function OutboundNAT() {
   );
   const ipv6Enabled = Boolean(systemData?.data.ipv6Enabled);
 
+  const formatRuleInterface = (interfaceName: string | null | undefined): string => {
+    if (!interfaceName) return '';
+    const iface = interfacesData?.data?.find((item) => item.name === interfaceName);
+    return iface ? formatInterfaceDisplayName(iface.description, iface.name) : interfaceName;
+  };
+
   // â”€â”€ Mode mutation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const configMutation = useMutation({
     mutationFn: updateNatConfig,
@@ -236,7 +242,11 @@ export default function OutboundNAT() {
       header: 'Type',
       render: (row) => <span className="capitalize">{(row as NatRule).rule_type}</span>,
     },
-    { key: 'interface', header: 'Interface' },
+    {
+      key: 'interface',
+      header: 'Interface',
+      render: (row) => formatRuleInterface((row as NatRule).interface),
+    },
     {
       key: 'address_family',
       header: 'Family',

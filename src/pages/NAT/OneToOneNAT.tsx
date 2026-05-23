@@ -421,6 +421,7 @@ export default function OneToOneNAT() {
         open={deleteId !== null}
         onClose={() => setDeleteId(null)}
         title="Confirm Deletion"
+        size="xl"
       >
         <div className="space-y-4">
           <p>Are you sure you want to delete this One-to-One NAT rule?</p>

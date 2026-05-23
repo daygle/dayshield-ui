@@ -36,7 +36,6 @@ const defaultForm = (): Omit<NatRule, 'id'> => ({
   },
   nat_reflection: false,
   address_family: 'ipv4',
-  priority: 100,
   log: false,
   auto_firewall_rule: true,
 });
@@ -171,7 +170,16 @@ export default function PortForwardPage() {
         </span>
       ),
     },
-    { key: 'interface', header: 'WAN Interface' },
+    {
+      key: 'interface',
+      header: 'Interface',
+      render: (row) => {
+        const ifaceName = (row as NatRule).interface;
+        if (!ifaceName) return '-';
+        const iface = (interfacesData?.data ?? []).find((item) => item.name === ifaceName);
+        return iface ? formatInterfaceDisplayName(iface.description, iface.name) : ifaceName;
+      },
+    },
     {
       key: 'address_family',
       header: 'Family',
@@ -362,13 +370,6 @@ export default function PortForwardPage() {
             }
           />
           <FormField
-            id="pf-priority"
-            label="Priority"
-            type="number"
-            value={form.priority}
-            onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })}
-          />
-          <FormField
             id="pf-desc"
             label="Description"
             className="lg:col-span-3"
@@ -419,7 +420,7 @@ export default function PortForwardPage() {
         confirmLabel="Delete"
         confirmVariant="danger"
         loading={deleteMutation.isPending}
-        size="sm"
+        size="xl"
       >
         <p className="text-sm text-gray-600">
           Are you sure you want to delete this port forward? This action cannot be undone.

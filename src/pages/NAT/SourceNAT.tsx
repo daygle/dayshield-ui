@@ -294,6 +294,33 @@ export default function SourceNAT() {
 
   return (
     <div className="space-y-4">
+      {/* Delete Confirmation */}
+      <Modal
+        open={deleteId !== null}
+        onClose={() => setDeleteId(null)}
+        title="Confirm Deletion"
+      >
+        <div className="space-y-4">
+          <p>Are you sure you want to delete this Source NAT rule?</p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setDeleteId(null)}
+              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+              disabled={deleteMutation.isPending}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+              className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-red-700 disabled:opacity-50"
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       <Card>
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Source NAT Rules</h3>
@@ -372,18 +399,19 @@ export default function SourceNAT() {
             </select>
           </FormField>
 
-          <FormField label="Source Address (CIDR)" error={formErrors.source}>
-            <AddressPrefixField
-              id="source-cidr"
-              label="Source Address (CIDR)"
-              addressValue={sourceAddressInput}
-              prefixValue={sourcePrefixInput}
-              addressPlaceholder="e.g., 192.168.1.0"
-              onAddressChange={setSourceAddressInput}
-              onPrefixChange={setSourcePrefixInput}
-              prefixOptions={sourcePrefixOptions}
-            />
-          </FormField>
+          <AddressPrefixField
+            id="source-cidr"
+            label="Source Address (CIDR)"
+            addressValue={sourceAddressInput}
+            prefixValue={sourcePrefixInput}
+            addressPlaceholder="e.g., 192.168.1.0"
+            onAddressChange={setSourceAddressInput}
+            onPrefixChange={setSourcePrefixInput}
+            prefixOptions={sourcePrefixOptions}
+          />
+          {formErrors.source && (
+            <p className="text-xs text-red-600">{formErrors.source}</p>
+          )}
 
           <FormField label="Translation Address" error={formErrors.translation}>
             <input
@@ -448,32 +476,6 @@ export default function SourceNAT() {
         </div>
       </Modal>
 
-      {/* Delete Confirmation */}
-      <Modal
-        open={deleteId !== null}
-        onClose={() => setDeleteId(null)}
-        title="Confirm Deletion"
-      >
-        <div className="space-y-4">
-          <p>Are you sure you want to delete this Source NAT rule?</p>
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => setDeleteId(null)}
-              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
-              disabled={deleteMutation.isPending}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
-              className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-red-700 disabled:opacity-50"
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-            </button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }

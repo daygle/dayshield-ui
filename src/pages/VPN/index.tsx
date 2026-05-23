@@ -442,7 +442,7 @@ export default function VPN() {
             >
               {serverSaving ? (
                 <svg
-                  className="h-4 w-4 animate-spin"
+                  className="h-5 w-5 animate-spin"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -453,7 +453,7 @@ export default function VPN() {
                 </svg>
               ) : isServerConfigured ? (
                 <svg
-                  className="h-4 w-4"
+                  className="h-5 w-5"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -465,7 +465,7 @@ export default function VPN() {
                 </svg>
               ) : (
                 <svg
-                  className="h-4 w-4"
+                  className="h-5 w-5"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -591,7 +591,7 @@ export default function VPN() {
               aria-label="Create Peer"
             >
               <svg
-                className="h-4 w-4"
+                className="h-5 w-5"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -655,7 +655,7 @@ export default function VPN() {
                       aria-label="Delete peer"
                     >
                       <svg
-                        className="h-4 w-4"
+                        className="h-5 w-5"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
