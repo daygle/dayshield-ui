@@ -1,6 +1,5 @@
 import type { BackupEntry } from '../../types';
 import Table, { Column } from '../../components/Table';
-import Button from '../../components/Button';
 import TrashIcon from '../../components/TrashIcon';
 import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
 

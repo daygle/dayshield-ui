@@ -12,7 +12,6 @@ import {
 import apiClient from '../../api/client';
 import type { BackupEntry, BackupSchedule, CreateBackupRequest } from '../../types';
 import Card from '../../components/Card';
-import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import BackupTable from './BackupTable';
 import CreateBackupDialog from './CreateBackupDialog';
