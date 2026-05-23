@@ -7,6 +7,7 @@ import {
   updateSuricataConfig,
   updateInterfaceSuricataConfig,
   getSuricataAlerts,
+  getSuricataRulesets,
 } from '../../api/suricata';
 import { getInterfacesInventory } from '../../api/interfaces';
 import { getSystemConfig } from '../../api/system';
@@ -14,6 +15,7 @@ import type {
   SuricataConfig,
   SuricataAlert,
   SuricataSeverity,
+  SuricataRuleset,
   NetworkInterface,
 } from '../../types';
 import Card from '../../components/Card';
@@ -61,6 +63,9 @@ function SuricataContent() {
   const [interfaceConfig, setInterfaceConfig] = useState<InterfaceSuricataConfig | null>(null);
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
+  const [rulesets, setRulesets] = useState<SuricataRuleset[]>([]);
+  const [rulesetLoading, setRulesetLoading] = useState(true);
+  const [rulesetError, setRulesetError] = useState<string | null>(null);
   const [ipv6Enabled, setIpv6Enabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +111,17 @@ function SuricataContent() {
     [extractInterfaceIpv4Cidr, extractInterfaceIpv6Cidr, ipv6Enabled]
   );
 
+  const loadRulesets = useCallback(() => {
+    setRulesetLoading(true);
+    return getSuricataRulesets(selectedInterface ?? undefined)
+      .then((res) => {
+        setRulesets(res.data ?? []);
+        setRulesetError(null);
+      })
+      .catch((err: Error) => setRulesetError(err.message))
+      .finally(() => setRulesetLoading(false));
+  }, [selectedInterface]);
+
   const loadAll = useCallback(() => {
     setLoading(true);
     const loadPromise = selectedInterface
@@ -147,7 +163,9 @@ function SuricataContent() {
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [selectedInterface]);
+
+    loadRulesets();
+  }, [selectedInterface, loadRulesets]);
 
   useEffect(() => {
     loadAll();
@@ -206,8 +224,20 @@ function SuricataContent() {
       .catch((err: Error) => setError(err.message));
   };
 
+  const hasInstalledRulesets = rulesets.some((ruleset) => ruleset.installed);
+  const canEnableSuricata = config?.enabled || (!rulesetLoading && hasInstalledRulesets);
+  const rulesetWarningMessage = !rulesetLoading && !hasInstalledRulesets
+    ? config?.enabled
+      ? 'Suricata is enabled but no rulesets are installed; service startup may fail. Install a ruleset or disable Suricata.'
+      : 'Install a ruleset before enabling Suricata. Suricata cannot start without rules.'
+    : undefined;
+
   const handleToggleSuricataEnabled = () => {
     if (!config) return;
+    if (!config.enabled && !hasInstalledRulesets) {
+      setError('Install a Suricata ruleset before enabling Suricata.');
+      return;
+    }
     updateSuricataConfig({ enabled: !config.enabled })
       .then((res) => {
         setConfig(res.data);
@@ -355,6 +385,15 @@ function SuricataContent() {
           {error}
         </div>
       )}
+      {rulesetError && !error && (
+        <div
+          className="rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-700"
+          role="alert"
+          aria-live="polite"
+        >
+          {rulesetError}
+        </div>
+      )}
 
       {/* Global Suricata Status Card */}
       {config && (
@@ -372,8 +411,9 @@ function SuricataContent() {
               <Button
                 size="sm"
                 variant={config?.enabled ? 'secondary' : 'primary'}
-                disabled={loading}
+                disabled={loading || (!config.enabled && !canEnableSuricata)}
                 onClick={handleToggleSuricataEnabled}
+                title={!config.enabled && !canEnableSuricata ? rulesetWarningMessage : undefined}
               >
                 {config?.enabled ? 'Disable Suricata' : 'Enable Suricata'}
               </Button>
@@ -431,6 +471,14 @@ function SuricataContent() {
               </dd>
             </div>
           </dl>
+          {rulesetWarningMessage && (
+            <div
+              className="mt-4 rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-700"
+              role="alert"
+            >
+              {rulesetWarningMessage}
+            </div>
+          )}
         </Card>
       )}
 

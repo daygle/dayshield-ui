@@ -96,14 +96,14 @@ export default function LogLine({ entry, highlight = '' }: LogLineProps) {
         className={`shrink-0 inline-block px-1.5 rounded text-[10px] font-semibold uppercase leading-4 mt-0.5 ${SOURCE_BADGE[entry.source]}`}
       >
         {SOURCE_LABEL[entry.source]}
-      </span>
+      </span>{' '}
 
       {/* Level badge */}
       <span
         className={`shrink-0 inline-block px-1.5 rounded text-[10px] font-semibold uppercase leading-4 mt-0.5 w-14 text-center ${LEVEL_BADGE[entry.level]}`}
       >
         {entry.level}
-      </span>
+      </span>{' '}
 
       {/* Message */}
       <span className="break-all">{highlightText(entry.message, highlight)}</span>
