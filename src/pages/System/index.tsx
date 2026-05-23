@@ -999,16 +999,6 @@ export default function System() {
           : rootfsBootIsSecondary
             ? 'The appliance is running from Secondary. Primary remains the preferred slot for normal operation.'
             : 'The appliance is running from Primary.';
-  const rootfsBootPanelClass = !rootfsSlotSupported
-    ? 'border-orange-200 bg-orange-50 text-orange-800'
-    : rootfsBootIsSecondary
-      ? 'border-amber-200 bg-amber-50 text-amber-800'
-      : 'border-green-200 bg-green-50 text-green-800';
-  const rootfsBootBadgeClass = !rootfsSlotSupported
-    ? 'bg-orange-100 text-orange-800'
-    : rootfsBootIsSecondary
-      ? 'bg-amber-100 text-amber-800'
-      : 'bg-green-100 text-green-800';
 
   return (
     <div className="space-y-6">
