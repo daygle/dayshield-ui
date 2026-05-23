@@ -54,8 +54,12 @@ function normalizeDhcpLeases(raw: unknown): DhcpLease[] {
 
   if (Array.isArray(raw)) return mapLeases(raw);
   const value = (raw ?? {}) as Record<string, unknown>;
-  const leases = value.leases ?? value.active_leases ?? value.items;
-  return Array.isArray(leases) ? mapLeases(leases) : [];
+  const leases = value.leases ?? value.active_leases ?? value.items ?? value.clients ?? value.data;
+  if (Array.isArray(leases)) return mapLeases(leases);
+  if (leases && typeof leases === 'object') {
+    return Object.values(leases).flatMap((entry) => (Array.isArray(entry) ? mapLeases(entry) : []));
+  }
+  return Object.values(value).flatMap((entry) => (Array.isArray(entry) ? mapLeases(entry) : []));
 }
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -166,7 +170,7 @@ export const deleteDhcpStaticLease = (id: string): Promise<ApiResponse<void>> =>
 export const getDhcpLeases = (): Promise<ApiResponse<DhcpLease[]>> =>
   apiClient
     .get<ApiResponse<unknown>>('/dhcp/leases')
-    .then((r) => ({ ...r.data, data: normalizeDhcpLeases(r.data.data) }));
+    .then((r) => ({ ...r.data, data: normalizeDhcpLeases(r.data.data ?? r.data) }));
 
 // ── DHCPv6 Static leases ──────────────────────────────────────────────────────
 

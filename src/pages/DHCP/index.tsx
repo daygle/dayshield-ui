@@ -104,6 +104,8 @@ const defaultConfig6Form = (): Partial<Dhcp6Config> => ({
   domainName: '',
 });
 
+const ACTIVE_LEASES_REFRESH_INTERVAL_MS = 5000;
+
 function isWanInterface(iface: NetworkInterface): boolean {
   const desc = iface.description?.trim().toLowerCase() ?? '';
   return Boolean(iface.wanMode) || desc.includes('wan') || iface.name.toLowerCase() === 'wan';
@@ -418,6 +420,19 @@ export default function DHCP() {
   };
 
   useEffect(loadAll, [selectedInterface]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      Promise.all([getDhcpLeases(), getDhcp6Leases()])
+        .then(([active, active6]) => {
+          setActiveLeases(active.data as ActiveLeaseRow[]);
+          setActive6Leases(active6.data as Active6LeaseRow[]);
+        })
+        .catch((err: Error) => setError(err.message));
+    }, ACTIVE_LEASES_REFRESH_INTERVAL_MS);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!selectedInterface || selectableInterfaces.length === 0) return;
