@@ -42,6 +42,54 @@ function formatServiceState(value: string | null | undefined): string {
     .join(' ');
 }
 
+function statusBadge(status: CloudflaredStatus | null) {
+  if (!status) {
+    return (
+      <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+        Status unknown
+      </span>
+    );
+  }
+
+  if (!status.binaryPresent) {
+    return (
+      <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+        Cloudflared not installed
+      </span>
+    );
+  }
+
+  if (!status.configured) {
+    return (
+      <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+        Not configured
+      </span>
+    );
+  }
+
+  if (status.running) {
+    return (
+      <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+        Running
+      </span>
+    );
+  }
+
+  if (status.enabled) {
+    return (
+      <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+        Enabled, not running
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+      Disabled
+    </span>
+  );
+}
+
 
 function CloudflaredPageContent() {
   const [config, setConfig] = useState<CloudflaredConfig>(DEFAULT_CONFIG);
