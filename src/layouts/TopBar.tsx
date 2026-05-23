@@ -25,9 +25,6 @@ export default function TopBar({ onOpenSidebar }: TopBarProps) {
     navigate('/login', { replace: true });
   }
 
-  // Derive initials from username
-  const initials = user?.username ? user.username.slice(0, 2).toUpperCase() : 'DS';
-
   return (
     <header className="flex min-h-14 items-center justify-between gap-3 bg-white px-3 py-2 border-b border-gray-200 shrink-0 sm:px-6">
       <div className="flex min-w-0 items-center gap-2">
@@ -69,8 +66,25 @@ export default function TopBar({ onOpenSidebar }: TopBarProps) {
         )}
 
         {/* User avatar */}
-        <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold select-none">
-          {initials}
+        <div
+          className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white"
+          aria-label="User profile"
+          title={user?.username ? `Signed in as ${user.username}` : 'User profile'}
+        >
+          <svg
+            className="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15.75 6.75a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 19.5a7.5 7.5 0 0115 0"
+            />
+          </svg>
         </div>
 
         {/* Logout button */}
