@@ -6,6 +6,37 @@ import axios, {
 } from 'axios';
 import type { ApiResponse } from '../types';
 
+
+function formatApiErrorMessage(rawData: unknown, fallback: string): string {
+  const responseData =
+    rawData !== null && typeof rawData === 'object' ? (rawData as Record<string, unknown>) : undefined;
+
+  const primary =
+    (responseData?.error as string | undefined) ??
+    (responseData?.message as string | undefined) ??
+    (typeof rawData === 'string' && rawData.trim().length > 0 ? rawData.trim() : undefined) ??
+    fallback;
+
+  const detailCandidates = [
+    responseData?.detail,
+    responseData?.details,
+    responseData?.reason,
+    responseData?.cause,
+  ]
+    .filter((candidate): candidate is string => typeof candidate === 'string')
+    .map((candidate) => candidate.trim())
+    .filter(Boolean);
+
+  const detailSuffix = detailCandidates.find((detail) => !primary.includes(detail));
+  const combined = detailSuffix ? `${primary}: ${detailSuffix}` : primary;
+
+  if (combined.includes('/run/dayshield/kea') && combined.toLowerCase().includes('read-only file system')) {
+    return `${combined}. The backend runtime directory is read-only; mount /run as writable or configure DayShield to use a writable runtime path.`;
+  }
+
+  return combined;
+}
+
 const apiClient = axios.create({
   baseURL: '/',
   headers: {
@@ -111,16 +142,7 @@ apiClient.interceptors.response.use(
     }
 
     const rawData = error.response?.data;
-    const responseData =
-      rawData !== null && typeof rawData === 'object'
-        ? (rawData as Record<string, unknown>)
-        : undefined;
-    const message =
-      (responseData?.error as string | undefined) ??
-      (responseData?.message as string | undefined) ??
-      (typeof rawData === 'string' && rawData.trim().length > 0 ? rawData.trim() : undefined) ??
-      error.message ??
-      'Unknown error';
+    const message = formatApiErrorMessage(rawData, error.message ?? 'Unknown error');
     return Promise.reject(new Error(message));
   }
 );
