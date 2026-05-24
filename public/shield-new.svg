@@ -1,63 +1,85 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
   <defs>
-    <!-- Main Shield Gradient -->
-    <linearGradient id="shieldBlue" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#4d8df1"/>
-      <stop offset="100%" stop-color="#3b82f6"/>
+    <linearGradient id="shieldBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
     </linearGradient>
-    <!-- Central D Matrix Gradient -->
+
     <linearGradient id="matrixGoldGreen" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#38ef7d"/>
-      <stop offset="100%" stop-color="#fbbf24"/>
+      <stop offset="0%" stop-color="#4ade80"/>
+      <stop offset="40%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#eab308"/>
     </linearGradient>
   </defs>
 
-  <g transform="translate(10, 10) scale(0.96)">
-    <!-- Circuit board traces -->
-    <path d="M 120 200 L 70 230 L 90 280 M 150 290 L 100 330 L 130 380" fill="none" stroke="#67e8f9" stroke-width="2.5" opacity="0.8"/>
-    <path d="M 390 200 L 440 230 L 420 280 M 360 290 L 410 330 L 380 380" fill="none" stroke="#67e8f9" stroke-width="2.5" opacity="0.8"/>
-    
-    <!-- Circuit Nodes -->
-    <g fill="#67e8f9" opacity="0.9">
-      <circle cx="70" cy="230" r="7"/>
-      <circle cx="90" cy="280" r="7"/>
-      <circle cx="100" cy="330" r="7"/>
-      <circle cx="130" cy="380" r="7"/>
-      <circle cx="440" cy="230" r="7"/>
-      <circle cx="420" cy="280" r="7"/>
-      <circle cx="410" cy="330" r="7"/>
-      <circle cx="380" cy="380" r="7"/>
-    </g>
-
-    <!-- Sunburst/Crown Gold -->
-    <g fill="#fbbf24">
-      <path d="M 256 10 L 320 80 L 192 80 Z"/>
-      <path d="M 160 50 L 210 20 L 220 50 Z"/>
-      <path d="M 120 90 L 170 60 L 180 90 Z"/>
-      <path d="M 350 50 L 300 20 L 290 50 Z"/>
-      <path d="M 390 90 L 340 60 L 330 90 Z"/>
-    </g>
-
-    <!-- Silver Outer Border Shield -->
-    <path d="M 100 130 L 256 70 L 412 130 L 400 260 C 400 370, 256 440, 256 440 C 256 440, 112 370, 100 260 Z" fill="#d1d5db" stroke="#9ca3af" stroke-width="1.5"/>
-
-    <!-- Interstitial Blue Shadows -->
-    <g fill="#2563eb" opacity="0.8">
-      <path d="M 130 145 L 256 100 L 382 145 Z"/>
-      <path d="M 130 145 L 130 260 C 130 330, 170 370, 200 390 Z"/>
-      <path d="M 382 145 L 382 260 C 382 330, 342 370, 312 390 Z"/>
-    </g>
-
-    <!-- Main Shield Panel -->
-    <path d="M 150 160 L 256 120 L 362 160 L 350 260 C 350 320, 256 360, 256 360 C 256 360, 162 320, 150 260 Z" fill="url(#shieldBlue)"/>
-
-    <!-- Inner Green Base Structure -->
-    <path d="M 220 180 C 180 200, 180 280, 220 300 L 260 300 C 300 280, 300 200, 260 180 Z" fill="#22c55e" opacity="0.6"/>
-    
-    <!-- Central Matrix "D" -->
-    <path d="M 230 190 C 200 205, 200 275, 230 290 L 260 290 C 290 275, 290 205, 260 190 Z M 245 210 C 225 220, 225 260, 245 270 L 255 270 C 275 260, 275 220, 255 210 Z" fill="url(#matrixGoldGreen)"/>
-
-    <!-- Matrix detail curve -->
-    <path d="M 235 220 C 220 235, 220 255, 235 270" fill="none" stroke="#67e8f9" stroke-width="1.5"/>
+  <g fill="#fbbf24">
+    <path d="M 250 40 L 305 95 L 195 95 Z" />
+    <path d="M 180 70 L 210 50 L 215 75 Z" />
+    <path d="M 140 100 L 175 80 L 180 105 Z" />
+    <path d="M 320 70 L 290 50 L 285 75 Z" />
+    <path d="M 360 100 L 325 80 L 320 105 Z" />
   </g>
+
+  <path d="M 110 240 L 60 260 L 80 310 M 130 320 L 90 350 L 115 390" fill="none" stroke="#22d3ee" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <path d="M 390 240 L 440 260 L 420 310 M 370 320 L 410 350 L 385 390" fill="none" stroke="#22d3ee" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  
+  <g fill="#22d3ee">
+    <circle cx="60" cy="260" r="6" />
+    <circle cx="80" cy="310" r="6" />
+    <circle cx="90" cy="350" r="6" />
+    <circle cx="115" cy="390" r="6" />
+    <circle cx="440" cy="260" r="6" />
+    <circle cx="420" cy="310" r="6" />
+    <circle cx="410" cy="350" r="6" />
+    <circle cx="385" cy="390" r="6" />
+  </g>
+
+  <path d="M 110 160 
+           L 250 110 
+           L 390 160 
+           L 380 290 
+           C 380 380, 250 440, 250 440 
+           C 250 440, 120 380, 120 290 Z" 
+        fill="#e2e8f0" stroke="#cbd5e1" stroke-width="2"/>
+
+  <path d="M 130 175 
+           L 250 130 
+           L 370 175 
+           L 360 285 
+           C 360 365, 250 420, 250 420 
+           C 250 420, 140 365, 130 285 Z" 
+        fill="#1e3a8a" opacity="0.9"/>
+
+  <path d="M 145 185 
+           L 250 145 
+           L 355 185 
+           L 345 280 
+           C 345 350, 250 400, 250 400 
+           C 250 400, 155 350, 145 280 Z" 
+        fill="url(#shieldBlue)"/>
+
+  <path d="M 165 198 L 250 165 L 335 198 L 325 215 L 250 185 L 175 215 Z" fill="#ffffff" opacity="0.25"/>
+  <path d="M 155 240 L 175 225 L 175 280 L 155 265 Z" fill="#ffffff" opacity="0.15"/>
+  <path d="M 345 240 L 325 225 L 325 280 L 345 265 Z" fill="#000000" opacity="0.2"/>
+
+  <path d="M 215 210 
+           L 260 210 
+           A 55 55 0 0 1 260 320 
+           L 215 320 Z" 
+        fill="#14532d"/>
+
+  <path d="M 225 220 
+           L 260 220 
+           A 45 45 0 0 1 260 310 
+           L 225 310 Z" 
+        fill="url(#matrixGoldGreen)"/>
+
+  <path d="M 225 245 
+           L 250 245 
+           A 20 20 0 0 1 250 285 
+           L 225 285 Z" 
+        fill="#2563eb"/>
+
+  <path d="M 275 240 A 25 25 0 0 1 275 290" fill="none" stroke="#22d3ee" stroke-width="3" stroke-linecap="round"/>
 </svg>
