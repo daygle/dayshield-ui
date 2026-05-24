@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { LiveLogsFilter, LogEntry, LogSource } from '../types/logs';
+import type { LiveLogsDebugInfo, LiveLogsFilter, LogEntry, LogSource } from '../types/logs';
 import LogLine from './LogLine';
 import LogFilters from './LogFilters';
 import LogSearch from './LogSearch';
@@ -19,6 +19,7 @@ interface LogViewerProps {
   onClear: () => void;
   onReconnect: () => void;
   showLiveControls?: boolean;
+  debugInfo?: LiveLogsDebugInfo;
 }
 
 const STATUS_LABEL: Record<string, { label: string; dot: string }> = {
@@ -67,6 +68,7 @@ export default function LogViewer({
   onClear,
   onReconnect,
   showLiveControls = true,
+  debugInfo,
 }: LogViewerProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -171,6 +173,15 @@ export default function LogViewer({
           )}
         </div>
       </div>
+
+      {showLiveControls && debugInfo && (
+        <div className="shrink-0 border-b border-slate-800 px-3 py-1 text-[10px] text-slate-400 bg-slate-950/60 flex flex-wrap gap-x-3 gap-y-1">
+          <span>WS: {debugInfo.wsUrl || 'n/a'}</span>
+          <span>Last close: {debugInfo.lastCloseCode ?? 'n/a'}</span>
+          <span>Reason: {debugInfo.lastCloseReason || 'n/a'}</span>
+          <span>Error at: {debugInfo.lastErrorAt || 'n/a'}</span>
+        </div>
+      )}
 
       {/* ── Tabs ── */}
       <LogTabs

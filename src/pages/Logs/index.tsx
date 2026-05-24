@@ -281,6 +281,7 @@ export default function Logs() {
             onAutoScrollChange={live.setAutoScroll}
             onClear={live.clearLogs}
             onReconnect={live.reconnect}
+            debugInfo={live.debugInfo}
           />
         </div>
       )}

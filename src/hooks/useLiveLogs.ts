@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getAuthToken } from '../api/client';
 import { searchLogs } from '../api/logs';
-import type { LiveLogsFilter, LogEntry, LogLevel, LogSource, WsStatus } from '../types/logs';
+import type {
+  LiveLogsDebugInfo,
+  LiveLogsFilter,
+  LogEntry,
+  LogLevel,
+  LogSource,
+  WsStatus,
+} from '../types/logs';
 
 const MAX_BUFFER = 2000;
 
@@ -234,10 +241,20 @@ function normalizeWsEvent(raw: unknown, seq: number): LogEntry | null {
 }
 
 function buildWsUrl(): string {
-  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const base = import.meta.env.VITE_WS_BASE_URL as string | undefined;
+  let root: string;
+  if (base && base.trim()) {
+    const url = new URL(base, window.location.origin);
+    if (url.protocol === 'http:') url.protocol = 'ws:';
+    if (url.protocol === 'https:') url.protocol = 'wss:';
+    root = url.origin;
+  } else {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    root = `${proto}//${window.location.host}`;
+  }
   const token = getAuthToken();
   const suffix = token ? `?token=${encodeURIComponent(token)}` : '';
-  return `${proto}//${window.location.host}/logs/ws${suffix}`;
+  return `${root}/logs/ws${suffix}`;
 }
 
 export function useLiveLogs(options?: { autoConnect?: boolean }) {
@@ -251,6 +268,12 @@ export function useLiveLogs(options?: { autoConnect?: boolean }) {
   });
   const [paused, setPaused] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<LiveLogsDebugInfo>({
+    wsUrl: '',
+    lastCloseCode: null,
+    lastCloseReason: '',
+    lastErrorAt: null,
+  });
 
   const wsRef = useRef<WebSocket | null>(null);
   const pausedRef = useRef(paused);
@@ -268,7 +291,9 @@ export function useLiveLogs(options?: { autoConnect?: boolean }) {
     if (wsRef.current && wsRef.current.readyState < WebSocket.CLOSING) return;
 
     setStatus('connecting');
-    const ws = new WebSocket(buildWsUrl());
+    const wsUrl = buildWsUrl();
+    setDebugInfo((prev) => ({ ...prev, wsUrl }));
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -302,11 +327,17 @@ export function useLiveLogs(options?: { autoConnect?: boolean }) {
     ws.onerror = () => {
       if (unmountedRef.current) return;
       setStatus('error');
+      setDebugInfo((prev) => ({ ...prev, lastErrorAt: new Date().toISOString() }));
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event: CloseEvent) => {
       if (unmountedRef.current) return;
       setStatus('disconnected');
+      setDebugInfo((prev) => ({
+        ...prev,
+        lastCloseCode: event.code,
+        lastCloseReason: event.reason || '',
+      }));
       // fixed 3-second delay before reconnect
       reconnectTimerRef.current = setTimeout(connect, 3000);
     };
@@ -369,5 +400,6 @@ export function useLiveLogs(options?: { autoConnect?: boolean }) {
     clearLogs,
     reconnect: connect,
     loadHistoricalRange,
+    debugInfo,
   };
 }

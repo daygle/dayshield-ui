@@ -35,3 +35,10 @@ export interface LiveLogsFilter {
   level: LogLevel | 'all';
   search: string;
 }
+
+export interface LiveLogsDebugInfo {
+  wsUrl: string;
+  lastCloseCode: number | null;
+  lastCloseReason: string;
+  lastErrorAt: string | null;
+}
