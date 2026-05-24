@@ -329,7 +329,7 @@ function CrowdSecContent() {
               className="min-w-0 bg-white rounded-lg border border-gray-200 shadow-sm px-5 py-4"
             >
               <p className="text-sm text-gray-500 mb-1">{label}</p>
-              <p className={`break-words text-base font-semibold ${color}`}>{value}</p>
+              <p className={`wrap-break-word text-base font-semibold ${color}`}>{value}</p>
             </div>
           ))}
         </div>
