@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" image-rendering="optimizeQuality">
+  <defs>
+    <!-- Dark Mode Palette: Based on image_10.png colors -->
+    <linearGradient id="shield_main_blue" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4d8df1"/> <!-- Light Blue Panels -->
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+
+    <!-- Gradient for the central "D" Energy Matrix -->
+    <linearGradient id="energy_matrix_d" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38ef7d"/> <!-- Vibrant Green -->
+      <stop offset="100%" stop-color="#fbbf24"/> <!-- Amber/Gold -->
+    </linearGradient>
+
+    <style>
+      .cls-2 { fill: #d1d5db; stroke: #9ca3af; stroke-width: 1.5px; } /* Silver Outer Border & Spikes */
+      .cls-3 { fill: url(#shield_main_blue); } /* Main Shield Panels */
+      .cls-4 { fill: #2563eb; opacity: 0.8; } /* Interstitial Blue Shadows */
+      .cls-5 { fill: #fbbf24; } /* Sunburst/Crown Gold */
+      .cls-6 { fill: #22c55e; } /* Basic Green (Internal Structure) */
+      .cls-7 { fill: url(#energy_matrix_d); } /* Final Woven "D" Energy */
+      .cls-8 { stroke: #67e8f9; stroke-width: 2.5px; fill: none; opacity: 0.8; } /* Cyan Circuit Board Traces */
+      .cls-9 { fill: #67e8f9; opacity: 0.9; } /* Cyan Circuit Nodes */
+    </style>
+  </defs>
+
+  <g transform="translate(10, 10) scale(0.96)"> <!-- Centering Group -->
+
+    <!-- LAYER 1: Cyan Circuit Traces -->
+    <g class="cls-8">
+      <path d="M 120 200 L 70 230 L 90 280 M 150 290 L 100 330 L 130 380"/> <!-- Left Traces -->
+      <path d="M 390 200 L 440 230 L 420 280 M 360 290 L 410 330 L 380 380"/> <!-- Right Traces -->
+    </g>
+    <!-- LAYER 2: Cyan Circuit Nodes (Glowing Points) -->
+    <g class="cls-9">
+      <circle cx="70" cy="230" r="7"/>
+      <circle cx="90" cy="280" r="7"/>
+      <circle cx="100" cy="330" r="7"/>
+      <circle cx="130" cy="380" r="7"/>
+      <circle cx="440" cy="230" r="7"/>
+      <circle cx="420" cy="280" r="7"/>
+      <circle cx="410" cy="330" r="7"/>
+      <circle cx="380" cy="380" r="7"/>
+    </g>
+
+    <!-- LAYER 3: Gold Sunburst / Crown -->
+    <g class="cls-5">
+      <path d="M 256 10 L 320 80 L 192 80 Z"/> <!-- Main Top Spike -->
+      <path d="M 160 50 L 210 20 L 220 50 Z M 120 90 L 170 60 L 180 90 Z"/> <!-- Left Spikes -->
+      <path d="M 350 50 L 300 20 L 290 50 Z M 390 90 L 340 60 L 330 90 Z"/> <!-- Right Spikes -->
+    </g>
+
+    <!-- LAYER 4: Silver Outer Spikes & Border Structure -->
+    <path class="cls-2" d="M 100 130 L 256 70 L 412 130 L 400 260 C 400 370, 256 440, 256 440 C 256 440, 112 370, 100 260 Z"/>
+
+    <!-- LAYER 5: Interstitial Shadows & Main Blue Panels -->
+    <g class="cls-4">
+      <path d="M 130 145 L 256 100 L 382 145 Z"/> <!-- Top Inner Shadow -->
+      <path d="M 130 145 L 130 260 C 130 330, 170 370, 200 390 Z"/> <!-- Left Inner Shadow -->
+      <path d="M 382 145 L 382 260 C 382 330, 342 370, 312 390 Z"/> <!-- Right Inner Shadow -->
+    </g>
+    <path class="cls-3" d="M 150 160 L 256 120 L 362 160 L 350 260 C 350 320, 256 360, 256 360 C 256 360, 162 320, 150 260 Z"/> <!-- Center Main Blue Panel -->
+
+    <!-- LAYER 6: Inner Green and Gold "D" Matrix -->
+    <g>
+      <!-- Base Inner Structure (Shadow Layer) -->
+      <path class="cls-6" opacity="0.6" d="M 220 180 C 180 200, 180 280, 220 300 L 260 300 C 300 280, 300 200, 260 180 Z"/>
+      
+      <!-- Final Woven "D" with Green-to-Gold Gradient -->
+      <path class="cls-7" d="M 230 190 C 200 205, 200 275, 230 290 L 260 290 C 290 275, 290 205, 260 190 Z M 245 210 C 225 220, 225 260, 245 270 L 255 270 C 275 260, 275 220, 255 210 Z"/>
+
+      <!-- Internal matrix detail lines (Cyan) -->
+      <path d="M 235 220 C 220 235, 220 255, 235 270 Z" class="cls-8" stroke-width="1.5px"/>
+    </g>
+
+  </g>
+</svg>
