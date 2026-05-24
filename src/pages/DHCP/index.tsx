@@ -379,7 +379,7 @@ export default function DHCP() {
         getInterfaceDhcpConfig(selectedInterface),
         getInterfaceDhcp6Config(selectedInterface),
         getInterfaceStaticLeases(selectedInterface),
-        getDhcpLeases(),
+        getDhcpLeases(selectedInterface),
         getInterfaceDhcp6StaticLeases(selectedInterface),
         getDhcp6Leases(),
       ])
@@ -427,7 +427,7 @@ export default function DHCP() {
       if (document.visibilityState !== 'visible') return;
       if (activeLeasePollInFlight.current) return;
       activeLeasePollInFlight.current = true;
-      Promise.all([getDhcpLeases(), getDhcp6Leases()])
+      Promise.all([getDhcpLeases(selectedInterface ?? undefined), getDhcp6Leases()])
         .then(([active, active6]) => {
           setActiveLeases(active.data as ActiveLeaseRow[]);
           setActive6Leases(active6.data as Active6LeaseRow[]);

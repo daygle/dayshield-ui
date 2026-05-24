@@ -179,9 +179,9 @@ export const deleteDhcpStaticLease = (id: string): Promise<ApiResponse<void>> =>
 
 // ── Active leases ─────────────────────────────────────────────────────────────
 
-export const getDhcpLeases = (): Promise<ApiResponse<DhcpLease[]>> =>
+export const getDhcpLeases = (iface?: string): Promise<ApiResponse<DhcpLease[]>> =>
   apiClient
-    .get<ApiResponse<unknown>>('/dhcp/leases')
+    .get<ApiResponse<unknown>>('/dhcp/leases', { params: iface ? { iface } : undefined })
     .then((r) => ({ ...r.data, data: normalizeDhcpLeases(r.data.data ?? r.data) }));
 
 // ── DHCPv6 Static leases ──────────────────────────────────────────────────────
