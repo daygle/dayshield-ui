@@ -1,6 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { getAuthStatus, login, logout } from '../api/auth';
-import { setAuthToken, setUnauthorizedHandler } from '../api/client';
+import {
+  getAuthToken,
+  setAuthBootstrapInProgress,
+  setAuthToken,
+  setUnauthorizedHandler,
+} from '../api/client';
 import type { AuthUser, LoginRequest } from '../types';
 
 interface AuthState {
@@ -45,17 +50,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Check existing session on mount
   useEffect(() => {
-    getAuthStatus()
-      .then((res) => {
-        if (res.data.authenticated && res.data.username) {
-          setState({ user: { username: res.data.username }, loading: false });
-        } else {
+    let cancelled = false;
+
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const bootstrapAuth = async () => {
+      setAuthBootstrapInProgress(true);
+      const hasStoredToken = Boolean(getAuthToken());
+      const maxAttempts = hasStoredToken ? 3 : 1;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+          const res = await getAuthStatus();
+          if (cancelled) return;
+
+          if (res.data.authenticated && res.data.username) {
+            setState({ user: { username: res.data.username }, loading: false });
+          } else {
+            setState({ user: null, loading: false });
+          }
+          setAuthBootstrapInProgress(false);
+          return;
+        } catch {
+          if (cancelled) return;
+          if (attempt < maxAttempts) {
+            await sleep(350 * attempt);
+            continue;
+          }
           setState({ user: null, loading: false });
+          setAuthBootstrapInProgress(false);
         }
-      })
-      .catch(() => {
-        setState({ user: null, loading: false });
-      });
+      }
+
+      setAuthBootstrapInProgress(false);
+    };
+
+    bootstrapAuth();
+
+    return () => {
+      cancelled = true;
+      setAuthBootstrapInProgress(false);
+    };
   }, []);
 
   const signIn = useCallback(async (credentials: LoginRequest) => {

@@ -52,6 +52,12 @@ const apiClient = axios.create({
 
 const TOKEN_KEY = 'dayshield_token';
 
+let authBootstrapInProgress = false;
+
+export function setAuthBootstrapInProgress(inProgress: boolean): void {
+  authBootstrapInProgress = inProgress;
+}
+
 /**
  * Persist (or remove) the JWT token in sessionStorage.
  * sessionStorage is scoped to the browser tab and is cleared when the tab
@@ -90,10 +96,16 @@ apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = getAuthToken();
     if (token) {
-      const headers = config.headers ?? {};
-      const rawHeaders = headers as AxiosHeaders;
-      rawHeaders.Authorization = `Bearer ${token}`;
-      config.headers = rawHeaders;
+      const headers = config.headers as AxiosHeaders | Record<string, string> | undefined;
+      if (headers && typeof (headers as AxiosHeaders).set === 'function') {
+        (headers as AxiosHeaders).set('Authorization', `Bearer ${token}`);
+        config.headers = headers as AxiosHeaders;
+      } else {
+        config.headers = {
+          ...(headers ?? {}),
+          Authorization: `Bearer ${token}`,
+        };
+      }
     }
     return config;
   },
@@ -134,7 +146,11 @@ apiClient.interceptors.response.use(
     // Only auto-logout on 401 for protected endpoints when a token exists.
     // This avoids loops/noise on intentional unauthenticated auth endpoints.
     if (status === 401 && !isAuthEndpoint && getAuthToken()) {
-      unauthorizedHandler?.();
+      if (authBootstrapInProgress) {
+        // Let bootstrap finish before forcing sign-out on protected-endpoint 401s.
+      } else {
+        unauthorizedHandler?.();
+      }
     }
 
     if (!error.response) {
