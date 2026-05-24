@@ -22,7 +22,7 @@ import type {
   FirewallSettings,
   NetworkInterface,
 } from '../../types';
-import AIFirewallAutomation from '../AIFirewallAutomation';
+import AIFirewallAutomation from '../AIFirewall';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Table, { Column } from '../../components/Table';
@@ -441,7 +441,7 @@ export default function Firewall() {
     { id: 'settings', label: 'Settings' },
     { id: 'rules', label: 'Rules' },
     { id: 'aliases', label: 'Aliases' },
-    { id: 'aiAutomation', label: 'AI Firewall Automation' },
+    { id: 'aiAutomation', label: 'AI Firewall' },
   ];
 
   const setActiveSection = (section: 'settings' | 'rules' | 'aliases' | 'aiAutomation') => {

@@ -32,6 +32,13 @@ function readString(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
+function readTimestampLike(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  if (typeof value === 'bigint') return value.toString();
+  return '';
+}
+
 function normalizeDhcpLease(raw: unknown): DhcpLease | null {
   const value = (raw ?? {}) as Record<string, unknown>;
   const mac = readString(value.mac ?? value.mac_address).trim();
@@ -42,8 +49,8 @@ function normalizeDhcpLease(raw: unknown): DhcpLease | null {
     mac,
     ipAddress,
     hostname: readString(value.hostname ?? value.client_hostname),
-    starts: readString(value.starts ?? value.start ?? value.cltt),
-    ends: readString(value.ends ?? value.end ?? value.expire ?? value.expires_at),
+    starts: readTimestampLike(value.starts ?? value.start ?? value.cltt),
+    ends: readTimestampLike(value.ends ?? value.end ?? value.expire ?? value.expires_at),
     state: normalizeLeaseState(value.state),
   };
 }
@@ -251,7 +258,7 @@ function normalizeDhcp6Lease(raw: unknown): Dhcp6Lease | null {
     ipAddress,
     duid: readString(value.duid),
     hostname: readString(value.hostname ?? value.client_hostname),
-    ends: readString(value.ends ?? value.end ?? value.expire ?? value.expires_at),
+    ends: readTimestampLike(value.ends ?? value.end ?? value.expire ?? value.expires_at),
     state: normalizeDhcp6LeaseState(value.state),
   };
 }

@@ -38,7 +38,6 @@ import type {
   NetworkInterface,
 } from '../../types';
 import Card from '../../components/Card';
-import Button from '../../components/Button';
 import TrashIcon from '../../components/TrashIcon';
 import Table, { Column } from '../../components/Table';
 import Modal from '../../components/Modal';
@@ -57,6 +56,22 @@ const staticColumns: Column<StaticLeaseRow>[] = [
   { key: 'mac', header: 'MAC Address' },
   { key: 'ipAddress', header: 'IP Address' },
   { key: 'hostname', header: 'Hostname' },
+  {
+    key: 'dnsServers',
+    header: 'DNS Override',
+    render: (row) => {
+      const values = row.dnsServers as string[] | undefined;
+      return values?.length ? values.join(', ') : '-';
+    },
+  },
+  {
+    key: 'ntpServers',
+    header: 'NTP Override',
+    render: (row) => {
+      const values = row.ntpServers as string[] | undefined;
+      return values?.length ? values.join(', ') : '-';
+    },
+  },
   { key: 'description', header: 'Description' },
 ];
 
@@ -64,6 +79,22 @@ const static6Columns: Column<Static6LeaseRow>[] = [
   { key: 'duid', header: 'DUID' },
   { key: 'ipAddress', header: 'IPv6 Address' },
   { key: 'hostname', header: 'Hostname' },
+  {
+    key: 'dnsServers',
+    header: 'DNS Override',
+    render: (row) => {
+      const values = row.dnsServers as string[] | undefined;
+      return values?.length ? values.join(', ') : '-';
+    },
+  },
+  {
+    key: 'ntpServers',
+    header: 'NTP Override',
+    render: (row) => {
+      const values = row.ntpServers as string[] | undefined;
+      return values?.length ? values.join(', ') : '-';
+    },
+  },
   { key: 'description', header: 'Description' },
 ];
 
@@ -71,6 +102,8 @@ const defaultLease6Form: Omit<Dhcp6StaticLease, 'id'> = {
   duid: '',
   ipAddress: '',
   hostname: '',
+  dnsServers: [],
+  ntpServers: [],
   description: '',
 };
 
@@ -78,6 +111,8 @@ const defaultLeaseForm: Omit<DhcpStaticLease, 'id'> = {
   mac: '',
   ipAddress: '',
   hostname: '',
+  dnsServers: [],
+  ntpServers: [],
   description: '',
 };
 
@@ -196,6 +231,7 @@ export default function DHCP() {
 
   const [leaseModalOpen, setLeaseModalOpen] = useState(false);
   const [leaseForm, setLeaseForm] = useState<Omit<DhcpStaticLease, 'id'>>(defaultLeaseForm);
+  const [editingLeaseId, setEditingLeaseId] = useState<string | null>(null);
   const [leaseSaving, setLeaseSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -299,10 +335,13 @@ export default function DHCP() {
   }, [config?.interface, interfaces]);
 
   const openStaticReservationFromLease = (lease: ActiveLeaseRow) => {
+    setEditingLeaseId(null);
     setLeaseForm({
       mac: lease.mac ?? '',
       ipAddress: lease.ipAddress ?? '',
       hostname: lease.hostname ?? '',
+      dnsServers: [],
+      ntpServers: [],
       description: '',
     });
     setLeaseModalOpen(true);
@@ -314,6 +353,8 @@ export default function DHCP() {
       mac: '',
       ipAddress: lease.ipAddress ?? '',
       hostname: lease.hostname ?? '',
+      dnsServers: [],
+      ntpServers: [],
       description: '',
     });
     setLease6ModalOpen(true);
@@ -349,7 +390,10 @@ export default function DHCP() {
       header: 'Expires',
       render: (row) => {
         const raw = row.ends as string;
-        if (!raw) return '-';
+        if (!raw) {
+          const state = row.state as DhcpLease['state'];
+          return state === 'active' ? 'Unknown' : '-';
+        }
         const asNum = Number(raw);
         const d = Number.isFinite(asNum) && asNum > 1e9 ? new Date(asNum * 1000) : new Date(raw);
         return isNaN(d.getTime()) ? raw : formatDateTime(d);
@@ -358,16 +402,29 @@ export default function DHCP() {
     {
       key: 'actions',
       header: '',
-      className: 'w-28 text-right',
+      className: 'w-16 text-right',
       render: (row) => (
-        <Button
-          size="sm"
-          variant="secondary"
+        <button
+          className="btn-icon btn-icon-secondary disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => openStaticReservationFromLease(row)}
           disabled={!row.mac || !row.ipAddress}
+          title="Reserve as static lease"
+          aria-label="Reserve as static lease"
         >
-          Reserve
-        </Button>
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3-7 3V5z"
+            />
+          </svg>
+        </button>
       ),
     },
   ];
@@ -651,21 +708,35 @@ export default function DHCP() {
   };
 
   const handleAddLease = () => {
-    setLeaseSaving(true);
-    const addPromise = selectedInterface
-      ? createInterfaceStaticLease(selectedInterface, leaseForm)
-      : createDhcpStaticLease(leaseForm);
+    const closeLeaseModal = () => {
+      setLeaseModalOpen(false);
+      setEditingLeaseId(null);
+      setLeaseForm(defaultLeaseForm);
+    };
 
-    addPromise
+    const reloadLeases = () => {
+      const reload = selectedInterface
+        ? getInterfaceStaticLeases(selectedInterface)
+        : getDhcpStaticLeases();
+      return reload.then((r) => setStaticLeases(r.data as StaticLeaseRow[]));
+    };
+
+    const createLease = () =>
+      selectedInterface ? createInterfaceStaticLease(selectedInterface, leaseForm) : createDhcpStaticLease(leaseForm);
+
+    setLeaseSaving(true);
+    const savePromise = editingLeaseId
+      ? (
+          selectedInterface
+            ? deleteInterfaceStaticLease(selectedInterface, editingLeaseId)
+            : deleteDhcpStaticLease(editingLeaseId)
+        ).then(() => createLease())
+      : createLease();
+
+    savePromise
       .then(() => {
-        setLeaseModalOpen(false);
-        setLeaseForm(defaultLeaseForm);
-        const reloadLeases = selectedInterface
-          ? getInterfaceStaticLeases(selectedInterface)
-          : getDhcpStaticLeases();
-        reloadLeases
-          .then((r) => setStaticLeases(r.data as StaticLeaseRow[]))
-          .catch((err: Error) => setError(err.message));
+        closeLeaseModal();
+        return reloadLeases();
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLeaseSaving(false));
@@ -786,7 +857,10 @@ export default function DHCP() {
       header: 'Expires',
       render: (row) => {
         const raw = row.ends as string;
-        if (!raw) return '-';
+        if (!raw) {
+          const state = row.state as string;
+          return state === 'active' ? 'Unknown' : '-';
+        }
         const asNum = Number(raw);
         const d = Number.isFinite(asNum) && asNum > 1e9 ? new Date(asNum * 1000) : new Date(raw);
         return isNaN(d.getTime()) ? raw : formatDateTime(d);
@@ -795,16 +869,29 @@ export default function DHCP() {
     {
       key: 'actions',
       header: '',
-      className: 'w-28 text-right',
+      className: 'w-16 text-right',
       render: (row) => (
-        <Button
-          size="sm"
-          variant="secondary"
+        <button
+          className="btn-icon btn-icon-secondary disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => openStatic6ReservationFromLease(row)}
           disabled={!row.duid || !row.ipAddress}
+          title="Reserve as DHCPv6 static lease"
+          aria-label="Reserve as DHCPv6 static lease"
         >
-          Reserve
-        </Button>
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3-7 3V5z"
+            />
+          </svg>
+        </button>
       ),
     },
   ];
@@ -814,16 +901,49 @@ export default function DHCP() {
     {
       key: 'actions',
       header: '',
-      className: 'w-16 text-right',
+      className: 'w-24 text-right',
       render: (row) => (
-        <button
-          onClick={() => setDeleteId(row.id as string)}
-          className="btn-icon btn-icon-danger"
-          title="Delete static lease"
-          aria-label="Delete static lease"
-        >
-          <TrashIcon className="h-4 w-4" />
-        </button>
+        <div className="inline-flex items-center gap-2">
+          <button
+            onClick={() => {
+              setEditingLeaseId(row.id as string);
+              setLeaseForm({
+                mac: String(row.mac ?? ''),
+                ipAddress: String(row.ipAddress ?? ''),
+                hostname: String(row.hostname ?? ''),
+                dnsServers: ((row.dnsServers as string[] | undefined) ?? []).filter(Boolean),
+                ntpServers: ((row.ntpServers as string[] | undefined) ?? []).filter(Boolean),
+                description: String(row.description ?? ''),
+              });
+              setLeaseModalOpen(true);
+            }}
+            className="btn-icon btn-icon-secondary"
+            title="Edit static lease"
+            aria-label="Edit static lease"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
+            </svg>
+          </button>
+          <button
+            onClick={() => setDeleteId(row.id as string)}
+            className="btn-icon btn-icon-danger"
+            title="Delete static lease"
+            aria-label="Delete static lease"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </button>
+        </div>
       ),
     },
   ];
@@ -1089,13 +1209,21 @@ export default function DHCP() {
       <Modal
         open={leaseModalOpen}
         title={
-          selectedInterface
-            ? `Add Static IP Reservation: ${selectedInterfaceLabel}`
-            : 'Add Static Lease'
+          editingLeaseId
+            ? selectedInterface
+              ? `Edit Static IP Reservation: ${selectedInterfaceLabel}`
+              : 'Edit Static Lease'
+            : selectedInterface
+              ? `Add Static IP Reservation: ${selectedInterfaceLabel}`
+              : 'Add Static Lease'
         }
-        onClose={() => setLeaseModalOpen(false)}
+        onClose={() => {
+          setLeaseModalOpen(false);
+          setEditingLeaseId(null);
+          setLeaseForm(defaultLeaseForm);
+        }}
         onConfirm={handleAddLease}
-        confirmLabel="Add"
+        confirmLabel={editingLeaseId ? 'Save' : 'Add'}
         loading={leaseSaving}
         size="md"
       >
@@ -1122,6 +1250,36 @@ export default function DHCP() {
             placeholder="my-device"
             value={leaseForm.hostname}
             onChange={(e) => setLeaseForm({ ...leaseForm, hostname: e.target.value })}
+          />
+          <FormField
+            id="lease-dns-override"
+            label="DNS Override (optional)"
+            placeholder="e.g. 192.168.1.1, 1.1.1.1"
+            value={(leaseForm.dnsServers ?? []).join(', ')}
+            onChange={(e) =>
+              setLeaseForm({
+                ...leaseForm,
+                dnsServers: e.target.value
+                  .split(',')
+                  .map((value) => value.trim())
+                  .filter(Boolean),
+              })
+            }
+          />
+          <FormField
+            id="lease-ntp-override"
+            label="NTP Override (optional)"
+            placeholder="e.g. 192.168.1.1"
+            value={(leaseForm.ntpServers ?? []).join(', ')}
+            onChange={(e) =>
+              setLeaseForm({
+                ...leaseForm,
+                ntpServers: e.target.value
+                  .split(',')
+                  .map((value) => value.trim())
+                  .filter(Boolean),
+              })
+            }
           />
           <FormField
             id="lease-desc"
@@ -1191,6 +1349,36 @@ export default function DHCP() {
             placeholder="mydevice"
             value={lease6Form.hostname}
             onChange={(e) => setLease6Form((f) => ({ ...f, hostname: e.target.value }))}
+          />
+          <FormField
+            id="l6-dns-override"
+            label="DNS Override (optional)"
+            placeholder="e.g. fd00::1, 2001:4860:4860::8888"
+            value={(lease6Form.dnsServers ?? []).join(', ')}
+            onChange={(e) =>
+              setLease6Form((f) => ({
+                ...f,
+                dnsServers: e.target.value
+                  .split(',')
+                  .map((value) => value.trim())
+                  .filter(Boolean),
+              }))
+            }
+          />
+          <FormField
+            id="l6-ntp-override"
+            label="NTP Override (optional)"
+            placeholder="e.g. fd00::123"
+            value={(lease6Form.ntpServers ?? []).join(', ')}
+            onChange={(e) =>
+              setLease6Form((f) => ({
+                ...f,
+                ntpServers: e.target.value
+                  .split(',')
+                  .map((value) => value.trim())
+                  .filter(Boolean),
+              }))
+            }
           />
           <FormField
             id="l6-desc"
@@ -1418,7 +1606,11 @@ export default function DHCP() {
             }
             actions={
               <button
-                onClick={() => setLeaseModalOpen(true)}
+                onClick={() => {
+                  setEditingLeaseId(null);
+                  setLeaseForm(defaultLeaseForm);
+                  setLeaseModalOpen(true);
+                }}
                 className="btn-icon btn-icon-secondary"
                 title="Add new lease"
               >

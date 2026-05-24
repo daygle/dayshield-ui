@@ -29,12 +29,12 @@ function normalizeResponse<T>(payload: unknown): ApiResponse<T> {
   };
 }
 
-export const getAiThreats = (limit = 100): Promise<ApiResponse<ThreatEvent[]>> =>
+export const getAiThreatEngineEvents = (limit = 100): Promise<ApiResponse<ThreatEvent[]>> =>
   apiClient
     .get<ApiResponse<ThreatEvent[]>>('/api/ai/threats', { params: { limit } })
     .then((r) => normalizeResponse<ThreatEvent[]>(r.data));
 
-export const getAiThreatById = (id: string): Promise<ApiResponse<ThreatEvent>> =>
+export const getAiThreatEngineEventById = (id: string): Promise<ApiResponse<ThreatEvent>> =>
   apiClient
     .get<ApiResponse<ThreatEvent>>(`/api/ai/threats/${encodeURIComponent(id)}`)
     .then((r) => normalizeResponse<ThreatEvent>(r.data));

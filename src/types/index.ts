@@ -303,6 +303,8 @@ export interface DhcpStaticLease {
   mac: string;
   ipAddress: string;
   hostname: string;
+  dnsServers: string[];
+  ntpServers: string[];
   description: string;
 }
 
@@ -320,6 +322,8 @@ export interface Dhcp6StaticLease {
   duid: string; // DHCP Unique Identifier (colon-separated hex)
   ipAddress: string;
   hostname: string;
+  dnsServers: string[];
+  ntpServers: string[];
   description: string;
 }
 

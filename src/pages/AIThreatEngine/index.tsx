@@ -1,8 +1,8 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  getAiThreats,
-  getAiThreatById,
+  getAiThreatEngineEvents,
+  getAiThreatEngineEventById,
   getAiBlockedEntries,
   unblockAiIp,
   submitAiFeedback,
@@ -137,7 +137,7 @@ function yesNoBadge(
   );
 }
 
-function AIThreatsContent() {
+function AIThreatEngineContent() {
   const { addToast } = useToast();
   const { formatDateTime } = useDisplayPreferences();
   const [threats, setThreats] = useState<ThreatRow[]>([]);
@@ -260,7 +260,7 @@ function AIThreatsContent() {
 
   const loadAll = useCallback(() => {
     setLoading(true);
-    Promise.all([getAiThreats(100), getAiBlockedEntries()])
+    Promise.all([getAiThreatEngineEvents(100), getAiBlockedEntries()])
       .then(([threatRes, blockedRes]) => {
         setThreats(threatRes.data as ThreatRow[]);
         setBlockedEntries(blockedRes.data as BlockedRow[]);
@@ -352,7 +352,7 @@ function AIThreatsContent() {
   const handleOpenThreat = (row: ThreatRow) => {
     const id = String(row.id);
     setSelectedThreat(row as ThreatEvent);
-    getAiThreatById(id)
+    getAiThreatEngineEventById(id)
       .then((res) => setSelectedThreat(res.data))
       .catch(() => undefined);
   };
@@ -1050,7 +1050,7 @@ function AIThreatsContent() {
       </Card>
 
       <Card
-        title="AI Threats"
+        title="AI Threat Engine"
         subtitle="Latest 100 threat events (newest first)"
         actions={
           <Button size="sm" variant="secondary" onClick={loadAll}>
@@ -1200,10 +1200,10 @@ function Detail({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-export default function AIThreats() {
+export default function AIThreatEngine() {
   return (
-    <ErrorBoundary fallbackMessage="The AI Threats page failed to render. Please refresh and try again.">
-      <AIThreatsContent />
+    <ErrorBoundary fallbackMessage="The AI Threat Engine page failed to render. Please refresh and try again.">
+      <AIThreatEngineContent />
     </ErrorBoundary>
   );
 }

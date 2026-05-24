@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Suricata from '../Suricata';
 import CrowdSec from '../CrowdSec';
-import AIThreats from '../AIThreats';
+import AIThreatEngine from '../AIThreatEngine';
 import Honeypots from '../Honeypots';
 
 type Tab = 'suricata' | 'crowdsec' | 'honeypots' | 'ai';
@@ -45,7 +45,7 @@ export default function Security() {
       {activeTab === 'suricata' && <Suricata />}
       {activeTab === 'crowdsec' && <CrowdSec />}
       {activeTab === 'honeypots' && <Honeypots />}
-      {activeTab === 'ai' && <AIThreats />}
+      {activeTab === 'ai' && <AIThreatEngine />}
     </div>
   );
 }

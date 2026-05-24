@@ -15,7 +15,7 @@ import CaptivePortal from './pages/CaptivePortal';
 import Suricata from './pages/Suricata';
 import SuricataRulesetsPage from './pages/Suricata/RulesetsPage';
 import CrowdSec from './pages/CrowdSec';
-import AIThreats from './pages/AIThreats';
+import AIThreatEngine from './pages/AIThreatEngine';
 import Security from './pages/Security';
 import ACME from './pages/ACME';
 import System from './pages/System';
@@ -115,9 +115,9 @@ const router = createBrowserRouter([
         handle: { title: 'CrowdSec' },
       },
       {
-        path: 'ai-threats',
-        element: <AIThreats />,
-        handle: { title: 'AI Threats' },
+        path: 'ai-threat-engine',
+        element: <AIThreatEngine />,
+        handle: { title: 'AI Threat Engine' },
       },
       {
         path: 'security',
