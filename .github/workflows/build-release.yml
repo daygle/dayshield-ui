@@ -39,9 +39,11 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Build UI
         env:
@@ -49,13 +51,14 @@ jobs:
         run: npm run build
 
       - name: Package artifact
+        id: package
         run: |
           TAG="${{ steps.tag.outputs.value }}"
           ARTIFACT="ui-${TAG}.tar.zst"
           tar --use-compress-program="zstd -T0 -19" -cf "${ARTIFACT}" dist
           sha256sum "${ARTIFACT}" > "${ARTIFACT}.sha256"
-          echo "artifact=${ARTIFACT}" >> "$GITHUB_ENV"
-          echo "sha256=${ARTIFACT}.sha256" >> "$GITHUB_ENV"
+          echo "artifact=${ARTIFACT}" >> "$GITHUB_OUTPUT"
+          echo "sha256=${ARTIFACT}.sha256" >> "$GITHUB_OUTPUT"
 
       - name: Ensure GitHub Release exists
         env:
@@ -76,6 +79,6 @@ jobs:
         run: |
           TAG="${{ steps.tag.outputs.value }}"
           gh release upload "${TAG}" \
-            "${{ env.artifact }}" \
-            "${{ env.sha256 }}" \
+            "${{ steps.package.outputs.artifact }}" \
+            "${{ steps.package.outputs.sha256 }}" \
             --clobber
