@@ -544,37 +544,45 @@ function HoneypotsContent() {
         </div>
       </Modal>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="space-y-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Honeypots</h1>
           <p className="text-sm text-gray-500">
             Captured source IPs are submitted to the AI Threat Engine as scored events.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={loadAll} disabled={saving}>
-            Refresh
-          </Button>
-          <Button onClick={saveConfig} loading={saving} disabled={!isDirty}>
-            Save Changes
-          </Button>
-        </div>
       </div>
 
       <Card
         title="Honeypot Overview"
         actions={
-          <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              checked={draft.enabled}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, enabled: event.target.checked }))
-              }
-            />
-            Enable Honeypots
-          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant={draft.enabled ? 'danger' : 'secondary'}
+              disabled={loading || saving}
+              onClick={() => setDraft((current) => ({ ...current, enabled: !current.enabled }))}
+            >
+              {draft.enabled ? 'Disable' : 'Enable'}
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={loading}
+              disabled={saving}
+              onClick={loadAll}
+            >
+              Refresh
+            </Button>
+            <Button
+              size="sm"
+              loading={saving}
+              disabled={!isDirty || loading}
+              onClick={saveConfig}
+            >
+              Save
+            </Button>
+          </div>
         }
       >
         <div className="grid gap-4 md:grid-cols-4">

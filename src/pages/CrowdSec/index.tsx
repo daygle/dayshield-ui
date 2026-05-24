@@ -313,7 +313,7 @@ function CrowdSecContent() {
             },
             {
               label: 'API Key',
-              value: status.api_key_configured ? 'Configured' : 'Missing',
+              value: status.api_key_configured ? 'Configured' : 'Not configured',
               color: status.api_key_configured ? 'text-green-600' : 'text-orange-600',
             },
             {
@@ -370,6 +370,20 @@ function CrowdSecContent() {
                 title="Edit CrowdSec settings"
                 aria-label="Edit CrowdSec settings"
               >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
                 Edit settings
               </Button>
             </div>

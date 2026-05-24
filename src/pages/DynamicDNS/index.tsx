@@ -347,7 +347,7 @@ export default function DynamicDnsPage() {
             <p className="mt-2 text-xs text-gray-500">When enabled, Dynamic DNS updates will run for all active entries.</p>
           </div>
           <div className="md:col-span-2 flex justify-end">
-            <Button disabled={busy} loading={saving} onClick={handleSave}>
+            <Button size="sm" disabled={busy} loading={saving} onClick={handleSave}>
               Save Changes
             </Button>
           </div>
