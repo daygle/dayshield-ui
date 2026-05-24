@@ -2,7 +2,7 @@ import axios, {
   type AxiosError,
   type AxiosResponse,
   type InternalAxiosRequestConfig,
-  type AxiosHeaders,
+  AxiosHeaders,
 } from 'axios';
 import type { ApiResponse } from '../types';
 
@@ -96,16 +96,9 @@ apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = getAuthToken();
     if (token) {
-      const headers = config.headers as AxiosHeaders | Record<string, string> | undefined;
-      if (headers && typeof (headers as AxiosHeaders).set === 'function') {
-        (headers as AxiosHeaders).set('Authorization', `Bearer ${token}`);
-        config.headers = headers as AxiosHeaders;
-      } else {
-        config.headers = {
-          ...(headers ?? {}),
-          Authorization: `Bearer ${token}`,
-        };
-      }
+      const headers = AxiosHeaders.from(config.headers);
+      headers.set('Authorization', `Bearer ${token}`);
+      config.headers = headers;
     }
     return config;
   },
