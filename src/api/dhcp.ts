@@ -49,28 +49,27 @@ function normalizeDhcpLease(raw: unknown): DhcpLease | null {
 }
 
 function normalizeDhcpLeases(raw: unknown): DhcpLease[] {
+  const collectLeaseEntries = (input: unknown): unknown[] => {
+    if (Array.isArray(input)) return input.flatMap((entry) => collectLeaseEntries(entry));
+    if (!input || typeof input !== 'object') return [];
+
+    const normalizedLease = normalizeDhcpLease(input);
+    if (normalizedLease) return [input];
+
+    return Object.values(input as Record<string, unknown>).flatMap((entry) => collectLeaseEntries(entry));
+  };
+
   const mapLeases = (leases: unknown[]): DhcpLease[] =>
     leases.map(normalizeDhcpLease).filter((lease): lease is DhcpLease => lease !== null);
 
-  if (Array.isArray(raw)) return mapLeases(raw);
+  if (Array.isArray(raw)) return mapLeases(collectLeaseEntries(raw));
   const value = (raw ?? {}) as Record<string, unknown>;
-  const rawLeaseData = value.data ?? value.leases ?? value.active_leases ?? value.items ?? value.clients;
-  if (Array.isArray(rawLeaseData)) return mapLeases(rawLeaseData);
-  if (rawLeaseData && typeof rawLeaseData === 'object') {
-    const entries = Object.entries(rawLeaseData);
-    const leaseGroups = entries.filter(([, entry]) => Array.isArray(entry)).map(([, entry]) => entry);
-    if (leaseGroups.length !== entries.length) {
-      const ignoredKeys = entries.filter(([, entry]) => !Array.isArray(entry)).map(([key]) => key);
-      console.warn(
-        `Unexpected DHCP lease container entries returned by API (ignored keys: ${ignoredKeys.length > 0 ? ignoredKeys.join(', ') : '(none)'}).`
-      );
-    }
-    return leaseGroups.flatMap((group) => mapLeases(group));
-  }
-  if (rawLeaseData != null) {
-    console.warn(
-      `Unexpected DHCP leases payload type "${typeof rawLeaseData}" returned by API; expected array data.`
-    );
+  const rawLeaseData = value.data ?? value.leases ?? value.active_leases ?? value.items ?? value.clients ?? value;
+  const leaseEntries = collectLeaseEntries(rawLeaseData);
+  if (leaseEntries.length > 0) return mapLeases(leaseEntries);
+
+  if (rawLeaseData != null && (typeof rawLeaseData !== 'object' || Object.keys(rawLeaseData).length > 0)) {
+    console.warn('No DHCP lease entries were found in the API response payload.');
   }
   return [];
 }
