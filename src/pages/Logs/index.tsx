@@ -29,6 +29,7 @@ const VALID_SOURCES = new Set<LogSource | 'all'>([
   'dns',
   'ntp',
   'crowdsec',
+  'ui',
   'pppoe',
   'backup_restore',
   'updates',

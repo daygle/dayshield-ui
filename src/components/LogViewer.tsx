@@ -32,6 +32,7 @@ const STATUS_LABEL: Record<string, { label: string; dot: string }> = {
 function buildCounts(logs: LogEntry[]): Record<LogSource | 'all', number> {
   const counts: Record<LogSource | 'all', number> = {
     all: logs.length,
+    ui: 0,
     suricata: 0,
     ai: 0,
     firewall: 0,

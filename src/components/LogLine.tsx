@@ -2,6 +2,7 @@ import type { LogEntry, LogLevel, LogSource } from '../types/logs';
 
 const SOURCE_LABEL: Record<LogSource, string> = {
   suricata: 'Suricata',
+  ui: 'UI',
   ai: 'AI Threat Engine',
   firewall: 'Firewall',
   interfaces: 'Interfaces',
@@ -29,6 +30,7 @@ const LEVEL_STYLES: Record<LogLevel, string> = {
 
 const SOURCE_BADGE: Record<LogSource, string> = {
   suricata: 'bg-purple-900/60 text-purple-300',
+  ui: 'bg-slate-800/60 text-slate-300',
   ai: 'bg-cyan-900/60 text-cyan-300',
   firewall: 'bg-blue-900/60 text-blue-300',
   interfaces: 'bg-emerald-900/60 text-emerald-300',

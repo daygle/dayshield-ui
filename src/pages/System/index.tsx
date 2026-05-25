@@ -38,6 +38,7 @@ import {
   type DateFormatPreference,
   type TimeFormatPreference,
 } from '../../context/DisplayPreferencesContext';
+import { useLiveLogs } from '../../hooks/useLiveLogs';
 import type { UpdateScheduleFrequency, UpdateScheduleWeekday } from '../../types';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
@@ -953,6 +954,24 @@ export default function System() {
     }
   }, [updateActionMessage]);
 
+  // Also listen to live system logs: when an external "post-update service health check"
+  // message is emitted by the backend, refresh updates/status so the UI reflects new state.
+  const liveLogs = useLiveLogs();
+  useEffect(() => {
+    const all = liveLogs.allLogs;
+    if (!all || all.length === 0) return;
+    const last = all[all.length - 1];
+    if (!last || !last.message) return;
+    const normalized = last.message.trim().toLowerCase();
+    if (
+      normalized.includes('post-update service health check passed') ||
+      normalized.includes('post-apply service health check passed')
+    ) {
+      getUpdatesStatus().then((res) => setUpdates(res.data)).catch(() => {});
+      getSystemStatus().then((res) => setStatus(res.data)).catch(() => {});
+    }
+  }, [liveLogs.allLogs.length]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-40 text-gray-400">
@@ -1758,15 +1777,29 @@ export default function System() {
           title="Software Updates"
           subtitle="Manage updates for Core, Web UI, and Root Filesystem."
           actions={
-            <Button
-              size="sm"
+            <button
               onClick={() => {
                 setUpdateSettings(updates.settings);
                 setUpdateSettingsOpen(true);
               }}
+              className="btn-icon btn-icon-secondary"
+              title="Update settings"
+              aria-label="Update settings"
             >
-              Update Settings
-            </Button>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </button>
           }
         >
           <div className="space-y-4">
