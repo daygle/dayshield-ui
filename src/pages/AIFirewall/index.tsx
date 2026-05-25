@@ -385,27 +385,6 @@ function AIFirewallAutomationContent({
               Firewall log position is currently <strong>{firewallLogPosition}</strong>. AI automation depends on the firewall log ordering for observed traffic candidates, and <strong>Before</strong> usually gives better visibility into allowed and denied traffic.
             </p>
           )}
-          {interfaces.length > 0 && (
-            <>
-              <FormField
-                as="select"
-                label="Interface"
-                value={selectedInterface ?? ''}
-                onChange={(e) => onSelectInterface(e.target.value || null)}
-                inputClassName="max-w-xs"
-              >
-                <option value="">All interfaces</option>
-                {interfaces.map((iface) => (
-                  <option key={iface.name} value={iface.name}>
-                    {formatInterfaceDisplayName(iface.description, iface.name)}
-                  </option>
-                ))}
-              </FormField>
-              <p className="text-xs text-gray-500">
-                Interface selection filters the displayed traffic candidates and suggestions. When an interface is selected, the mode panel shows and updates the automation mode for that interface.
-              </p>
-            </>
-          )}
         </div>
       </Card>
 

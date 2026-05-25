@@ -855,12 +855,12 @@ export default function DNS() {
         loading={configSaving}
         size="lg"
       >
-        <div className="space-y-5">
-          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-6">
+          <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
             <div>
-              <h3 className="text-sm font-semibold text-gray-900">Step 1: Turn on encrypted DNS</h3>
+              <p className="text-sm font-semibold text-gray-900">DNS-over-TLS</p>
               <p className="text-xs text-gray-500">
-                Enable DoT to accept encrypted DNS connections.
+                Configure the encrypted DNS listener and certificate used for TLS.
               </p>
             </div>
             <label className="flex items-center gap-3 cursor-pointer select-none">
@@ -875,21 +875,20 @@ export default function DNS() {
             </label>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div className="rounded border border-gray-200 bg-white px-3 py-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Listener</p>
-              <p className="mt-1 font-mono text-gray-900">TCP/{configForm.dot_port ?? 853}</p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="rounded-md border border-gray-200 bg-white p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Listener port</p>
+              <p className="mt-2 font-mono text-gray-900">TCP/{configForm.dot_port ?? 853}</p>
             </div>
-            <div className="rounded border border-gray-200 bg-white px-3 py-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Exposure</p>
-              <p className="mt-1 text-gray-900">
+            <div className="rounded-md border border-gray-200 bg-white p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Client access</p>
+              <p className="mt-2 text-gray-900">
                 {configForm.dot_lan_only === false ? 'LAN + external clients' : 'LAN clients only'}
               </p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-gray-900">Step 2: Choose who can connect</p>
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input
                 id="dns-dot-wan-access"
@@ -898,23 +897,14 @@ export default function DNS() {
                 checked={configForm.dot_lan_only === false}
                 onChange={(e) => setConfigForm((f) => ({ ...f, dot_lan_only: !e.target.checked }))}
               />
-              <span className="text-sm font-medium text-gray-700">
-                Allow external (WAN) clients
-              </span>
+              <span className="text-sm font-medium text-gray-700">Allow external (WAN) clients</span>
             </label>
             <p className="text-xs text-gray-500">
               Keep this off unless you intentionally want remote clients to query your DNS server.
             </p>
           </div>
 
-          <div className="space-y-2">
-            <label
-              htmlFor="dns-dot-acme-domain"
-              className="block text-sm font-semibold text-gray-900"
-            >
-              Step 3: Select ACME certificate
-            </label>
-            <p className="text-xs text-gray-500">DoT requires an issued ACME certificate.</p>
+          <FormField id="dns-dot-acme-domain" label="ACME certificate" className="max-w-xl">
             <select
               id="dns-dot-acme-domain"
               value={configForm.dot_acme_domain ?? ''}
@@ -928,11 +918,10 @@ export default function DNS() {
                 </option>
               ))}
             </select>
-          </div>
+          </FormField>
 
           <p className="text-xs text-gray-500">
-            Save applies DoT settings to DNS service. Clients can then connect on TCP/
-            {configForm.dot_port ?? 853} based on your access policy.
+            Save applies DoT settings to DNS service. Clients can then connect on TCP/{configForm.dot_port ?? 853} based on your access policy.
           </p>
         </div>
       </Modal>
@@ -981,7 +970,7 @@ export default function DNS() {
         confirmLabel="Remove"
         confirmVariant="danger"
         loading={hostDeleting}
-        size="sm"
+        size="xl"
       >
         <p className="text-sm text-gray-600">
           Remove override for <strong className="font-mono">{hostDeleteName}</strong>?
@@ -1032,7 +1021,7 @@ export default function DNS() {
         confirmLabel="Remove"
         confirmVariant="danger"
         loading={domainDeleting}
-        size="sm"
+        size="xl"
       >
         <p className="text-sm text-gray-600">
           Remove override for domain <strong className="font-mono">{domainDeleteName}</strong>?

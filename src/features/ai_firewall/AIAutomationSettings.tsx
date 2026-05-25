@@ -163,10 +163,10 @@ export default function AIAutomationSettings({
 
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" onClick={handleSave} loading={saving}>
-              Save settings
+              Save
             </Button>
             <Button size="sm" variant="secondary" onClick={handleReset}>
-              Reset defaults
+              Reset Defaults
             </Button>
           </div>
         </div>

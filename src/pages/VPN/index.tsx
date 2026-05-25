@@ -355,10 +355,10 @@ export default function VPN() {
               variant={server?.enabled ? 'secondary' : 'primary'}
               size="sm"
               className="h-8"
-              title={server?.enabled ? 'Disable VPN' : 'Enable VPN'}
-              aria-label={server?.enabled ? 'Disable VPN' : 'Enable VPN'}
+              title={server?.enabled ? 'Disable' : 'Enable'}
+              aria-label={server?.enabled ? 'Disable' : 'Enable'}
             >
-              {server?.enabled ? 'Disable VPN' : 'Enable VPN'}
+              {server?.enabled ? 'Disable' : 'Enable'}
             </Button>
           </div>
         }

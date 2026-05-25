@@ -348,7 +348,7 @@ export default function DynamicDnsPage() {
           </div>
           <div className="md:col-span-2 flex justify-end">
             <Button size="sm" disabled={busy} loading={saving} onClick={handleSave}>
-              Save Changes
+              Save
             </Button>
           </div>
         </div>

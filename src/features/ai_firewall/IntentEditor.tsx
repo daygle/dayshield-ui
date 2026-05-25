@@ -228,10 +228,10 @@ export default function IntentEditor({ intents, loading, saving, onSave }: Inten
 
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" onClick={handleSave} loading={saving}>
-              Save intents
+              Save
             </Button>
             <Button size="sm" variant="secondary" onClick={() => setJsonText(formatJson(intents))}>
-              Reset to server state
+              Reset Defaults
             </Button>
           </div>
         </div>
