@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { LiveLogsDebugInfo, LiveLogsFilter, LogEntry, LogSource } from '../types/logs';
 import LogLine from './LogLine';
 import LogFilters from './LogFilters';
@@ -70,17 +70,45 @@ export default function LogViewer({
   showLiveControls = true,
   debugInfo,
 }: LogViewerProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastLogCountRef = useRef(logs.length);
+  const [pendingCount, setPendingCount] = useState(0);
   const statusInfo = STATUS_LABEL[status];
   const counts = buildCounts(allLogs);
 
-  // Auto-scroll to bottom when new logs arrive
+  // Auto-scroll only inside the log container to avoid scrolling the full page.
   useEffect(() => {
-    if (autoScroll && !paused && bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+    if (autoScroll && !paused && containerRef.current) {
+      const el = containerRef.current;
+      el.scrollTop = el.scrollHeight;
+      setPendingCount(0);
     }
   }, [logs, autoScroll, paused]);
+
+  // Track unseen incoming entries while auto-scroll is off or stream is paused.
+  useEffect(() => {
+    const prev = lastLogCountRef.current;
+    const delta = Math.max(0, logs.length - prev);
+    lastLogCountRef.current = logs.length;
+    if (delta === 0) return;
+
+    if (autoScroll && !paused) {
+      setPendingCount(0);
+      return;
+    }
+
+    setPendingCount((current) => current + delta);
+  }, [logs.length, autoScroll, paused]);
+
+  const jumpToLatest = () => {
+    const el = containerRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
+    setPendingCount(0);
+    if (!autoScroll) onAutoScrollChange(true);
+    if (paused) onPausedChange(false);
+  };
 
   // Disable auto-scroll when the user scrolls up manually
   const handleScroll = () => {
@@ -88,6 +116,10 @@ export default function LogViewer({
     if (!el) return;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
     if (!atBottom && autoScroll) onAutoScrollChange(false);
+    if (atBottom && !autoScroll && !paused) {
+      onAutoScrollChange(true);
+      setPendingCount(0);
+    }
   };
 
   return (
@@ -96,7 +128,7 @@ export default function LogViewer({
       <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-slate-700 bg-slate-900/80 shrink-0">
         {/* Status indicator */}
         {showLiveControls && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 min-w-[100px]">
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 min-w-25">
             <span className={`h-2 w-2 rounded-full shrink-0 ${statusInfo.dot}`} />
             {statusInfo.label}
           </div>
@@ -108,6 +140,16 @@ export default function LogViewer({
         <div className="flex items-center gap-2 ml-auto">
           {showLiveControls && (
             <AutoScrollToggle enabled={autoScroll} onToggle={onAutoScrollChange} />
+          )}
+
+          {showLiveControls && (!autoScroll || pendingCount > 0 || paused) && (
+            <button
+              type="button"
+              onClick={jumpToLatest}
+              className="flex items-center gap-1.5 h-7 rounded px-2 text-xs border bg-blue-900/50 border-blue-500/50 text-blue-300 hover:bg-blue-900/70 transition-colors"
+            >
+              Jump to latest{pendingCount > 0 ? ` (${pendingCount})` : ''}
+            </button>
           )}
 
           {showLiveControls && (
@@ -214,7 +256,6 @@ export default function LogViewer({
             {logs.map((entry) => (
               <LogLine key={entry.id} entry={entry} highlight={filter.search} />
             ))}
-            <div ref={bottomRef} />
           </>
         )}
       </div>

@@ -419,7 +419,7 @@ function SuricataContent() {
                 onClick={handleToggleSuricataEnabled}
                 title={!config.enabled && !canEnableSuricata ? rulesetWarningMessage : undefined}
               >
-                {config?.enabled ? 'Disable Suricata' : 'Enable Suricata'}
+                {config?.enabled ? 'Disable Suricata' : 'Enable'}
               </Button>
             </div>
           }

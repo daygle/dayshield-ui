@@ -834,14 +834,15 @@ function AIThreatEngineContent() {
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button
+                  size="sm"
                   variant="secondary"
                   onClick={() => setAiForm(aiSettings)}
                   disabled={!settingsDirty || aiSaving}
                 >
-                  Discard Changes
+                  Discard
                 </Button>
-                <Button variant="primary" onClick={handleSaveAiSettings} loading={aiSaving}>
-                  Save Settings
+                <Button size="sm" variant="primary" onClick={handleSaveAiSettings} loading={aiSaving}>
+                  Save
                 </Button>
               </div>
             </div>

@@ -447,10 +447,10 @@ export default function ACME() {
               variant="secondary"
               onClick={() => setIssueOpen(true)}
               disabled={issueSaving || loading}
-              title="Issue certificate"
-              aria-label="Issue certificate"
+              title="Issue"
+              aria-label="Issue"
             >
-              Issue certificate
+              Issue
             </Button>
             <Button
               size="sm"

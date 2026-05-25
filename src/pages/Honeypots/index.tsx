@@ -567,15 +567,6 @@ function HoneypotsContent() {
             </Button>
             <Button
               size="sm"
-              variant="secondary"
-              loading={loading}
-              disabled={saving}
-              onClick={loadAll}
-            >
-              Refresh
-            </Button>
-            <Button
-              size="sm"
               loading={saving}
               disabled={!isDirty || loading}
               onClick={saveConfig}

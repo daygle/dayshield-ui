@@ -163,14 +163,19 @@ export default function NotificationsPage() {
         title="Notifications"
         subtitle="Send email alerts when security or system events occur."
         actions={
-          <Button
-            size="sm"
-            variant={config.enabled ? 'danger' : 'primary'}
-            disabled={busy}
-            onClick={() => setConfig((c) => ({ ...c, enabled: !c.enabled }))}
-          >
-            {config.enabled ? 'Disable notifications' : 'Enable notifications'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant={config.enabled ? 'danger' : 'primary'}
+              disabled={busy}
+              onClick={() => setConfig((c) => ({ ...c, enabled: !c.enabled }))}
+            >
+              {config.enabled ? 'Disable' : 'Enable'}
+            </Button>
+            <Button size="sm" loading={saving} disabled={busy} onClick={handleSave}>
+              Save
+            </Button>
+          </div>
         }
       >
         {config.lastStatus && (
@@ -256,13 +261,6 @@ export default function NotificationsPage() {
           </div>
         )}
       </Card>
-
-      {/* Save */}
-      <div className="flex justify-end">
-        <Button size="sm" loading={saving} disabled={busy} onClick={handleSave}>
-          Save
-        </Button>
-      </div>
 
       <Toast messages={toasts} />
     </div>
