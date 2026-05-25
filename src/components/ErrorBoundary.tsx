@@ -1,4 +1,5 @@
 import React from 'react';
+import { ingestUiLog } from '../api/logs';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -18,6 +19,19 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     console.error(error, errorInfo);
+
+    try {
+      void ingestUiLog({
+        component: 'error-boundary',
+        level: 'error',
+        message: error?.message ?? String(error),
+        stack: errorInfo?.componentStack ?? undefined,
+        route: typeof window !== 'undefined' ? window.location.pathname : undefined,
+        url: typeof window !== 'undefined' ? window.location.href : undefined,
+      });
+    } catch {
+      // swallow - best-effort reporting only
+    }
   }
 
   render(): React.ReactNode {

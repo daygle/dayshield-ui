@@ -1508,9 +1508,26 @@ export default function System() {
         <Card
           title="System Overview"
           actions={
-            <Button size="sm" onClick={() => openEditModal('system')}>
-              Edit System
-            </Button>
+            <button
+              onClick={() => openEditModal('system')}
+              className="btn-icon btn-icon-secondary"
+              title="Edit system"
+              aria-label="Edit system"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </button>
           }
         >
           <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
@@ -1567,9 +1584,26 @@ export default function System() {
           title="Management Interface"
           subtitle="Management access scope, ACME certificate selection, and UI session timeout"
           actions={
-            <Button size="sm" onClick={() => openEditModal('management')}>
-              Edit Management
-            </Button>
+            <button
+              onClick={() => openEditModal('management')}
+              className="btn-icon btn-icon-secondary"
+              title="Edit management"
+              aria-label="Edit management"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </button>
           }
         >
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
@@ -1619,9 +1653,26 @@ export default function System() {
           title="SSH"
           subtitle="Daemon state, auth methods, keys, and interface bindings"
           actions={
-            <Button size="sm" onClick={() => openEditModal('ssh')}>
-              Edit SSH
-            </Button>
+            <button
+              onClick={() => openEditModal('ssh')}
+              className="btn-icon btn-icon-secondary"
+              title="Edit SSH"
+              aria-label="Edit SSH"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </button>
           }
         >
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">

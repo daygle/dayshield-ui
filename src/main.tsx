@@ -7,6 +7,7 @@ import { DisplayPreferencesProvider } from './context/DisplayPreferencesContext.
 import { ToastProvider } from './context/ToastContext.tsx';
 import ToastContainer from './components/Toast.tsx';
 import './index.css';
+import { ingestUiLog } from './api/logs';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,3 +31,39 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </React.StrictMode>
 );
+
+// Global error handlers: best-effort POSTs to the backend so UI errors are
+// available in the live logs stream.
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (ev: ErrorEvent) => {
+    try {
+      const err = ev.error as Error | undefined;
+      void ingestUiLog({
+        component: 'window',
+        level: 'error',
+        message: err?.message ?? ev.message ?? 'Uncaught error',
+        stack: err?.stack,
+        url: window.location.href,
+        route: window.location.pathname,
+      });
+    } catch {
+      // ignore
+    }
+  });
+
+  window.addEventListener('unhandledrejection', (ev: PromiseRejectionEvent) => {
+    try {
+      const reason = (ev.reason ?? {}) as any;
+      void ingestUiLog({
+        component: 'window',
+        level: 'error',
+        message: reason?.message ?? String(ev.reason) ?? 'Unhandled rejection',
+        stack: reason?.stack,
+        url: window.location.href,
+        route: window.location.pathname,
+      });
+    } catch {
+      // ignore
+    }
+  });
+}
