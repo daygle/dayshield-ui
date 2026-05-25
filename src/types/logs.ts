@@ -15,7 +15,9 @@ export type LogSource =
   | 'crowdsec'
   | 'pppoe'
   | 'backup_restore'
-  | 'updates';
+  | 'updates'
+  | 'honeypot'
+  | 'captive_portal';
 
 export type LogLevel = 'debug' | 'info' | 'warning' | 'error' | 'critical';
 

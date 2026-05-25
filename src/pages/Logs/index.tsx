@@ -33,6 +33,8 @@ const VALID_SOURCES = new Set<LogSource | 'all'>([
   'pppoe',
   'backup_restore',
   'updates',
+  'honeypot',
+  'captive_portal',
 ]);
 
 const VALID_LEVELS = new Set<LogLevel | 'all'>([

@@ -43,6 +43,8 @@ function buildCounts(logs: LogEntry[]): Record<LogSource | 'all', number> {
     pppoe: 0,
     backup_restore: 0,
     updates: 0,
+    honeypot: 0,
+    captive_portal: 0,
     system: 0,
     dhcp: 0,
     vpn: 0,

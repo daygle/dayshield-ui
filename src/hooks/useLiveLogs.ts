@@ -125,6 +125,9 @@ function sourceFromSystemEvent(unit: string, message: string): LogSource {
     hay.includes('netplan')
   )
     return 'interfaces';
+  if (hay.includes('honeypot')) return 'honeypot';
+  if (hay.includes('captive-portal') || hay.includes('captive_portal') || hay.includes('captiveportal'))
+    return 'captive_portal';
   if (hay.includes('backup') || hay.includes('restore') || hay.includes('snapshot'))
     return 'backup_restore';
   if (

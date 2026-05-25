@@ -13,6 +13,8 @@ const SOURCES: { value: LogSource | 'all'; label: string }[] = [
   { value: 'pppoe', label: 'PPPoE' },
   { value: 'backup_restore', label: 'Backup/Restore' },
   { value: 'updates', label: 'Updates' },
+  { value: 'honeypot', label: 'Honeypot' },
+  { value: 'captive_portal', label: 'Captive Portal' },
   { value: 'system', label: 'System' },
   { value: 'dhcp', label: 'DHCP' },
   { value: 'vpn', label: 'VPN' },
