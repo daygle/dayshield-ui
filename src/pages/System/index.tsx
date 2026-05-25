@@ -2079,13 +2079,17 @@ export default function System() {
               <Button
                 size="sm"
                 onClick={handleApplyUpdates}
-                disabled={updateActionLoading || runtimeUpdateCount === 0}
+                disabled={
+                  updateActionLoading || runtimeUpdateCount === 0 || rootfsUpdateAvailable
+                }
                 title={
-                  runtimeUpdateCount > 1
-                    ? `Update Core/UI (${runtimeUpdateCount} updates available)`
-                    : runtimeUpdateCount === 1
-                      ? 'Update Core/UI (1 update available)'
-                      : 'No Core/UI updates available'
+                  rootfsUpdateAvailable
+                    ? 'Rootfs update available — stage rootfs separately before updating runtime'
+                    : runtimeUpdateCount > 1
+                      ? `Update Core/UI (${runtimeUpdateCount} updates available)`
+                      : runtimeUpdateCount === 1
+                        ? 'Update Core/UI (1 update available)'
+                        : 'No Core/UI updates available'
                 }
               >
                 Update Core/UI
