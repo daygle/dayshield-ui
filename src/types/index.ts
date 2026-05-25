@@ -807,6 +807,7 @@ export interface SystemSchedules {
 }
 
 export type UpdateComponent = 'core' | 'ui' | 'rootfs' | 'both';
+export type RootfsUpdateMode = 'legacy' | 'ab' | 'ostree';
 
 export type UpdateScheduleFrequency = 'daily' | 'weekly' | 'monthly';
 export type UpdateScheduleWeekday =
@@ -830,6 +831,10 @@ export interface UpdateSettings {
   verifyArtifactSignatures?: boolean;
   encryptUpdateConfigBackups?: boolean;
   enableRootfsAbUpdates?: boolean;
+  rootfsUpdateMode?: RootfsUpdateMode;
+  ostreeRemote?: string;
+  ostreeRef?: string;
+  ostreeRemoteUrl?: string;
   requireSignedCommits: boolean;
   verifyRootfsMetadata: boolean;
   trustedSignersFile: string;
@@ -883,12 +888,14 @@ export interface UpdatesStatus {
   settings: UpdateSettings;
   lastCheckedAt?: string;
   lastAppliedAt?: string;
+  rootfsUpdateMode?: RootfsUpdateMode;
   pendingReboot: boolean;
   pendingApplianceRebuild: boolean;
   applianceRebuildReason?: string;
   applianceRebuildMarkedAt?: string;
   rootfsSlotStatus?: RootfsSlotStatus;
   rootfsUpdate?: RootfsUpdateState;
+  ostreeStatus?: OstreeStatus;
   components: ComponentUpdateStatus[];
   /** Number of components with available updates (read-only, computed server-side) */
   availableUpdateCount?: number;
@@ -913,6 +920,41 @@ export interface RootfsUpdateState {
   preparedAt?: string;
   bootedAt?: string;
   confirmedAt?: string;
+  lastError?: string;
+}
+
+export interface OstreeDeploymentSummary {
+  id?: string;
+  version?: string;
+  checksum?: string;
+  origin?: string;
+  ref?: string;
+  serial?: number;
+  booted?: boolean;
+  staged?: boolean;
+  pinned?: boolean;
+  timestamp?: string;
+}
+
+export interface OstreeTransactionStatus {
+  state?: string;
+  progress?: number;
+  message?: string;
+}
+
+export interface OstreeStatus {
+  updateAvailable?: boolean;
+  rebootRequired?: boolean;
+  supportsRollback?: boolean;
+  remote?: string;
+  remoteUrl?: string;
+  ref?: string;
+  bootedDeployment?: OstreeDeploymentSummary;
+  stagedDeployment?: OstreeDeploymentSummary;
+  availableDeployment?: OstreeDeploymentSummary;
+  rollbackDeployment?: OstreeDeploymentSummary;
+  transaction?: OstreeTransactionStatus;
+  lastCheckedAt?: string;
   lastError?: string;
 }
 
