@@ -146,9 +146,7 @@ function hasResolvedRemoteVersion(comp: {
   remoteCommit?: string;
   lastError?: string;
 }): boolean {
-  if (comp.remoteVersion || comp.remoteCommit) return true;
-  const err = (comp.lastError ?? '').toLowerCase();
-  return err.includes('missing from registry manifest') || err.includes('missing from manifest');
+  return Boolean(comp.remoteVersion || comp.remoteCommit);
 }
 
 function formatUpdateComponentName(component: string): string {
@@ -450,10 +448,6 @@ function inferUpdateStatusLabel(comp: {
     if (hasResolvedRemoteVersion(comp)) return 'Up to Date';
     return 'Status Unknown';
   }
-  // A component absent from the current manifest means no release was published for
-  // it yet - that is not an error; it simply means this component is already current.
-  if (err.includes('missing from registry manifest') || err.includes('missing from manifest'))
-    return 'Not in current release';
   if (err.includes('http 404')) return 'Update not available';
   if (err.includes('http 401') || err.includes('http 403')) return 'Cannot access update server';
   if (err.includes('timed out') || err.includes('dns') || err.includes('connection'))
@@ -467,12 +461,6 @@ function simplifyErrorMessage(error: string): string {
     .replace(/^FAILED TO QUERY REGISTRY:\s*/i, '')
     .replace(/^UPDATE ERROR:\s*/i, '')
     .replace(/^failed to query registry:\s*/i, '');
-
-  // A component not present in the manifest is not an error - it means no new release
-  // was published for this component in the latest manifest check.
-  if (/missing from (registry )?manifest/i.test(simplified)) {
-    return 'No new release for this component in the current manifest.';
-  }
 
   // For HTTP errors, provide context
   if (simplified.includes('HTTP 401') || simplified.includes('HTTP 403')) {
@@ -506,11 +494,9 @@ function simplifyErrorMessage(error: string): string {
 }
 
 function detectUpdateNotFoundHint(components: UpdatesStatus['components']): string | null {
-  // Only flag genuine 404 errors, not "missing from manifest" which is expected when
-  // a component has no new release in the current manifest cycle.
   const with404 = components.find((comp) => {
     const err = (comp.lastError ?? '').toLowerCase();
-    return err.includes('http 404') && !err.includes('missing from');
+    return err.includes('http 404');
   });
   if (!with404) return null;
   return with404.lastError ?? null;
@@ -838,10 +824,7 @@ export default function System() {
     applyUpdates('both')
       .then((res) => {
         setUpdates(res.data.status);
-        const msg = res.data.message ?? '';
-        if (!msg.toLowerCase().includes('progress is available in update status logs')) {
-          setUpdateActionMessage(msg);
-        }
+        setUpdateActionMessage(res.data.message);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false));
@@ -853,10 +836,7 @@ export default function System() {
     applyUpdates('rootfs')
       .then((res) => {
         setUpdates(res.data.status);
-        const msg = res.data.message ?? '';
-        if (!msg.toLowerCase().includes('progress is available in update status logs')) {
-          setUpdateActionMessage(msg);
-        }
+        setUpdateActionMessage(res.data.message);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false));
@@ -873,10 +853,7 @@ export default function System() {
     rollbackUpdates('both')
       .then((res) => {
         setUpdates(res.data.status);
-        const msg = res.data.message ?? '';
-        if (!msg.toLowerCase().includes('progress is available in update status logs')) {
-          setUpdateActionMessage(msg);
-        }
+        setUpdateActionMessage(res.data.message);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false));
@@ -888,10 +865,7 @@ export default function System() {
     rollbackUpdates('rootfs')
       .then((res) => {
         setUpdates(res.data.status);
-        const msg = res.data.message ?? '';
-        if (!msg.toLowerCase().includes('progress is available in update status logs')) {
-          setUpdateActionMessage(msg);
-        }
+        setUpdateActionMessage(res.data.message);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false));
@@ -903,11 +877,7 @@ export default function System() {
     validateUpdates('both')
       .then((res) => {
         setUpdates(res.data.status);
-        const base = res.data.message ?? '';
-        const full = `${base}: ${res.data.details.join(' | ')}`;
-        if (!base.toLowerCase().includes('progress is available in update status logs')) {
-          setUpdateActionMessage(full);
-        }
+        setUpdateActionMessage(`${res.data.message}: ${res.data.details.join(' | ')}`);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false));
@@ -925,7 +895,6 @@ export default function System() {
     };
     updateUpdateSettings({
       ...normalizedUpdateSettings,
-      updateMode: 'registry',
       registryUrl: normalizedRegistryUrl,
     })
       .then((res) => {
@@ -1844,22 +1813,17 @@ export default function System() {
                 <div key={comp.component} className="rounded border border-gray-200 p-3">
                   {(() => {
                     const isRootfs = comp.component === 'rootfs';
-                    const isMissingFromManifest = /missing from (registry )?manifest/i.test(
-                      comp.lastError ?? ''
-                    );
                     const statusLabel = inferUpdateStatusLabel(comp);
                     const hasRemoteVersion = hasResolvedRemoteVersion(comp);
-                    const statusClass = isMissingFromManifest
-                      ? 'bg-gray-100 text-gray-600'
-                      : comp.validRepo
-                        ? !hasRemoteVersion && !comp.updateAvailable
-                          ? 'bg-gray-100 text-gray-600'
-                          : isRootfs && comp.updateAvailable
-                            ? 'bg-orange-100 text-orange-800'
-                            : comp.updateAvailable
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700';
+                    const statusClass = comp.validRepo
+                      ? !hasRemoteVersion && !comp.updateAvailable
+                        ? 'bg-gray-100 text-gray-600'
+                        : isRootfs && comp.updateAvailable
+                          ? 'bg-orange-100 text-orange-800'
+                          : comp.updateAvailable
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-green-100 text-green-700'
+                      : 'bg-red-100 text-red-700';
 
                     return (
                       <div className="flex items-center justify-between">
@@ -1869,11 +1833,9 @@ export default function System() {
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusClass}`}
                         >
-                          {isMissingFromManifest
-                            ? 'Not in current release'
-                            : comp.validRepo && comp.updateAvailable && isRootfs
-                              ? 'Rebuild Required'
-                              : statusLabel}
+                          {comp.validRepo && comp.updateAvailable && isRootfs
+                            ? 'Rebuild Required'
+                            : statusLabel}
                         </span>
                       </div>
                     );
@@ -1923,16 +1885,6 @@ export default function System() {
                       (() => {
                         const parsed = parseComponentError(comp.lastError);
                         const simplified = simplifyErrorMessage(parsed.message);
-                        const isMissingFromManifest = /missing from (registry )?manifest/i.test(
-                          comp.lastError
-                        );
-                        if (isMissingFromManifest) {
-                          return (
-                            <div className="mt-2 rounded bg-gray-50 border border-gray-200 p-2">
-                              <div className="text-xs text-gray-500">{simplified}</div>
-                            </div>
-                          );
-                        }
                         return (
                           <div className="mt-2 rounded bg-red-50 border border-red-200 p-2">
                             <div className="text-xs font-medium text-red-700">

@@ -28,10 +28,9 @@ const JOB_DESCRIPTIONS: Record<ScheduleJobType, string> = {
 };
 
 const DEFAULT_INTERVALS: Record<ScheduleJobType, number> = {
-  // align UI defaults with core: hourly Dynamic DNS, daily ACME and Suricata checks
-  dynamic_dns_update: 60,
+  dynamic_dns_update: 10,
   acme_renew: 1440,
-  suricata_rulesets_update: 1440,
+  suricata_rulesets_update: 360,
 };
 
 function normalizeSchedules(input: SystemSchedules | null | undefined): SystemSchedules {

@@ -17,7 +17,6 @@ export default function LiveLogs() {
     clearLogs,
     reconnect,
     loadHistoricalRange,
-    debugInfo,
   } = useLiveLogs();
 
   const [fromDateTime, setFromDateTime] = useState(() => {
@@ -131,7 +130,6 @@ export default function LiveLogs() {
           onAutoScrollChange={setAutoScroll}
           onClear={clearLogs}
           onReconnect={reconnect}
-          debugInfo={debugInfo}
         />
       </div>
     </div>

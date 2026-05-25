@@ -826,13 +826,12 @@ export interface UpdateSettings {
   autoCheckMonthDays: number[];
   rebootRequiredAfterApply: boolean;
   deployRuntimeAfterApply: boolean;
-  updateMode?: string;
   registryUrl?: string;
   verifyArtifactSignatures?: boolean;
   encryptUpdateConfigBackups?: boolean;
   enableRootfsAbUpdates?: boolean;
   requireSignedCommits: boolean;
-  verifyRootfsManifest: boolean;
+  verifyRootfsMetadata: boolean;
   trustedSignersFile: string;
   bootstrapMissingRootfsRepo: boolean;
   coreRepoPath: string;
@@ -862,12 +861,6 @@ export interface ComponentUpdateStatus {
    * matching the release tag of other components.
    */
   registryVersion?: string;
-  /**
-   * Whether this component was found in the latest registry manifest.
-   * A component absent from the current manifest is not an error - it
-   * simply means no new release has been published for it yet.
-   */
-  presentInManifest?: boolean;
   updateAvailable: boolean;
   rollbackCommit?: string;
   rollbackVersion?: string;
@@ -900,11 +893,6 @@ export interface UpdatesStatus {
   /** Number of components with available updates (read-only, computed server-side) */
   availableUpdateCount?: number;
   operationLogs?: UpdateLogEntry[];
-  /**
-   * The manifest URL that was resolved during the last update check.
-   * Components are versioned independently through this registry manifest.
-   */
-  manifestUrl?: string;
 }
 
 export interface RootfsSlotStatus {
