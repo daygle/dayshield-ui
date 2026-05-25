@@ -7,12 +7,19 @@ import type {
   UpdatesStatus,
   UpdatesActionResult,
   UpdateComponent,
+  RootfsUpdateMode,
   SystemSchedules,
   ScheduleJobType,
   DashboardSystemStatus,
   NetworkStatus,
   SecurityStatus,
   AcmeStatus,
+  ComponentUpdateStatus,
+  RootfsSlotStatus,
+  RootfsUpdateState,
+  OstreeDeploymentSummary,
+  OstreeStatus,
+  OstreeTransactionStatus,
 } from '../types';
 
 interface BackendSystemStatus {
@@ -52,6 +59,45 @@ interface BackendSystemConfig {
 
 function toFiniteNumber(value: unknown, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function asBoolean(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
+function asNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function asStringArray(value: unknown): string[] | undefined {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : undefined;
+}
+
+function normalizeRootfsUpdateMode(value: unknown): RootfsUpdateMode | undefined {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (normalized === 'ostree' || normalized === 'ab' || normalized === 'legacy') {
+    return normalized;
+  }
+  if (normalized === 'ostree_update' || normalized === 'ostree-update' || normalized === 'ostree_deployment') {
+    return 'ostree';
+  }
+  if (normalized === 'rootfs_ab' || normalized === 'a/b' || normalized === 'primary-secondary') {
+    return 'ab';
+  }
+  if (normalized === 'classic' || normalized === 'artifact') {
+    return 'legacy';
+  }
+  return undefined;
 }
 
 function normalizeSystemStatus(raw: unknown): SystemStatus {
@@ -199,6 +245,295 @@ function normalizeSystemConfig(raw: unknown): SystemConfig {
         : typeof cfg.management_tls_acme_domain === 'string'
           ? cfg.management_tls_acme_domain
           : null,
+  };
+}
+
+function normalizeUpdateSettings(raw: unknown): UpdateSettings {
+  const value = asRecord(raw);
+  return {
+    autoCheckEnabled: Boolean(value.autoCheckEnabled ?? value.auto_check_enabled),
+    autoCheckFrequency:
+      (asString(
+        value.autoCheckFrequency ?? value.auto_check_frequency
+      ) as UpdateSettings['autoCheckFrequency']) ?? 'daily',
+    autoCheckTime: asString(value.autoCheckTime ?? value.auto_check_time) ?? '03:00',
+    autoCheckWeekday:
+      (asString(
+        value.autoCheckWeekday ?? value.auto_check_weekday
+      ) as UpdateSettings['autoCheckWeekday']) ?? 'monday',
+    autoCheckMonthDays: (Array.isArray(value.autoCheckMonthDays)
+      ? value.autoCheckMonthDays
+      : Array.isArray(value.auto_check_month_days)
+        ? value.auto_check_month_days
+        : [1]
+    ).filter((item): item is number => typeof item === 'number' && Number.isFinite(item)),
+    rebootRequiredAfterApply: Boolean(
+      value.rebootRequiredAfterApply ?? value.reboot_required_after_apply ?? true
+    ),
+    deployRuntimeAfterApply: Boolean(
+      value.deployRuntimeAfterApply ?? value.deploy_runtime_after_apply ?? true
+    ),
+    registryUrl: asString(value.registryUrl ?? value.registry_url),
+    verifyArtifactSignatures: asBoolean(
+      value.verifyArtifactSignatures ?? value.verify_artifact_signatures
+    ),
+    encryptUpdateConfigBackups: asBoolean(
+      value.encryptUpdateConfigBackups ?? value.encrypt_update_config_backups
+    ),
+    enableRootfsAbUpdates: asBoolean(value.enableRootfsAbUpdates ?? value.enable_rootfs_ab_updates),
+    rootfsUpdateMode: normalizeRootfsUpdateMode(
+      value.rootfsUpdateMode ?? value.rootfs_update_mode ?? value.updateMode ?? value.update_mode
+    ),
+    ostreeRemote: asString(value.ostreeRemote ?? value.ostree_remote),
+    ostreeRef: asString(value.ostreeRef ?? value.ostree_ref),
+    ostreeRemoteUrl: asString(value.ostreeRemoteUrl ?? value.ostree_remote_url),
+    requireSignedCommits: Boolean(value.requireSignedCommits ?? value.require_signed_commits),
+    verifyRootfsMetadata: Boolean(value.verifyRootfsMetadata ?? value.verify_rootfs_metadata),
+    trustedSignersFile: asString(value.trustedSignersFile ?? value.trusted_signers_file) ?? '',
+    bootstrapMissingRootfsRepo: Boolean(
+      value.bootstrapMissingRootfsRepo ?? value.bootstrap_missing_rootfs_repo
+    ),
+    coreRepoPath: asString(value.coreRepoPath ?? value.core_repo_path) ?? '',
+    uiRepoPath: asString(value.uiRepoPath ?? value.ui_repo_path) ?? '',
+    rootfsRepoPath: asString(value.rootfsRepoPath ?? value.rootfs_repo_path) ?? '',
+    coreRepoUrl: asString(value.coreRepoUrl ?? value.core_repo_url) ?? '',
+    uiRepoUrl: asString(value.uiRepoUrl ?? value.ui_repo_url) ?? '',
+    rootfsRepoUrl: asString(value.rootfsRepoUrl ?? value.rootfs_repo_url) ?? '',
+    coreBranch: asString(value.coreBranch ?? value.core_branch) ?? 'main',
+    uiBranch: asString(value.uiBranch ?? value.ui_branch) ?? 'main',
+    rootfsBranch: asString(value.rootfsBranch ?? value.rootfs_branch) ?? 'main',
+  };
+}
+
+function normalizeComponentUpdateStatus(raw: unknown): ComponentUpdateStatus {
+  const value = asRecord(raw);
+  return {
+    component: asString(value.component) ?? 'core',
+    repoPath: asString(value.repoPath ?? value.repo_path) ?? '',
+    branch: asString(value.branch) ?? 'main',
+    validRepo: Boolean(value.validRepo ?? value.valid_repo),
+    dirtyWorktree: Boolean(value.dirtyWorktree ?? value.dirty_worktree),
+    currentCommit: asString(value.currentCommit ?? value.current_commit),
+    remoteCommit: asString(value.remoteCommit ?? value.remote_commit),
+    currentVersion: asString(value.currentVersion ?? value.current_version),
+    remoteVersion: asString(value.remoteVersion ?? value.remote_version),
+    registryVersion: asString(value.registryVersion ?? value.registry_version),
+    updateAvailable: Boolean(value.updateAvailable ?? value.update_available),
+    rollbackCommit: asString(value.rollbackCommit ?? value.rollback_commit),
+    rollbackVersion: asString(value.rollbackVersion ?? value.rollback_version),
+    lastAppliedCommit: asString(value.lastAppliedCommit ?? value.last_applied_commit),
+    lastAppliedVersion: asString(value.lastAppliedVersion ?? value.last_applied_version),
+    lastError: asString(value.lastError ?? value.last_error),
+  };
+}
+
+function normalizeRootfsSlotStatus(raw: unknown): RootfsSlotStatus | undefined {
+  if (!raw) return undefined;
+  const value = asRecord(raw);
+  return {
+    supported: Boolean(value.supported),
+    activeSlot: asString(value.activeSlot ?? value.active_slot),
+    inactiveSlot: asString(value.inactiveSlot ?? value.inactive_slot),
+    bootUuid: asString(value.bootUuid ?? value.boot_uuid),
+    slotAUuid: asString(value.slotAUuid ?? value.slot_a_uuid),
+    slotBUuid: asString(value.slotBUuid ?? value.slot_b_uuid),
+    reason: asString(value.reason),
+  };
+}
+
+function normalizeRootfsUpdate(raw: unknown): RootfsUpdateState | undefined {
+  if (!raw) return undefined;
+  const value = asRecord(raw);
+  return {
+    status: asString(value.status) ?? 'unknown',
+    targetSlot: asString(value.targetSlot ?? value.target_slot),
+    previousSlot: asString(value.previousSlot ?? value.previous_slot),
+    targetVersion: asString(value.targetVersion ?? value.target_version),
+    preparedAt: asString(value.preparedAt ?? value.prepared_at),
+    bootedAt: asString(value.bootedAt ?? value.booted_at),
+    confirmedAt: asString(value.confirmedAt ?? value.confirmed_at),
+    lastError: asString(value.lastError ?? value.last_error),
+  };
+}
+
+function normalizeOstreeDeployment(raw: unknown): OstreeDeploymentSummary | undefined {
+  if (!raw) return undefined;
+  const value = asRecord(raw);
+  const version = asString(
+    value.version ??
+      value.deploymentVersion ??
+      value.deployment_version ??
+      value.releaseVersion ??
+      value.release_version
+  );
+  const checksum = asString(value.checksum ?? value.commit ?? value.commit_id);
+  const ref = asString(value.ref ?? value.branch);
+  const deploymentIdentifiers = [version, checksum, ref, asString(value.id), asString(value.origin)];
+
+  if (deploymentIdentifiers.every((item) => !item)) {
+    return undefined;
+  }
+
+  return {
+    id: asString(value.id),
+    version,
+    checksum,
+    origin: asString(value.origin ?? value.remote),
+    ref,
+    serial: asNumber(value.serial),
+    booted: asBoolean(value.booted),
+    staged: asBoolean(value.staged),
+    pinned: asBoolean(value.pinned),
+    timestamp: asString(value.timestamp ?? value.deployedAt ?? value.deployed_at),
+  };
+}
+
+function normalizeOstreeTransaction(raw: unknown): OstreeTransactionStatus | undefined {
+  if (!raw) return undefined;
+  const value = asRecord(raw);
+  const state = asString(value.state ?? value.status);
+  const message = asString(value.message ?? value.detail);
+  const progress = asNumber(value.progress ?? value.percent);
+
+  if (!state && !message && progress === undefined) return undefined;
+  return { state, message, progress };
+}
+
+function normalizeOstreeStatus(raw: unknown): OstreeStatus | undefined {
+  if (!raw) return undefined;
+  const value = asRecord(raw);
+  const bootedDeployment = normalizeOstreeDeployment(
+    value.bootedDeployment ??
+      value.booted_deployment ??
+      value.currentDeployment ??
+      value.current_deployment
+  );
+  const stagedDeployment = normalizeOstreeDeployment(
+    value.stagedDeployment ??
+      value.staged_deployment ??
+      value.pendingDeployment ??
+      value.pending_deployment
+  );
+  const availableDeployment = normalizeOstreeDeployment(
+    value.availableDeployment ??
+      value.available_deployment ??
+      value.updateDeployment ??
+      value.update_deployment
+  );
+  const rollbackDeployment = normalizeOstreeDeployment(
+    value.rollbackDeployment ??
+      value.rollback_deployment ??
+      value.previousDeployment ??
+      value.previous_deployment
+  );
+  const transaction = normalizeOstreeTransaction(value.transaction);
+  const hasDeploymentMetadata = [
+    asString(value.remote),
+    asString(value.ref),
+    asBoolean(value.updateAvailable ?? value.update_available),
+  ].some((item) => item !== undefined);
+
+  if (
+    !bootedDeployment &&
+    !stagedDeployment &&
+    !availableDeployment &&
+    !rollbackDeployment &&
+    !transaction &&
+    !hasDeploymentMetadata
+  ) {
+    return undefined;
+  }
+
+  return {
+    updateAvailable: asBoolean(value.updateAvailable ?? value.update_available),
+    rebootRequired: asBoolean(value.rebootRequired ?? value.reboot_required),
+    supportsRollback: asBoolean(value.supportsRollback ?? value.supports_rollback),
+    remote: asString(value.remote),
+    remoteUrl: asString(value.remoteUrl ?? value.remote_url),
+    ref: asString(value.ref),
+    bootedDeployment,
+    stagedDeployment,
+    availableDeployment,
+    rollbackDeployment,
+    transaction,
+    lastCheckedAt: asString(value.lastCheckedAt ?? value.last_checked_at),
+    lastError: asString(value.lastError ?? value.last_error),
+  };
+}
+
+function normalizeUpdatesStatus(raw: unknown): UpdatesStatus {
+  const value = asRecord(raw);
+  const settings = normalizeUpdateSettings(
+    value.settings ?? value.updateSettings ?? value.update_settings
+  );
+  const ostreeStatus = normalizeOstreeStatus(
+    value.ostreeStatus ?? value.ostree ?? value.rootfsOstreeStatus
+  );
+  const componentsRaw = Array.isArray(value.components) ? value.components : [];
+  const operationLogsRaw = value.operationLogs ?? value.operation_logs;
+  const rootfsUpdateMode =
+    normalizeRootfsUpdateMode(
+      value.rootfsUpdateMode ??
+        value.rootfs_update_mode ??
+        settings.rootfsUpdateMode ??
+        (ostreeStatus ? 'ostree' : undefined)
+    ) ?? (ostreeStatus ? 'ostree' : settings.enableRootfsAbUpdates ? 'ab' : 'legacy');
+
+  return {
+    settings: {
+      ...settings,
+      rootfsUpdateMode: settings.rootfsUpdateMode ?? rootfsUpdateMode,
+    },
+    lastCheckedAt: asString(
+      value.lastCheckedAt ?? value.last_checked_at ?? ostreeStatus?.lastCheckedAt
+    ),
+    lastAppliedAt: asString(value.lastAppliedAt ?? value.last_applied_at),
+    rootfsUpdateMode,
+    pendingReboot: Boolean(
+      value.pendingReboot ??
+      value.pending_reboot ??
+      ostreeStatus?.rebootRequired ??
+      Boolean(ostreeStatus?.stagedDeployment)
+    ),
+    pendingApplianceRebuild: Boolean(
+      value.pendingApplianceRebuild ?? value.pending_appliance_rebuild
+    ),
+    applianceRebuildReason: asString(
+      value.applianceRebuildReason ?? value.appliance_rebuild_reason
+    ),
+    applianceRebuildMarkedAt: asString(
+      value.applianceRebuildMarkedAt ?? value.appliance_rebuild_marked_at
+    ),
+    rootfsSlotStatus: normalizeRootfsSlotStatus(value.rootfsSlotStatus ?? value.rootfs_slot_status),
+    rootfsUpdate: normalizeRootfsUpdate(value.rootfsUpdate ?? value.rootfs_update),
+    ostreeStatus,
+    components: componentsRaw.map(normalizeComponentUpdateStatus),
+    availableUpdateCount: asNumber(value.availableUpdateCount ?? value.available_update_count),
+    operationLogs: Array.isArray(operationLogsRaw)
+      ? operationLogsRaw.map((entry: unknown) => {
+          const item = asRecord(entry);
+          return {
+            timestamp: asString(item.timestamp) ?? new Date().toISOString(),
+            operation: asString(item.operation) ?? 'check',
+            level: asString(item.level) ?? 'info',
+            message: asString(item.message) ?? '',
+            component: asString(item.component),
+            fromVersion: asString(item.fromVersion ?? item.from_version),
+            toVersion: asString(item.toVersion ?? item.to_version),
+          };
+        })
+      : undefined,
+  };
+}
+
+function normalizeUpdatesActionResult(raw: unknown): UpdatesActionResult {
+  const value = asRecord(raw);
+  return {
+    operation: asString(value.operation) ?? 'apply',
+    success: Boolean(value.success),
+    message: asString(value.message) ?? '',
+    details: asStringArray(value.details) ?? [],
+    status: normalizeUpdatesStatus(value.status),
   };
 }
 
@@ -362,55 +697,55 @@ export const controlSystemService = (
     .then((r) => r.data);
 
 export const getUpdatesStatus = (): Promise<ApiResponse<UpdatesStatus>> =>
-  apiClient.get<ApiResponse<UpdatesStatus>>('/system/updates/status').then((r) => r.data);
+  apiClient
+    .get<ApiResponse<unknown>>('/system/updates/status')
+    .then((r) => ({ ...r.data, data: normalizeUpdatesStatus(r.data.data) }));
 
 export const getUpdateSettings = (): Promise<ApiResponse<UpdateSettings>> =>
-  apiClient.get<ApiResponse<UpdateSettings>>('/system/updates/settings').then((r) => r.data);
+  apiClient
+    .get<ApiResponse<unknown>>('/system/updates/settings')
+    .then((r) => ({ ...r.data, data: normalizeUpdateSettings(r.data.data) }));
 
 export const updateUpdateSettings = (
   settings: UpdateSettings
 ): Promise<ApiResponse<UpdateSettings>> =>
   apiClient
-    .put<ApiResponse<UpdateSettings>>('/system/updates/settings', settings)
-    .then((r) => r.data);
+    .put<ApiResponse<unknown>>('/system/updates/settings', settings)
+    .then((r) => ({ ...r.data, data: normalizeUpdateSettings(r.data.data) }));
 
 export const checkForUpdates = (): Promise<ApiResponse<UpdatesStatus>> =>
-  apiClient.post<ApiResponse<UpdatesStatus>>('/system/updates/check').then((r) => r.data);
+  apiClient
+    .post<ApiResponse<unknown>>('/system/updates/check')
+    .then((r) => ({ ...r.data, data: normalizeUpdatesStatus(r.data.data) }));
 
 export const applyUpdates = (
   component: UpdateComponent = 'both',
   forcePartialApply: boolean = false
 ): Promise<ApiResponse<UpdatesActionResult>> =>
   apiClient
-    .post<
-      ApiResponse<UpdatesActionResult>
-    >('/system/updates/apply', { component, forcePartialApply })
-    .then((r) => r.data);
+    .post<ApiResponse<unknown>>('/system/updates/apply', { component, forcePartialApply })
+    .then((r) => ({ ...r.data, data: normalizeUpdatesActionResult(r.data.data) }));
 
 export const rollbackUpdates = (
   component: UpdateComponent = 'both',
   forcePartialApply: boolean = false
 ): Promise<ApiResponse<UpdatesActionResult>> =>
   apiClient
-    .post<
-      ApiResponse<UpdatesActionResult>
-    >('/system/updates/rollback', { component, forcePartialApply })
-    .then((r) => r.data);
+    .post<ApiResponse<unknown>>('/system/updates/rollback', { component, forcePartialApply })
+    .then((r) => ({ ...r.data, data: normalizeUpdatesActionResult(r.data.data) }));
 
 export const validateUpdates = (
   component: UpdateComponent = 'both',
   forcePartialApply: boolean = false
 ): Promise<ApiResponse<UpdatesActionResult>> =>
   apiClient
-    .post<
-      ApiResponse<UpdatesActionResult>
-    >('/system/updates/validate', { component, forcePartialApply })
-    .then((r) => r.data);
+    .post<ApiResponse<unknown>>('/system/updates/validate', { component, forcePartialApply })
+    .then((r) => ({ ...r.data, data: normalizeUpdatesActionResult(r.data.data) }));
 
 export const markApplianceRebuildComplete = (): Promise<ApiResponse<UpdatesStatus>> =>
   apiClient
-    .post<ApiResponse<UpdatesStatus>>('/system/updates/appliance-rebuild-complete')
-    .then((r) => r.data);
+    .post<ApiResponse<unknown>>('/system/updates/appliance-rebuild-complete')
+    .then((r) => ({ ...r.data, data: normalizeUpdatesStatus(r.data.data) }));
 
 export const getSystemSchedules = (): Promise<ApiResponse<SystemSchedules>> =>
   apiClient.get<ApiResponse<SystemSchedules>>('/system/schedules').then((r) => r.data);

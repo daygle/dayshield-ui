@@ -27,6 +27,8 @@ import type {
   UpdateLogEntry,
   FirewallSettings,
   NetworkInterface,
+  RootfsUpdateMode,
+  OstreeDeploymentSummary,
 } from '../../types';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
@@ -44,6 +46,8 @@ import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
 const STATUS_REFRESH_INTERVAL_MS = 15000;
 const UPDATES_REFRESH_INTERVAL_MS = 5000;
+const OSTREE_IDLE_TRANSACTION_STATES = ['idle', 'ready', 'complete', 'completed'];
+const OSTREE_ACTIVE_TRANSACTION_STATES = ['staged', 'pending', 'deploying', 'finalizing'];
 const UPDATE_SCHEDULE_FREQUENCY_OPTIONS: Array<{ value: UpdateScheduleFrequency; label: string }> =
   [
     { value: 'daily', label: 'Every Day' },
@@ -130,6 +134,10 @@ function shortCommit(value?: string): string {
   return value ? value.slice(0, 8) : '-';
 }
 
+function shortChecksum(value?: string): string {
+  return value ? value.slice(0, 12) : '-';
+}
+
 function componentCurrentDisplay(comp: {
   currentVersion?: string;
   currentCommit?: string;
@@ -172,6 +180,65 @@ function formatRootfsSlotName(slot?: string | null): string {
 
 function normalizedRootfsSlot(slot?: string | null): string {
   return slot?.trim().toLowerCase() ?? '';
+}
+
+function inferRootfsUpdateMode(
+  updates?: Pick<
+    UpdatesStatus,
+    'rootfsUpdateMode' | 'settings' | 'ostreeStatus' | 'rootfsSlotStatus'
+  > | null,
+  settings?: Pick<
+    UpdateSettings,
+    'rootfsUpdateMode' | 'ostreeRemote' | 'ostreeRef' | 'enableRootfsAbUpdates'
+  > | null
+): RootfsUpdateMode {
+  if (settings?.rootfsUpdateMode) return settings.rootfsUpdateMode;
+  if (updates?.rootfsUpdateMode) return updates.rootfsUpdateMode;
+  if (updates?.settings.rootfsUpdateMode) return updates.settings.rootfsUpdateMode;
+  if (settings?.ostreeRemote || settings?.ostreeRef || updates?.ostreeStatus) return 'ostree';
+  if (settings?.enableRootfsAbUpdates ?? updates?.rootfsSlotStatus?.supported) return 'ab';
+  return 'legacy';
+}
+
+function deploymentVersionDisplay(
+  deployment?: OstreeDeploymentSummary,
+  fallback?: {
+    currentVersion?: string;
+    currentCommit?: string;
+    remoteVersion?: string;
+    remoteCommit?: string;
+  },
+  kind: 'current' | 'remote' = 'current'
+): string {
+  if (deployment?.version) return deployment.version;
+  if (deployment?.checksum) return shortChecksum(deployment.checksum);
+  if (kind === 'current') {
+    return (
+      fallback?.currentVersion ??
+      (fallback?.currentCommit ? shortCommit(fallback.currentCommit) : 'Unknown')
+    );
+  }
+  return (
+    fallback?.remoteVersion ??
+    (fallback?.remoteCommit ? shortCommit(fallback.remoteCommit) : 'Unknown')
+  );
+}
+
+function deploymentDetails(deployment?: OstreeDeploymentSummary): string {
+  const parts = [
+    deployment?.checksum ? `Commit ${shortChecksum(deployment.checksum)}` : null,
+    deployment?.ref ? `Ref ${deployment.ref}` : null,
+  ].filter(Boolean);
+  return parts.join(' • ');
+}
+
+function formatOstreeTransactionState(state?: string): string {
+  if (!state) return 'Idle';
+  return state
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
 
 function ntpServersWithDefault(servers?: string[] | null): string[] {
@@ -824,7 +891,9 @@ export default function System() {
     applyUpdates('both')
       .then((res) => {
         setUpdates(res.data.status);
-        if (res.data.message.toLowerCase().includes('progress is available in update status logs')) {
+        if (
+          res.data.message.toLowerCase().includes('progress is available in update status logs')
+        ) {
           setUpdateActionMessage(null);
           return;
         }
@@ -840,7 +909,9 @@ export default function System() {
     applyUpdates('rootfs')
       .then((res) => {
         setUpdates(res.data.status);
-        if (res.data.message.toLowerCase().includes('progress is available in update status logs')) {
+        if (
+          res.data.message.toLowerCase().includes('progress is available in update status logs')
+        ) {
           setUpdateActionMessage(null);
           return;
         }
@@ -915,10 +986,7 @@ export default function System() {
           if (!prev) return prev;
           return {
             ...prev,
-            settings: {
-              ...prev.settings,
-              registryUrl: res.data.registryUrl,
-            },
+            settings: res.data,
           };
         });
         setUpdateSettingsOpen(false);
@@ -946,28 +1014,34 @@ export default function System() {
       normalized.includes('post-update service health check passed') ||
       normalized.includes('post-apply service health check passed')
     ) {
-      getUpdatesStatus().then((res) => setUpdates(res.data)).catch(() => {});
-      getSystemStatus().then((res) => setStatus(res.data)).catch(() => {});
+      getUpdatesStatus()
+        .then((res) => setUpdates(res.data))
+        .catch(() => {});
+      getSystemStatus()
+        .then((res) => setStatus(res.data))
+        .catch(() => {});
     }
   }, [updateActionMessage]);
 
   // Also listen to live system logs: when an external "post-update service health check"
   // message is emitted by the backend, refresh updates/status so the UI reflects new state.
   const liveLogs = useLiveLogs();
+  const latestLiveLog = liveLogs.allLogs[liveLogs.allLogs.length - 1];
   useEffect(() => {
-    const all = liveLogs.allLogs;
-    if (!all || all.length === 0) return;
-    const last = all[all.length - 1];
-    if (!last || !last.message) return;
-    const normalized = last.message.trim().toLowerCase();
+    if (!latestLiveLog?.message) return;
+    const normalized = latestLiveLog.message.trim().toLowerCase();
     if (
       normalized.includes('post-update service health check passed') ||
       normalized.includes('post-apply service health check passed')
     ) {
-      getUpdatesStatus().then((res) => setUpdates(res.data)).catch(() => {});
-      getSystemStatus().then((res) => setStatus(res.data)).catch(() => {});
+      getUpdatesStatus()
+        .then((res) => setUpdates(res.data))
+        .catch(() => {});
+      getSystemStatus()
+        .then((res) => setStatus(res.data))
+        .catch(() => {});
     }
-  }, [liveLogs.allLogs.length]);
+  }, [latestLiveLog?.timestamp, latestLiveLog?.message]);
 
   if (loading) {
     return (
@@ -978,6 +1052,20 @@ export default function System() {
   }
 
   const updateNotFoundHint = updates ? detectUpdateNotFoundHint(updates.components) : null;
+  const rootfsUpdateMode = inferRootfsUpdateMode(updates, updateSettings);
+  const ostreeStatus = updates?.ostreeStatus;
+  const ostreeEnabled = rootfsUpdateMode === 'ostree';
+  const ostreeBootedDeployment = ostreeStatus?.bootedDeployment;
+  const ostreeAvailableDeployment = ostreeStatus?.availableDeployment;
+  const ostreeStagedDeployment = ostreeStatus?.stagedDeployment;
+  const ostreeRollbackDeployment = ostreeStatus?.rollbackDeployment;
+  const ostreeTransaction = ostreeStatus?.transaction;
+  const ostreeTransactionState = ostreeTransaction?.state?.trim().toLowerCase() ?? '';
+  const ostreeTransactionActive =
+    Boolean(ostreeTransactionState) && !OSTREE_IDLE_TRANSACTION_STATES.includes(ostreeTransactionState);
+  const ostreeRemote =
+    ostreeStatus?.remote ?? updates?.settings.ostreeRemote ?? updateSettings?.ostreeRemote;
+  const ostreeRef = ostreeStatus?.ref ?? updates?.settings.ostreeRef ?? updateSettings?.ostreeRef;
   const runtimeUpdateCount = updates
     ? updates.components.filter((comp) => comp.component !== 'rootfs' && comp.updateAvailable)
         .length
@@ -985,36 +1073,62 @@ export default function System() {
   const runtimeRollbackAvailable = updates
     ? updates.components.some(
         (comp) =>
-          comp.component !== 'rootfs' &&
-          Boolean(comp.rollbackVersion || comp.rollbackCommit)
+          comp.component !== 'rootfs' && Boolean(comp.rollbackVersion || comp.rollbackCommit)
       )
     : false;
   const rootfsComponent = updates?.components.find((comp) => comp.component === 'rootfs');
-  const rootfsUpdateAvailable = Boolean(rootfsComponent?.updateAvailable);
+  const rootfsUpdateAvailable = ostreeEnabled
+    ? Boolean(ostreeStatus?.updateAvailable ?? rootfsComponent?.updateAvailable)
+    : Boolean(rootfsComponent?.updateAvailable);
   const rootfsSlotSupported = updates?.rootfsSlotStatus?.supported ?? false;
   const rootfsActiveSlot = normalizedRootfsSlot(updates?.rootfsSlotStatus?.activeSlot);
   const rootfsActiveSlotName = formatRootfsSlotName(updates?.rootfsSlotStatus?.activeSlot);
   const rootfsInactiveSlotName = formatRootfsSlotName(updates?.rootfsSlotStatus?.inactiveSlot);
   const rootfsPreviousSlotName = formatRootfsSlotName(updates?.rootfsUpdate?.previousSlot);
-  const rootfsUpdatePending =
-    updates?.rootfsUpdate?.status === 'staged' || updates?.rootfsUpdate?.status === 'booted';
+  const rootfsUpdatePending = ostreeEnabled
+    ? Boolean(ostreeStagedDeployment) ||
+      OSTREE_ACTIVE_TRANSACTION_STATES.includes(ostreeTransactionState)
+    : updates?.rootfsUpdate?.status === 'staged' || updates?.rootfsUpdate?.status === 'booted';
+  const rootfsRollbackAvailable = ostreeEnabled
+    ? Boolean(
+        ostreeRollbackDeployment?.version ||
+        ostreeRollbackDeployment?.checksum ||
+        ostreeRollbackDeployment?.ref
+      )
+    : Boolean(updates?.rootfsUpdate?.previousSlot);
   const rootfsBootIsSecondary = rootfsActiveSlot === 'b';
   const rootfsPromotionConfirmed =
     rootfsBootIsSecondary && updates?.rootfsUpdate?.status === 'confirmed';
-  const rootfsBootLabel = rootfsSlotSupported
-    ? `${rootfsActiveSlotName}${rootfsBootIsSecondary && rootfsUpdatePending ? ' trial' : ''}`
-    : 'Unavailable';
-  const rootfsBootHint = !updates?.rootfsSlotStatus
-    ? 'Boot slot status has not loaded yet.'
-    : !rootfsSlotSupported
-      ? (updates.rootfsSlotStatus.reason ?? 'Primary/Secondary rootfs labels were not detected.')
-      : rootfsBootIsSecondary && rootfsUpdatePending
-        ? 'The appliance is trial-booted from Secondary; a healthy boot will be promoted back to Primary automatically.'
-        : rootfsPromotionConfirmed
-          ? 'The appliance is currently running from Secondary; Primary has been promoted and will be used on the next normal boot.'
-          : rootfsBootIsSecondary
-            ? 'The appliance is running from Secondary. Primary remains the preferred slot for normal operation.'
-            : 'The appliance is running from Primary.';
+  const rootfsStatusLabel = ostreeEnabled
+    ? deploymentVersionDisplay(ostreeBootedDeployment, rootfsComponent)
+    : rootfsSlotSupported
+      ? `${rootfsActiveSlotName}${rootfsBootIsSecondary && rootfsUpdatePending ? ' trial' : ''}`
+      : 'Unavailable';
+  const rootfsStatusHint = ostreeEnabled
+    ? ostreeBootedDeployment
+      ? [
+          'Currently booted deployment.',
+          deploymentDetails(ostreeBootedDeployment),
+          ostreeStatus?.lastError ? `Last error: ${ostreeStatus.lastError}` : null,
+        ]
+          .filter(Boolean)
+          .join(' ')
+      : 'OSTree deployment status has not loaded yet.'
+    : !updates?.rootfsSlotStatus
+      ? 'Boot slot status has not loaded yet.'
+      : !rootfsSlotSupported
+        ? (updates.rootfsSlotStatus.reason ?? 'Primary/Secondary rootfs labels were not detected.')
+        : rootfsBootIsSecondary && rootfsUpdatePending
+          ? 'The appliance is trial-booted from Secondary; a healthy boot will be promoted back to Primary automatically.'
+          : rootfsPromotionConfirmed
+            ? 'The appliance is currently running from Secondary; Primary has been promoted and will be used on the next normal boot.'
+            : rootfsBootIsSecondary
+              ? 'The appliance is running from Secondary. Primary remains the preferred slot for normal operation.'
+              : 'The appliance is running from Primary.';
+  const updatesSubtitle = ostreeEnabled
+    ? 'Manage runtime packages and OSTree system deployments.'
+    : 'Manage updates for Core, Web UI, and Root Filesystem.';
+  const rootfsActionLabel = ostreeEnabled ? 'Stage OSTree Update' : 'Stage/Update Root Filesystem';
 
   return (
     <div className="space-y-6">
@@ -1031,284 +1145,294 @@ export default function System() {
         <div className="grid grid-cols-2 gap-4">
           {editScope === 'system' && (
             <>
-          <FormField
-            id="cfg-hostname"
-            label="Hostname"
-            value={editConfig.hostname ?? ''}
-            onChange={(e) => setEditConfig({ ...editConfig, hostname: e.target.value })}
-          />
-          <FormField
-            id="cfg-timezone"
-            label="Timezone"
-            className="col-span-2"
-            as="select"
-            value={editConfig.timezone ?? 'UTC'}
-            onChange={(e) => setEditConfig({ ...editConfig, timezone: e.target.value })}
-          >
-            <option value="">-- Select Timezone --</option>
-            {timezoneOptions.map((tz) => (
-              <option key={tz.name} value={tz.name}>
-                {tz.label}
-              </option>
-            ))}
-            {timezoneOptions.length === 0 && (
-              <option value="" disabled>
-                No matching timezones
-              </option>
-            )}
-          </FormField>
-          <FormField
-            id="cfg-ntp"
-            label="NTP Servers (comma-separated)"
-            className="col-span-2"
-            placeholder="127.0.0.1"
-            hint="Use the appliance itself as the NTP source by pointing to 127.0.0.1."
-            value={(editConfig.ntpServers ?? DEFAULT_NTP_SERVERS).join(', ')}
-            onChange={(e) =>
-              setEditConfig({
-                ...editConfig,
-                ntpServers: e.target.value
-                  .split(',')
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-              })
-            }
-          />
-          <FormField
-            id="cfg-dns"
-            label="DNS Servers (comma-separated)"
-            className="col-span-2"
-            placeholder="8.8.8.8, 8.8.4.4"
-            value={(editConfig.dnsServers ?? []).join(', ')}
-            onChange={(e) =>
-              setEditConfig({
-                ...editConfig,
-                dnsServers: e.target.value
-                  .split(',')
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-              })
-            }
-          />
-          <div className="col-span-2 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-            <input
-              id="cfg-ipv6-enabled"
-              type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              checked={editConfig.ipv6Enabled ?? false}
-              onChange={(e) => setEditConfig({ ...editConfig, ipv6Enabled: e.target.checked })}
-            />
-            <label htmlFor="cfg-ipv6-enabled" className="text-sm font-medium text-gray-700">
-              Enable IPv6
-            </label>
-          </div>
+              <FormField
+                id="cfg-hostname"
+                label="Hostname"
+                value={editConfig.hostname ?? ''}
+                onChange={(e) => setEditConfig({ ...editConfig, hostname: e.target.value })}
+              />
+              <FormField
+                id="cfg-timezone"
+                label="Timezone"
+                className="col-span-2"
+                as="select"
+                value={editConfig.timezone ?? 'UTC'}
+                onChange={(e) => setEditConfig({ ...editConfig, timezone: e.target.value })}
+              >
+                <option value="">-- Select Timezone --</option>
+                {timezoneOptions.map((tz) => (
+                  <option key={tz.name} value={tz.name}>
+                    {tz.label}
+                  </option>
+                ))}
+                {timezoneOptions.length === 0 && (
+                  <option value="" disabled>
+                    No matching timezones
+                  </option>
+                )}
+              </FormField>
+              <FormField
+                id="cfg-ntp"
+                label="NTP Servers (comma-separated)"
+                className="col-span-2"
+                placeholder="127.0.0.1"
+                hint="Use the appliance itself as the NTP source by pointing to 127.0.0.1."
+                value={(editConfig.ntpServers ?? DEFAULT_NTP_SERVERS).join(', ')}
+                onChange={(e) =>
+                  setEditConfig({
+                    ...editConfig,
+                    ntpServers: e.target.value
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                  })
+                }
+              />
+              <FormField
+                id="cfg-dns"
+                label="DNS Servers (comma-separated)"
+                className="col-span-2"
+                placeholder="8.8.8.8, 8.8.4.4"
+                value={(editConfig.dnsServers ?? []).join(', ')}
+                onChange={(e) =>
+                  setEditConfig({
+                    ...editConfig,
+                    dnsServers: e.target.value
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                  })
+                }
+              />
+              <div className="col-span-2 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                <input
+                  id="cfg-ipv6-enabled"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked={editConfig.ipv6Enabled ?? false}
+                  onChange={(e) => setEditConfig({ ...editConfig, ipv6Enabled: e.target.checked })}
+                />
+                <label htmlFor="cfg-ipv6-enabled" className="text-sm font-medium text-gray-700">
+                  Enable IPv6
+                </label>
+              </div>
             </>
           )}
           {editScope === 'ssh' && (
             <>
-          <FormField
-            id="cfg-ssh-port"
-            label="SSH Port"
-            type="number"
-            min={1}
-            max={65535}
-            value={String(editConfig.sshPort ?? 22)}
-            onChange={(e) => setEditConfig({ ...editConfig, sshPort: Number(e.target.value) })}
-          />
-          <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
-            <label className="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-              <input
-                id="cfg-ssh-enabled"
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                checked={editConfig.sshEnabled ?? true}
-                onChange={(e) => setEditConfig({ ...editConfig, sshEnabled: e.target.checked })}
+              <FormField
+                id="cfg-ssh-port"
+                label="SSH Port"
+                type="number"
+                min={1}
+                max={65535}
+                value={String(editConfig.sshPort ?? 22)}
+                onChange={(e) => setEditConfig({ ...editConfig, sshPort: Number(e.target.value) })}
               />
-              <span className="text-sm font-medium text-gray-700">Enable SSH</span>
-            </label>
-            <label className="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-              <input
-                id="cfg-ssh-root-login"
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                checked={editConfig.sshPermitRootLogin ?? true}
-                onChange={(e) =>
-                  setEditConfig({ ...editConfig, sshPermitRootLogin: e.target.checked })
-                }
-              />
-              <span className="text-sm font-medium text-gray-700">Permit root login</span>
-            </label>
-            <label className="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 md:col-span-2">
-              <input
-                id="cfg-ssh-password-auth"
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                checked={editConfig.sshPasswordAuthentication ?? true}
-                onChange={(e) =>
-                  setEditConfig({
-                    ...editConfig,
-                    sshPasswordAuthentication: e.target.checked,
-                  })
-                }
-              />
-              <span className="text-sm font-medium text-gray-700">Permit password authentication</span>
-            </label>
-          </div>
+              <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label className="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                  <input
+                    id="cfg-ssh-enabled"
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={editConfig.sshEnabled ?? true}
+                    onChange={(e) => setEditConfig({ ...editConfig, sshEnabled: e.target.checked })}
+                  />
+                  <span className="text-sm font-medium text-gray-700">Enable SSH</span>
+                </label>
+                <label className="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                  <input
+                    id="cfg-ssh-root-login"
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={editConfig.sshPermitRootLogin ?? true}
+                    onChange={(e) =>
+                      setEditConfig({ ...editConfig, sshPermitRootLogin: e.target.checked })
+                    }
+                  />
+                  <span className="text-sm font-medium text-gray-700">Permit root login</span>
+                </label>
+                <label className="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 md:col-span-2">
+                  <input
+                    id="cfg-ssh-password-auth"
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={editConfig.sshPasswordAuthentication ?? true}
+                    onChange={(e) =>
+                      setEditConfig({
+                        ...editConfig,
+                        sshPasswordAuthentication: e.target.checked,
+                      })
+                    }
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Permit password authentication
+                  </span>
+                </label>
+              </div>
             </>
           )}
           {editScope === 'management' && (
             <>
-          <FormField
-            id="cfg-web-port"
-            label="Web UI Port"
-            type="number"
-            min={1}
-            max={65535}
-            value={String(editConfig.webPort ?? 8443)}
-            onChange={(e) => setEditConfig({ ...editConfig, webPort: Number(e.target.value) })}
-          />
-          <div className="col-span-2">
-            <label
-              htmlFor="cfg-management-tls-domain"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Management TLS Certificate (ACME Domain)
-            </label>
-            <select
-              id="cfg-management-tls-domain"
-              className="mt-1 block w-full rounded-md border-gray-300 bg-white py-2 px-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-              value={editConfig.managementTlsAcmeDomain ?? ''}
-              onChange={(e) =>
-                setEditConfig({ ...editConfig, managementTlsAcmeDomain: e.target.value || null })
-              }
-            >
-              <option value="">Use default management certificate</option>
-              {acmeDomains.map((domain) => (
-                <option key={domain} value={domain}>
-                  {domain}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500">
-              Select an issued ACME certificate to use for the DayShield management UI.
-            </p>
-          </div>
-          <FormField
-            id="cfg-login-timeout"
-            label="Login Timeout (minutes)"
-            type="number"
-            min={1}
-            value={String(editAdminSecurity.session_timeout_minutes)}
-            onChange={(e) =>
-              setEditAdminSecurity({
-                ...editAdminSecurity,
-                session_timeout_minutes: Math.max(1, Number(e.target.value) || 1),
-              })
-            }
-          />
-          <div className="col-span-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            HTTPS listener controls are not available here yet because the current DayShield core runtime still serves HTTP only. The ACME certificate selection above is stored for the future TLS listener path.
-          </div>
-          <div className="col-span-2 border-t border-gray-200 pt-3">
-            <p className="text-sm font-semibold text-gray-900">Management Access Controls</p>
-            <p className="text-xs text-gray-500 mt-1">
-              These controls were moved from Firewall Settings to System Settings.
-            </p>
-          </div>
-          <FormField
-            id="cfg-management-interface"
-            className="col-span-2"
-            label="Management Interface (optional)"
-            as="select"
-            value={firewallSettings.management_interface ?? ''}
-            onChange={(e) =>
-              setFirewallSettings((prev) => ({
-                ...prev,
-                management_interface: e.target.value || null,
-              }))
-            }
-          >
-            <option value="">Any interface</option>
-            {interfaces.map((iface) => (
-              <option key={iface.name} value={iface.name}>
-                {interfaceLabel(iface)}
-              </option>
-            ))}
-          </FormField>
-          <FormField
-            id="cfg-management-sources"
-            className="col-span-2"
-            label="Management Allowed Sources (comma-separated CIDRs)"
-            placeholder="e.g. 192.168.1.0/24, 10.0.0.0/8"
-            value={managementAllowedSourcesInput}
-            onChange={(e) => setManagementAllowedSourcesInput(e.target.value)}
-          />
-          <FormField
-            id="cfg-management-ports"
-            className="col-span-2"
-            label="Management Ports (comma-separated)"
-            placeholder="e.g. 8443, 9443"
-            value={managementPortsInput}
-            onChange={(e) => setManagementPortsInput(e.target.value)}
-          />
+              <FormField
+                id="cfg-web-port"
+                label="Web UI Port"
+                type="number"
+                min={1}
+                max={65535}
+                value={String(editConfig.webPort ?? 8443)}
+                onChange={(e) => setEditConfig({ ...editConfig, webPort: Number(e.target.value) })}
+              />
+              <div className="col-span-2">
+                <label
+                  htmlFor="cfg-management-tls-domain"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Management TLS Certificate (ACME Domain)
+                </label>
+                <select
+                  id="cfg-management-tls-domain"
+                  className="mt-1 block w-full rounded-md border-gray-300 bg-white py-2 px-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                  value={editConfig.managementTlsAcmeDomain ?? ''}
+                  onChange={(e) =>
+                    setEditConfig({
+                      ...editConfig,
+                      managementTlsAcmeDomain: e.target.value || null,
+                    })
+                  }
+                >
+                  <option value="">Use default management certificate</option>
+                  {acmeDomains.map((domain) => (
+                    <option key={domain} value={domain}>
+                      {domain}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500">
+                  Select an issued ACME certificate to use for the DayShield management UI.
+                </p>
+              </div>
+              <FormField
+                id="cfg-login-timeout"
+                label="Login Timeout (minutes)"
+                type="number"
+                min={1}
+                value={String(editAdminSecurity.session_timeout_minutes)}
+                onChange={(e) =>
+                  setEditAdminSecurity({
+                    ...editAdminSecurity,
+                    session_timeout_minutes: Math.max(1, Number(e.target.value) || 1),
+                  })
+                }
+              />
+              <div className="col-span-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                HTTPS listener controls are not available here yet because the current DayShield
+                core runtime still serves HTTP only. The ACME certificate selection above is stored
+                for the future TLS listener path.
+              </div>
+              <div className="col-span-2 border-t border-gray-200 pt-3">
+                <p className="text-sm font-semibold text-gray-900">Management Access Controls</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  These controls were moved from Firewall Settings to System Settings.
+                </p>
+              </div>
+              <FormField
+                id="cfg-management-interface"
+                className="col-span-2"
+                label="Management Interface (optional)"
+                as="select"
+                value={firewallSettings.management_interface ?? ''}
+                onChange={(e) =>
+                  setFirewallSettings((prev) => ({
+                    ...prev,
+                    management_interface: e.target.value || null,
+                  }))
+                }
+              >
+                <option value="">Any interface</option>
+                {interfaces.map((iface) => (
+                  <option key={iface.name} value={iface.name}>
+                    {interfaceLabel(iface)}
+                  </option>
+                ))}
+              </FormField>
+              <FormField
+                id="cfg-management-sources"
+                className="col-span-2"
+                label="Management Allowed Sources (comma-separated CIDRs)"
+                placeholder="e.g. 192.168.1.0/24, 10.0.0.0/8"
+                value={managementAllowedSourcesInput}
+                onChange={(e) => setManagementAllowedSourcesInput(e.target.value)}
+              />
+              <FormField
+                id="cfg-management-ports"
+                className="col-span-2"
+                label="Management Ports (comma-separated)"
+                placeholder="e.g. 8443, 9443"
+                value={managementPortsInput}
+                onChange={(e) => setManagementPortsInput(e.target.value)}
+              />
             </>
           )}
           {editScope === 'ssh' && (
             <>
-          <div className="col-span-2 border-t border-gray-200 pt-3">
-            <p className="text-sm font-semibold text-gray-900">SSH Authentication</p>
-            <p className="text-xs text-gray-500 mt-1">
-              Public keys are written to the root account authorized_keys file.
-            </p>
-          </div>
-          <FormField
-            id="cfg-ssh-authorized-keys"
-            className="col-span-2"
-            as="textarea"
-            rows={5}
-            label="Authorized SSH Keys (one per line)"
-            placeholder="ssh-ed25519 AAAAC3... admin@example"
-            value={(editConfig.sshAuthorizedKeys ?? []).join('\n')}
-            onChange={(e) =>
-              setEditConfig({
-                ...editConfig,
-                sshAuthorizedKeys: e.target.value
-                  .split('\n')
-                  .map((value) => value.trim())
-                  .filter(Boolean),
-              })
-            }
-          />
-          <div className="col-span-2">
-            <p className="text-sm font-medium text-gray-700">SSH Listen Interfaces</p>
-            <p className="mt-1 text-xs text-gray-500">
-              Leave all unchecked to allow SSH on every interface.
-            </p>
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 rounded-md border border-gray-200 p-3">
-              {interfaces.map((iface) => {
-                const selected = (editConfig.sshListenInterfaces ?? []).includes(iface.name);
-                return (
-                  <label key={iface.name} className="flex items-center gap-3 text-sm text-gray-700">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      checked={selected}
-                      onChange={(e) => {
-                        const current = new Set(editConfig.sshListenInterfaces ?? []);
-                        if (e.target.checked) current.add(iface.name);
-                        else current.delete(iface.name);
-                        setEditConfig({
-                          ...editConfig,
-                          sshListenInterfaces: Array.from(current),
-                        });
-                      }}
-                    />
-                    <span>{interfaceLabel(iface)}</span>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
+              <div className="col-span-2 border-t border-gray-200 pt-3">
+                <p className="text-sm font-semibold text-gray-900">SSH Authentication</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Public keys are written to the root account authorized_keys file.
+                </p>
+              </div>
+              <FormField
+                id="cfg-ssh-authorized-keys"
+                className="col-span-2"
+                as="textarea"
+                rows={5}
+                label="Authorized SSH Keys (one per line)"
+                placeholder="ssh-ed25519 AAAAC3... admin@example"
+                value={(editConfig.sshAuthorizedKeys ?? []).join('\n')}
+                onChange={(e) =>
+                  setEditConfig({
+                    ...editConfig,
+                    sshAuthorizedKeys: e.target.value
+                      .split('\n')
+                      .map((value) => value.trim())
+                      .filter(Boolean),
+                  })
+                }
+              />
+              <div className="col-span-2">
+                <p className="text-sm font-medium text-gray-700">SSH Listen Interfaces</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Leave all unchecked to allow SSH on every interface.
+                </p>
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 rounded-md border border-gray-200 p-3">
+                  {interfaces.map((iface) => {
+                    const selected = (editConfig.sshListenInterfaces ?? []).includes(iface.name);
+                    return (
+                      <label
+                        key={iface.name}
+                        className="flex items-center gap-3 text-sm text-gray-700"
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          checked={selected}
+                          onChange={(e) => {
+                            const current = new Set(editConfig.sshListenInterfaces ?? []);
+                            if (e.target.checked) current.add(iface.name);
+                            else current.delete(iface.name);
+                            setEditConfig({
+                              ...editConfig,
+                              sshListenInterfaces: Array.from(current),
+                            });
+                          }}
+                        />
+                        <span>{interfaceLabel(iface)}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
             </>
           )}
         </div>
@@ -1328,26 +1452,45 @@ export default function System() {
             <p className="text-sm text-gray-600">
               Choose whether DayShield checks for updates automatically and when it runs.
             </p>
-            <label className="flex items-start gap-3 rounded border border-gray-200 p-3 text-sm">
-              <input
-                id="upd-rootfs-ab"
-                type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                checked={updateSettings.enableRootfsAbUpdates ?? true}
-                onChange={(e) =>
-                  setUpdateSettings({ ...updateSettings, enableRootfsAbUpdates: e.target.checked })
-                }
-              />
-              <span>
-                <span className="block font-medium text-gray-800">
-                  Enable Primary/Secondary rootfs updates
+            {rootfsUpdateMode === 'ostree' ? (
+              <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                <p className="font-medium">OSTree system updates enabled</p>
+                <p className="mt-1 text-xs text-blue-800">
+                  Rootfs updates stage a new deployment and switch to it on the next reboot instead
+                  of writing into an inactive A/B slot.
+                </p>
+                {(updateSettings.ostreeRemote || updateSettings.ostreeRef) && (
+                  <p className="mt-2 text-xs text-blue-800">
+                    Tracking {updateSettings.ostreeRemote ?? 'default remote'}
+                    {updateSettings.ostreeRef ? `:${updateSettings.ostreeRef}` : ''}.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <label className="flex items-start gap-3 rounded border border-gray-200 p-3 text-sm">
+                <input
+                  id="upd-rootfs-ab"
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked={updateSettings.enableRootfsAbUpdates ?? true}
+                  onChange={(e) =>
+                    setUpdateSettings({
+                      ...updateSettings,
+                      enableRootfsAbUpdates: e.target.checked,
+                    })
+                  }
+                />
+                <span>
+                  <span className="block font-medium text-gray-800">
+                    Enable Primary/Secondary rootfs updates
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    Requires A/B rootfs slots (labels DS_PRIMARY/DS_SECONDARY) and a shared
+                    DAYSHIELD_BOOT partition.
+                  </span>
                 </span>
-                <span className="block text-xs text-gray-500">
-                  Requires A/B rootfs slots (labels DS_PRIMARY/DS_SECONDARY) and a shared
-                  DAYSHIELD_BOOT partition.
-                </span>
-              </span>
-            </label>
+              </label>
+            )}
             <div className="flex items-center gap-2">
               <input
                 id="upd-auto"
@@ -1575,21 +1718,27 @@ export default function System() {
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">Rootfs Boot</dt>
+              <dt className="text-gray-500">
+                {ostreeEnabled ? 'System Deployment' : 'Rootfs Boot'}
+              </dt>
               <dd
                 className={[
                   'font-medium',
-                  !updates?.rootfsSlotStatus
-                    ? 'text-gray-400'
-                    : rootfsSlotSupported
-                      ? rootfsBootIsSecondary
-                        ? 'text-amber-700'
-                        : 'text-green-700'
-                      : 'text-orange-700',
+                  ostreeEnabled
+                    ? ostreeBootedDeployment
+                      ? 'text-green-700'
+                      : 'text-gray-400'
+                    : !updates?.rootfsSlotStatus
+                      ? 'text-gray-400'
+                      : rootfsSlotSupported
+                        ? rootfsBootIsSecondary
+                          ? 'text-amber-700'
+                          : 'text-green-700'
+                        : 'text-orange-700',
                 ].join(' ')}
-                title={rootfsBootHint}
+                title={rootfsStatusHint}
               >
-                {rootfsBootLabel}
+                {rootfsStatusLabel}
               </dd>
             </div>
           </dl>
@@ -1660,7 +1809,8 @@ export default function System() {
             </div>
           </dl>
           <p className="mt-3 text-xs text-gray-500">
-            Core still serves the management UI over HTTP only. The ACME certificate selection is stored now and will be used once runtime HTTPS support lands.
+            Core still serves the management UI over HTTP only. The ACME certificate selection is
+            stored now and will be used once runtime HTTPS support lands.
           </p>
         </Card>
       )}
@@ -1695,7 +1845,9 @@ export default function System() {
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <div>
               <dt className="text-gray-500">SSH Service</dt>
-              <dd className={`font-medium ${config.sshEnabled ? 'text-green-600' : 'text-gray-400'}`}>
+              <dd
+                className={`font-medium ${config.sshEnabled ? 'text-green-600' : 'text-gray-400'}`}
+              >
                 {config.sshEnabled ? 'Enabled' : 'Disabled'}
               </dd>
             </div>
@@ -1773,7 +1925,7 @@ export default function System() {
       {activeSection === 'updates' && updates && (
         <Card
           title="Software Updates"
-          subtitle="Manage updates for Core, Web UI, and Root Filesystem."
+          subtitle={updatesSubtitle}
           actions={
             <button
               onClick={() => {
@@ -1810,6 +1962,85 @@ export default function System() {
               </p>
             </div>
 
+            {ostreeEnabled && (
+              <div className="rounded border border-blue-200 bg-blue-50 p-4 space-y-3">
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-blue-950">OSTree system deployment</p>
+                    <p className="text-xs text-blue-800">
+                      Stage a new deployment, reboot into it, and keep the previous deployment
+                      available for rollback.
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium text-blue-900 ring-1 ring-inset ring-blue-200">
+                    {rootfsUpdatePending
+                      ? 'Staged for reboot'
+                      : rootfsUpdateAvailable
+                        ? 'Update available'
+                        : 'Current deployment active'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3 text-sm">
+                  <div className="rounded border border-blue-100 bg-white/70 p-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-blue-700">
+                      Current deployed version
+                    </p>
+                    <p className="mt-1 font-mono text-gray-900">
+                      {deploymentVersionDisplay(ostreeBootedDeployment, rootfsComponent)}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-600">
+                      {deploymentDetails(ostreeBootedDeployment) ||
+                        'Booted deployment details unavailable.'}
+                    </p>
+                  </div>
+                  <div className="rounded border border-blue-100 bg-white/70 p-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-blue-700">
+                      {rootfsUpdatePending ? 'Staged deployment' : 'Available update'}
+                    </p>
+                    <p className="mt-1 font-mono text-gray-900">
+                      {rootfsUpdatePending
+                        ? deploymentVersionDisplay(ostreeStagedDeployment)
+                        : deploymentVersionDisplay(
+                            ostreeAvailableDeployment,
+                            rootfsComponent,
+                            'remote'
+                          )}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-600">
+                      {rootfsUpdatePending
+                        ? deploymentDetails(ostreeStagedDeployment) || 'Ready after reboot.'
+                        : deploymentDetails(ostreeAvailableDeployment) ||
+                          (rootfsUpdateAvailable
+                            ? 'An OSTree deployment is ready to stage.'
+                            : 'No staged or available deployment detected.')}
+                    </p>
+                  </div>
+                  <div className="rounded border border-blue-100 bg-white/70 p-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-blue-700">
+                      Rollback target
+                    </p>
+                    <p className="mt-1 font-mono text-gray-900">
+                      {ostreeRollbackDeployment
+                        ? deploymentVersionDisplay(ostreeRollbackDeployment)
+                        : 'Not available'}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-600">
+                      {deploymentDetails(ostreeRollbackDeployment) ||
+                        'Rollback deployment details unavailable.'}
+                    </p>
+                  </div>
+                </div>
+
+                {(ostreeRemote || ostreeRef) && (
+                  <p className="text-xs text-blue-800">
+                    Tracking {ostreeRemote ?? 'default remote'}
+                    {ostreeRef ? `:${ostreeRef}` : ''}.
+                  </p>
+                )}
+              </div>
+            )}
+
             {updateNotFoundHint && (
               <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900 space-y-2">
                 <p className="font-medium">Update not found on server.</p>
@@ -1827,10 +2058,19 @@ export default function System() {
                     const isRootfs = comp.component === 'rootfs';
                     const statusLabel = inferUpdateStatusLabel(comp);
                     const hasRemoteVersion = hasResolvedRemoteVersion(comp);
+                    const rootfsStatusText = ostreeEnabled
+                      ? rootfsUpdatePending
+                        ? 'Staged for reboot'
+                        : comp.updateAvailable
+                          ? 'Update Available'
+                          : 'Current'
+                      : comp.updateAvailable
+                        ? 'Rebuild Required'
+                        : statusLabel;
                     const statusClass = comp.validRepo
                       ? !hasRemoteVersion && !comp.updateAvailable
                         ? 'bg-gray-100 text-gray-600'
-                        : isRootfs && comp.updateAvailable
+                        : isRootfs && comp.updateAvailable && !ostreeEnabled
                           ? 'bg-orange-100 text-orange-800'
                           : comp.updateAvailable
                             ? 'bg-amber-100 text-amber-700'
@@ -1845,9 +2085,7 @@ export default function System() {
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusClass}`}
                         >
-                          {comp.validRepo && comp.updateAvailable && isRootfs
-                            ? 'Rebuild Required'
-                            : statusLabel}
+                          {isRootfs ? rootfsStatusText : statusLabel}
                         </span>
                       </div>
                     );
@@ -1856,23 +2094,59 @@ export default function System() {
                     <div>
                       <dt className="inline text-gray-500">Version Installed: </dt>
                       <dd className="inline font-mono text-gray-800">
-                        {componentCurrentDisplay(comp)}
+                        {comp.component === 'rootfs' && ostreeEnabled
+                          ? deploymentVersionDisplay(ostreeBootedDeployment, comp)
+                          : componentCurrentDisplay(comp)}
                       </dd>
                     </div>
                     <div>
                       <dt className="inline text-gray-500">Latest Version: </dt>
                       <dd className="inline font-mono text-gray-800">
-                        {componentRemoteDisplay(comp)}
+                        {comp.component === 'rootfs' && ostreeEnabled
+                          ? rootfsUpdatePending
+                            ? deploymentVersionDisplay(ostreeStagedDeployment)
+                            : deploymentVersionDisplay(ostreeAvailableDeployment, comp, 'remote')
+                          : componentRemoteDisplay(comp)}
                       </dd>
                     </div>
-                    {comp.component === 'rootfs' && updates.rootfsSlotStatus?.supported && (
-                      <div>
-                        <dt className="inline text-gray-500">Boot Slot: </dt>
-                        <dd className="inline font-mono text-gray-800">
-                          {formatRootfsSlotName(updates.rootfsSlotStatus.activeSlot)}
-                        </dd>
-                      </div>
+                    {comp.component === 'rootfs' && ostreeEnabled && (
+                      <>
+                        <div>
+                          <dt className="inline text-gray-500">Deployment commit: </dt>
+                          <dd className="inline font-mono text-gray-800">
+                            {shortChecksum(
+                              ostreeBootedDeployment?.checksum ?? rootfsComponent?.currentCommit
+                            )}
+                          </dd>
+                        </div>
+                        {ostreeStagedDeployment && (
+                          <div>
+                            <dt className="inline text-gray-500">Staged deployment: </dt>
+                            <dd className="inline font-mono text-gray-800">
+                              {deploymentVersionDisplay(ostreeStagedDeployment)}
+                            </dd>
+                          </div>
+                        )}
+                        {(ostreeRef || ostreeBootedDeployment?.ref) && (
+                          <div>
+                            <dt className="inline text-gray-500">Tracked ref: </dt>
+                            <dd className="inline font-mono text-gray-800">
+                              {ostreeRef ?? ostreeBootedDeployment?.ref}
+                            </dd>
+                          </div>
+                        )}
+                      </>
                     )}
+                    {comp.component === 'rootfs' &&
+                      !ostreeEnabled &&
+                      updates.rootfsSlotStatus?.supported && (
+                        <div>
+                          <dt className="inline text-gray-500">Boot Slot: </dt>
+                          <dd className="inline font-mono text-gray-800">
+                            {formatRootfsSlotName(updates.rootfsSlotStatus.activeSlot)}
+                          </dd>
+                        </div>
+                      )}
                     {/* Show last applied version if available */}
                     {comp.lastAppliedVersion && (
                       <div>
@@ -1885,11 +2159,19 @@ export default function System() {
                       </div>
                     )}
                     {/* Show rollback commit if available */}
-                    {comp.rollbackCommit && (
+                    {comp.rollbackCommit && !ostreeEnabled && (
                       <div>
                         <dt className="inline text-gray-500">Rollback target: </dt>
                         <dd className="inline font-mono text-gray-800">
                           {shortCommit(comp.rollbackCommit)}
+                        </dd>
+                      </div>
+                    )}
+                    {comp.component === 'rootfs' && ostreeRollbackDeployment && (
+                      <div>
+                        <dt className="inline text-gray-500">Rollback target: </dt>
+                        <dd className="inline font-mono text-gray-800">
+                          {deploymentVersionDisplay(ostreeRollbackDeployment)}
                         </dd>
                       </div>
                     )}
@@ -1911,7 +2193,7 @@ export default function System() {
               ))}
             </div>
 
-            {updates.rootfsSlotStatus && !updates.rootfsSlotStatus.supported && (
+            {!ostreeEnabled && updates.rootfsSlotStatus && !updates.rootfsSlotStatus.supported && (
               <div className="rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
                 <p className="font-medium">Primary/Secondary rootfs layout unavailable.</p>
                 <p className="mt-1">
@@ -1934,7 +2216,9 @@ export default function System() {
 
             {updates.pendingReboot && (
               <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
-                A reboot is pending to finalize applied updates.
+                {ostreeEnabled
+                  ? 'A reboot is required to boot into the staged OSTree deployment.'
+                  : 'A reboot is pending to finalize applied updates.'}
               </div>
             )}
 
@@ -1965,6 +2249,22 @@ export default function System() {
                     </span>
                   )}
                 </div>
+              </div>
+            )}
+
+            {ostreeTransactionActive && (
+              <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                <p className="font-medium">
+                  OSTree transaction: {formatOstreeTransactionState(ostreeTransaction?.state)}
+                </p>
+                {ostreeTransaction?.message && (
+                  <p className="mt-1 text-xs text-blue-800">{ostreeTransaction.message}</p>
+                )}
+                {typeof ostreeTransaction?.progress === 'number' && (
+                  <p className="mt-1 text-xs text-blue-800">
+                    Progress: {Math.round(ostreeTransaction.progress)}%
+                  </p>
+                )}
               </div>
             )}
 
@@ -2076,22 +2376,28 @@ export default function System() {
                 disabled={
                   updateActionLoading ||
                   !rootfsUpdateAvailable ||
-                  !rootfsSlotSupported ||
+                  (!ostreeEnabled && !rootfsSlotSupported) ||
                   rootfsUpdatePending
                 }
                 title={
                   !rootfsUpdateAvailable
-                    ? 'No rootfs update available'
-                    : !rootfsSlotSupported
+                    ? ostreeEnabled
+                      ? 'No OSTree deployment update available'
+                      : 'No rootfs update available'
+                    : !ostreeEnabled && !rootfsSlotSupported
                       ? 'Primary/Secondary rootfs layout is not available'
                       : rootfsUpdatePending
-                        ? 'Rootfs update is already staged'
-                        : rootfsInactiveSlotName !== '-'
-                          ? `Stage/update root filesystem into ${rootfsInactiveSlotName} slot`
-                          : 'Stage/update root filesystem into the inactive slot'
+                        ? ostreeEnabled
+                          ? 'An OSTree deployment is already staged'
+                          : 'Rootfs update is already staged'
+                        : ostreeEnabled
+                          ? 'Stage the next OSTree deployment and reboot when ready'
+                          : rootfsInactiveSlotName !== '-'
+                            ? `Stage/update root filesystem into ${rootfsInactiveSlotName} slot`
+                            : 'Stage/update root filesystem into the inactive slot'
                 }
               >
-                Stage/Update Root Filesystem
+                {rootfsActionLabel}
               </Button>
 
               <details className="group relative">
@@ -2122,16 +2428,20 @@ export default function System() {
                     variant="danger"
                     size="sm"
                     onClick={handleRollbackRootfs}
-                    disabled={updateActionLoading || !updates.rootfsUpdate?.previousSlot}
+                    disabled={updateActionLoading || !rootfsRollbackAvailable}
                     title={
-                      updates.rootfsUpdate?.previousSlot
-                        ? rootfsPreviousSlotName !== '-'
-                          ? `Schedule next boot into ${rootfsPreviousSlotName} slot`
-                          : 'Schedule next boot into the previous rootfs slot'
-                        : 'No rootfs rollback slot recorded'
+                      ostreeEnabled
+                        ? rootfsRollbackAvailable
+                          ? 'Switch the next boot to the previous OSTree deployment'
+                          : 'No rollback deployment recorded'
+                        : updates.rootfsUpdate?.previousSlot
+                          ? rootfsPreviousSlotName !== '-'
+                            ? `Schedule next boot into ${rootfsPreviousSlotName} slot`
+                            : 'Schedule next boot into the previous rootfs slot'
+                          : 'No rootfs rollback slot recorded'
                     }
                   >
-                    Rollback Rootfs
+                    {ostreeEnabled ? 'Rollback OSTree Deployment' : 'Rollback Rootfs'}
                   </Button>
                 </div>
               </details>
