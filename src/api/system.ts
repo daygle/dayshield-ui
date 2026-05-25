@@ -354,7 +354,11 @@ function normalizeOstreeDeployment(raw: unknown): OstreeDeploymentSummary | unde
   if (!raw) return undefined;
   const value = asRecord(raw);
   const version = asString(
-    value.version ?? value.deploymentVersion ?? value.deployment_version ?? value.releaseVersion
+    value.version ??
+      value.deploymentVersion ??
+      value.deployment_version ??
+      value.releaseVersion ??
+      value.release_version
   );
   const checksum = asString(value.checksum ?? value.commit ?? value.commit_id);
   const ref = asString(value.ref ?? value.branch);

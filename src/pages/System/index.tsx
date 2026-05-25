@@ -1024,12 +1024,10 @@ export default function System() {
   // Also listen to live system logs: when an external "post-update service health check"
   // message is emitted by the backend, refresh updates/status so the UI reflects new state.
   const liveLogs = useLiveLogs();
+  const latestLiveLog = liveLogs.allLogs[liveLogs.allLogs.length - 1];
   useEffect(() => {
-    const all = liveLogs.allLogs;
-    if (!all || all.length === 0) return;
-    const last = all[all.length - 1];
-    if (!last || !last.message) return;
-    const normalized = last.message.trim().toLowerCase();
+    if (!latestLiveLog?.message) return;
+    const normalized = latestLiveLog.message.trim().toLowerCase();
     if (
       normalized.includes('post-update service health check passed') ||
       normalized.includes('post-apply service health check passed')
@@ -1041,7 +1039,7 @@ export default function System() {
         .then((res) => setStatus(res.data))
         .catch(() => {});
     }
-  }, [liveLogs.allLogs]);
+  }, [latestLiveLog]);
 
   if (loading) {
     return (
@@ -1067,7 +1065,6 @@ export default function System() {
   const ostreeRemote =
     ostreeStatus?.remote ?? updates?.settings.ostreeRemote ?? updateSettings?.ostreeRemote;
   const ostreeRef = ostreeStatus?.ref ?? updates?.settings.ostreeRef ?? updateSettings?.ostreeRef;
-  const configuredRootfsMode = inferRootfsUpdateMode(updates, updateSettings);
   const runtimeUpdateCount = updates
     ? updates.components.filter((comp) => comp.component !== 'rootfs' && comp.updateAvailable)
         .length
@@ -1454,7 +1451,7 @@ export default function System() {
             <p className="text-sm text-gray-600">
               Choose whether DayShield checks for updates automatically and when it runs.
             </p>
-            {configuredRootfsMode === 'ostree' ? (
+            {rootfsUpdateMode === 'ostree' ? (
               <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
                 <p className="font-medium">OSTree system updates enabled</p>
                 <p className="mt-1 text-xs text-blue-800">
