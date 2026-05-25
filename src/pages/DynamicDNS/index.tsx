@@ -322,24 +322,12 @@ export default function DynamicDnsPage() {
         actions={
           <Button
             size="sm"
-            className="h-8 w-8 justify-center p-0"
+            className="h-8"
             disabled={busy}
             loading={saving}
             onClick={handleSave}
-            title="Save Settings"
-            aria-label="Save Settings"
           >
-            {saving ? (
-              <svg className="h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
-                <path fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-              </svg>
-            ) : (
-              <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.25}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 3.75H6a2.25 2.25 0 00-2.25 2.25v12A2.25 2.25 0 006 20.25h12A2.25 2.25 0 0020.25 18V7.5L16.5 3.75z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3.75V9h7.5V3.75" />
-              </svg>
-            )}
+            Save
           </Button>
         }
       >
