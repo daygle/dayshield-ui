@@ -70,6 +70,7 @@ const defaultConfigForm = (): Partial<DnsConfig> => ({
   port: 53,
   forwarders: [],
   dnssec: false,
+  manage_firewall: true,
   dot_enabled: false,
   dot_port: 853,
   dot_lan_only: true,
@@ -365,6 +366,7 @@ export default function DNS() {
       port: configForm.port ?? 53,
       forwarders: parseList(forwardersInput),
       dnssec: configForm.dnssec ?? false,
+      manage_firewall: configForm.manage_firewall ?? true,
       dot_enabled: configForm.dot_enabled ?? false,
       dot_port: configForm.dot_port ?? 853,
       dot_lan_only: configForm.dot_lan_only ?? true,
@@ -734,6 +736,23 @@ export default function DNS() {
                   onChange={(e) => setConfigForm((f) => ({ ...f, dnssec: e.target.checked }))}
                 />
                 <span className="text-sm font-medium text-gray-700">Enable DNSSEC validation</span>
+              </label>
+
+              <label className="flex items-center gap-3 cursor-pointer select-none md:col-span-2">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked={configForm.manage_firewall ?? true}
+                  onChange={(e) =>
+                    setConfigForm((f) => ({ ...f, manage_firewall: e.target.checked }))
+                  }
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Automatically manage firewall rules
+                </span>
+                <span className="text-xs text-gray-400">
+                  Creates allow rules for DNS traffic on the configured port from LAN clients
+                </span>
               </label>
 
               <div className="md:col-span-2">

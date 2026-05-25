@@ -198,6 +198,9 @@ export interface DnsConfig {
   /** Upstream forwarder IPs. Empty = full recursion mode. */
   forwarders: string[];
   dnssec: boolean;
+  /** When true (default), the system automatically manages firewall rules to
+   *  allow DNS traffic on the configured port from LAN clients. */
+  manage_firewall?: boolean;
   /** Optional DNS-over-TLS listener. */
   dot_enabled?: boolean;
   /** DNS-over-TLS listen port. Defaults to 853. */
