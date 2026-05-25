@@ -1343,8 +1343,8 @@ export default function System() {
                   Enable Primary/Secondary rootfs updates
                 </span>
                 <span className="block text-xs text-gray-500">
-                  Requires A/B rootfs slots (labels DS_PRIMARY/DS_SECONDARY or legacy
-                  DAYSHIELD_ROOT_A/DAYSHIELD_ROOT_B) and a shared DAYSHIELD_BOOT partition.
+                  Requires A/B rootfs slots (labels DS_PRIMARY/DS_SECONDARY) and a shared
+                  DAYSHIELD_BOOT partition.
                 </span>
               </span>
             </label>

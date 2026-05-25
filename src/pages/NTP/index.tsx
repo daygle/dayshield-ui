@@ -395,7 +395,7 @@ export default function NtpPage() {
               onClick={handleResync}
             >
               {!resyncing && <RefreshIcon />}
-              Resync Now
+              Resync
             </Button>
           </div>
         }

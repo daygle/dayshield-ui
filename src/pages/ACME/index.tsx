@@ -239,7 +239,7 @@ export default function ACME() {
             }
           >
             <option value="http01">HTTP-01 (port 80)</option>
-            <option value="dns01">DNS-01 (manual TXT record or Cloudflare)</option>
+            <option value="dns01">DNS-01 (manual TXT record, Cloudflare, or Namecheap)</option>
           </FormField>
           {accountForm.challenge_type === 'dns01' && (
             <FormField
@@ -256,6 +256,7 @@ export default function ACME() {
             >
               <option value="manual">Manual TXT record</option>
               <option value="cloudflare">Cloudflare DNS API</option>
+              <option value="namecheap">Namecheap DNS API</option>
             </FormField>
           )}
           {accountForm.challenge_type === 'dns01' &&
@@ -405,7 +406,11 @@ export default function ACME() {
                 <div>
                   <dt className="text-gray-500">DNS Provider</dt>
                   <dd className="font-medium text-gray-800">
-                    {account.dns_provider === 'cloudflare' ? 'Cloudflare DNS API' : 'Manual TXT record'}
+                    {account.dns_provider === 'cloudflare'
+                      ? 'Cloudflare DNS API'
+                      : account.dns_provider === 'namecheap'
+                      ? 'Namecheap DNS API'
+                      : 'Manual TXT record'}
                   </dd>
                 </div>
                 {account.dns_provider === 'cloudflare' && (

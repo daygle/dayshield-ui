@@ -674,7 +674,7 @@ export type AcmeCertificateStatus = 'valid' | 'pending' | 'expired' | 'error';
 
 export type AcmeChallengeType = 'http01' | 'dns01';
 
-export type AcmeDnsProvider = 'manual' | 'cloudflare';
+export type AcmeDnsProvider = 'manual' | 'cloudflare' | 'namecheap';
 
 export interface AcmeAccount {
   enabled: boolean;

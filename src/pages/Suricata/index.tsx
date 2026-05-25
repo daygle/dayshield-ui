@@ -532,7 +532,7 @@ function SuricataContent() {
                           handleToggleInterfaceMonitoring(iface.name, !isMonitored);
                         }}
                       >
-                        {isMonitored ? 'Disable monitoring' : 'Enable monitoring'}
+                        {isMonitored ? 'Disable monitoring' : 'Enable'}
                       </Button>
                     </div>
                   </div>
