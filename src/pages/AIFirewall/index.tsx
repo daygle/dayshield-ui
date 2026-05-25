@@ -25,7 +25,6 @@ import type {
 } from '../../types';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import Card from '../../components/Card';
-import FormField from '../../components/FormField';
 import { useToast } from '../../context/ToastContext';
 import SuggestionsPanel from '../../features/ai_firewall/SuggestionsPanel';
 import AutomationModeSelector from '../../features/ai_firewall/AutomationModeSelector';
@@ -83,7 +82,7 @@ interface AIFirewallAutomationProps {
 function AIFirewallAutomationContent({
   interfaces = [],
   selectedInterface = null,
-  onSelectInterface = () => {},
+  onSelectInterface: _onSelectInterface = () => {},
 }: AIFirewallAutomationProps) {
   const { addToast } = useToast();
   const [trafficCandidates, setTrafficCandidates] = useState<TrafficCandidate[]>([]);
