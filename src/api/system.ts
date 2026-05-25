@@ -362,14 +362,9 @@ function normalizeOstreeDeployment(raw: unknown): OstreeDeploymentSummary | unde
   );
   const checksum = asString(value.checksum ?? value.commit ?? value.commit_id);
   const ref = asString(value.ref ?? value.branch);
+  const deploymentIdentifiers = [version, checksum, ref, asString(value.id), asString(value.origin)];
 
-  if (
-    !version &&
-    !checksum &&
-    !ref &&
-    asString(value.id) === undefined &&
-    asString(value.origin) === undefined
-  ) {
+  if (deploymentIdentifiers.every((item) => !item)) {
     return undefined;
   }
 
@@ -426,6 +421,11 @@ function normalizeOstreeStatus(raw: unknown): OstreeStatus | undefined {
       value.previous_deployment
   );
   const transaction = normalizeOstreeTransaction(value.transaction);
+  const hasDeploymentMetadata = [
+    asString(value.remote),
+    asString(value.ref),
+    asBoolean(value.updateAvailable ?? value.update_available),
+  ].some((item) => item !== undefined);
 
   if (
     !bootedDeployment &&
@@ -433,9 +433,7 @@ function normalizeOstreeStatus(raw: unknown): OstreeStatus | undefined {
     !availableDeployment &&
     !rollbackDeployment &&
     !transaction &&
-    asString(value.remote) === undefined &&
-    asString(value.ref) === undefined &&
-    asBoolean(value.updateAvailable ?? value.update_available) === undefined
+    !hasDeploymentMetadata
   ) {
     return undefined;
   }

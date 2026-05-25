@@ -1052,7 +1052,7 @@ export default function System() {
   const updateNotFoundHint = updates ? detectUpdateNotFoundHint(updates.components) : null;
   const rootfsUpdateMode = inferRootfsUpdateMode(updates, updateSettings);
   const ostreeStatus = updates?.ostreeStatus;
-  const ostreeEnabled = rootfsUpdateMode === 'ostree' || Boolean(ostreeStatus);
+  const ostreeEnabled = rootfsUpdateMode === 'ostree';
   const ostreeBootedDeployment = ostreeStatus?.bootedDeployment;
   const ostreeAvailableDeployment = ostreeStatus?.availableDeployment;
   const ostreeStagedDeployment = ostreeStatus?.stagedDeployment;
