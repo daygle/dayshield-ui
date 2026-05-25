@@ -97,7 +97,10 @@ function toInterfaceUpsertPayload(iface: NetworkInterface): InterfaceUpsertPaylo
     track_source_interface: iface.trackSourceInterface || undefined,
     track_prefix_id: iface.trackPrefixId,
     delegated_prefix_len: iface.delegatedPrefixLen,
-    ra_mode: ipv6Mode === 'track_interface' ? (iface.raMode ?? 'unmanaged') : undefined,
+    ra_mode:
+      ipv6Mode === 'track_interface' || ipv6Mode === 'slaac'
+        ? (iface.raMode ?? 'unmanaged')
+        : undefined,
     ia_pd_hint_len: iface.iaPdHintLen,
     wan_mode: iface.wanMode,
     pppoe_username: iface.pppoeUsername || undefined,

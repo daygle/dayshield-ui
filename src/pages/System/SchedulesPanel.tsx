@@ -79,12 +79,16 @@ export default function SchedulesPanel({ onError }: SchedulesPanelProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [runningJob, setRunningJob] = useState<ScheduleJobType | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const SCHEDULES_REFRESH_INTERVAL_MS = 30 * 1000; // 30 seconds
 
   const load = useCallback(() => {
     setLoading(true);
     getSystemSchedules()
       .then((res) => {
         setSchedules(normalizeSchedules(res.data));
+        setLastUpdated(new Date());
         onError(null);
       })
       .catch((err: Error) => onError(err.message))
@@ -94,6 +98,15 @@ export default function SchedulesPanel({ onError }: SchedulesPanelProps) {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      // skip polling while saving or a job is running to avoid conflicts
+      if (saving || runningJob !== null) return;
+      load();
+    }, SCHEDULES_REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [load, saving, runningJob]);
 
   const busy = saving || runningJob !== null;
 
@@ -135,13 +148,18 @@ export default function SchedulesPanel({ onError }: SchedulesPanelProps) {
       title="Schedules"
       subtitle="Cron-like interval schedules for system jobs."
       actions={
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" disabled={busy} onClick={load}>
-            Refresh
-          </Button>
-          <Button size="sm" disabled={busy} loading={saving} onClick={handleSave}>
-            Save
-          </Button>
+        <div className="flex items-center gap-3">
+          <div className="text-xs text-gray-500">
+            {lastUpdated ? `Last updated: ${lastUpdated.toLocaleString()}` : 'Not updated yet'}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" disabled={busy} onClick={load}>
+              Refresh
+            </Button>
+            <Button size="sm" disabled={busy} loading={saving} onClick={handleSave}>
+              Save
+            </Button>
+          </div>
         </div>
       }
     >

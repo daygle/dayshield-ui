@@ -1346,7 +1346,8 @@ export default function System() {
                   Enable Primary/Secondary rootfs updates
                 </span>
                 <span className="block text-xs text-gray-500">
-                  Requires DAYSHIELD_ROOT_A, DAYSHIELD_ROOT_B, and shared DAYSHIELD_BOOT partitions.
+                  Requires A/B rootfs slots (labels DS_PRIMARY/DS_SECONDARY or legacy
+                  DAYSHIELD_ROOT_A/DAYSHIELD_ROOT_B) and a shared DAYSHIELD_BOOT partition.
                 </span>
               </span>
             </label>
@@ -2028,7 +2029,6 @@ export default function System() {
             <div className="rounded-md border border-gray-200 bg-gray-50">
               <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2">
                 <h4 className="text-sm font-semibold text-gray-900">Update Logs</h4>
-                <span className="text-xs text-gray-500">Newest first</span>
               </div>
               {updates.operationLogs && updates.operationLogs.length > 0 ? (
                 <ul className="max-h-72 overflow-auto divide-y divide-gray-200">

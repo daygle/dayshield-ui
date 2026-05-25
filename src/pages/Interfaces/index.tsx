@@ -464,60 +464,69 @@ export default function Interfaces() {
                   }
                 />
               )}
-              {ipv6Mode === 'track_interface' && (
+              {(ipv6Mode === 'track_interface' || ipv6Mode === 'slaac') && (
                 <>
-                  <FormField
-                    id="iface-track-source"
-                    label="Track Source Interface"
-                    required
-                    as="select"
-                    value={form.trackSourceInterface ?? ''}
-                    onChange={(e) => setForm({ ...form, trackSourceInterface: e.target.value })}
-                  >
-                    <option value="">Select source interface</option>
-                    {allInterfaceNames
-                      .filter((name) => name !== form.name)
-                      .map((name) => (
-                        <option key={name} value={name}>
-                          {interfaceNameLabel(name)}
-                        </option>
-                      ))}
-                  </FormField>
-                  <FormField
-                    id="iface-track-prefix-id"
-                    label="Track Prefix ID"
-                    type="number"
-                    min={0}
-                    max={255}
-                    value={form.trackPrefixId != null ? String(form.trackPrefixId) : ''}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        trackPrefixId: e.target.value ? Number(e.target.value) : undefined,
-                      })
-                    }
-                  />
-                  <FormField
-                    id="iface-delegated-prefix-len"
-                    label="Delegated Prefix Length"
-                    type="number"
-                    min={0}
-                    max={128}
-                    value={form.delegatedPrefixLen != null ? String(form.delegatedPrefixLen) : ''}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        delegatedPrefixLen: e.target.value ? Number(e.target.value) : undefined,
-                      })
-                    }
-                  />
+                  {ipv6Mode === 'track_interface' && (
+                    <>
+                      <FormField
+                        id="iface-track-source"
+                        label="Track Source Interface"
+                        required
+                        as="select"
+                        value={form.trackSourceInterface ?? ''}
+                        onChange={(e) => setForm({ ...form, trackSourceInterface: e.target.value })}
+                      >
+                        <option value="">Select source interface</option>
+                        {allInterfaceNames
+                          .filter((name) => name !== form.name)
+                          .map((name) => (
+                            <option key={name} value={name}>
+                              {interfaceNameLabel(name)}
+                            </option>
+                          ))}
+                      </FormField>
+                      <FormField
+                        id="iface-track-prefix-id"
+                        label="Track Prefix ID"
+                        type="number"
+                        min={0}
+                        max={255}
+                        value={form.trackPrefixId != null ? String(form.trackPrefixId) : ''}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            trackPrefixId: e.target.value ? Number(e.target.value) : undefined,
+                          })
+                        }
+                      />
+                      <FormField
+                        id="iface-delegated-prefix-len"
+                        label="Delegated Prefix Length"
+                        type="number"
+                        min={0}
+                        max={128}
+                        value={form.delegatedPrefixLen != null ? String(form.delegatedPrefixLen) : ''}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            delegatedPrefixLen: e.target.value ? Number(e.target.value) : undefined,
+                          })
+                        }
+                      />
+                    </>
+                  )}
+
                   <FormField
                     id="iface-ra-mode"
                     label="Router Advertisement Mode"
                     className="col-span-2"
                     as="select"
                     value={form.raMode ?? 'unmanaged'}
-                    hint="Select which flags to set in Router Advertisements sent from this interface."
+                    hint={
+                      ipv6Mode === 'track_interface'
+                        ? 'Select which flags to set in Router Advertisements sent from this interface.'
+                        : 'Select which flags to set in Router Advertisements (when applicable).'
+                    }
                     onChange={(e) => setForm({ ...form, raMode: e.target.value as Ipv6RaMode })}
                   >
                     <option value="router_only">Router Only (no SLAAC or DHCPv6)</option>
