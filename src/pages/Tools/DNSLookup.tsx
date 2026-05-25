@@ -81,7 +81,7 @@ export default function DNSLookup() {
           />
 
           <div className="flex justify-end">
-            <Button type="button" loading={querying} variant="primary" onClick={handleLookup}>
+            <Button type="button" size="sm" loading={querying} variant="primary" onClick={handleLookup}>
               Run DNS Lookup
             </Button>
           </div>

@@ -58,6 +58,7 @@ export default function TestEmailButton({
           onChange={(e) => setRecipient(e.target.value)}
         />
         <Button
+          size="sm"
           variant="secondary"
           loading={sending}
           disabled={disabled || !recipient.trim()}

@@ -65,7 +65,7 @@ export default function TraceRoute() {
           />
 
           <div className="flex justify-end">
-            <Button type="button" loading={tracing} variant="primary" onClick={handleTrace}>
+            <Button type="button" size="sm" loading={tracing} variant="primary" onClick={handleTrace}>
               Run Trace Route
             </Button>
           </div>

@@ -846,6 +846,8 @@ export default function CaptivePortalPage() {
         subtitle="Manually authorize a client by IP address from the admin UI."
         actions={
           <Button
+            type="button"
+            size="sm"
             onClick={handleAuthorizeSession}
             loading={authorizing}
             disabled={loading || authorizing}

@@ -78,7 +78,7 @@ export default function Ping() {
           />
 
           <div className="flex justify-end">
-            <Button type="button" loading={pinging} variant="primary" onClick={handlePing}>
+            <Button type="button" size="sm" loading={pinging} variant="primary" onClick={handlePing}>
               Run Ping
             </Button>
           </div>

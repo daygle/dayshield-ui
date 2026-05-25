@@ -226,6 +226,7 @@ function SuricataContent() {
 
   const hasInstalledRulesets = rulesets.some((ruleset) => ruleset.installed);
   const canEnableSuricata = config?.enabled || (!rulesetLoading && hasInstalledRulesets);
+  const serviceControlsDisabled = loading || (config ? !config.enabled && !canEnableSuricata : true);
   const rulesetWarningMessage = !rulesetLoading && !hasInstalledRulesets
     ? config?.enabled
       ? 'Suricata is enabled but no rulesets are installed; service startup may fail. Install a ruleset or disable Suricata.'
@@ -404,9 +405,12 @@ function SuricataContent() {
             <div className="flex flex-wrap items-center gap-2">
               <ServiceControlCluster
                 serviceId="suricata"
-                disabled={loading}
+                disabled={serviceControlsDisabled}
                 onError={setError}
-                onSuccess={() => setError(null)}
+                onSuccess={() => {
+                  setError(null);
+                  loadAll();
+                }}
               />
               <Button
                 size="sm"
@@ -416,9 +420,6 @@ function SuricataContent() {
                 title={!config.enabled && !canEnableSuricata ? rulesetWarningMessage : undefined}
               >
                 {config?.enabled ? 'Disable Suricata' : 'Enable Suricata'}
-              </Button>
-              <Button size="sm" variant="secondary" disabled={loading} onClick={loadAll}>
-                Refresh
               </Button>
             </div>
           }

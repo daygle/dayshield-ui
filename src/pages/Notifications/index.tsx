@@ -164,6 +164,7 @@ export default function NotificationsPage() {
         subtitle="Send email alerts when security or system events occur."
         actions={
           <Button
+            size="sm"
             variant={config.enabled ? 'danger' : 'primary'}
             disabled={busy}
             onClick={() => setConfig((c) => ({ ...c, enabled: !c.enabled }))}
@@ -258,7 +259,7 @@ export default function NotificationsPage() {
 
       {/* Save */}
       <div className="flex justify-end">
-        <Button loading={saving} disabled={busy} onClick={handleSave}>
+        <Button size="sm" loading={saving} disabled={busy} onClick={handleSave}>
           Save
         </Button>
       </div>

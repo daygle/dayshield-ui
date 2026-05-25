@@ -1159,15 +1159,19 @@ export default function Firewall() {
                 stroke="currentColor"
                 strokeWidth={2}
               >
-                <path
+                <rect
+                  x="9"
+                  y="8"
+                  width="10"
+                  height="12"
+                  rx="1.75"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M8.25 5.25h-1.5A2.25 2.25 0 004.5 7.5v10.5A2.25 2.25 0 006.75 20.25h10.5A2.25 2.25 0 0019.5 18V7.5A2.25 2.25 0 0017.25 5.25h-1.5"
                 />
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M8.25 7.5h7.5A2.25 2.25 0 0118 9.75v7.5a2.25 2.25 0 01-2.25 2.25h-7.5A2.25 2.25 0 016 17.25v-7.5A2.25 2.25 0 018.25 7.5z"
+                  d="M7 16H6a1.75 1.75 0 01-1.75-1.75V5.75A1.75 1.75 0 016 4h8.5A1.75 1.75 0 0116.25 5.75V6.5"
                 />
               </svg>
             </button>

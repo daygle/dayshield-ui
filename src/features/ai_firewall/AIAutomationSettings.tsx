@@ -162,7 +162,7 @@ export default function AIAutomationSettings({
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={handleSave} loading={saving}>
+            <Button size="sm" onClick={handleSave} loading={saving}>
               Save settings
             </Button>
             <Button size="sm" variant="secondary" onClick={handleReset}>

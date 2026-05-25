@@ -227,7 +227,7 @@ export default function IntentEditor({ intents, loading, saving, onSave }: Inten
           )}
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={handleSave} loading={saving}>
+            <Button size="sm" onClick={handleSave} loading={saving}>
               Save intents
             </Button>
             <Button size="sm" variant="secondary" onClick={() => setJsonText(formatJson(intents))}>

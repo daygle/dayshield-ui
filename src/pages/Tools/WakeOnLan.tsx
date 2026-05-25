@@ -76,7 +76,7 @@ export default function WakeOnLan() {
           />
 
           <div className="flex justify-end">
-            <Button type="submit" loading={isSubmitting} variant="primary">
+            <Button type="submit" size="sm" loading={isSubmitting} variant="primary">
               Send Wake Packet
             </Button>
           </div>

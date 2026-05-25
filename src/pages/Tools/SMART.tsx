@@ -59,7 +59,7 @@ export default function SMART() {
           </FormField>
 
           <div className="flex justify-end">
-            <Button type="button" loading={isChecking} variant="primary" onClick={handleCheck}>
+            <Button type="button" size="sm" loading={isChecking} variant="primary" onClick={handleCheck}>
               Run SMART Check
             </Button>
           </div>

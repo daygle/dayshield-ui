@@ -1449,7 +1449,6 @@ export default function DHCP() {
             value={selectedInterface ?? ''}
             onChange={(e) => handleSelectInterface(e.target.value)}
           >
-            <option value="">Select interface</option>
             {selectableInterfaces.map((iface) => (
               <option key={iface.name} value={iface.name}>
                 {interfaceLabel(iface)}

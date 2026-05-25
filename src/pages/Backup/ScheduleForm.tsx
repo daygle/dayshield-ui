@@ -95,7 +95,7 @@ export default function ScheduleForm({ schedule, saving, onChange, onSave }: Sch
       </fieldset>
 
       <div className="flex justify-end">
-        <Button onClick={onSave} loading={saving}>
+        <Button size="sm" onClick={onSave} loading={saving}>
           Save
         </Button>
       </div>

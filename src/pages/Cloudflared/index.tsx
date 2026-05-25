@@ -217,6 +217,7 @@ function CloudflaredPageContent() {
   };
 
   const busy = loading || saving;
+  const serviceControlsDisabled = busy || status?.configured === false;
 
   return (
     <div className="space-y-6">
@@ -246,7 +247,7 @@ function CloudflaredPageContent() {
             {statusBadge(status)}
             <ServiceControlCluster
               serviceId="cloudflared"
-              disabled={busy}
+              disabled={serviceControlsDisabled}
               showStatusBadge={false}
               onError={notifyError}
               onSuccess={(message) => {

@@ -348,20 +348,9 @@ function CrowdSecContent() {
                 onSuccess={(message) => {
                   setSuccess(message);
                   addToast(message, 'success');
+                  loadAll();
                 }}
               />
-              <Button
-                type="button"
-                disabled={loading}
-                variant="secondary"
-                size="sm"
-                onClick={loadAll}
-                title={loading ? 'Refreshing CrowdSec status' : 'Refresh CrowdSec status'}
-                aria-label={loading ? 'Refreshing CrowdSec status' : 'Refresh CrowdSec status'}
-                loading={loading}
-              >
-                Refresh
-              </Button>
               <Button
                 type="button"
                 onClick={() => setConfigModalOpen(true)}
