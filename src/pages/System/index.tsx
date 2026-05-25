@@ -824,6 +824,10 @@ export default function System() {
     applyUpdates('both')
       .then((res) => {
         setUpdates(res.data.status);
+        if (res.data.message.toLowerCase().includes('progress is available in update status logs')) {
+          setUpdateActionMessage(null);
+          return;
+        }
         setUpdateActionMessage(res.data.message);
       })
       .catch((err: Error) => setError(err.message))
@@ -836,6 +840,10 @@ export default function System() {
     applyUpdates('rootfs')
       .then((res) => {
         setUpdates(res.data.status);
+        if (res.data.message.toLowerCase().includes('progress is available in update status logs')) {
+          setUpdateActionMessage(null);
+          return;
+        }
         setUpdateActionMessage(res.data.message);
       })
       .catch((err: Error) => setError(err.message))
@@ -877,6 +885,10 @@ export default function System() {
     validateUpdates('both')
       .then((res) => {
         setUpdates(res.data.status);
+        if (res.data.success) {
+          setUpdateActionMessage(null);
+          return;
+        }
         setUpdateActionMessage(`${res.data.message}: ${res.data.details.join(' | ')}`);
       })
       .catch((err: Error) => setError(err.message))
