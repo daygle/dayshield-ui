@@ -838,7 +838,10 @@ export default function System() {
     applyUpdates('both')
       .then((res) => {
         setUpdates(res.data.status);
-        setUpdateActionMessage(res.data.message);
+        const msg = res.data.message ?? '';
+        if (!msg.toLowerCase().includes('progress is available in update status logs')) {
+          setUpdateActionMessage(msg);
+        }
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false));
@@ -850,7 +853,10 @@ export default function System() {
     applyUpdates('rootfs')
       .then((res) => {
         setUpdates(res.data.status);
-        setUpdateActionMessage(res.data.message);
+        const msg = res.data.message ?? '';
+        if (!msg.toLowerCase().includes('progress is available in update status logs')) {
+          setUpdateActionMessage(msg);
+        }
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false));
@@ -867,7 +873,10 @@ export default function System() {
     rollbackUpdates('both')
       .then((res) => {
         setUpdates(res.data.status);
-        setUpdateActionMessage(res.data.message);
+        const msg = res.data.message ?? '';
+        if (!msg.toLowerCase().includes('progress is available in update status logs')) {
+          setUpdateActionMessage(msg);
+        }
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false));
@@ -879,7 +888,10 @@ export default function System() {
     rollbackUpdates('rootfs')
       .then((res) => {
         setUpdates(res.data.status);
-        setUpdateActionMessage(res.data.message);
+        const msg = res.data.message ?? '';
+        if (!msg.toLowerCase().includes('progress is available in update status logs')) {
+          setUpdateActionMessage(msg);
+        }
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false));
@@ -891,7 +903,11 @@ export default function System() {
     validateUpdates('both')
       .then((res) => {
         setUpdates(res.data.status);
-        setUpdateActionMessage(`${res.data.message}: ${res.data.details.join(' | ')}`);
+        const base = res.data.message ?? '';
+        const full = `${base}: ${res.data.details.join(' | ')}`;
+        if (!base.toLowerCase().includes('progress is available in update status logs')) {
+          setUpdateActionMessage(full);
+        }
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false));
@@ -2079,17 +2095,13 @@ export default function System() {
               <Button
                 size="sm"
                 onClick={handleApplyUpdates}
-                disabled={
-                  updateActionLoading || runtimeUpdateCount === 0 || rootfsUpdateAvailable
-                }
+                disabled={updateActionLoading || runtimeUpdateCount === 0}
                 title={
-                  rootfsUpdateAvailable
-                    ? 'Rootfs update available — stage rootfs separately before updating runtime'
-                    : runtimeUpdateCount > 1
-                      ? `Update Core/UI (${runtimeUpdateCount} updates available)`
-                      : runtimeUpdateCount === 1
-                        ? 'Update Core/UI (1 update available)'
-                        : 'No Core/UI updates available'
+                  runtimeUpdateCount > 1
+                    ? `Update Core/UI (${runtimeUpdateCount} updates available)`
+                    : runtimeUpdateCount === 1
+                      ? 'Update Core/UI (1 update available)'
+                      : 'No Core/UI updates available'
                 }
               >
                 Update Core/UI
