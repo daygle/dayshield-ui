@@ -238,7 +238,7 @@ export default function DynamicDnsPage() {
         title="Dynamic DNS Overview"
         subtitle="Service status, coverage, and latest update health."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               disabled={busy || runningUpdate || !config.enabled}
@@ -258,70 +258,91 @@ export default function DynamicDnsPage() {
                 </svg>
               )}
             </button>
-            <button
+            <Button
               type="button"
               disabled={busy}
               onClick={() => setConfig((prev) => ({ ...prev, enabled: !prev.enabled }))}
-              className={[
-                'inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
-                config.enabled
-                  ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'
-                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
-              ].join(' ')}
+              variant={config.enabled ? 'secondary' : 'primary'}
+              size="sm"
+              className="h-8"
               title={config.enabled ? 'Disable Dynamic DNS' : 'Enable Dynamic DNS'}
               aria-label={config.enabled ? 'Disable Dynamic DNS' : 'Enable Dynamic DNS'}
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.25}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
-              </svg>
-            </button>
+              {config.enabled ? 'Disable' : 'Enable'}
+            </Button>
           </div>
         }
       >
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4 text-sm">
-          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
-            <div className="text-gray-500">Service</div>
-            <div className={`mt-1 font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-500'}`}>
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+          <div>
+            <dt className="text-gray-500 mb-1">Service</dt>
+            <dd className={config.enabled ? 'text-green-600' : 'text-gray-900'}>
               {config.enabled ? 'Enabled' : 'Disabled'}
-            </div>
+            </dd>
           </div>
-          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
-            <div className="text-gray-500">Entries</div>
-            <div className="mt-1 font-semibold text-gray-900">{config.entries.length}</div>
+          <div>
+            <dt className="text-gray-500 mb-1">Entries</dt>
+            <dd className="text-gray-900">{config.entries.length}</dd>
           </div>
-          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
-            <div className="text-gray-500">Enabled Entries</div>
-            <div className="mt-1 font-semibold text-gray-900">{enabledCount}</div>
+          <div>
+            <dt className="text-gray-500 mb-1">Enabled Entries</dt>
+            <dd className="text-gray-900">{enabledCount}</dd>
           </div>
-          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3">
-            <div className="text-gray-500">Configured Interfaces</div>
-            <div className="mt-1 font-semibold text-gray-900">{configuredInterfaces.size}</div>
+          <div>
+            <dt className="text-gray-500 mb-1">Configured Interfaces</dt>
+            <dd className="text-gray-900">{configuredInterfaces.size}</dd>
           </div>
-          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3 md:col-span-2">
-            <div className="text-gray-500">Check Interval</div>
-            <div className="mt-1 font-semibold text-gray-900">{config.checkIntervalSeconds}s</div>
+          <div>
+            <dt className="text-gray-500 mb-1">Check Interval</dt>
+            <dd className="font-mono text-gray-900">{config.checkIntervalSeconds}s</dd>
           </div>
-          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3 md:col-span-2">
-            <div className="text-gray-500">Last Run</div>
-            <div className="mt-1 font-semibold text-gray-900">
+          <div>
+            <dt className="text-gray-500 mb-1">Last Run</dt>
+            <dd className="text-gray-900">
               {status?.lastRunAt ? new Date(status.lastRunAt).toLocaleString() : 'Never'}
-            </div>
+            </dd>
           </div>
-          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3 md:col-span-2">
-            <div className="text-gray-500">Latest Update</div>
-            <div className="mt-1 font-semibold text-gray-900">
+          <div>
+            <dt className="text-gray-500 mb-1">Latest Update</dt>
+            <dd className="text-gray-900">
               {statusCount > 0 ? `${successfulUpdates} successful` : 'No results yet'}
-            </div>
+            </dd>
           </div>
-          <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3 md:col-span-2">
-            <div className="text-gray-500">Failures</div>
-            <div className="mt-1 font-semibold text-gray-900">{status ? failedUpdates : '-'}</div>
+          <div>
+            <dt className="text-gray-500 mb-1">Failures</dt>
+            <dd className="text-gray-900">{status ? failedUpdates : '—'}</dd>
           </div>
-        </div>
+        </dl>
       </Card>
 
-      <Card title="Settings" subtitle="Control service-wide timing and update behavior.">
+      <div className="grid gap-4 xl:grid-cols-2">
+      <Card
+        title="Settings"
+        subtitle="Control service-wide timing and update behavior."
+        actions={
+          <Button
+            size="sm"
+            className="h-8 w-8 justify-center p-0"
+            disabled={busy}
+            loading={saving}
+            onClick={handleSave}
+            title="Save Settings"
+            aria-label="Save Settings"
+          >
+            {saving ? (
+              <svg className="h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+                <path fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            ) : (
+              <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.25}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 3.75H6a2.25 2.25 0 00-2.25 2.25v12A2.25 2.25 0 006 20.25h12A2.25 2.25 0 0020.25 18V7.5L16.5 3.75z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3.75V9h7.5V3.75" />
+              </svg>
+            )}
+          </Button>
+        }
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             label="Check Interval (seconds)"
@@ -339,17 +360,12 @@ export default function DynamicDnsPage() {
             }
             hint="Minimum 30 seconds."
           />
-          <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
-            <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Service State</div>
-            <div className={`mt-1 text-sm font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-500'}`}>
+          <div>
+            <dt className="text-gray-500 mb-1">Service State</dt>
+            <dd className={`text-sm font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-900'}`}>
               {config.enabled ? 'Enabled' : 'Disabled'}
-            </div>
+            </dd>
             <p className="mt-2 text-xs text-gray-500">When enabled, Dynamic DNS updates will run for all active entries.</p>
-          </div>
-          <div className="md:col-span-2 flex justify-end">
-            <Button size="sm" disabled={busy} loading={saving} onClick={handleSave}>
-              Save
-            </Button>
           </div>
         </div>
       </Card>
@@ -378,7 +394,7 @@ export default function DynamicDnsPage() {
         ) : config.entries.length === 0 ? (
           <p className="text-sm text-gray-500">No Dynamic DNS entries yet.</p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[32rem] overflow-y-auto">
             {config.entries.map((entry, idx) => {
               const error = entryErrors.get(entry.id);
               return (
@@ -527,6 +543,7 @@ export default function DynamicDnsPage() {
           </div>
         )}
       </Card>
+      </div>
     </div>
   );
 }
