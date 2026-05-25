@@ -88,8 +88,14 @@ function normalizeRootfsUpdateMode(value: unknown): RootfsUpdateMode | undefined
   if (normalized === 'ostree' || normalized === 'ab' || normalized === 'legacy') {
     return normalized;
   }
+  if (normalized === 'ostree_update' || normalized === 'ostree-update' || normalized === 'ostree_deployment') {
+    return 'ostree';
+  }
   if (normalized === 'rootfs_ab' || normalized === 'a/b' || normalized === 'primary-secondary') {
     return 'ab';
+  }
+  if (normalized === 'classic' || normalized === 'artifact') {
+    return 'legacy';
   }
   return undefined;
 }

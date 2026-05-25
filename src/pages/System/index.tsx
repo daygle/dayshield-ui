@@ -46,6 +46,8 @@ import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
 const STATUS_REFRESH_INTERVAL_MS = 15000;
 const UPDATES_REFRESH_INTERVAL_MS = 5000;
+const OSTREE_IDLE_TRANSACTION_STATES = ['idle', 'ready', 'complete', 'completed'];
+const OSTREE_ACTIVE_TRANSACTION_STATES = ['staged', 'pending', 'deploying', 'finalizing'];
 const UPDATE_SCHEDULE_FREQUENCY_OPTIONS: Array<{ value: UpdateScheduleFrequency; label: string }> =
   [
     { value: 'daily', label: 'Every Day' },
@@ -1039,7 +1041,7 @@ export default function System() {
         .then((res) => setStatus(res.data))
         .catch(() => {});
     }
-  }, [latestLiveLog]);
+  }, [latestLiveLog?.timestamp, latestLiveLog?.message]);
 
   if (loading) {
     return (
@@ -1060,8 +1062,7 @@ export default function System() {
   const ostreeTransaction = ostreeStatus?.transaction;
   const ostreeTransactionState = ostreeTransaction?.state?.trim().toLowerCase() ?? '';
   const ostreeTransactionActive =
-    Boolean(ostreeTransactionState) &&
-    !['idle', 'ready', 'complete', 'completed'].includes(ostreeTransactionState);
+    Boolean(ostreeTransactionState) && !OSTREE_IDLE_TRANSACTION_STATES.includes(ostreeTransactionState);
   const ostreeRemote =
     ostreeStatus?.remote ?? updates?.settings.ostreeRemote ?? updateSettings?.ostreeRemote;
   const ostreeRef = ostreeStatus?.ref ?? updates?.settings.ostreeRef ?? updateSettings?.ostreeRef;
@@ -1086,7 +1087,7 @@ export default function System() {
   const rootfsPreviousSlotName = formatRootfsSlotName(updates?.rootfsUpdate?.previousSlot);
   const rootfsUpdatePending = ostreeEnabled
     ? Boolean(ostreeStagedDeployment) ||
-      ['staged', 'pending', 'deploying', 'finalizing'].includes(ostreeTransactionState)
+      OSTREE_ACTIVE_TRANSACTION_STATES.includes(ostreeTransactionState)
     : updates?.rootfsUpdate?.status === 'staged' || updates?.rootfsUpdate?.status === 'booted';
   const rootfsRollbackAvailable = ostreeEnabled
     ? Boolean(
