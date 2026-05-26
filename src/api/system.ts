@@ -372,6 +372,7 @@ function normalizeOstreeTransaction(raw: unknown): OstreeTransactionStatus | und
 function normalizeOstreeStatus(raw: unknown): OstreeStatus | undefined {
   if (!raw) return undefined;
   const value = asRecord(raw);
+  const supported = asBoolean(value.supported ?? value.isSupported ?? value.is_supported);
   const bootedDeployment = normalizeOstreeDeployment(
     value.bootedDeployment ??
       value.booted_deployment ??
@@ -404,7 +405,9 @@ function normalizeOstreeStatus(raw: unknown): OstreeStatus | undefined {
   const hasDeploymentMetadata = [
     asString(value.remote),
     asString(value.ref),
+    supported,
     asBoolean(value.updateAvailable ?? value.update_available),
+    asString(value.lastError ?? value.last_error),
   ].some((item) => item !== undefined);
 
   if (
@@ -419,6 +422,7 @@ function normalizeOstreeStatus(raw: unknown): OstreeStatus | undefined {
   }
 
   return {
+    supported,
     updateAvailable: asBoolean(value.updateAvailable ?? value.update_available),
     rebootRequired: asBoolean(value.rebootRequired ?? value.reboot_required),
     supportsRollback: asBoolean(value.supportsRollback ?? value.supports_rollback),
@@ -728,7 +732,12 @@ export const checkForUpdates = (): Promise<ApiResponse<UpdatesStatus>> =>
       const ostree = await checkOstreeUpdates();
       return { ...r.data, data: mergeOstreeStatus(status, ostree.data.status) };
     } catch {
-      return { ...r.data, data: status };
+      try {
+        const ostree = await getOstreeStatus();
+        return { ...r.data, data: mergeOstreeStatus(status, ostree.data) };
+      } catch {
+        return { ...r.data, data: status };
+      }
     }
   });
 

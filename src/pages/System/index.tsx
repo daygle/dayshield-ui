@@ -217,6 +217,15 @@ function formatOstreeTransactionState(state?: string): string {
   return formatDeploymentStatusLabel(state);
 }
 
+function isOstreeUnavailableError(message?: string): boolean {
+  const text = (message ?? '').toLowerCase();
+  return (
+    text.includes('rpm-ostree command unavailable') ||
+    (text.includes('rpm-ostree') &&
+      (text.includes('failed to execute') || text.includes('no such file or directory')))
+  );
+}
+
 function ntpServersWithDefault(servers?: string[] | null): string[] {
   const cleaned = (servers ?? []).map((server) => server.trim()).filter(Boolean);
   return cleaned.length > 0 ? cleaned : DEFAULT_NTP_SERVERS;
@@ -1040,6 +1049,9 @@ export default function System() {
 
   const updateNotFoundHint = updates ? detectUpdateNotFoundHint(updates.components) : null;
   const ostreeStatus = updates?.ostreeStatus;
+  const ostreeSupported = !(
+    ostreeStatus?.supported === false || isOstreeUnavailableError(ostreeStatus?.lastError)
+  );
   const ostreeBootedDeployment = ostreeStatus?.bootedDeployment;
   const ostreeAvailableDeployment = ostreeStatus?.availableDeployment;
   const ostreeStagedDeployment = ostreeStatus?.stagedDeployment;
@@ -1047,7 +1059,9 @@ export default function System() {
   const ostreeTransaction = ostreeStatus?.transaction;
   const ostreeTransactionState = ostreeTransaction?.state?.trim().toLowerCase() ?? '';
   const ostreeTransactionActive =
-    Boolean(ostreeTransactionState) && !OSTREE_IDLE_TRANSACTION_STATES.includes(ostreeTransactionState);
+    ostreeSupported &&
+    Boolean(ostreeTransactionState) &&
+    !OSTREE_IDLE_TRANSACTION_STATES.includes(ostreeTransactionState);
   const ostreeRemote =
     ostreeStatus?.remote ?? updates?.settings.ostreeRemote ?? updateSettings?.ostreeRemote;
   const ostreeRef = ostreeStatus?.ref ?? updates?.settings.ostreeRef ?? updateSettings?.ostreeRef;
@@ -1060,30 +1074,40 @@ export default function System() {
       )
     : false;
   const rootfsComponent = updates?.components.find((comp) => comp.component === 'rootfs');
-  const rootfsUpdateAvailable = Boolean(ostreeStatus?.updateAvailable ?? rootfsComponent?.updateAvailable);
+  const rootfsUpdateAvailable =
+    ostreeSupported && Boolean(ostreeStatus?.updateAvailable ?? rootfsComponent?.updateAvailable);
   const rootfsUpdatePending =
-    Boolean(ostreeStagedDeployment) ||
-    OSTREE_ACTIVE_TRANSACTION_STATES.includes(ostreeTransactionState);
-  const rootfsStatusLabel = deploymentVersionDisplay(ostreeBootedDeployment, rootfsComponent);
-  const rootfsStatusHint = ostreeBootedDeployment
-    ? [
-        'Currently booted deployment.',
-        deploymentDetails(ostreeBootedDeployment),
-        ostreeStatus?.lastError ? `Last error: ${ostreeStatus.lastError}` : null,
-      ]
-        .filter(Boolean)
-        .join(' ')
-    : rootfsComponent
+    ostreeSupported &&
+    (Boolean(ostreeStagedDeployment) ||
+      OSTREE_ACTIVE_TRANSACTION_STATES.includes(ostreeTransactionState));
+  const rootfsStatusLabel = ostreeSupported
+    ? deploymentVersionDisplay(ostreeBootedDeployment, rootfsComponent)
+    : 'Unavailable';
+  const rootfsStatusHint = !ostreeSupported
+    ? 'System image updates require rpm-ostree on the appliance image.'
+    : ostreeBootedDeployment
       ? [
-          `Current root filesystem deployment: ${componentCurrentDisplay(rootfsComponent)}.`,
-          rootfsComponent.currentCommit ? `Commit ${shortCommit(rootfsComponent.currentCommit)}.` : null,
-          rootfsComponent.remoteVersion ? `Available release: ${rootfsComponent.remoteVersion}.` : null,
+          'Currently booted deployment.',
+          deploymentDetails(ostreeBootedDeployment),
+          ostreeStatus?.lastError ? `Last error: ${ostreeStatus.lastError}` : null,
         ]
           .filter(Boolean)
           .join(' ')
-      : 'OSTree deployment status has not loaded yet.';
+      : rootfsComponent
+        ? [
+            `Current root filesystem deployment: ${componentCurrentDisplay(rootfsComponent)}.`,
+            rootfsComponent.currentCommit ? `Commit ${shortCommit(rootfsComponent.currentCommit)}.` : null,
+            rootfsComponent.remoteVersion ? `Available release: ${rootfsComponent.remoteVersion}.` : null,
+          ]
+            .filter(Boolean)
+            .join(' ')
+        : 'OSTree deployment status has not loaded yet.';
   const updatesSubtitle = 'Update DayShield services and the bootable system image.';
-  const rootfsActionLabel = rootfsUpdatePending ? 'Staged for Reboot' : 'Apply System Image';
+  const rootfsActionLabel = !ostreeSupported
+    ? 'System Image Unavailable'
+    : rootfsUpdatePending
+      ? 'Staged for Reboot'
+      : 'Apply System Image';
 
   return (
     <div className="space-y-6">
@@ -1938,12 +1962,15 @@ export default function System() {
                     onClick={handleStageRootfsUpdate}
                     disabled={
                       updateActionLoading ||
+                      !ostreeSupported ||
                       ostreeTransactionActive ||
                       !rootfsUpdateAvailable ||
                       rootfsUpdatePending
                     }
                     title={
-                      ostreeTransactionActive
+                      !ostreeSupported
+                        ? 'System image updates require rpm-ostree on this host'
+                        : ostreeTransactionActive
                         ? 'An OSTree transaction is already running'
                         : rootfsUpdatePending
                           ? 'An OSTree deployment is already staged'
@@ -2051,15 +2078,22 @@ export default function System() {
                   <div>
                     <h4 className="text-sm font-semibold text-blue-950">System Image</h4>
                     <p className="mt-1 text-xs text-blue-800">
-                      RootFS deployment via OSTree
+                      {ostreeSupported ? 'RootFS deployment via OSTree' : 'Not available on this host'}
                     </p>
                   </div>
-                  <span className="inline-flex w-fit items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium text-blue-900 ring-1 ring-inset ring-blue-200">
-                    {rootfsUpdatePending
-                      ? 'Staged for reboot'
-                      : rootfsUpdateAvailable
-                        ? 'Update available'
-                        : 'Current'}
+                  <span
+                    className={[
+                      'inline-flex w-fit items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium ring-1 ring-inset',
+                      ostreeSupported ? 'text-blue-900 ring-blue-200' : 'text-gray-700 ring-gray-200',
+                    ].join(' ')}
+                  >
+                    {!ostreeSupported
+                      ? 'Unavailable'
+                      : rootfsUpdatePending
+                        ? 'Staged for reboot'
+                        : rootfsUpdateAvailable
+                          ? 'Update available'
+                          : 'Current'}
                   </span>
                 </div>
 
@@ -2069,11 +2103,15 @@ export default function System() {
                       Running
                     </dt>
                     <dd className="mt-1 font-mono text-gray-900">
-                      {deploymentVersionDisplay(ostreeBootedDeployment, rootfsComponent)}
+                      {ostreeSupported
+                        ? deploymentVersionDisplay(ostreeBootedDeployment, rootfsComponent)
+                        : 'Not managed'}
                     </dd>
                     <p className="mt-1 text-xs text-gray-600">
-                      {deploymentDetails(ostreeBootedDeployment) ||
-                        'Deployment details unavailable.'}
+                      {ostreeSupported
+                        ? deploymentDetails(ostreeBootedDeployment) ||
+                          'Deployment details unavailable.'
+                        : 'rpm-ostree is not installed.'}
                     </p>
                   </div>
                   <div className="rounded-md border border-blue-100 bg-white/80 p-3">
@@ -2081,12 +2119,16 @@ export default function System() {
                       {rootfsUpdatePending ? 'Next Boot' : 'Available'}
                     </dt>
                     <dd className="mt-1 font-mono text-gray-900">
-                      {rootfsUpdatePending
+                      {!ostreeSupported
+                        ? 'Unavailable'
+                        : rootfsUpdatePending
                         ? deploymentVersionDisplay(ostreeStagedDeployment)
                         : deploymentVersionDisplay(ostreeAvailableDeployment, rootfsComponent, 'remote')}
                     </dd>
                     <p className="mt-1 text-xs text-gray-600">
-                      {rootfsUpdatePending
+                      {!ostreeSupported
+                        ? 'System image updates are disabled for this host.'
+                        : rootfsUpdatePending
                         ? deploymentDetails(ostreeStagedDeployment) || 'Ready after reboot.'
                         : deploymentDetails(ostreeAvailableDeployment) ||
                           (rootfsUpdateAvailable ? 'Ready to apply.' : 'No update detected.')}
@@ -2097,12 +2139,14 @@ export default function System() {
                       Rollback
                     </dt>
                     <dd className="mt-1 font-mono text-gray-900">
-                      {ostreeRollbackDeployment
+                      {ostreeSupported && ostreeRollbackDeployment
                         ? deploymentVersionDisplay(ostreeRollbackDeployment)
                         : 'Not available'}
                     </dd>
                     <p className="mt-1 text-xs text-gray-600">
-                      {deploymentDetails(ostreeRollbackDeployment) || 'No rollback target reported.'}
+                      {ostreeSupported
+                        ? deploymentDetails(ostreeRollbackDeployment) || 'No rollback target reported.'
+                        : 'Rollback requires an OSTree deployment history.'}
                     </p>
                   </div>
                 </dl>
@@ -2113,11 +2157,16 @@ export default function System() {
                     {ostreeRef ? `:${ostreeRef}` : ''}.
                   </p>
                 )}
-                {ostreeStatus?.lastError && (
+                {!ostreeSupported ? (
+                  <div className="mt-3 rounded-md border border-gray-200 bg-white/80 px-3 py-2 text-xs text-gray-600">
+                    System image updates require an OSTree-based appliance image with
+                    rpm-ostree installed.
+                  </div>
+                ) : ostreeStatus?.lastError ? (
                   <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                     {ostreeStatus.lastError}
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
 
@@ -2274,12 +2323,15 @@ export default function System() {
                     onClick={handleDownloadRootfsUpdate}
                     disabled={
                       updateActionLoading ||
+                      !ostreeSupported ||
                       ostreeTransactionActive ||
                       !rootfsUpdateAvailable ||
                       rootfsUpdatePending
                     }
                     title={
-                      ostreeTransactionActive
+                      !ostreeSupported
+                        ? 'System image updates require rpm-ostree on this host'
+                        : ostreeTransactionActive
                         ? 'An OSTree transaction is already running'
                         : rootfsUpdatePending
                           ? 'An OSTree deployment is already staged'

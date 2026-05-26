@@ -919,6 +919,7 @@ export interface OstreeTransactionStatus {
 }
 
 export interface OstreeStatus {
+  supported?: boolean;
   updateAvailable?: boolean;
   rebootRequired?: boolean;
   supportsRollback?: boolean;
