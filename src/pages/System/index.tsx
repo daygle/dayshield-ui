@@ -27,7 +27,6 @@ import type {
   UpdateLogEntry,
   FirewallSettings,
   NetworkInterface,
-  RootfsUpdateMode,
   OstreeDeploymentSummary,
 } from '../../types';
 import Card from '../../components/Card';
@@ -102,7 +101,7 @@ const DEFAULT_FIREWALL_SETTINGS: FirewallSettings = {
   management_interface: null,
   management_allowed_sources: [],
   management_ports: [8443],
-  log_position: 'after',
+  log_position: 'before',
 };
 
 const DEFAULT_ADMIN_SECURITY: AdminSecuritySettings = {
@@ -171,21 +170,12 @@ function formatUpdateComponentName(component: string): string {
 }
 
 function inferRootfsUpdateMode(
-  updates?: Pick<
-    UpdatesStatus,
-    'rootfsUpdateMode' | 'settings' | 'ostreeStatus' | 'rootfsSlotStatus'
-  > | null,
-  settings?: Pick<
-    UpdateSettings,
-    'rootfsUpdateMode' | 'ostreeRemote' | 'ostreeRef' | 'enableRootfsAbUpdates'
-  > | null
-): RootfsUpdateMode {
-  if (settings?.rootfsUpdateMode) return settings.rootfsUpdateMode;
-  if (updates?.rootfsUpdateMode) return updates.rootfsUpdateMode;
-  if (updates?.settings.rootfsUpdateMode) return updates.settings.rootfsUpdateMode;
-  if (settings?.ostreeRemote || settings?.ostreeRef || updates?.ostreeStatus) return 'ostree';
-  if (settings?.enableRootfsAbUpdates ?? updates?.rootfsSlotStatus?.supported) return 'ab';
-  return 'legacy';
+  updates?: Pick<UpdatesStatus, 'rootfsUpdateMode' | 'settings' | 'ostreeStatus'> | null,
+  settings?: Pick<UpdateSettings, 'rootfsUpdateMode' | 'ostreeRemote' | 'ostreeRef'> | null
+): 'ostree' {
+  void updates;
+  void settings;
+  return 'ostree';
 }
 
 function deploymentVersionDisplay(
@@ -231,10 +221,6 @@ function formatDeploymentStatusLabel(value?: string): string {
 
 function formatOstreeTransactionState(state?: string): string {
   if (!state) return 'Idle';
-  return formatDeploymentStatusLabel(state);
-}
-
-function formatUpdateStateLabel(state?: string): string {
   return formatDeploymentStatusLabel(state);
 }
 
@@ -1074,50 +1060,35 @@ export default function System() {
       )
     : false;
   const rootfsComponent = updates?.components.find((comp) => comp.component === 'rootfs');
-  const rootfsUpdateAvailable = ostreeEnabled
-    ? Boolean(ostreeStatus?.updateAvailable ?? rootfsComponent?.updateAvailable)
-    : Boolean(rootfsComponent?.updateAvailable);
-  const rootfsUpdatePending = ostreeEnabled
-    ? Boolean(ostreeStagedDeployment) ||
-      OSTREE_ACTIVE_TRANSACTION_STATES.includes(ostreeTransactionState)
-    : updates?.rootfsUpdate?.status === 'staged' || updates?.rootfsUpdate?.status === 'booted';
-  const rootfsRollbackAvailable = ostreeEnabled
-    ? Boolean(
-        ostreeRollbackDeployment?.version ||
-        ostreeRollbackDeployment?.checksum ||
-        ostreeRollbackDeployment?.ref
-      )
-    : Boolean(updates?.rootfsUpdate?.previousSlot);
-  const rootfsStatusLabel = ostreeEnabled
-    ? deploymentVersionDisplay(ostreeBootedDeployment, rootfsComponent)
-    : updates?.rootfsUpdate?.status
-      ? formatUpdateStateLabel(updates.rootfsUpdate.status)
-      : 'Unavailable';
-  const rootfsStatusHint = ostreeEnabled
-    ? ostreeBootedDeployment
+  const rootfsUpdateAvailable = Boolean(ostreeStatus?.updateAvailable ?? rootfsComponent?.updateAvailable);
+  const rootfsUpdatePending =
+    Boolean(ostreeStagedDeployment) ||
+    OSTREE_ACTIVE_TRANSACTION_STATES.includes(ostreeTransactionState);
+  const rootfsRollbackAvailable = Boolean(
+    ostreeRollbackDeployment?.version ||
+      ostreeRollbackDeployment?.checksum ||
+      ostreeRollbackDeployment?.ref
+  );
+  const rootfsStatusLabel = deploymentVersionDisplay(ostreeBootedDeployment, rootfsComponent);
+  const rootfsStatusHint = ostreeBootedDeployment
+    ? [
+        'Currently booted deployment.',
+        deploymentDetails(ostreeBootedDeployment),
+        ostreeStatus?.lastError ? `Last error: ${ostreeStatus.lastError}` : null,
+      ]
+        .filter(Boolean)
+        .join(' ')
+    : rootfsComponent
       ? [
-          'Currently booted deployment.',
-          deploymentDetails(ostreeBootedDeployment),
-          ostreeStatus?.lastError ? `Last error: ${ostreeStatus.lastError}` : null,
+          `Current root filesystem deployment: ${componentCurrentDisplay(rootfsComponent)}.`,
+          rootfsComponent.currentCommit ? `Commit ${shortCommit(rootfsComponent.currentCommit)}.` : null,
+          rootfsComponent.remoteVersion ? `Available release: ${rootfsComponent.remoteVersion}.` : null,
         ]
           .filter(Boolean)
           .join(' ')
-      : 'OSTree deployment status has not loaded yet.'
-    : updates?.rootfsUpdate
-      ? [
-          `Rootfs Update State: ${formatUpdateStateLabel(updates.rootfsUpdate.status)}.`,
-          updates.rootfsUpdate.targetVersion
-            ? `Target version: v${updates.rootfsUpdate.targetVersion}.`
-            : null,
-          updates.rootfsUpdate.lastError ? `Last error: ${updates.rootfsUpdate.lastError}` : null,
-        ]
-          .filter(Boolean)
-          .join(' ')
-      : 'Root filesystem deployment status has not loaded yet.';
-  const updatesSubtitle = ostreeEnabled
-    ? 'Manage runtime packages and OSTree system deployments.'
-    : 'Manage updates for Core, Web UI, and Root Filesystem.';
-  const rootfsActionLabel = ostreeEnabled ? 'Stage OSTree Update' : 'Stage/Update Root Filesystem';
+      : 'OSTree deployment status has not loaded yet.';
+  const updatesSubtitle = 'Manage runtime packages and OSTree system deployments.';
+  const rootfsActionLabel = 'Stage OSTree Update';
 
   return (
     <div className="space-y-6">
@@ -1441,30 +1412,19 @@ export default function System() {
             <p className="text-sm text-gray-600">
               Choose whether DayShield checks for updates automatically and when it runs.
             </p>
-            {rootfsUpdateMode === 'ostree' ? (
-              <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
-                <p className="font-medium">OSTree system updates enabled</p>
-                <p className="mt-1 text-xs text-blue-800">
-                  Rootfs updates stage a new deployment and switch to it on the next reboot instead
-                  of rewriting the active deployment in place.
+            <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+              <p className="font-medium">OSTree system updates enabled</p>
+              <p className="mt-1 text-xs text-blue-800">
+                Rootfs updates stage a new deployment and switch to it on the next reboot instead
+                of rewriting the active deployment in place.
+              </p>
+              {(updateSettings.ostreeRemote || updateSettings.ostreeRef) && (
+                <p className="mt-2 text-xs text-blue-800">
+                  Tracking {updateSettings.ostreeRemote ?? 'default remote'}
+                  {updateSettings.ostreeRef ? `:${updateSettings.ostreeRef}` : ''}.
                 </p>
-                {(updateSettings.ostreeRemote || updateSettings.ostreeRef) && (
-                  <p className="mt-2 text-xs text-blue-800">
-                    Tracking {updateSettings.ostreeRemote ?? 'default remote'}
-                    {updateSettings.ostreeRef ? `:${updateSettings.ostreeRef}` : ''}.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                <p className="font-medium">Legacy rootfs update mode detected</p>
-                <p className="mt-1 text-xs text-amber-800">
-                  DayShield now standardizes on OSTree deployments. Set the backend update mode to{' '}
-                  <code className="font-mono">ostree</code> to use deployment-aware update
-                  and rollback behavior.
-                </p>
-              </div>
-            )}
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <input
                 id="upd-auto"
@@ -1693,22 +1653,14 @@ export default function System() {
             </div>
             <div>
               <dt className="text-gray-500">
-                {ostreeEnabled ? 'System Deployment' : 'Rootfs Deployment'}
+                System Deployment
               </dt>
               <dd
                 className={[
                   'font-medium',
-                  ostreeEnabled
-                    ? ostreeBootedDeployment
-                      ? 'text-green-700'
-                      : 'text-gray-400'
-                    : !updates?.rootfsUpdate
-                      ? 'text-gray-400'
-                      : rootfsUpdatePending
-                        ? 'text-amber-700'
-                        : updates?.rootfsUpdate?.lastError
-                          ? 'text-orange-700'
-                          : 'text-green-700',
+                  ostreeBootedDeployment
+                    ? 'text-green-700'
+                    : 'text-gray-400',
                 ].join(' ')}
                 title={rootfsStatusHint}
               >
@@ -1936,8 +1888,7 @@ export default function System() {
               </p>
             </div>
 
-            {ostreeEnabled && (
-              <div className="rounded border border-blue-200 bg-blue-50 p-4 space-y-3">
+            <div className="rounded border border-blue-200 bg-blue-50 p-4 space-y-3">
                 <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-blue-950">OSTree system deployment</p>
@@ -2013,7 +1964,6 @@ export default function System() {
                   </p>
                 )}
               </div>
-            )}
 
             {updateNotFoundHint && (
               <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900 space-y-2">
@@ -2032,21 +1982,15 @@ export default function System() {
                     const isRootfs = comp.component === 'rootfs';
                     const statusLabel = inferUpdateStatusLabel(comp);
                     const hasRemoteVersion = hasResolvedRemoteVersion(comp);
-                    const rootfsStatusText = ostreeEnabled
-                      ? rootfsUpdatePending
-                        ? 'Staged for reboot'
-                        : comp.updateAvailable
-                          ? 'Update Available'
-                          : 'Current'
+                    const rootfsStatusText = rootfsUpdatePending
+                      ? 'Staged for reboot'
                       : comp.updateAvailable
-                        ? 'Rebuild Required'
-                        : statusLabel;
+                        ? 'Update Available'
+                        : 'Current';
                     const statusClass = comp.validRepo
                       ? !hasRemoteVersion && !comp.updateAvailable
                         ? 'bg-gray-100 text-gray-600'
-                        : isRootfs && comp.updateAvailable && !ostreeEnabled
-                          ? 'bg-orange-100 text-orange-800'
-                          : comp.updateAvailable
+                        : comp.updateAvailable
                             ? 'bg-amber-100 text-amber-700'
                             : 'bg-green-100 text-green-700'
                       : 'bg-red-100 text-red-700';
@@ -2068,7 +2012,7 @@ export default function System() {
                     <div>
                       <dt className="inline text-gray-500">Version Installed: </dt>
                       <dd className="inline font-mono text-gray-800">
-                        {comp.component === 'rootfs' && ostreeEnabled
+                        {comp.component === 'rootfs'
                           ? deploymentVersionDisplay(ostreeBootedDeployment, comp)
                           : componentCurrentDisplay(comp)}
                       </dd>
@@ -2076,14 +2020,14 @@ export default function System() {
                     <div>
                       <dt className="inline text-gray-500">Latest Version: </dt>
                       <dd className="inline font-mono text-gray-800">
-                        {comp.component === 'rootfs' && ostreeEnabled
+                        {comp.component === 'rootfs'
                           ? rootfsUpdatePending
                             ? deploymentVersionDisplay(ostreeStagedDeployment)
                             : deploymentVersionDisplay(ostreeAvailableDeployment, comp, 'remote')
                           : componentRemoteDisplay(comp)}
                       </dd>
                     </div>
-                    {comp.component === 'rootfs' && ostreeEnabled && (
+                    {comp.component === 'rootfs' && (
                       <>
                         <div>
                           <dt className="inline text-gray-500">Deployment commit: </dt>
@@ -2111,14 +2055,6 @@ export default function System() {
                         )}
                       </>
                     )}
-                    {comp.component === 'rootfs' && !ostreeEnabled && updates.rootfsUpdate && (
-                      <div>
-                        <dt className="inline text-gray-500">Update State: </dt>
-                        <dd className="inline font-mono text-gray-800">
-                          {formatUpdateStateLabel(updates.rootfsUpdate.status)}
-                        </dd>
-                      </div>
-                    )}
                     {/* Show last applied version if available */}
                     {comp.lastAppliedVersion && (
                       <div>
@@ -2127,15 +2063,6 @@ export default function System() {
                         </dt>
                         <dd className="inline font-mono text-gray-800">
                           {comp.lastAppliedVersion}
-                        </dd>
-                      </div>
-                    )}
-                    {/* Show rollback commit if available */}
-                    {comp.rollbackCommit && !ostreeEnabled && (
-                      <div>
-                        <dt className="inline text-gray-500">Rollback target: </dt>
-                        <dd className="inline font-mono text-gray-800">
-                          {shortCommit(comp.rollbackCommit)}
                         </dd>
                       </div>
                     )}
@@ -2165,28 +2092,9 @@ export default function System() {
               ))}
             </div>
 
-            {!ostreeEnabled && updates.rootfsSlotStatus && !updates.rootfsSlotStatus.supported && (
-              <div className="rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
-                <p className="font-medium">Legacy rootfs metadata unavailable.</p>
-                <p className="mt-1">
-                  {updates.rootfsSlotStatus.reason ?? 'Required rootfs metadata was not detected.'}
-                </p>
-                {updates.rootfsUpdate && (
-                  <p className="mt-1 text-xs">
-                    Rootfs update status: {updates.rootfsUpdate.status}
-                    {updates.rootfsUpdate.targetVersion
-                      ? `, target v${updates.rootfsUpdate.targetVersion}`
-                      : ''}
-                  </p>
-                )}
-              </div>
-            )}
-
             {updates.pendingReboot && (
               <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
-                {ostreeEnabled
-                  ? 'A reboot is required to boot into the staged OSTree deployment.'
-                  : 'A reboot is pending to finalize applied updates.'}
+                A reboot is required to boot into the staged OSTree deployment.
               </div>
             )}
 
@@ -2393,16 +2301,12 @@ export default function System() {
                     onClick={handleRollbackRootfs}
                     disabled={updateActionLoading || !rootfsRollbackAvailable}
                     title={
-                      ostreeEnabled
-                        ? rootfsRollbackAvailable
-                          ? 'Switch the next boot to the previous OSTree deployment'
-                          : 'No rollback deployment recorded'
-                        : updates.rootfsUpdate?.previousSlot
-                          ? 'Schedule rollback to the previously prepared rootfs state'
-                          : 'No previous rootfs state recorded'
+                      rootfsRollbackAvailable
+                        ? 'Switch the next boot to the previous OSTree deployment'
+                        : 'No rollback deployment recorded'
                     }
                   >
-                    {ostreeEnabled ? 'Rollback OSTree Deployment' : 'Rollback Rootfs'}
+                    Rollback OSTree Deployment
                   </Button>
                 </div>
               </details>

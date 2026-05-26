@@ -93,7 +93,7 @@ const defaultSettings: FirewallSettings = {
   management_interface: null,
   management_allowed_sources: [],
   management_ports: [22, 443, 8443],
-  log_position: 'after',
+  log_position: 'before',
 };
 
 function actionBadge(action: FirewallRule['action']) {
@@ -1453,7 +1453,7 @@ export default function Firewall() {
                         className="col-span-2"
                         label="Log packets before or after action"
                         as="select"
-                        value={settings.log_position ?? 'after'}
+                        value={settings.log_position ?? 'before'}
                         onChange={(e) =>
                           setSettings({
                             ...settings,

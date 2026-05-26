@@ -15,8 +15,6 @@ import type {
   SecurityStatus,
   AcmeStatus,
   ComponentUpdateStatus,
-  RootfsSlotStatus,
-  RootfsUpdateState,
   OstreeDeploymentSummary,
   OstreeStatus,
   OstreeTransactionStatus,
@@ -85,17 +83,14 @@ function asStringArray(value: unknown): string[] | undefined {
 
 function normalizeRootfsUpdateMode(value: unknown): RootfsUpdateMode | undefined {
   const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  if (normalized === 'ostree' || normalized === 'ab' || normalized === 'legacy') {
+  if (normalized === 'ostree') {
     return normalized;
   }
   if (normalized === 'ostree_update' || normalized === 'ostree-update' || normalized === 'ostree_deployment') {
     return 'ostree';
   }
-  if (normalized === 'rootfs_ab' || normalized === 'a/b' || normalized === 'primary-secondary') {
-    return 'ab';
-  }
   if (normalized === 'classic' || normalized === 'artifact') {
-    return 'legacy';
+    return 'ostree';
   }
   return undefined;
 }
@@ -280,10 +275,9 @@ function normalizeUpdateSettings(raw: unknown): UpdateSettings {
     encryptUpdateConfigBackups: asBoolean(
       value.encryptUpdateConfigBackups ?? value.encrypt_update_config_backups
     ),
-    enableRootfsAbUpdates: asBoolean(value.enableRootfsAbUpdates ?? value.enable_rootfs_ab_updates),
     rootfsUpdateMode: normalizeRootfsUpdateMode(
       value.rootfsUpdateMode ?? value.rootfs_update_mode ?? value.updateMode ?? value.update_mode
-    ),
+    ) ?? 'ostree',
     ostreeRemote: asString(value.ostreeRemote ?? value.ostree_remote),
     ostreeRef: asString(value.ostreeRef ?? value.ostree_ref),
     ostreeRemoteUrl: asString(value.ostreeRemoteUrl ?? value.ostree_remote_url),
@@ -323,35 +317,6 @@ function normalizeComponentUpdateStatus(raw: unknown): ComponentUpdateStatus {
     rollbackVersion: asString(value.rollbackVersion ?? value.rollback_version),
     lastAppliedCommit: asString(value.lastAppliedCommit ?? value.last_applied_commit),
     lastAppliedVersion: asString(value.lastAppliedVersion ?? value.last_applied_version),
-    lastError: asString(value.lastError ?? value.last_error),
-  };
-}
-
-function normalizeRootfsSlotStatus(raw: unknown): RootfsSlotStatus | undefined {
-  if (!raw) return undefined;
-  const value = asRecord(raw);
-  return {
-    supported: Boolean(value.supported),
-    activeSlot: asString(value.activeSlot ?? value.active_slot),
-    inactiveSlot: asString(value.inactiveSlot ?? value.inactive_slot),
-    bootUuid: asString(value.bootUuid ?? value.boot_uuid),
-    slotAUuid: asString(value.slotAUuid ?? value.slot_a_uuid),
-    slotBUuid: asString(value.slotBUuid ?? value.slot_b_uuid),
-    reason: asString(value.reason),
-  };
-}
-
-function normalizeRootfsUpdate(raw: unknown): RootfsUpdateState | undefined {
-  if (!raw) return undefined;
-  const value = asRecord(raw);
-  return {
-    status: asString(value.status) ?? 'unknown',
-    targetSlot: asString(value.targetSlot ?? value.target_slot),
-    previousSlot: asString(value.previousSlot ?? value.previous_slot),
-    targetVersion: asString(value.targetVersion ?? value.target_version),
-    preparedAt: asString(value.preparedAt ?? value.prepared_at),
-    bootedAt: asString(value.bootedAt ?? value.booted_at),
-    confirmedAt: asString(value.confirmedAt ?? value.confirmed_at),
     lastError: asString(value.lastError ?? value.last_error),
   };
 }
@@ -477,7 +442,7 @@ function normalizeUpdatesStatus(raw: unknown): UpdatesStatus {
         value.rootfs_update_mode ??
         settings.rootfsUpdateMode ??
         (ostreeStatus ? 'ostree' : undefined)
-    ) ?? (ostreeStatus ? 'ostree' : settings.enableRootfsAbUpdates ? 'ab' : 'legacy');
+    ) ?? 'ostree';
 
   return {
     settings: {
@@ -504,8 +469,6 @@ function normalizeUpdatesStatus(raw: unknown): UpdatesStatus {
     applianceRebuildMarkedAt: asString(
       value.applianceRebuildMarkedAt ?? value.appliance_rebuild_marked_at
     ),
-    rootfsSlotStatus: normalizeRootfsSlotStatus(value.rootfsSlotStatus ?? value.rootfs_slot_status),
-    rootfsUpdate: normalizeRootfsUpdate(value.rootfsUpdate ?? value.rootfs_update),
     ostreeStatus,
     components: componentsRaw.map(normalizeComponentUpdateStatus),
     availableUpdateCount: asNumber(value.availableUpdateCount ?? value.available_update_count),

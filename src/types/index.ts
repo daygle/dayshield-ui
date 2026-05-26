@@ -807,7 +807,7 @@ export interface SystemSchedules {
 }
 
 export type UpdateComponent = 'core' | 'ui' | 'rootfs' | 'both';
-export type RootfsUpdateMode = 'legacy' | 'ab' | 'ostree';
+export type RootfsUpdateMode = 'ostree';
 
 export type UpdateScheduleFrequency = 'daily' | 'weekly' | 'monthly';
 export type UpdateScheduleWeekday =
@@ -830,7 +830,6 @@ export interface UpdateSettings {
   registryUrl?: string;
   verifyArtifactSignatures?: boolean;
   encryptUpdateConfigBackups?: boolean;
-  enableRootfsAbUpdates?: boolean;
   rootfsUpdateMode?: RootfsUpdateMode;
   ostreeRemote?: string;
   ostreeRef?: string;
@@ -893,34 +892,11 @@ export interface UpdatesStatus {
   pendingApplianceRebuild: boolean;
   applianceRebuildReason?: string;
   applianceRebuildMarkedAt?: string;
-  rootfsSlotStatus?: RootfsSlotStatus;
-  rootfsUpdate?: RootfsUpdateState;
   ostreeStatus?: OstreeStatus;
   components: ComponentUpdateStatus[];
   /** Number of components with available updates (read-only, computed server-side) */
   availableUpdateCount?: number;
   operationLogs?: UpdateLogEntry[];
-}
-
-export interface RootfsSlotStatus {
-  supported: boolean;
-  activeSlot?: string;
-  inactiveSlot?: string;
-  bootUuid?: string;
-  slotAUuid?: string;
-  slotBUuid?: string;
-  reason?: string;
-}
-
-export interface RootfsUpdateState {
-  status: string;
-  targetSlot?: string;
-  previousSlot?: string;
-  targetVersion?: string;
-  preparedAt?: string;
-  bootedAt?: string;
-  confirmedAt?: string;
-  lastError?: string;
 }
 
 export interface OstreeDeploymentSummary {

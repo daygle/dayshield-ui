@@ -209,7 +209,7 @@ function AIFirewallAutomationContent({
 
     try {
       const res = await getFirewallSettings();
-      setFirewallLogPosition(res.data?.log_position ?? 'after');
+      setFirewallLogPosition(res.data?.log_position ?? 'before');
     } catch (err) {
       setFirewallLogPositionError(
         err instanceof Error ? err.message : 'Failed to load firewall log position'
