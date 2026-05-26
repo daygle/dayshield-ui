@@ -220,13 +220,22 @@ function deploymentDetails(deployment?: OstreeDeploymentSummary): string {
   return parts.join(' • ');
 }
 
-function formatOstreeTransactionState(state?: string): string {
-  if (!state) return 'Idle';
-  return state
+function formatDeploymentStatusLabel(value?: string): string {
+  if (!value) return 'Unknown';
+  return value
     .split(/[_\s-]+/)
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+function formatOstreeTransactionState(state?: string): string {
+  if (!state) return 'Idle';
+  return formatDeploymentStatusLabel(state);
+}
+
+function formatUpdateStateLabel(state?: string): string {
+  return formatDeploymentStatusLabel(state);
 }
 
 function ntpServersWithDefault(servers?: string[] | null): string[] {
@@ -1082,7 +1091,7 @@ export default function System() {
   const rootfsStatusLabel = ostreeEnabled
     ? deploymentVersionDisplay(ostreeBootedDeployment, rootfsComponent)
     : updates?.rootfsUpdate?.status
-      ? formatOstreeTransactionState(updates.rootfsUpdate.status)
+      ? formatUpdateStateLabel(updates.rootfsUpdate.status)
       : 'Unavailable';
   const rootfsStatusHint = ostreeEnabled
     ? ostreeBootedDeployment
@@ -1096,7 +1105,7 @@ export default function System() {
       : 'OSTree deployment status has not loaded yet.'
     : updates?.rootfsUpdate
       ? [
-          `Latest rootfs update state: ${updates.rootfsUpdate.status}.`,
+          `Rootfs Update State: ${formatUpdateStateLabel(updates.rootfsUpdate.status)}.`,
           updates.rootfsUpdate.targetVersion
             ? `Target version: v${updates.rootfsUpdate.targetVersion}.`
             : null,
@@ -1450,8 +1459,8 @@ export default function System() {
               <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                 <p className="font-medium">Legacy rootfs update mode detected</p>
                 <p className="mt-1 text-xs text-amber-800">
-                  DayShield now standardizes on OSTree deployments. Configure the backend update
-                  mode as <span className="font-mono">ostree</span> to use deployment-aware update
+                  DayShield now standardizes on OSTree deployments. Set the backend update mode to{' '}
+                  <code className="font-mono">ostree</code> to use deployment-aware update
                   and rollback behavior.
                 </p>
               </div>
@@ -2104,9 +2113,9 @@ export default function System() {
                     )}
                     {comp.component === 'rootfs' && !ostreeEnabled && updates.rootfsUpdate && (
                       <div>
-                        <dt className="inline text-gray-500">Update state: </dt>
+                        <dt className="inline text-gray-500">Update State: </dt>
                         <dd className="inline font-mono text-gray-800">
-                          {updates.rootfsUpdate.status}
+                          {formatUpdateStateLabel(updates.rootfsUpdate.status)}
                         </dd>
                       </div>
                     )}
