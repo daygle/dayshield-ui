@@ -9,6 +9,8 @@ import {
   getUpdateSettings,
   updateUpdateSettings,
   checkForUpdates,
+  applyOstreeUpdate,
+  stageOstreeUpdate,
   applyUpdates,
   rollbackUpdates,
   validateUpdates,
@@ -163,19 +165,10 @@ function formatUpdateComponentName(component: string): string {
     case 'ui':
       return 'Web UI';
     case 'rootfs':
-      return 'Root Filesystem';
+      return 'System Image';
     default:
       return component.charAt(0).toUpperCase() + component.slice(1);
   }
-}
-
-function inferRootfsUpdateMode(
-  updates?: Pick<UpdatesStatus, 'rootfsUpdateMode' | 'settings' | 'ostreeStatus'> | null,
-  settings?: Pick<UpdateSettings, 'rootfsUpdateMode' | 'ostreeRemote' | 'ostreeRef'> | null
-): 'ostree' {
-  void updates;
-  void settings;
-  return 'ostree';
 }
 
 function deploymentVersionDisplay(
@@ -709,6 +702,23 @@ export default function System() {
     setEditOpen(true);
   };
 
+  const mergeOstreeIntoUpdates = (ostreeStatus: UpdatesStatus['ostreeStatus']) => {
+    if (!ostreeStatus) return;
+    setUpdates((prev) =>
+      prev
+        ? {
+            ...prev,
+            rootfsUpdateMode: 'ostree',
+            ostreeStatus,
+            pendingReboot:
+              prev.pendingReboot ||
+              Boolean(ostreeStatus.rebootRequired) ||
+              Boolean(ostreeStatus.stagedDeployment),
+          }
+        : prev
+    );
+  };
+
   const loadAll = () => {
     setLoading(true);
     Promise.all([
@@ -889,15 +899,21 @@ export default function System() {
   const handleStageRootfsUpdate = () => {
     setUpdateActionLoading(true);
     setUpdateActionMessage(null);
-    applyUpdates('rootfs')
+    applyOstreeUpdate()
       .then((res) => {
-        setUpdates(res.data.status);
-        if (
-          res.data.message.toLowerCase().includes('progress is available in update status logs')
-        ) {
-          setUpdateActionMessage(null);
-          return;
-        }
+        mergeOstreeIntoUpdates(res.data.status);
+        setUpdateActionMessage(res.data.message);
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setUpdateActionLoading(false));
+  };
+
+  const handleDownloadRootfsUpdate = () => {
+    setUpdateActionLoading(true);
+    setUpdateActionMessage(null);
+    stageOstreeUpdate()
+      .then((res) => {
+        mergeOstreeIntoUpdates(res.data.status);
         setUpdateActionMessage(res.data.message);
       })
       .catch((err: Error) => setError(err.message))
@@ -913,18 +929,6 @@ export default function System() {
     setUpdateActionLoading(true);
     setUpdateActionMessage(null);
     rollbackUpdates('both')
-      .then((res) => {
-        setUpdates(res.data.status);
-        setUpdateActionMessage(res.data.message);
-      })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setUpdateActionLoading(false));
-  };
-
-  const handleRollbackRootfs = () => {
-    setUpdateActionLoading(true);
-    setUpdateActionMessage(null);
-    rollbackUpdates('rootfs')
       .then((res) => {
         setUpdates(res.data.status);
         setUpdateActionMessage(res.data.message);
@@ -1035,9 +1039,7 @@ export default function System() {
   }
 
   const updateNotFoundHint = updates ? detectUpdateNotFoundHint(updates.components) : null;
-  const rootfsUpdateMode = inferRootfsUpdateMode(updates, updateSettings);
   const ostreeStatus = updates?.ostreeStatus;
-  const ostreeEnabled = rootfsUpdateMode === 'ostree';
   const ostreeBootedDeployment = ostreeStatus?.bootedDeployment;
   const ostreeAvailableDeployment = ostreeStatus?.availableDeployment;
   const ostreeStagedDeployment = ostreeStatus?.stagedDeployment;
@@ -1049,10 +1051,8 @@ export default function System() {
   const ostreeRemote =
     ostreeStatus?.remote ?? updates?.settings.ostreeRemote ?? updateSettings?.ostreeRemote;
   const ostreeRef = ostreeStatus?.ref ?? updates?.settings.ostreeRef ?? updateSettings?.ostreeRef;
-  const runtimeUpdateCount = updates
-    ? updates.components.filter((comp) => comp.component !== 'rootfs' && comp.updateAvailable)
-        .length
-    : 0;
+  const runtimeComponents = updates?.components.filter((comp) => comp.component !== 'rootfs') ?? [];
+  const runtimeUpdateCount = runtimeComponents.filter((comp) => comp.updateAvailable).length;
   const runtimeRollbackAvailable = updates
     ? updates.components.some(
         (comp) =>
@@ -1064,11 +1064,6 @@ export default function System() {
   const rootfsUpdatePending =
     Boolean(ostreeStagedDeployment) ||
     OSTREE_ACTIVE_TRANSACTION_STATES.includes(ostreeTransactionState);
-  const rootfsRollbackAvailable = Boolean(
-    ostreeRollbackDeployment?.version ||
-      ostreeRollbackDeployment?.checksum ||
-      ostreeRollbackDeployment?.ref
-  );
   const rootfsStatusLabel = deploymentVersionDisplay(ostreeBootedDeployment, rootfsComponent);
   const rootfsStatusHint = ostreeBootedDeployment
     ? [
@@ -1087,8 +1082,8 @@ export default function System() {
           .filter(Boolean)
           .join(' ')
       : 'OSTree deployment status has not loaded yet.';
-  const updatesSubtitle = 'Manage runtime packages and OSTree system deployments.';
-  const rootfsActionLabel = 'Stage OSTree Update';
+  const updatesSubtitle = 'Update DayShield services and the bootable system image.';
+  const rootfsActionLabel = rootfsUpdatePending ? 'Staged for Reboot' : 'Apply System Image';
 
   return (
     <div className="space-y-6">
@@ -1878,92 +1873,90 @@ export default function System() {
             </button>
           }
         >
-          <div className="space-y-4">
-            <div className="rounded border border-gray-200 p-3 bg-gray-50">
-              <p className="text-gray-500 text-sm">Automatic Update Check</p>
-              <p className="font-medium text-gray-900">
-                {updates.settings.autoCheckEnabled
-                  ? formatUpdateSchedule(updates.settings)
-                  : 'Disabled'}
-              </p>
-            </div>
-
-            <div className="rounded border border-blue-200 bg-blue-50 p-4 space-y-3">
-                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+              <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                   <div>
-                    <p className="text-sm font-semibold text-blue-950">OSTree system deployment</p>
-                    <p className="text-xs text-blue-800">
-                      Stage a new deployment, reboot into it, and keep the previous deployment
-                      available for rollback.
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Available
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-gray-900">
+                      {runtimeUpdateCount + Number(rootfsUpdateAvailable)}
                     </p>
                   </div>
-                  <span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium text-blue-900 ring-1 ring-inset ring-blue-200">
-                    {rootfsUpdatePending
-                      ? 'Staged for reboot'
-                      : rootfsUpdateAvailable
-                        ? 'Update available'
-                        : 'Current deployment active'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3 text-sm">
-                  <div className="rounded border border-blue-100 bg-white/70 p-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-blue-700">
-                      Current deployed version
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Auto Check
                     </p>
-                    <p className="mt-1 font-mono text-gray-900">
-                      {deploymentVersionDisplay(ostreeBootedDeployment, rootfsComponent)}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-600">
-                      {deploymentDetails(ostreeBootedDeployment) ||
-                        'Booted deployment details unavailable.'}
+                    <p className="mt-1 text-sm font-medium text-gray-900">
+                      {updates.settings.autoCheckEnabled
+                        ? formatUpdateSchedule(updates.settings)
+                        : 'Disabled'}
                     </p>
                   </div>
-                  <div className="rounded border border-blue-100 bg-white/70 p-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-blue-700">
-                      {rootfsUpdatePending ? 'Staged deployment' : 'Available update'}
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Last Checked
                     </p>
-                    <p className="mt-1 font-mono text-gray-900">
-                      {rootfsUpdatePending
-                        ? deploymentVersionDisplay(ostreeStagedDeployment)
-                        : deploymentVersionDisplay(
-                            ostreeAvailableDeployment,
-                            rootfsComponent,
-                            'remote'
-                          )}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-600">
-                      {rootfsUpdatePending
-                        ? deploymentDetails(ostreeStagedDeployment) || 'Ready after reboot.'
-                        : deploymentDetails(ostreeAvailableDeployment) ||
-                          (rootfsUpdateAvailable
-                            ? 'An OSTree deployment is ready to stage.'
-                            : 'No staged or available deployment detected.')}
+                    <p className="mt-1 text-sm font-medium text-gray-900">
+                      {updates.lastCheckedAt ? formatDateTime(updates.lastCheckedAt) : 'Never'}
                     </p>
                   </div>
-                  <div className="rounded border border-blue-100 bg-white/70 p-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-blue-700">
-                      Rollback target
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Reboot
                     </p>
-                    <p className="mt-1 font-mono text-gray-900">
-                      {ostreeRollbackDeployment
-                        ? deploymentVersionDisplay(ostreeRollbackDeployment)
-                        : 'Not available'}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-600">
-                      {deploymentDetails(ostreeRollbackDeployment) ||
-                        'Rollback deployment details unavailable.'}
+                    <p className="mt-1 text-sm font-medium text-gray-900">
+                      {updates.pendingReboot || rootfsUpdatePending ? 'Required' : 'Not required'}
                     </p>
                   </div>
                 </div>
-
-                {(ostreeRemote || ostreeRef) && (
-                  <p className="text-xs text-blue-800">
-                    Tracking {ostreeRemote ?? 'default remote'}
-                    {ostreeRef ? `:${ostreeRef}` : ''}.
-                  </p>
-                )}
               </div>
+
+              <div className="rounded-md border border-gray-200 bg-white px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" onClick={handleCheckUpdates} disabled={updateActionLoading}>
+                    Check Now
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleApplyUpdates}
+                    disabled={updateActionLoading || runtimeUpdateCount === 0}
+                    title={
+                      runtimeUpdateCount > 1
+                        ? `Update Core/UI (${runtimeUpdateCount} updates available)`
+                        : runtimeUpdateCount === 1
+                          ? 'Update Core/UI (1 update available)'
+                          : 'No Core/UI updates available'
+                    }
+                  >
+                    Update Core/UI
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleStageRootfsUpdate}
+                    disabled={
+                      updateActionLoading ||
+                      ostreeTransactionActive ||
+                      !rootfsUpdateAvailable ||
+                      rootfsUpdatePending
+                    }
+                    title={
+                      ostreeTransactionActive
+                        ? 'An OSTree transaction is already running'
+                        : rootfsUpdatePending
+                          ? 'An OSTree deployment is already staged'
+                          : rootfsUpdateAvailable
+                            ? 'Apply the next OSTree deployment'
+                            : 'No system image update available'
+                    }
+                  >
+                    {rootfsActionLabel}
+                  </Button>
+                </div>
+              </div>
+            </div>
 
             {updateNotFoundHint && (
               <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900 space-y-2">
@@ -1975,121 +1968,157 @@ export default function System() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {updates.components.map((comp) => (
-                <div key={comp.component} className="rounded border border-gray-200 p-3">
-                  {(() => {
-                    const isRootfs = comp.component === 'rootfs';
-                    const statusLabel = inferUpdateStatusLabel(comp);
-                    const hasRemoteVersion = hasResolvedRemoteVersion(comp);
-                    const rootfsStatusText = rootfsUpdatePending
-                      ? 'Staged for reboot'
-                      : comp.updateAvailable
-                        ? 'Update Available'
-                        : 'Current';
-                    const statusClass = comp.validRepo
-                      ? !hasRemoteVersion && !comp.updateAvailable
-                        ? 'bg-gray-100 text-gray-600'
-                        : comp.updateAvailable
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-green-100 text-green-700'
-                      : 'bg-red-100 text-red-700';
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-gray-900">Runtime Components</h4>
+                  <span className="text-xs text-gray-500">Core and Web UI</span>
+                </div>
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  {runtimeComponents.map((comp) => (
+                    <div key={comp.component} className="rounded-md border border-gray-200 p-4">
+                      {(() => {
+                        const statusLabel = inferUpdateStatusLabel(comp);
+                        const hasRemoteVersion = hasResolvedRemoteVersion(comp);
+                        const statusClass = comp.validRepo
+                          ? !hasRemoteVersion && !comp.updateAvailable
+                            ? 'bg-gray-100 text-gray-600'
+                            : comp.updateAvailable
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700';
 
-                    return (
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-gray-900">
-                          {formatUpdateComponentName(comp.component)}
-                        </h4>
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusClass}`}
-                        >
-                          {isRootfs ? rootfsStatusText : statusLabel}
-                        </span>
-                      </div>
-                    );
-                  })()}
-                  <dl className="mt-2 space-y-1 text-xs text-gray-600">
-                    <div>
-                      <dt className="inline text-gray-500">Version Installed: </dt>
-                      <dd className="inline font-mono text-gray-800">
-                        {comp.component === 'rootfs'
-                          ? deploymentVersionDisplay(ostreeBootedDeployment, comp)
-                          : componentCurrentDisplay(comp)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="inline text-gray-500">Latest Version: </dt>
-                      <dd className="inline font-mono text-gray-800">
-                        {comp.component === 'rootfs'
-                          ? rootfsUpdatePending
-                            ? deploymentVersionDisplay(ostreeStagedDeployment)
-                            : deploymentVersionDisplay(ostreeAvailableDeployment, comp, 'remote')
-                          : componentRemoteDisplay(comp)}
-                      </dd>
-                    </div>
-                    {comp.component === 'rootfs' && (
-                      <>
-                        <div>
-                          <dt className="inline text-gray-500">Deployment commit: </dt>
-                          <dd className="inline font-mono text-gray-800">
-                            {shortChecksum(
-                              ostreeBootedDeployment?.checksum ?? rootfsComponent?.currentCommit
-                            )}
-                          </dd>
-                        </div>
-                        {ostreeStagedDeployment && (
-                          <div>
-                            <dt className="inline text-gray-500">Staged deployment: </dt>
-                            <dd className="inline font-mono text-gray-800">
-                              {deploymentVersionDisplay(ostreeStagedDeployment)}
-                            </dd>
-                          </div>
-                        )}
-                        {(ostreeRef || ostreeBootedDeployment?.ref) && (
-                          <div>
-                            <dt className="inline text-gray-500">Tracked ref: </dt>
-                            <dd className="inline font-mono text-gray-800">
-                              {ostreeRef ?? ostreeBootedDeployment?.ref}
-                            </dd>
-                          </div>
-                        )}
-                      </>
-                    )}
-                    {/* Show last applied version if available */}
-                    {comp.lastAppliedVersion && (
-                      <div>
-                        <dt className="inline text-gray-500">
-                          {comp.component === 'rootfs' ? 'Last acknowledged: ' : 'Last installed: '}
-                        </dt>
-                        <dd className="inline font-mono text-gray-800">
-                          {comp.lastAppliedVersion}
-                        </dd>
-                      </div>
-                    )}
-                    {comp.component === 'rootfs' && ostreeRollbackDeployment && (
-                      <div>
-                        <dt className="inline text-gray-500">Rollback target: </dt>
-                        <dd className="inline font-mono text-gray-800">
-                          {deploymentVersionDisplay(ostreeRollbackDeployment)}
-                        </dd>
-                      </div>
-                    )}
-                    {comp.lastError &&
-                      (() => {
-                        const parsed = parseComponentError(comp.lastError);
-                        const simplified = simplifyErrorMessage(parsed.message);
                         return (
-                          <div className="mt-2 rounded bg-red-50 border border-red-200 p-2">
-                            <div className="text-xs font-medium text-red-700">
-                              Update Check Failed
-                            </div>
-                            <div className="text-xs text-red-600 mt-1">{simplified}</div>
+                          <div className="flex items-center justify-between gap-3">
+                            <h5 className="text-sm font-semibold text-gray-900">
+                              {formatUpdateComponentName(comp.component)}
+                            </h5>
+                            <span
+                              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}
+                            >
+                              {statusLabel}
+                            </span>
                           </div>
                         );
                       })()}
-                  </dl>
+                      <dl className="mt-3 grid grid-cols-1 gap-2 text-xs text-gray-600 sm:grid-cols-2">
+                        <div>
+                          <dt className="text-gray-500">Installed</dt>
+                          <dd className="mt-0.5 font-mono text-gray-900">
+                            {componentCurrentDisplay(comp)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-500">Available</dt>
+                          <dd className="mt-0.5 font-mono text-gray-900">
+                            {componentRemoteDisplay(comp)}
+                          </dd>
+                        </div>
+                        {comp.lastAppliedVersion && (
+                          <div className="sm:col-span-2">
+                            <dt className="text-gray-500">Last Installed</dt>
+                            <dd className="mt-0.5 font-mono text-gray-900">
+                              {comp.lastAppliedVersion}
+                            </dd>
+                          </div>
+                        )}
+                      </dl>
+                      {comp.lastError &&
+                        (() => {
+                          const parsed = parseComponentError(comp.lastError);
+                          const simplified = simplifyErrorMessage(parsed.message);
+                          return (
+                            <div className="mt-3 rounded bg-red-50 border border-red-200 p-2">
+                              <div className="text-xs font-medium text-red-700">
+                                Update Check Failed
+                              </div>
+                              <div className="mt-1 text-xs text-red-600">{simplified}</div>
+                            </div>
+                          );
+                        })()}
+                    </div>
+                  ))}
+                  {runtimeComponents.length === 0 && (
+                    <div className="rounded-md border border-gray-200 px-4 py-6 text-sm text-gray-500">
+                      Runtime component status is unavailable.
+                    </div>
+                  )}
                 </div>
-              ))}
+              </div>
+
+              <div className="rounded-md border border-blue-200 bg-blue-50 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold text-blue-950">System Image</h4>
+                    <p className="mt-1 text-xs text-blue-800">
+                      RootFS deployment via OSTree
+                    </p>
+                  </div>
+                  <span className="inline-flex w-fit items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium text-blue-900 ring-1 ring-inset ring-blue-200">
+                    {rootfsUpdatePending
+                      ? 'Staged for reboot'
+                      : rootfsUpdateAvailable
+                        ? 'Update available'
+                        : 'Current'}
+                  </span>
+                </div>
+
+                <dl className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
+                  <div className="rounded-md border border-blue-100 bg-white/80 p-3">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-blue-700">
+                      Running
+                    </dt>
+                    <dd className="mt-1 font-mono text-gray-900">
+                      {deploymentVersionDisplay(ostreeBootedDeployment, rootfsComponent)}
+                    </dd>
+                    <p className="mt-1 text-xs text-gray-600">
+                      {deploymentDetails(ostreeBootedDeployment) ||
+                        'Deployment details unavailable.'}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-blue-100 bg-white/80 p-3">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-blue-700">
+                      {rootfsUpdatePending ? 'Next Boot' : 'Available'}
+                    </dt>
+                    <dd className="mt-1 font-mono text-gray-900">
+                      {rootfsUpdatePending
+                        ? deploymentVersionDisplay(ostreeStagedDeployment)
+                        : deploymentVersionDisplay(ostreeAvailableDeployment, rootfsComponent, 'remote')}
+                    </dd>
+                    <p className="mt-1 text-xs text-gray-600">
+                      {rootfsUpdatePending
+                        ? deploymentDetails(ostreeStagedDeployment) || 'Ready after reboot.'
+                        : deploymentDetails(ostreeAvailableDeployment) ||
+                          (rootfsUpdateAvailable ? 'Ready to apply.' : 'No update detected.')}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-blue-100 bg-white/80 p-3">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-blue-700">
+                      Rollback
+                    </dt>
+                    <dd className="mt-1 font-mono text-gray-900">
+                      {ostreeRollbackDeployment
+                        ? deploymentVersionDisplay(ostreeRollbackDeployment)
+                        : 'Not available'}
+                    </dd>
+                    <p className="mt-1 text-xs text-gray-600">
+                      {deploymentDetails(ostreeRollbackDeployment) || 'No rollback target reported.'}
+                    </p>
+                  </div>
+                </dl>
+
+                {(ostreeRemote || ostreeRef) && (
+                  <p className="mt-3 text-xs text-blue-800">
+                    Tracking {ostreeRemote ?? 'default remote'}
+                    {ostreeRef ? `:${ostreeRef}` : ''}.
+                  </p>
+                )}
+                {ostreeStatus?.lastError && (
+                  <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    {ostreeStatus.lastError}
+                  </div>
+                )}
+              </div>
             </div>
 
             {updates.pendingReboot && (
@@ -2229,48 +2258,6 @@ export default function System() {
             </div>
 
             <div className="flex flex-wrap gap-2 items-start">
-              <Button size="sm" onClick={handleCheckUpdates} disabled={updateActionLoading}>
-                Check Now
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleApplyUpdates}
-                disabled={updateActionLoading || runtimeUpdateCount === 0}
-                title={
-                  runtimeUpdateCount > 1
-                    ? `Update Core/UI (${runtimeUpdateCount} updates available)`
-                    : runtimeUpdateCount === 1
-                      ? 'Update Core/UI (1 update available)'
-                      : 'No Core/UI updates available'
-                }
-              >
-                Update Core/UI
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleStageRootfsUpdate}
-                disabled={
-                  updateActionLoading ||
-                  !rootfsUpdateAvailable ||
-                  rootfsUpdatePending
-                }
-                title={
-                  !rootfsUpdateAvailable
-                    ? ostreeEnabled
-                      ? 'No OSTree deployment update available'
-                      : 'No rootfs update available'
-                    : rootfsUpdatePending
-                      ? ostreeEnabled
-                        ? 'An OSTree deployment is already staged'
-                        : 'Rootfs update is already staged'
-                      : ostreeEnabled
-                        ? 'Stage the next OSTree deployment and reboot when ready'
-                        : 'Stage/update root filesystem and reboot when ready'
-                }
-              >
-                {rootfsActionLabel}
-              </Button>
-
               <details className="group relative">
                 <summary className="list-none cursor-pointer">
                   <span className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
@@ -2281,6 +2268,27 @@ export default function System() {
                 <div className="absolute z-20 mt-2 min-w-[220px] rounded-md border border-gray-200 bg-white p-2 shadow-lg space-y-2">
                   <Button size="sm" onClick={handleValidateUpdates} disabled={updateActionLoading}>
                     Validate Runtime
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleDownloadRootfsUpdate}
+                    disabled={
+                      updateActionLoading ||
+                      ostreeTransactionActive ||
+                      !rootfsUpdateAvailable ||
+                      rootfsUpdatePending
+                    }
+                    title={
+                      ostreeTransactionActive
+                        ? 'An OSTree transaction is already running'
+                        : rootfsUpdatePending
+                          ? 'An OSTree deployment is already staged'
+                          : rootfsUpdateAvailable
+                            ? 'Download OSTree payloads without changing the next boot'
+                            : 'No system image update available'
+                    }
+                  >
+                    Download System Image
                   </Button>
                   <Button
                     variant="danger"
@@ -2294,19 +2302,6 @@ export default function System() {
                     }
                   >
                     Rollback Runtime
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={handleRollbackRootfs}
-                    disabled={updateActionLoading || !rootfsRollbackAvailable}
-                    title={
-                      rootfsRollbackAvailable
-                        ? 'Switch the next boot to the previous OSTree deployment'
-                        : 'No rollback deployment recorded'
-                    }
-                  >
-                    Rollback OSTree Deployment
                   </Button>
                 </div>
               </details>

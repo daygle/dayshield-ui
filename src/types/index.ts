@@ -934,6 +934,14 @@ export interface OstreeStatus {
   lastError?: string;
 }
 
+export interface OstreeActionResult {
+  operation: string;
+  success: boolean;
+  message: string;
+  details: string[];
+  status: OstreeStatus;
+}
+
 export interface UpdatesActionResult {
   operation: string;
   success: boolean;
