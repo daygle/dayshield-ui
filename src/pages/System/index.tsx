@@ -170,18 +170,6 @@ function formatUpdateComponentName(component: string): string {
   }
 }
 
-function formatRootfsSlotName(slot?: string | null): string {
-  if (!slot) return '-';
-  const normalized = slot.trim().toLowerCase();
-  if (normalized === 'a') return 'Primary';
-  if (normalized === 'b') return 'Secondary';
-  return slot.toUpperCase();
-}
-
-function normalizedRootfsSlot(slot?: string | null): string {
-  return slot?.trim().toLowerCase() ?? '';
-}
-
 function inferRootfsUpdateMode(
   updates?: Pick<
     UpdatesStatus,
@@ -784,7 +772,7 @@ export default function System() {
       getUpdatesStatus()
         .then((res) => setUpdates(res.data))
         .catch(() => {
-          // Keep current boot-slot display on transient poll failures.
+          // Keep current deployment status display on transient poll failures.
         });
     };
 
@@ -1080,11 +1068,6 @@ export default function System() {
   const rootfsUpdateAvailable = ostreeEnabled
     ? Boolean(ostreeStatus?.updateAvailable ?? rootfsComponent?.updateAvailable)
     : Boolean(rootfsComponent?.updateAvailable);
-  const rootfsSlotSupported = updates?.rootfsSlotStatus?.supported ?? false;
-  const rootfsActiveSlot = normalizedRootfsSlot(updates?.rootfsSlotStatus?.activeSlot);
-  const rootfsActiveSlotName = formatRootfsSlotName(updates?.rootfsSlotStatus?.activeSlot);
-  const rootfsInactiveSlotName = formatRootfsSlotName(updates?.rootfsSlotStatus?.inactiveSlot);
-  const rootfsPreviousSlotName = formatRootfsSlotName(updates?.rootfsUpdate?.previousSlot);
   const rootfsUpdatePending = ostreeEnabled
     ? Boolean(ostreeStagedDeployment) ||
       OSTREE_ACTIVE_TRANSACTION_STATES.includes(ostreeTransactionState)
@@ -1096,13 +1079,10 @@ export default function System() {
         ostreeRollbackDeployment?.ref
       )
     : Boolean(updates?.rootfsUpdate?.previousSlot);
-  const rootfsBootIsSecondary = rootfsActiveSlot === 'b';
-  const rootfsPromotionConfirmed =
-    rootfsBootIsSecondary && updates?.rootfsUpdate?.status === 'confirmed';
   const rootfsStatusLabel = ostreeEnabled
     ? deploymentVersionDisplay(ostreeBootedDeployment, rootfsComponent)
-    : rootfsSlotSupported
-      ? `${rootfsActiveSlotName}${rootfsBootIsSecondary && rootfsUpdatePending ? ' trial' : ''}`
+    : updates?.rootfsUpdate?.status
+      ? formatOstreeTransactionState(updates.rootfsUpdate.status)
       : 'Unavailable';
   const rootfsStatusHint = ostreeEnabled
     ? ostreeBootedDeployment
@@ -1114,17 +1094,17 @@ export default function System() {
           .filter(Boolean)
           .join(' ')
       : 'OSTree deployment status has not loaded yet.'
-    : !updates?.rootfsSlotStatus
-      ? 'Boot slot status has not loaded yet.'
-      : !rootfsSlotSupported
-        ? (updates.rootfsSlotStatus.reason ?? 'Primary/Secondary rootfs labels were not detected.')
-        : rootfsBootIsSecondary && rootfsUpdatePending
-          ? 'The appliance is trial-booted from Secondary; a healthy boot will be promoted back to Primary automatically.'
-          : rootfsPromotionConfirmed
-            ? 'The appliance is currently running from Secondary; Primary has been promoted and will be used on the next normal boot.'
-            : rootfsBootIsSecondary
-              ? 'The appliance is running from Secondary. Primary remains the preferred slot for normal operation.'
-              : 'The appliance is running from Primary.';
+    : updates?.rootfsUpdate
+      ? [
+          `Latest rootfs update state: ${updates.rootfsUpdate.status}.`,
+          updates.rootfsUpdate.targetVersion
+            ? `Target version: v${updates.rootfsUpdate.targetVersion}.`
+            : null,
+          updates.rootfsUpdate.lastError ? `Last error: ${updates.rootfsUpdate.lastError}` : null,
+        ]
+          .filter(Boolean)
+          .join(' ')
+      : 'Root filesystem deployment status has not loaded yet.';
   const updatesSubtitle = ostreeEnabled
     ? 'Manage runtime packages and OSTree system deployments.'
     : 'Manage updates for Core, Web UI, and Root Filesystem.';
@@ -1457,7 +1437,7 @@ export default function System() {
                 <p className="font-medium">OSTree system updates enabled</p>
                 <p className="mt-1 text-xs text-blue-800">
                   Rootfs updates stage a new deployment and switch to it on the next reboot instead
-                  of writing into an inactive A/B slot.
+                  of rewriting the active deployment in place.
                 </p>
                 {(updateSettings.ostreeRemote || updateSettings.ostreeRef) && (
                   <p className="mt-2 text-xs text-blue-800">
@@ -1467,29 +1447,14 @@ export default function System() {
                 )}
               </div>
             ) : (
-              <label className="flex items-start gap-3 rounded border border-gray-200 p-3 text-sm">
-                <input
-                  id="upd-rootfs-ab"
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  checked={updateSettings.enableRootfsAbUpdates ?? true}
-                  onChange={(e) =>
-                    setUpdateSettings({
-                      ...updateSettings,
-                      enableRootfsAbUpdates: e.target.checked,
-                    })
-                  }
-                />
-                <span>
-                  <span className="block font-medium text-gray-800">
-                    Enable Primary/Secondary rootfs updates
-                  </span>
-                  <span className="block text-xs text-gray-500">
-                    Requires A/B rootfs slots (labels DS_PRIMARY/DS_SECONDARY) and a shared
-                    DAYSHIELD_BOOT partition.
-                  </span>
-                </span>
-              </label>
+              <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <p className="font-medium">Legacy rootfs update mode detected</p>
+                <p className="mt-1 text-xs text-amber-800">
+                  DayShield now standardizes on OSTree deployments. Configure the backend update
+                  mode as <span className="font-mono">ostree</span> to use deployment-aware update
+                  and rollback behavior.
+                </p>
+              </div>
             )}
             <div className="flex items-center gap-2">
               <input
@@ -1719,7 +1684,7 @@ export default function System() {
             </div>
             <div>
               <dt className="text-gray-500">
-                {ostreeEnabled ? 'System Deployment' : 'Rootfs Boot'}
+                {ostreeEnabled ? 'System Deployment' : 'Rootfs Deployment'}
               </dt>
               <dd
                 className={[
@@ -1728,13 +1693,13 @@ export default function System() {
                     ? ostreeBootedDeployment
                       ? 'text-green-700'
                       : 'text-gray-400'
-                    : !updates?.rootfsSlotStatus
+                    : !updates?.rootfsUpdate
                       ? 'text-gray-400'
-                      : rootfsSlotSupported
-                        ? rootfsBootIsSecondary
-                          ? 'text-amber-700'
-                          : 'text-green-700'
-                        : 'text-orange-700',
+                      : rootfsUpdatePending
+                        ? 'text-amber-700'
+                        : updates?.rootfsUpdate?.lastError
+                          ? 'text-orange-700'
+                          : 'text-green-700',
                 ].join(' ')}
                 title={rootfsStatusHint}
               >
@@ -2137,16 +2102,14 @@ export default function System() {
                         )}
                       </>
                     )}
-                    {comp.component === 'rootfs' &&
-                      !ostreeEnabled &&
-                      updates.rootfsSlotStatus?.supported && (
-                        <div>
-                          <dt className="inline text-gray-500">Boot Slot: </dt>
-                          <dd className="inline font-mono text-gray-800">
-                            {formatRootfsSlotName(updates.rootfsSlotStatus.activeSlot)}
-                          </dd>
-                        </div>
-                      )}
+                    {comp.component === 'rootfs' && !ostreeEnabled && updates.rootfsUpdate && (
+                      <div>
+                        <dt className="inline text-gray-500">Update state: </dt>
+                        <dd className="inline font-mono text-gray-800">
+                          {updates.rootfsUpdate.status}
+                        </dd>
+                      </div>
+                    )}
                     {/* Show last applied version if available */}
                     {comp.lastAppliedVersion && (
                       <div>
@@ -2195,19 +2158,15 @@ export default function System() {
 
             {!ostreeEnabled && updates.rootfsSlotStatus && !updates.rootfsSlotStatus.supported && (
               <div className="rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
-                <p className="font-medium">Primary/Secondary rootfs layout unavailable.</p>
+                <p className="font-medium">Legacy rootfs metadata unavailable.</p>
                 <p className="mt-1">
-                  {updates.rootfsSlotStatus.reason ??
-                    'Required rootfs slot labels were not detected.'}
+                  {updates.rootfsSlotStatus.reason ?? 'Required rootfs metadata was not detected.'}
                 </p>
                 {updates.rootfsUpdate && (
                   <p className="mt-1 text-xs">
                     Rootfs update status: {updates.rootfsUpdate.status}
                     {updates.rootfsUpdate.targetVersion
                       ? `, target v${updates.rootfsUpdate.targetVersion}`
-                      : ''}
-                    {updates.rootfsUpdate.targetSlot
-                      ? `, target slot ${formatRootfsSlotName(updates.rootfsUpdate.targetSlot)}`
                       : ''}
                   </p>
                 )}
@@ -2376,7 +2335,6 @@ export default function System() {
                 disabled={
                   updateActionLoading ||
                   !rootfsUpdateAvailable ||
-                  (!ostreeEnabled && !rootfsSlotSupported) ||
                   rootfsUpdatePending
                 }
                 title={
@@ -2384,17 +2342,13 @@ export default function System() {
                     ? ostreeEnabled
                       ? 'No OSTree deployment update available'
                       : 'No rootfs update available'
-                    : !ostreeEnabled && !rootfsSlotSupported
-                      ? 'Primary/Secondary rootfs layout is not available'
-                      : rootfsUpdatePending
-                        ? ostreeEnabled
-                          ? 'An OSTree deployment is already staged'
-                          : 'Rootfs update is already staged'
-                        : ostreeEnabled
-                          ? 'Stage the next OSTree deployment and reboot when ready'
-                          : rootfsInactiveSlotName !== '-'
-                            ? `Stage/update root filesystem into ${rootfsInactiveSlotName} slot`
-                            : 'Stage/update root filesystem into the inactive slot'
+                    : rootfsUpdatePending
+                      ? ostreeEnabled
+                        ? 'An OSTree deployment is already staged'
+                        : 'Rootfs update is already staged'
+                      : ostreeEnabled
+                        ? 'Stage the next OSTree deployment and reboot when ready'
+                        : 'Stage/update root filesystem and reboot when ready'
                 }
               >
                 {rootfsActionLabel}
@@ -2435,10 +2389,8 @@ export default function System() {
                           ? 'Switch the next boot to the previous OSTree deployment'
                           : 'No rollback deployment recorded'
                         : updates.rootfsUpdate?.previousSlot
-                          ? rootfsPreviousSlotName !== '-'
-                            ? `Schedule next boot into ${rootfsPreviousSlotName} slot`
-                            : 'Schedule next boot into the previous rootfs slot'
-                          : 'No rootfs rollback slot recorded'
+                          ? 'Schedule rollback to the previously prepared rootfs state'
+                          : 'No previous rootfs state recorded'
                     }
                   >
                     {ostreeEnabled ? 'Rollback OSTree Deployment' : 'Rollback Rootfs'}
