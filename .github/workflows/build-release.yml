@@ -23,17 +23,27 @@ jobs:
       NODE_OPTIONS: --no-deprecation
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-
       - name: Resolve release tag
         id: tag
         run: |
+          set -euo pipefail
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "value=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+            TAG="${{ github.event.inputs.tag }}"
           else
-            echo "value=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            TAG="${GITHUB_REF_NAME}"
           fi
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?$ ]]; then
+            echo "Invalid release tag: $TAG"
+            exit 1
+          fi
+          echo "value=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout source
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+          ref: ${{ steps.tag.outputs.value }}
 
       - name: Set up Node.js
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
@@ -53,6 +63,7 @@ jobs:
       - name: Package artifact
         id: package
         run: |
+          set -euo pipefail
           TAG="${{ steps.tag.outputs.value }}"
           ARTIFACT="ui-${TAG}.tar.zst"
           tar --use-compress-program="zstd -T0 -19" -cf "${ARTIFACT}" dist
@@ -64,6 +75,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           TAG="${{ steps.tag.outputs.value }}"
           if gh release view "${TAG}" >/dev/null 2>&1; then
             echo "Release ${TAG} already exists."
@@ -77,6 +89,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           TAG="${{ steps.tag.outputs.value }}"
           gh release upload "${TAG}" \
             "${{ steps.package.outputs.artifact }}" \
