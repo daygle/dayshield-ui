@@ -220,6 +220,8 @@ function formatOstreeTransactionState(state?: string): string {
 function isOstreeUnavailableError(message?: string): boolean {
   const text = (message ?? '').toLowerCase();
   return (
+    text.includes('ostree update command unavailable') ||
+    text.includes('required ostree tooling') ||
     text.includes('rpm-ostree command unavailable') ||
     (text.includes('rpm-ostree') &&
       (text.includes('failed to execute') || text.includes('no such file or directory')))
@@ -1082,9 +1084,9 @@ export default function System() {
       OSTREE_ACTIVE_TRANSACTION_STATES.includes(ostreeTransactionState));
   const rootfsStatusLabel = ostreeSupported
     ? deploymentVersionDisplay(ostreeBootedDeployment, rootfsComponent)
-    : 'Unavailable';
+    : 'Tooling Missing';
   const rootfsStatusHint = !ostreeSupported
-    ? 'System image updates require rpm-ostree on the appliance image.'
+    ? 'This appliance is missing DayShield OSTree update tooling.'
     : ostreeBootedDeployment
       ? [
           'Currently booted deployment.',
@@ -1104,7 +1106,7 @@ export default function System() {
         : 'OSTree deployment status has not loaded yet.';
   const updatesSubtitle = 'Update DayShield services and the bootable system image.';
   const rootfsActionLabel = !ostreeSupported
-    ? 'System Image Unavailable'
+    ? 'Tooling Missing'
     : rootfsUpdatePending
       ? 'Staged for Reboot'
       : 'Apply System Image';
@@ -1898,7 +1900,7 @@ export default function System() {
           }
         >
           <div className="space-y-5">
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+            <div className="grid grid-cols-1 items-stretch gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
               <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                   <div>
@@ -1939,7 +1941,7 @@ export default function System() {
               </div>
 
               <div className="rounded-md border border-gray-200 bg-white px-4 py-3">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex h-full flex-wrap items-center gap-2 xl:justify-end">
                   <Button size="sm" onClick={handleCheckUpdates} disabled={updateActionLoading}>
                     Check Now
                   </Button>
@@ -1969,7 +1971,7 @@ export default function System() {
                     }
                     title={
                       !ostreeSupported
-                        ? 'System image updates require rpm-ostree on this host'
+                        ? 'Required OSTree update tooling is missing'
                         : ostreeTransactionActive
                         ? 'An OSTree transaction is already running'
                         : rootfsUpdatePending
@@ -1995,15 +1997,15 @@ export default function System() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
+            <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(380px,0.9fr)]">
+              <div className="flex h-full flex-col rounded-md border border-gray-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
                   <h4 className="text-sm font-semibold text-gray-900">Runtime Components</h4>
                   <span className="text-xs text-gray-500">Core and Web UI</span>
                 </div>
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <div className="mt-4 grid flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
                   {runtimeComponents.map((comp) => (
-                    <div key={comp.component} className="rounded-md border border-gray-200 p-4">
+                    <div key={comp.component} className="rounded-md border border-gray-200 bg-gray-50/40 p-4">
                       {(() => {
                         const statusLabel = inferUpdateStatusLabel(comp);
                         const hasRemoteVersion = hasResolvedRemoteVersion(comp);
@@ -2066,29 +2068,29 @@ export default function System() {
                     </div>
                   ))}
                   {runtimeComponents.length === 0 && (
-                    <div className="rounded-md border border-gray-200 px-4 py-6 text-sm text-gray-500">
+                    <div className="rounded-md border border-gray-200 bg-gray-50/40 px-4 py-6 text-sm text-gray-500">
                       Runtime component status is unavailable.
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="rounded-md border border-blue-200 bg-blue-50 p-4">
+              <div className="flex h-full flex-col rounded-md border border-blue-200 bg-blue-50 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <h4 className="text-sm font-semibold text-blue-950">System Image</h4>
                     <p className="mt-1 text-xs text-blue-800">
-                      {ostreeSupported ? 'RootFS deployment via OSTree' : 'Not available on this host'}
+                      {ostreeSupported ? 'RootFS deployment via OSTree' : 'Required OSTree tooling missing'}
                     </p>
                   </div>
                   <span
                     className={[
                       'inline-flex w-fit items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium ring-1 ring-inset',
-                      ostreeSupported ? 'text-blue-900 ring-blue-200' : 'text-gray-700 ring-gray-200',
+                      ostreeSupported ? 'text-blue-900 ring-blue-200' : 'text-amber-800 ring-amber-200',
                     ].join(' ')}
                   >
                     {!ostreeSupported
-                      ? 'Unavailable'
+                      ? 'Action required'
                       : rootfsUpdatePending
                         ? 'Staged for reboot'
                         : rootfsUpdateAvailable
@@ -2097,7 +2099,7 @@ export default function System() {
                   </span>
                 </div>
 
-                <dl className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
+                <dl className="mt-4 grid flex-1 grid-cols-1 gap-3 text-sm md:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
                   <div className="rounded-md border border-blue-100 bg-white/80 p-3">
                     <dt className="text-xs font-medium uppercase tracking-wide text-blue-700">
                       Running
@@ -2111,7 +2113,7 @@ export default function System() {
                       {ostreeSupported
                         ? deploymentDetails(ostreeBootedDeployment) ||
                           'Deployment details unavailable.'
-                        : 'rpm-ostree is not installed.'}
+                        : 'Update command/helper not found.'}
                     </p>
                   </div>
                   <div className="rounded-md border border-blue-100 bg-white/80 p-3">
@@ -2120,14 +2122,14 @@ export default function System() {
                     </dt>
                     <dd className="mt-1 font-mono text-gray-900">
                       {!ostreeSupported
-                        ? 'Unavailable'
+                        ? 'Blocked'
                         : rootfsUpdatePending
                         ? deploymentVersionDisplay(ostreeStagedDeployment)
                         : deploymentVersionDisplay(ostreeAvailableDeployment, rootfsComponent, 'remote')}
                     </dd>
                     <p className="mt-1 text-xs text-gray-600">
                       {!ostreeSupported
-                        ? 'System image updates are disabled for this host.'
+                        ? 'Production appliances should include OSTree tooling.'
                         : rootfsUpdatePending
                         ? deploymentDetails(ostreeStagedDeployment) || 'Ready after reboot.'
                         : deploymentDetails(ostreeAvailableDeployment) ||
@@ -2146,7 +2148,7 @@ export default function System() {
                     <p className="mt-1 text-xs text-gray-600">
                       {ostreeSupported
                         ? deploymentDetails(ostreeRollbackDeployment) || 'No rollback target reported.'
-                        : 'Rollback requires an OSTree deployment history.'}
+                        : 'Rollback requires the OSTree helper and deployment history.'}
                     </p>
                   </div>
                 </dl>
@@ -2158,9 +2160,9 @@ export default function System() {
                   </p>
                 )}
                 {!ostreeSupported ? (
-                  <div className="mt-3 rounded-md border border-gray-200 bg-white/80 px-3 py-2 text-xs text-gray-600">
-                    System image updates require an OSTree-based appliance image with
-                    rpm-ostree installed.
+                  <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    This appliance is missing required DayShield OSTree tooling. Check that the
+                    image includes /usr/bin/ostree and /usr/local/lib/dayshield/ostree-update.sh.
                   </div>
                 ) : ostreeStatus?.lastError ? (
                   <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
@@ -2330,7 +2332,7 @@ export default function System() {
                     }
                     title={
                       !ostreeSupported
-                        ? 'System image updates require rpm-ostree on this host'
+                        ? 'Required OSTree update tooling is missing'
                         : ostreeTransactionActive
                         ? 'An OSTree transaction is already running'
                         : rootfsUpdatePending
