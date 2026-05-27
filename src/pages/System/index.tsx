@@ -2161,8 +2161,9 @@ export default function System() {
                 )}
                 {!ostreeSupported ? (
                   <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                    This appliance is missing required DayShield OSTree tooling. Check that the
-                    image includes /usr/bin/ostree and /usr/local/lib/dayshield/ostree-update.sh.
+                    System image updates cannot run yet. Check that this appliance is running the
+                    updated core and that the image includes /usr/bin/ostree and
+                    /usr/local/lib/dayshield/ostree-update.sh.
                   </div>
                 ) : ostreeStatus?.lastError ? (
                   <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
