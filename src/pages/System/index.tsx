@@ -1273,33 +1273,63 @@ export default function System() {
               />
               <div className="col-span-2">
                 <label
-                  htmlFor="cfg-management-tls-domain"
+                  htmlFor="cfg-management-protocol"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Management TLS Certificate (ACME Domain)
+                  Management Protocol
                 </label>
                 <select
-                  id="cfg-management-tls-domain"
+                  id="cfg-management-protocol"
                   className="mt-1 block w-full rounded-md border-gray-300 bg-white py-2 px-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-                  value={editConfig.managementTlsAcmeDomain ?? ''}
+                  value={editConfig.managementHttpsEnabled ? 'https' : 'http'}
                   onChange={(e) =>
                     setEditConfig({
                       ...editConfig,
-                      managementTlsAcmeDomain: e.target.value || null,
+                      managementHttpsEnabled: e.target.value === 'https',
+                      managementTlsAcmeDomain: e.target.value === 'https'
+                        ? editConfig.managementTlsAcmeDomain
+                        : null,
                     })
                   }
                 >
-                  <option value="">Use default management certificate</option>
-                  {acmeDomains.map((domain) => (
-                    <option key={domain} value={domain}>
-                      {domain}
-                    </option>
-                  ))}
+                  <option value="http">HTTP</option>
+                  <option value="https">HTTPS (requires an issued ACME certificate)</option>
                 </select>
-                <p className="text-xs text-gray-500">
-                  Select an issued ACME certificate to use for the DayShield management UI.
+                <p className="text-xs text-gray-500 mt-1">
+                  A restart is required for protocol changes to take effect.
                 </p>
               </div>
+              {editConfig.managementHttpsEnabled && (
+                <div className="col-span-2">
+                  <label
+                    htmlFor="cfg-management-tls-domain"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    TLS Certificate (ACME Domain)
+                  </label>
+                  <select
+                    id="cfg-management-tls-domain"
+                    className="mt-1 block w-full rounded-md border-gray-300 bg-white py-2 px-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                    value={editConfig.managementTlsAcmeDomain ?? ''}
+                    onChange={(e) =>
+                      setEditConfig({
+                        ...editConfig,
+                        managementTlsAcmeDomain: e.target.value || null,
+                      })
+                    }
+                  >
+                    <option value="">— Select a certificate —</option>
+                    {acmeDomains.map((domain) => (
+                      <option key={domain} value={domain}>
+                        {domain}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Select an issued ACME certificate to serve the management UI over HTTPS.
+                  </p>
+                </div>
+              )}
               <FormField
                 id="cfg-login-timeout"
                 label="Login Timeout (minutes)"
@@ -1313,11 +1343,6 @@ export default function System() {
                   })
                 }
               />
-              <div className="col-span-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                HTTPS listener controls are not available here yet because the current DayShield
-                core runtime still serves HTTP only. The ACME certificate selection above is stored
-                for the future TLS listener path.
-              </div>
               <div className="col-span-2 border-t border-gray-200 pt-3">
                 <p className="text-sm font-semibold text-gray-900">Management Access Controls</p>
                 <p className="text-xs text-gray-500 mt-1">
@@ -1701,7 +1726,7 @@ export default function System() {
       {activeSection === 'management' && config && (
         <Card
           title="Management Interface"
-          subtitle="Management access scope, ACME certificate selection, and UI session timeout"
+          subtitle="Management access scope, protocol, ACME certificate, and UI session timeout"
           actions={
             <button
               onClick={() => openEditModal('management')}
@@ -1749,11 +1774,19 @@ export default function System() {
               <dd className="font-medium text-gray-800">{config.webPort}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">TLS Certificate</dt>
+              <dt className="text-gray-500">Protocol</dt>
               <dd className="font-medium text-gray-800">
-                {config.managementTlsAcmeDomain || 'Default management certificate'}
+                {config.managementHttpsEnabled ? 'HTTPS' : 'HTTP'}
               </dd>
             </div>
+            {config.managementHttpsEnabled && (
+              <div>
+                <dt className="text-gray-500">TLS Certificate</dt>
+                <dd className="font-medium text-gray-800">
+                  {config.managementTlsAcmeDomain || '— not selected —'}
+                </dd>
+              </div>
+            )}
             <div>
               <dt className="text-gray-500">Login Timeout</dt>
               <dd className="font-medium text-gray-800">
@@ -1761,10 +1794,6 @@ export default function System() {
               </dd>
             </div>
           </dl>
-          <p className="mt-3 text-xs text-gray-500">
-            Core still serves the management UI over HTTP only. The ACME certificate selection is
-            stored now and will be used once runtime HTTPS support lands.
-          </p>
         </Card>
       )}
 

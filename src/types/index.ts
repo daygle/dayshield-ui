@@ -788,6 +788,7 @@ export interface SystemConfig {
   sshListenInterfaces: string[];
   webPort: number;
   ipv6Enabled: boolean;
+  managementHttpsEnabled?: boolean;
   managementTlsAcmeDomain?: string | null;
 }
 
