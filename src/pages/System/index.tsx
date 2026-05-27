@@ -2114,13 +2114,19 @@ export default function System() {
                   <div>
                     <h4 className="text-sm font-semibold text-blue-950">System Image</h4>
                     <p className="mt-1 text-xs text-blue-800">
-                      {ostreeSupported ? 'Operating system updates (OSTree)' : 'System image updates unavailable'}
+                      {ostreeSupported ? 'System image updates (OSTree)' : 'System image updates unavailable'}
                     </p>
                   </div>
                   <span
                     className={[
-                      'inline-flex w-fit items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium ring-1 ring-inset',
-                      ostreeSupported ? 'text-blue-900 ring-blue-200' : 'text-amber-800 ring-amber-200',
+                      'inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset',
+                      !ostreeSupported
+                        ? 'text-amber-800 ring-amber-200'
+                        : rootfsUpdatePending
+                          ? 'text-blue-900 ring-blue-200'
+                          : rootfsUpdateAvailable
+                            ? 'text-blue-900 ring-blue-200'
+                            : 'bg-green-100 text-green-700 ring-green-200',
                     ].join(' ')}
                   >
                     {!ostreeSupported
@@ -2129,7 +2135,7 @@ export default function System() {
                         ? 'Staged for reboot'
                         : rootfsUpdateAvailable
                           ? 'Update available'
-                          : 'Current'}
+                          : 'Up to Date'}
                   </span>
                 </div>
 
@@ -2146,7 +2152,7 @@ export default function System() {
                     <p className="mt-1 text-xs text-gray-600">
                       {ostreeSupported
                         ? deploymentDetails(ostreeBootedDeployment) ||
-                          'Deployment details unavailable.'
+                          'No additional deployment details available.'
                         : 'Update tools are not installed.'}
                     </p>
                   </div>
