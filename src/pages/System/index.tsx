@@ -1077,7 +1077,7 @@ export default function System() {
     : false;
   const rootfsComponent = updates?.components.find((comp) => comp.component === 'rootfs');
   const rootfsUpdateAvailable =
-    ostreeSupported && Boolean(ostreeStatus?.updateAvailable ?? rootfsComponent?.updateAvailable);
+    ostreeSupported && Boolean(ostreeStatus?.updateAvailable || rootfsComponent?.updateAvailable);
   const rootfsUpdatePending =
     ostreeSupported &&
     (Boolean(ostreeStagedDeployment) ||
