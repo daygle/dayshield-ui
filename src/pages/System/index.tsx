@@ -1104,12 +1104,12 @@ export default function System() {
             .filter(Boolean)
             .join(' ')
         : 'OSTree deployment status has not loaded yet.';
-  const updatesSubtitle = 'Update DayShield services and the bootable system image.';
+  const updatesSubtitle = 'Keep your device up to date with the latest software and security fixes.';
   const rootfsActionLabel = !ostreeSupported
-    ? 'Tooling Missing'
+    ? 'Update Unavailable'
     : rootfsUpdatePending
-      ? 'Staged for Reboot'
-      : 'Apply System Image';
+      ? 'Staged — Reboot to Apply'
+      : 'Apply System Update';
 
   return (
     <div className="space-y-6">
@@ -1431,17 +1431,17 @@ export default function System() {
         {updateSettings && (
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              Choose whether DayShield checks for updates automatically and when it runs.
+              Configure whether DayShield automatically checks for updates and set a schedule.
             </p>
             <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
-              <p className="font-medium">OSTree system updates enabled</p>
+              <p className="font-medium">System image updates enabled</p>
               <p className="mt-1 text-xs text-blue-800">
-                Rootfs updates stage a new deployment and switch to it on the next reboot instead
-                of rewriting the active deployment in place.
+                System image updates are staged and applied on the next reboot, keeping the running
+                system unchanged until you restart.
               </p>
               {(updateSettings.ostreeRemote || updateSettings.ostreeRef) && (
                 <p className="mt-2 text-xs text-blue-800">
-                  Tracking {updateSettings.ostreeRemote ?? 'default remote'}
+                  Checking for updates from {updateSettings.ostreeRemote ?? 'default remote'}
                   {updateSettings.ostreeRef ? `:${updateSettings.ostreeRef}` : ''}.
                 </p>
               )}
@@ -1466,7 +1466,7 @@ export default function System() {
                   id="upd-frequency"
                   as="select"
                   label="Schedule"
-                  hint="Pick whether updates run daily, weekly, or monthly."
+                  hint="How often DayShield checks for new updates."
                   value={updateSettings.autoCheckFrequency ?? 'daily'}
                   onChange={(e) => {
                     const nextFrequency = e.target.value as UpdateScheduleFrequency;
@@ -1495,7 +1495,7 @@ export default function System() {
                   id="upd-time"
                   label="Time"
                   type="time"
-                  hint="The update check runs at this local time."
+                  hint="The check will run at this time each day."
                   value={normalizeUpdateTime(updateSettings.autoCheckTime ?? '03:00')}
                   onChange={(e) =>
                     setUpdateSettings({ ...updateSettings, autoCheckTime: e.target.value })
@@ -1580,11 +1580,10 @@ export default function System() {
       >
         <div className="space-y-2">
           <p className="text-sm text-red-700 font-medium">
-            Rolling back will revert both the software and the configuration to their previous
-            state.
+            Rolling back will restore the software to its previous version.
           </p>
           <p className="text-sm text-gray-700">
-            This action cannot be undone. All changes made since the last update will be lost.
+            This cannot be undone. Any changes made since the last update may be lost.
           </p>
         </div>
       </Modal>
@@ -1913,7 +1912,7 @@ export default function System() {
                   </div>
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                      Auto Check
+                      Auto Updates
                     </p>
                     <p className="mt-1 text-sm font-medium text-gray-900">
                       {updates.settings.autoCheckEnabled
@@ -1951,13 +1950,13 @@ export default function System() {
                     disabled={updateActionLoading || runtimeUpdateCount === 0}
                     title={
                       runtimeUpdateCount > 1
-                        ? `Update Core/UI (${runtimeUpdateCount} updates available)`
+                        ? `Install ${runtimeUpdateCount} software updates`
                         : runtimeUpdateCount === 1
-                          ? 'Update Core/UI (1 update available)'
-                          : 'No Core/UI updates available'
+                          ? 'Install 1 software update'
+                          : 'No software updates available'
                     }
                   >
-                    Update Core/UI
+                    Update Software
                   </Button>
                   <Button
                     size="sm"
@@ -1971,13 +1970,13 @@ export default function System() {
                     }
                     title={
                       !ostreeSupported
-                        ? 'Required OSTree update tooling is missing'
+                        ? 'System image update tools are not installed'
                         : ostreeTransactionActive
-                        ? 'An OSTree transaction is already running'
+                        ? 'A system update is already in progress'
                         : rootfsUpdatePending
-                          ? 'An OSTree deployment is already staged'
+                          ? 'An update is already staged — reboot to apply it'
                           : rootfsUpdateAvailable
-                            ? 'Apply the next OSTree deployment'
+                            ? 'Apply the available system image update'
                             : 'No system image update available'
                     }
                   >
@@ -1989,10 +1988,9 @@ export default function System() {
 
             {updateNotFoundHint && (
               <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900 space-y-2">
-                <p className="font-medium">Update not found on server.</p>
+                <p className="font-medium">No update found.</p>
                 <p className="text-xs text-amber-800">
-                  This usually means the update server is unreachable, requires authentication, or
-                  has no published releases.
+                  The update server may be unreachable, or there are no published releases yet.
                 </p>
               </div>
             )}
@@ -2000,8 +1998,8 @@ export default function System() {
             <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(380px,0.9fr)]">
               <div className="flex h-full flex-col rounded-md border border-gray-200 bg-white p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <h4 className="text-sm font-semibold text-gray-900">Runtime Components</h4>
-                  <span className="text-xs text-gray-500">Core and Web UI</span>
+                  <h4 className="text-sm font-semibold text-gray-900">Software Components</h4>
+                  <span className="text-xs text-gray-500">Core and Web Interface</span>
                 </div>
                 <div className="mt-4 grid flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
                   {runtimeComponents.map((comp) => (
@@ -2069,7 +2067,7 @@ export default function System() {
                   ))}
                   {runtimeComponents.length === 0 && (
                     <div className="rounded-md border border-gray-200 bg-gray-50/40 px-4 py-6 text-sm text-gray-500">
-                      Runtime component status is unavailable.
+                      Software component status is unavailable.
                     </div>
                   )}
                 </div>
@@ -2080,7 +2078,7 @@ export default function System() {
                   <div>
                     <h4 className="text-sm font-semibold text-blue-950">System Image</h4>
                     <p className="mt-1 text-xs text-blue-800">
-                      {ostreeSupported ? 'RootFS deployment via OSTree' : 'Required OSTree tooling missing'}
+                      {ostreeSupported ? 'Operating system updates (OSTree)' : 'System image updates unavailable'}
                     </p>
                   </div>
                   <span
@@ -2113,7 +2111,7 @@ export default function System() {
                       {ostreeSupported
                         ? deploymentDetails(ostreeBootedDeployment) ||
                           'Deployment details unavailable.'
-                        : 'Update command/helper not found.'}
+                        : 'Update tools are not installed.'}
                     </p>
                   </div>
                   <div className="rounded-md border border-blue-100 bg-white/80 p-3">
@@ -2122,18 +2120,18 @@ export default function System() {
                     </dt>
                     <dd className="mt-1 font-mono text-gray-900">
                       {!ostreeSupported
-                        ? 'Blocked'
+                        ? 'Unavailable'
                         : rootfsUpdatePending
                         ? deploymentVersionDisplay(ostreeStagedDeployment)
                         : deploymentVersionDisplay(ostreeAvailableDeployment, rootfsComponent, 'remote')}
                     </dd>
                     <p className="mt-1 text-xs text-gray-600">
                       {!ostreeSupported
-                        ? 'Production appliances should include OSTree tooling.'
+                        ? 'Install OSTree tools to enable system image updates.'
                         : rootfsUpdatePending
                         ? deploymentDetails(ostreeStagedDeployment) || 'Ready after reboot.'
                         : deploymentDetails(ostreeAvailableDeployment) ||
-                          (rootfsUpdateAvailable ? 'Ready to apply.' : 'No update detected.')}
+                          (rootfsUpdateAvailable ? 'Ready to apply.' : 'No update available.')}
                     </p>
                   </div>
                   <div className="rounded-md border border-blue-100 bg-white/80 p-3">
@@ -2147,23 +2145,22 @@ export default function System() {
                     </dd>
                     <p className="mt-1 text-xs text-gray-600">
                       {ostreeSupported
-                        ? deploymentDetails(ostreeRollbackDeployment) || 'No rollback target reported.'
-                        : 'Rollback requires the OSTree helper and deployment history.'}
+                        ? deploymentDetails(ostreeRollbackDeployment) || 'No previous version to roll back to.'
+                        : 'Rolling back requires OSTree tools and deployment history.'}
                     </p>
                   </div>
                 </dl>
 
                 {(ostreeRemote || ostreeRef) && (
                   <p className="mt-3 text-xs text-blue-800">
-                    Tracking {ostreeRemote ?? 'default remote'}
+                    Checking for updates from {ostreeRemote ?? 'default remote'}
                     {ostreeRef ? `:${ostreeRef}` : ''}.
                   </p>
                 )}
                 {!ostreeSupported ? (
                   <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                    System image updates cannot run yet. Check that this appliance is running the
-                    updated core and that the image includes /usr/bin/ostree and
-                    /usr/local/lib/dayshield/ostree-update.sh.
+                    System image updates are not available. Make sure the appliance is running the
+                    latest software and that the required update tools are installed.
                   </div>
                 ) : ostreeStatus?.lastError ? (
                   <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
@@ -2175,7 +2172,7 @@ export default function System() {
 
             {updates.pendingReboot && (
               <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
-                A reboot is required to boot into the staged OSTree deployment.
+                A reboot is required to apply the staged system update.
               </div>
             )}
 
@@ -2184,11 +2181,11 @@ export default function System() {
                 <div>
                   <p className="font-medium">System image rebuild needed.</p>
                   <p>
-                    A new root filesystem image must be built before this update can be applied.
+                    A new system image must be built before this update can be applied.
                   </p>
                   <p className="mt-1 text-xs text-orange-700">
-                    Build and publish a new rootfs artifact from the build environment using the
-                    current rootfs, core, and UI inputs, then clear this status.
+                    Build and publish a new system image from the build environment, then mark it
+                    complete below.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -2197,7 +2194,7 @@ export default function System() {
                     onClick={handleMarkApplianceRebuildComplete}
                     disabled={markingApplianceRebuildComplete || updateActionLoading}
                   >
-                    Mark Rebuild Complete
+                    Mark as Complete
                   </Button>
                   {updates.applianceRebuildMarkedAt && (
                     <span className="text-xs text-orange-700">
@@ -2211,7 +2208,7 @@ export default function System() {
             {ostreeTransactionActive && (
               <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
                 <p className="font-medium">
-                  OSTree transaction: {formatOstreeTransactionState(ostreeTransaction?.state)}
+                  System image update in progress: {formatOstreeTransactionState(ostreeTransaction?.state)}
                 </p>
                 {ostreeTransaction?.message && (
                   <p className="mt-1 text-xs text-blue-800">{ostreeTransaction.message}</p>
@@ -2318,7 +2315,7 @@ export default function System() {
                 </summary>
                 <div className="absolute z-20 mt-2 min-w-[220px] rounded-md border border-gray-200 bg-white p-2 shadow-lg space-y-2">
                   <Button size="sm" onClick={handleValidateUpdates} disabled={updateActionLoading}>
-                    Validate Runtime
+                    Check Software Integrity
                   </Button>
                   <Button
                     size="sm"
@@ -2332,13 +2329,13 @@ export default function System() {
                     }
                     title={
                       !ostreeSupported
-                        ? 'Required OSTree update tooling is missing'
+                        ? 'System image update tools are not installed'
                         : ostreeTransactionActive
-                        ? 'An OSTree transaction is already running'
+                        ? 'A system update is already in progress'
                         : rootfsUpdatePending
-                          ? 'An OSTree deployment is already staged'
+                          ? 'An update is already staged — reboot to apply it'
                           : rootfsUpdateAvailable
-                            ? 'Download OSTree payloads without changing the next boot'
+                            ? 'Download the system image update without applying it yet'
                             : 'No system image update available'
                     }
                   >
@@ -2351,11 +2348,11 @@ export default function System() {
                     disabled={updateActionLoading || !runtimeRollbackAvailable}
                     title={
                       runtimeRollbackAvailable
-                        ? 'Rollback runtime components to the previous deployed versions'
-                        : 'No runtime rollback snapshot available'
+                        ? 'Revert Core and Web UI to the previous version'
+                        : 'No previous version available to roll back to'
                     }
                   >
-                    Rollback Runtime
+                    Undo Last Software Update
                   </Button>
                 </div>
               </details>
