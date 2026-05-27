@@ -17,9 +17,9 @@ interface ModalProps {
 
 const sizeClass: Record<string, string> = {
   sm: 'max-w-sm',
-  md: 'max-w-lg',
-  lg: 'max-w-2xl',
-  xl: 'max-w-4xl',
+  md: '',
+  lg: '',
+  xl: '',
 };
 
 export default function Modal({
