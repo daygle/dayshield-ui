@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useToast } from '../../context/ToastContext';
 import { getInterfacesInventory, createInterface, deleteInterface } from '../../api/interfaces';
 import { getSystemConfig } from '../../api/system';
 import type { Ipv6Mode, Ipv6RaMode, NetworkInterface } from '../../types';
@@ -43,6 +44,7 @@ const defaultForm: Partial<NetworkInterface> = {
 };
 
 export default function Interfaces() {
+  const { addToast } = useToast();
   const [searchParams] = useSearchParams();
   const [ifaces, setIfaces] = useState<InterfaceRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,6 +177,7 @@ export default function Interfaces() {
       .then(() => {
         setModalOpen(false);
         setForm(defaultForm);
+        addToast('Interface created.', 'success');
         load();
       })
       .catch((err: Error) => setError(err.message))
@@ -187,6 +190,7 @@ export default function Interfaces() {
     deleteInterface(deleteName)
       .then(() => {
         setDeleteName(null);
+        addToast('Interface deleted.', 'success');
         load();
       })
       .catch((err: Error) => setError(err.message))

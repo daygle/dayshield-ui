@@ -8,7 +8,8 @@ export default function LoginPage() {
   const { addToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/dashboard';
+  const rawFrom = (location.state as { from?: { pathname: string } })?.from?.pathname;
+  const from = rawFrom?.startsWith('/') && !rawFrom.startsWith('//') ? rawFrom : '/dashboard';
 
   async function handleLogin(username: string, password: string) {
     await signIn({ username, password });

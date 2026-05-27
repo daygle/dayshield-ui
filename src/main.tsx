@@ -53,11 +53,14 @@ if (typeof window !== 'undefined') {
 
   window.addEventListener('unhandledrejection', (ev: PromiseRejectionEvent) => {
     try {
-      const reason = (ev.reason ?? {}) as any;
+      const reason =
+        ev.reason != null && typeof ev.reason === 'object'
+          ? (ev.reason as { message?: string; stack?: string })
+          : null;
       void ingestUiLog({
         component: 'window',
         level: 'error',
-        message: reason?.message ?? String(ev.reason) ?? 'Unhandled rejection',
+        message: reason?.message ?? (typeof ev.reason === 'string' ? ev.reason : 'Unhandled rejection'),
         stack: reason?.stack,
         url: window.location.href,
         route: window.location.pathname,

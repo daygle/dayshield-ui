@@ -44,6 +44,7 @@ import {
 import { useLiveLogs } from '../../hooks/useLiveLogs';
 import type { UpdateScheduleFrequency, UpdateScheduleWeekday } from '../../types';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
+import { useToast } from '../../context/ToastContext';
 
 const STATUS_REFRESH_INTERVAL_MS = 15000;
 const UPDATES_REFRESH_INTERVAL_MS = 5000;
@@ -623,6 +624,7 @@ export default function System() {
   const { dateFormat, timeFormat, setDateFormat, setTimeFormat, formatDateTime } =
     useDisplayPreferences();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { addToast } = useToast();
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [config, setConfig] = useState<SystemConfig | null>(null);
   const [firewallSettings, setFirewallSettings] =
@@ -865,6 +867,7 @@ export default function System() {
         setManagementPortsInput((mergedFirewallSettings.management_ports ?? []).join(', '));
         setError(null);
         setEditOpen(false);
+        addToast('System settings saved.', 'success');
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setSaving(false));
@@ -873,7 +876,10 @@ export default function System() {
   const handleReboot = () => {
     setRebooting(true);
     rebootSystem()
-      .then(() => setRebootOpen(false))
+      .then(() => {
+        setRebootOpen(false);
+        addToast('Reboot initiated.', 'success');
+      })
       .catch((err: Error) => setError(err.message))
       .finally(() => setRebooting(false));
   };
@@ -988,6 +994,7 @@ export default function System() {
           };
         });
         setUpdateSettingsOpen(false);
+        addToast('Update settings saved.', 'success');
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateSaving(false));

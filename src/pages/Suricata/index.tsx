@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useToast } from '../../context/ToastContext';
 import { useSearchParams } from 'react-router-dom';
 import {
   getSuricataConfig,
@@ -61,6 +62,7 @@ function SuricataContent() {
   const selectedInterface = searchParams.get('iface');
   const [config, setConfig] = useState<SuricataConfig | null>(null);
   const [interfaceConfig, setInterfaceConfig] = useState<InterfaceSuricataConfig | null>(null);
+  const { addToast } = useToast();
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [rulesets, setRulesets] = useState<SuricataRuleset[]>([]);
@@ -220,6 +222,7 @@ function SuricataContent() {
       .then((res) => {
         setConfig(res.data);
         setError(null);
+        addToast(`Suricata mode set to ${res.data.mode.toUpperCase()}.`, 'success');
       })
       .catch((err: Error) => setError(err.message));
   };
@@ -243,6 +246,7 @@ function SuricataContent() {
       .then((res) => {
         setConfig(res.data);
         setError(null);
+        addToast(res.data.enabled ? 'Suricata enabled.' : 'Suricata disabled.', 'success');
       })
       .catch((err: Error) => setError(err.message));
   };

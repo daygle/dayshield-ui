@@ -11,6 +11,7 @@ import ErrorBanner from '../../components/ErrorBanner';
 import Sparkline from '../../components/Sparkline';
 import CardLayoutManager from '../../components/CardLayoutManager';
 import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
+import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -106,16 +107,23 @@ function MetricRow({
 function useThroughputBuffer(rx: number | undefined, tx: number | undefined, size = 30) {
   const rxBuf = useRef<number[]>([]);
   const txBuf = useRef<number[]>([]);
+  const rxRef = useRef(rx);
+  const txRef = useRef(tx);
   const [, forceRender] = useState(0);
 
   useEffect(() => {
+    rxRef.current = rx;
+    txRef.current = tx;
+  }, [rx, tx]);
+
+  useEffect(() => {
     const id = setInterval(() => {
-      rxBuf.current = [...rxBuf.current.slice(-(size - 1)), rx ?? 0];
-      txBuf.current = [...txBuf.current.slice(-(size - 1)), tx ?? 0];
+      rxBuf.current = [...rxBuf.current.slice(-(size - 1)), rxRef.current ?? 0];
+      txBuf.current = [...txBuf.current.slice(-(size - 1)), txRef.current ?? 0];
       forceRender((n) => n + 1);
     }, 1000);
     return () => clearInterval(id);
-  }, [rx, tx, size]);
+  }, [size]);
 
   return { rxHistory: rxBuf.current, txHistory: txBuf.current };
 }
@@ -185,21 +193,6 @@ const cardWidthClass = (width: number) => {
   return 'md:col-span-1';
 };
 
-const formatInterfaceDisplayName = (friendlyName: string | undefined, nicName: string): string => {
-  const friendly = friendlyName?.trim();
-  if (!friendly) return nicName;
-  if (friendly.toLowerCase() === nicName.trim().toLowerCase()) return friendly;
-  return `${friendly} (${nicName})`;
-};
-
-const formatDashboardInterfaceName = (
-  friendlyName: string | undefined,
-  nicName: string,
-  fallback: string
-): string => {
-  const friendly = friendlyName?.trim() || fallback;
-  return formatInterfaceDisplayName(friendly, nicName);
-};
 
 const loadDashboardCardConfig = (): DashboardCardConfig[] => {
   if (typeof window === 'undefined') return defaultDashboardCardConfigs;
@@ -405,10 +398,9 @@ export default function Dashboard() {
               <div className="space-y-3">
                 <MetricRow
                   label="WAN Interface"
-                  value={formatDashboardInterfaceName(
-                    net.data.wan_iface_description,
-                    net.data.wan_iface,
-                    'WAN'
+                  value={formatInterfaceDisplayName(
+                    net.data.wan_iface_description || 'WAN',
+                    net.data.wan_iface
                   )}
                 />
                 <div className="flex justify-between items-center text-sm">
@@ -448,7 +440,7 @@ export default function Dashboard() {
                       {net.data.lan_ifaces.map((iface) => (
                         <div key={iface.name} className="flex justify-between text-xs">
                           <span className="font-medium text-gray-700">
-                            {formatDashboardInterfaceName(iface.description, iface.name, 'LAN')}
+                            {formatInterfaceDisplayName(iface.description || 'LAN', iface.name)}
                           </span>
                           <span className="text-gray-500">
                             {[iface.ip, iface.ipv6].filter(Boolean).join(' / ') || '-'}
@@ -480,10 +472,9 @@ export default function Dashboard() {
                   <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                     <p className="text-xs uppercase tracking-wide text-gray-500">WAN Interface</p>
                     <p className="mt-1 text-base font-semibold text-gray-900">
-                      {formatDashboardInterfaceName(
-                        net.data.wan_iface_description,
-                        net.data.wan_iface,
-                        'WAN'
+                      {formatInterfaceDisplayName(
+                        net.data.wan_iface_description || 'WAN',
+                        net.data.wan_iface
                       )}
                     </p>
                     <p className="text-sm text-gray-500">{net.data.wan_ip ?? '-'}</p>
@@ -527,15 +518,16 @@ export default function Dashboard() {
                       <div className="flex items-center justify-between gap-4">
                         <div>
                           <p className="font-semibold text-gray-900">
-                            {formatDashboardInterfaceName(
-                              net.data.wan_iface_description,
-                              net.data.wan_iface,
-                              'WAN'
+                            {formatInterfaceDisplayName(
+                              net.data.wan_iface_description || 'WAN',
+                              net.data.wan_iface
                             )}
                           </p>
                           <p className="text-xs text-gray-500">{net.data.wan_ip ?? '-'}</p>
                         </div>
-                        <Badge variant="green">Up</Badge>
+                        <Badge variant={net.data.gateway_status === 'up' ? 'green' : 'red'}>
+                          {net.data.gateway_status === 'up' ? 'Up' : 'Down'}
+                        </Badge>
                       </div>
                     </div>
                     {net.data.lan_ifaces.map((iface) => (
@@ -546,7 +538,7 @@ export default function Dashboard() {
                         <div className="flex items-center justify-between gap-4">
                           <div>
                             <p className="font-semibold text-gray-900">
-                              {formatDashboardInterfaceName(iface.description, iface.name, 'LAN')}
+                              {formatInterfaceDisplayName(iface.description || 'LAN', iface.name)}
                             </p>
                             <p className="text-xs text-gray-500">
                               {[iface.ip, iface.ipv6].filter(Boolean).join(' / ') || '-'}
@@ -741,10 +733,9 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between py-2 border-b border-gray-100">
                   <div>
                     <p className="text-sm font-medium text-gray-800">
-                      {formatDashboardInterfaceName(
-                        net.data.wan_iface_description,
-                        net.data.wan_iface,
-                        'WAN'
+                      {formatInterfaceDisplayName(
+                        net.data.wan_iface_description || 'WAN',
+                        net.data.wan_iface
                       )}
                     </p>
                     <p className="text-xs text-gray-500">{net.data.wan_ip ?? '-'}</p>
@@ -767,7 +758,7 @@ export default function Dashboard() {
                   >
                     <div>
                       <p className="text-sm font-medium text-gray-800">
-                        {formatDashboardInterfaceName(iface.description, iface.name, 'LAN')}
+                        {formatInterfaceDisplayName(iface.description || 'LAN', iface.name)}
                       </p>
                       <p className="text-xs text-gray-500">
                         {[iface.ip, iface.ipv6].filter(Boolean).join(' / ') || '-'}

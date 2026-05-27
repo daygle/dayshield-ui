@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getGateways, upsertGateway, deleteGateway } from '../../api/gateways';
+import { useToast } from '../../context/ToastContext';
 import { useInterfaceInventory } from './useInterfaceInventory';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 import { formatGatewayDisplayName } from '../../utils/gatewayLabel';
@@ -45,6 +46,7 @@ function StateBadge({ state }: { state: string }) {
 }
 
 export default function Gateways() {
+  const { addToast } = useToast();
   const [rows, setRows] = useState<GatewayRow[]>([]);
   const [defaultIface, setDefaultIface] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
@@ -119,9 +121,10 @@ export default function Gateways() {
     upsertGateway(payload)
       .then(() => {
         setModalOpen(false);
+        addToast(isEditing ? 'Gateway updated.' : 'Gateway added.', 'success');
         load();
       })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => addToast(err.message, 'error'))
       .finally(() => setSaving(false));
   };
 
@@ -131,9 +134,10 @@ export default function Gateways() {
     deleteGateway(deleteName)
       .then(() => {
         setDeleteName(null);
+        addToast('Gateway deleted.', 'success');
         load();
       })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => addToast(err.message, 'error'))
       .finally(() => setDeleting(false));
   };
 

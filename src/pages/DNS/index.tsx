@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useToast } from '../../context/ToastContext';
 import {
   createInterfaceDnsBlocklist,
   getDnsConfig,
@@ -96,6 +97,7 @@ function isWanInterface(iface: NetworkInterface): boolean {
 }
 
 export default function DNS() {
+  const { addToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [config, setConfig] = useState<DnsConfig | null>(null);
   const [hostOverrides, setHostOverrides] = useState<HostRow[]>([]);
@@ -380,6 +382,7 @@ export default function DNS() {
       .then((r) => {
         setConfig(r.data);
         setConfigModalOpen(false);
+        addToast('DNS settings saved.', 'success');
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setConfigSaving(false));
@@ -399,6 +402,7 @@ export default function DNS() {
           setEditingHostName(null);
           setHostForm({ hostname: '', address: '' });
           setHostOverrides(r.data.host_overrides as HostRow[]);
+          addToast(editingHostName ? 'Host override updated.' : 'Host override added.', 'success');
         })
         .catch((err: Error) => setError(err.message))
         .finally(() => setHostSaving(false));
@@ -428,6 +432,7 @@ export default function DNS() {
       .then((r) => {
         setHostDeleteName(null);
         setHostOverrides(r.data.host_overrides as HostRow[]);
+        addToast('Host override deleted.', 'success');
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setHostDeleting(false));
@@ -447,6 +452,7 @@ export default function DNS() {
           setEditingDomainName(null);
           setDomainForm({ domain: '', forward_to: '' });
           setDomainOverrides(r.data.domain_overrides as DomainRow[]);
+          addToast(editingDomainName ? 'Domain override updated.' : 'Domain override added.', 'success');
         })
         .catch((err: Error) => setError(err.message))
         .finally(() => setDomainSaving(false));
@@ -476,6 +482,7 @@ export default function DNS() {
       .then((r) => {
         setDomainDeleteName(null);
         setDomainOverrides(r.data.domain_overrides as DomainRow[]);
+        addToast('Domain override deleted.', 'success');
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setDomainDeleting(false));
@@ -509,6 +516,7 @@ export default function DNS() {
           setBlocklistModalOpen(false);
           setEditingBlocklistId(null);
           loadInterfaceBlocklists(effectiveInterface);
+          addToast(editingBlocklistId ? 'Blocklist updated.' : 'Blocklist added.', 'success');
         })
         .catch((err: Error) => setError(err.message))
         .finally(() => setBlocklistSaving(false));
@@ -532,6 +540,7 @@ export default function DNS() {
       .then(() => {
         setBlocklistDeleteId(null);
         loadInterfaceBlocklists(effectiveInterface);
+        addToast('Blocklist deleted.', 'success');
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setBlocklistDeleting(false));

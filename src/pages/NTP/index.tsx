@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getNtpConfig, updateNtpConfig, getNtpStatus, postNtpResync } from '../../api/ntp';
 import { getInterfacesInventory } from '../../api/interfaces';
 import { getSystemConfig } from '../../api/system';
@@ -9,6 +9,7 @@ import Button from '../../components/Button';
 import TrashIcon from '../../components/TrashIcon';
 import { ServiceControlCluster } from '../../components/ServiceControlButtons';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
+import { useToast } from '../../context/ToastContext';
 
 // NTP server validation
 
@@ -82,64 +83,6 @@ function hasDefaultNtpServers(servers: string[]): boolean {
   return normalized.every((server, idx) => server === defaults[idx]);
 }
 
-// Toast
-
-type ToastKind = 'success' | 'error';
-
-interface ToastMessage {
-  id: number;
-  kind: ToastKind;
-  text: string;
-}
-
-let toastSeq = 0;
-
-function Toast({ messages }: { messages: ToastMessage[] }) {
-  if (messages.length === 0) return null;
-  return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 w-80">
-      {messages.map((m) => (
-        <div
-          key={m.id}
-          role="alert"
-          className={`flex items-start gap-3 rounded-lg px-4 py-3 text-sm shadow-lg text-white ${
-            m.kind === 'success' ? 'bg-green-600' : 'bg-red-600'
-          }`}
-        >
-          {m.kind === 'success' ? (
-            <svg
-              className="h-4 w-4 shrink-0 mt-0.5"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                fillRule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 111.414-1.414L8.414 12.172l7.879-7.879a1 1 0 011.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-          ) : (
-            <svg
-              className="h-4 w-4 shrink-0 mt-0.5"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zm-1 8a1 1 0 100-2 1 1 0 000 2z"
-                clipRule="evenodd"
-              />
-            </svg>
-          )}
-          <span>{m.text}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // Defaults
 
 const DEFAULT_CONFIG: NtpConfig = {
@@ -206,19 +149,13 @@ export default function NtpPage() {
   const interfaceLabel = (iface: NetworkInterface): string =>
     formatInterfaceDisplayName(iface.description, iface.name);
   const [loading, setLoading] = useState(true);
+  const { addToast } = useToast();
   const [saving, setSaving] = useState(false);
   const [resyncing, setResyncing] = useState(false);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // Server input state
   const [serverInput, setServerInput] = useState('');
   const [serverError, setServerError] = useState('');
-
-  const addToast = useCallback((kind: ToastKind, text: string) => {
-    const id = toastSeq++;
-    setToasts((prev) => [...prev, { id, kind, text }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -254,7 +191,7 @@ export default function NtpPage() {
 
         setInterfaces([...configured, ...extras]);
       })
-      .catch((err: Error) => addToast('error', `Failed to load NTP data: ${err.message}`))
+      .catch((err: Error) => addToast(`Failed to load NTP data: ${err.message}`, 'error'))
       .finally(() => setLoading(false));
   }, [addToast]);
 
@@ -287,9 +224,9 @@ export default function NtpPage() {
     updateNtpConfig(payload)
       .then((res) => {
         setConfig(res.data);
-        addToast('success', 'NTP configuration saved.');
+        addToast('NTP configuration saved.', 'success');
       })
-      .catch((err: Error) => addToast('error', `Save failed: ${err.message}`))
+      .catch((err: Error) => addToast(`Save failed: ${err.message}`, 'error'))
       .finally(() => setSaving(false));
   };
 
@@ -297,11 +234,11 @@ export default function NtpPage() {
     setResyncing(true);
     postNtpResync()
       .then(() => {
-        addToast('success', 'NTP resync triggered.');
+        addToast('NTP resync triggered.', 'success');
         return getNtpStatus();
       })
       .then((res) => setStatus(res.data))
-      .catch((err: Error) => addToast('error', `Resync failed: ${err.message}`))
+      .catch((err: Error) => addToast(`Resync failed: ${err.message}`, 'error'))
       .finally(() => setResyncing(false));
   };
 
@@ -383,8 +320,8 @@ export default function NtpPage() {
             <ServiceControlCluster
               serviceId="ntp"
               disabled={busy || resyncing}
-              onError={(message) => addToast('error', message)}
-              onSuccess={(message) => addToast('success', message)}
+              onError={(message) => addToast(message, 'error')}
+              onSuccess={(message) => addToast(message, 'success')}
             />
             <Button
               type="button"
@@ -607,7 +544,6 @@ export default function NtpPage() {
         </div>
       </Card>
 
-      <Toast messages={toasts} />
     </div>
   );
 }

@@ -4,33 +4,7 @@ import type { AdminSecuritySettings } from '../../types';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import FormField from '../../components/FormField';
-
-// ── Toast ─────────────────────────────────────────────────────────────────────
-
-type ToastKind = 'success' | 'error';
-interface ToastMsg {
-  id: number;
-  kind: ToastKind;
-  text: string;
-}
-let toastSeq = 0;
-
-function Toast({ messages }: { messages: ToastMsg[] }) {
-  if (!messages.length) return null;
-  return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 w-80">
-      {messages.map((m) => (
-        <div
-          key={m.id}
-          role="alert"
-          className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm shadow-lg text-white ${m.kind === 'success' ? 'bg-green-600' : 'bg-red-600'}`}
-        >
-          {m.text}
-        </div>
-      ))}
-    </div>
-  );
-}
+import { useToast } from '../../context/ToastContext';
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
 
@@ -47,17 +21,11 @@ const DEFAULT_SETTINGS: AdminSecuritySettings = {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AdminSecurity() {
+  const { addToast } = useToast();
   const [settings, setSettings] = useState<AdminSecuritySettings>(DEFAULT_SETTINGS);
   const [form, setForm] = useState<AdminSecuritySettings>(DEFAULT_SETTINGS);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [toasts, setToasts] = useState<ToastMsg[]>([]);
-
-  const pushToast = useCallback((kind: ToastKind, text: string) => {
-    const id = ++toastSeq;
-    setToasts((prev) => [...prev, { id, kind, text }]);
-    setTimeout(() => setToasts((prev) => prev.filter((m) => m.id !== id)), 4000);
-  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -65,9 +33,9 @@ export default function AdminSecurity() {
       setSettings(data);
       setForm(data);
     } catch {
-      pushToast('error', 'Failed to load admin security settings');
+      addToast('Failed to load admin security settings', 'error');
     }
-  }, [pushToast]);
+  }, [addToast]);
 
   useEffect(() => {
     load();
@@ -85,9 +53,9 @@ export default function AdminSecurity() {
       await updateAdminSecurity(form);
       setSettings(form);
       setEditing(false);
-      pushToast('success', 'Admin security settings updated');
+      addToast('Admin security settings updated', 'success');
     } catch {
-      pushToast('error', 'Failed to save settings');
+      addToast('Failed to save settings', 'error');
     } finally {
       setSaving(false);
     }
@@ -215,7 +183,6 @@ export default function AdminSecurity() {
         </Card>
       )}
 
-      <Toast messages={toasts} />
     </div>
   );
 }

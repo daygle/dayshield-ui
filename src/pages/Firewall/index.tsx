@@ -32,6 +32,7 @@ import AddressPrefixField from '../../components/AddressPrefixField';
 import TrashIcon from '../../components/TrashIcon';
 import { ServiceControlCluster } from '../../components/ServiceControlButtons';
 import { useDisplayPreferences } from '../../context/DisplayPreferencesContext';
+import { useToast } from '../../context/ToastContext';
 import { formatInterfaceDisplayName } from '../../utils/interfaceLabel';
 
 type RuleRow = FirewallRule & Record<string, unknown>;
@@ -322,6 +323,7 @@ function validateAliasForm(alias: Alias): string | null {
 
 export default function Firewall() {
   const { formatDate, timeFormat } = useDisplayPreferences();
+  const { addToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedSection = searchParams.get('section');
   const selectedInterface = searchParams.get('iface');
@@ -698,6 +700,7 @@ export default function Firewall() {
       .then((res) => {
         setSettings({ ...defaultSettings, ...res.data });
         setSettingsModalOpen(false);
+        addToast('Firewall settings saved.', 'success');
       })
       .catch((err: Error) => setSettingsError(err.message))
       .finally(() => setSettingsSaving(false));
@@ -717,6 +720,7 @@ export default function Firewall() {
 
     save
       .then(() => {
+        addToast(editRule ? 'Rule updated.' : 'Rule added.', 'success');
         setRuleModalOpen(false);
         setEditRule(null);
         setRuleForm(defaultRuleForm);
@@ -771,6 +775,7 @@ export default function Firewall() {
     setDeletingRule(true);
     deleteFirewallRule(deleteRuleId)
       .then(() => {
+        addToast('Rule deleted.', 'success');
         setDeleteRuleId(null);
         loadRules();
       })
@@ -825,6 +830,7 @@ export default function Firewall() {
       : createAlias(aliasForm);
     request
       .then(() => {
+        addToast(editingAliasName ? 'Alias updated.' : 'Alias added.', 'success');
         setAliasModalOpen(false);
         setAliasForm(defaultAliasForm);
         setEditingAliasName(null);
@@ -839,6 +845,7 @@ export default function Firewall() {
     setDeletingAlias(true);
     deleteAlias(deleteAliasName)
       .then(() => {
+        addToast('Alias deleted.', 'success');
         setDeleteAliasName(null);
         loadAliases();
       })

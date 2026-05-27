@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useToast } from '../../context/ToastContext';
 import {
   getAcmeAccount,
   updateAcmeAccount,
@@ -48,6 +49,7 @@ const defaultCertForm = { domain: '', sans: '', autoRenew: true };
 
 export default function ACME() {
   const { formatDate } = useDisplayPreferences();
+  const { addToast } = useToast();
   const [account, setAccount] = useState<AcmeAccount | null>(null);
   const [certs, setCerts] = useState<CertRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,6 +99,7 @@ export default function ACME() {
         setAccountForm(res.data);
         setAccountDomains((res.data.domains ?? []).join(', '));
         setAccountEditOpen(false);
+        addToast('ACME account saved.', 'success');
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setAccountSaving(false));
@@ -115,6 +118,7 @@ export default function ACME() {
       .then(() => {
         setIssueOpen(false);
         setCertForm(defaultCertForm);
+        addToast('Certificate issued.', 'success');
         loadAll();
       })
       .catch((err: Error) => setError(err.message))
@@ -125,6 +129,7 @@ export default function ACME() {
     setReissueSaving(true);
     issueAcmeCertificates()
       .then(() => {
+        addToast('Certificate renewal triggered.', 'success');
         loadAll();
       })
       .catch((err: Error) => setError(err.message))
@@ -136,6 +141,7 @@ export default function ACME() {
     deleteAcmeCertificate()
       .then(() => {
         setDeleteOpen(false);
+        addToast('Certificate deleted.', 'success');
         loadAll();
       })
       .catch((err: Error) => setError(err.message))

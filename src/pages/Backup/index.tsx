@@ -18,64 +18,7 @@ import CreateBackupDialog from './CreateBackupDialog';
 import RestoreBackupDialog from './RestoreBackupDialog';
 import EncryptionPasswordDialog from './EncryptionPasswordDialog';
 import ScheduleForm from './ScheduleForm';
-
-// ── Toast ─────────────────────────────────────────────────────────────────────
-
-type ToastKind = 'success' | 'error';
-
-interface ToastMessage {
-  id: number;
-  kind: ToastKind;
-  text: string;
-}
-
-let toastSeq = 0;
-
-function Toast({ messages }: { messages: ToastMessage[] }) {
-  if (messages.length === 0) return null;
-  return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 w-80">
-      {messages.map((m) => (
-        <div
-          key={m.id}
-          className={`flex items-start gap-3 rounded-lg px-4 py-3 text-sm shadow-lg text-white ${
-            m.kind === 'success' ? 'bg-green-600' : 'bg-red-600'
-          }`}
-          role="alert"
-        >
-          {m.kind === 'success' ? (
-            <svg
-              className="h-4 w-4 shrink-0 mt-0.5"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                fillRule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 111.414-1.414L8.414 12.172l7.879-7.879a1 1 0 011.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-          ) : (
-            <svg
-              className="h-4 w-4 shrink-0 mt-0.5"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zm-1 8a1 1 0 100-2 1 1 0 000 2z"
-                clipRule="evenodd"
-              />
-            </svg>
-          )}
-          <span>{m.text}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+import { useToast } from '../../context/ToastContext';
 
 // ── Default schedule ──────────────────────────────────────────────────────────
 
@@ -116,21 +59,14 @@ export default function BackupRestorePage() {
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [scheduleSaving, setScheduleSaving] = useState(false);
 
-  // Toasts
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  const addToast = useCallback((kind: ToastKind, text: string) => {
-    const id = ++toastSeq;
-    setToasts((prev) => [...prev, { id, kind, text }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  }, []);
+  const { addToast } = useToast();
 
   // Load backups list
   const loadBackups = useCallback(() => {
     setListLoading(true);
     listBackups()
       .then((res) => setBackups(res.data))
-      .catch((err: Error) => addToast('error', `Failed to load backups: ${err.message}`))
+      .catch((err: Error) => addToast(`Failed to load backups: ${err.message}`, 'error'))
       .finally(() => setListLoading(false));
   }, [addToast]);
 
@@ -158,9 +94,9 @@ export default function BackupRestorePage() {
       .then((res) => {
         setBackups((prev) => [res.data, ...prev]);
         setCreateOpen(false);
-        addToast('success', `Backup "${res.data.filename}" created successfully.`);
+        addToast(`Backup "${res.data.filename}" created successfully.`, 'success');
       })
-      .catch((err: Error) => addToast('error', `Create backup failed: ${err.message}`))
+      .catch((err: Error) => addToast(`Create backup failed: ${err.message}`, 'error'))
       .finally(() => setCreating(false));
   };
 
@@ -168,7 +104,7 @@ export default function BackupRestorePage() {
 
   const handleDownload = (entry: BackupEntry) => {
     downloadBackup(entry.filename).catch((err: Error) =>
-      addToast('error', `Download failed: ${err.message}`)
+      addToast(`Download failed: ${err.message}`, 'error')
     );
   };
 
@@ -201,10 +137,10 @@ export default function BackupRestorePage() {
     setRestoring(true);
     restoreBackup({ filename: restoreEntry.filename, passphrase })
       .then(() => {
-        addToast('success', `Backup "${restoreEntry.filename}" restored successfully.`);
+        addToast(`Backup "${restoreEntry.filename}" restored successfully.`, 'success');
         loadBackups();
       })
-      .catch((err: Error) => addToast('error', `Restore failed: ${err.message}`))
+      .catch((err: Error) => addToast(`Restore failed: ${err.message}`, 'error'))
       .finally(() => {
         setRestoring(false);
         setRestoreEntry(null);
@@ -228,7 +164,7 @@ export default function BackupRestorePage() {
     pendingPasswordResolve.current = null;
     setRestoring(false);
     setRestoreEntry(null);
-    addToast('error', 'Restore cancelled - password not provided.');
+    addToast('Restore cancelled - password not provided.', 'error');
   };
 
   // ── Delete ─────────────────────────────────────────────────────────────────
@@ -243,10 +179,10 @@ export default function BackupRestorePage() {
     deleteBackup(deleteEntry.filename)
       .then(() => {
         setBackups((prev) => prev.filter((b) => b.filename !== deleteEntry.filename));
-        addToast('success', `Backup "${deleteEntry.filename}" deleted.`);
+        addToast(`Backup "${deleteEntry.filename}" deleted.`, 'success');
         setDeleteEntry(null);
       })
-      .catch((err: Error) => addToast('error', `Delete failed: ${err.message}`))
+      .catch((err: Error) => addToast(`Delete failed: ${err.message}`, 'error'))
       .finally(() => setDeleting(false));
   };
 
@@ -257,9 +193,9 @@ export default function BackupRestorePage() {
     updateBackupSchedule(schedule)
       .then((res) => {
         setSchedule(res.data);
-        addToast('success', 'Backup schedule saved.');
+        addToast('Backup schedule saved.', 'success');
       })
-      .catch((err: Error) => addToast('error', `Save schedule failed: ${err.message}`))
+      .catch((err: Error) => addToast(`Save schedule failed: ${err.message}`, 'error'))
       .finally(() => setScheduleSaving(false));
   };
 
@@ -394,7 +330,6 @@ export default function BackupRestorePage() {
                 );
                 handleRestoreClick(entry);
               }}
-              addToast={addToast}
             />
           </div>
         </div>
@@ -414,8 +349,6 @@ export default function BackupRestorePage() {
         )}
       </Card>
 
-      {/* Toasts */}
-      <Toast messages={toasts} />
     </div>
   );
 }
@@ -425,10 +358,10 @@ export default function BackupRestorePage() {
 interface UploadRestoreSectionProps {
   restoring: boolean;
   onRestore: (entry: BackupEntry) => void;
-  addToast: (kind: ToastKind, text: string) => void;
 }
 
-function UploadRestoreSection({ restoring, onRestore, addToast }: UploadRestoreSectionProps) {
+function UploadRestoreSection({ restoring, onRestore }: UploadRestoreSectionProps) {
+  const { addToast } = useToast();
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -448,10 +381,10 @@ function UploadRestoreSection({ restoring, onRestore, addToast }: UploadRestoreS
         { headers: { 'Content-Type': 'multipart/form-data' } }
       );
       const entry = normalizeBackupEntry(res.data.data);
-      addToast('success', `"${entry.filename}" uploaded. Review and confirm restore below.`);
+      addToast(`"${entry.filename}" uploaded. Review and confirm restore below.`, 'success');
       onRestore(entry);
     } catch (err) {
-      addToast('error', `Upload failed: ${(err as Error).message}`);
+      addToast(`Upload failed: ${(err as Error).message}`, 'error');
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';

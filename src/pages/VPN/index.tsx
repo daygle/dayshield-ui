@@ -7,6 +7,7 @@ import {
   createWgPeer,
   deleteWgPeer,
 } from '../../api/wireguard';
+import { useToast } from '../../context/ToastContext';
 import type { WgServer, WgPeer } from '../../types';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
@@ -47,6 +48,7 @@ function formatBytes(bytes: number): string {
 }
 
 export default function VPN() {
+  const { addToast } = useToast();
   const [server, setServer] = useState<WgServer | null>(null);
   const [peers, setPeers] = useState<PeerRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,9 +182,10 @@ export default function VPN() {
       .then(() => {
         setServerForm((f) => ({ ...f, privateKey: '' }));
         setShowPrivateKey(false);
+        addToast('WireGuard server saved.', 'success');
         loadAll();
       })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => addToast(err.message, 'error'))
       .finally(() => setServerSaving(false));
   };
 
@@ -203,9 +206,10 @@ export default function VPN() {
       .then(() => {
         setPeerModalOpen(false);
         setPeerForm(defaultPeerForm);
+        addToast('Peer added.', 'success');
         loadAll();
       })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => addToast(err.message, 'error'))
       .finally(() => setPeerSaving(false));
   };
 
@@ -215,9 +219,10 @@ export default function VPN() {
     deleteWgPeer(deleteId)
       .then(() => {
         setDeleteId(null);
+        addToast('Peer deleted.', 'success');
         loadAll();
       })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => addToast(err.message, 'error'))
       .finally(() => setDeleting(false));
   };
 

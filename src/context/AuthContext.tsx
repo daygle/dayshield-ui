@@ -81,8 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAuthBootstrapInProgress(false);
         }
       }
-
-      setAuthBootstrapInProgress(false);
     };
 
     bootstrapAuth();

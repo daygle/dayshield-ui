@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LiveLogsFilter, LogEntry, LogSource } from '../types/logs';
 import LogLine from './LogLine';
 import LogFilters from './LogFilters';
@@ -75,7 +75,7 @@ export default function LogViewer({
   const lastLogCountRef = useRef(logs.length);
   const [pendingCount, setPendingCount] = useState(0);
   const statusInfo = STATUS_LABEL[status];
-  const counts = buildCounts(allLogs);
+  const counts = useMemo(() => buildCounts(allLogs), [allLogs]);
 
   // Auto-scroll only inside the log container to avoid scrolling the full page.
   useEffect(() => {
