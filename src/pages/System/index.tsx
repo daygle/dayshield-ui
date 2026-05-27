@@ -1130,7 +1130,7 @@ export default function System() {
         loading={saving}
         size="lg"
       >
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           {editScope === 'system' && (
             <>
               <FormField
@@ -1142,7 +1142,7 @@ export default function System() {
               <FormField
                 id="cfg-timezone"
                 label="Timezone"
-                className="col-span-2"
+                className="col-span-3"
                 as="select"
                 value={editConfig.timezone ?? 'UTC'}
                 onChange={(e) => setEditConfig({ ...editConfig, timezone: e.target.value })}
@@ -1162,7 +1162,7 @@ export default function System() {
               <FormField
                 id="cfg-ntp"
                 label="NTP Servers (comma-separated)"
-                className="col-span-2"
+                className="col-span-3"
                 placeholder="127.0.0.1"
                 hint="Use the appliance itself as the NTP source by pointing to 127.0.0.1."
                 value={(editConfig.ntpServers ?? DEFAULT_NTP_SERVERS).join(', ')}
@@ -1179,7 +1179,7 @@ export default function System() {
               <FormField
                 id="cfg-dns"
                 label="DNS Servers (comma-separated)"
-                className="col-span-2"
+                className="col-span-3"
                 placeholder="8.8.8.8, 8.8.4.4"
                 value={(editConfig.dnsServers ?? []).join(', ')}
                 onChange={(e) =>
@@ -1192,7 +1192,7 @@ export default function System() {
                   })
                 }
               />
-              <div className="col-span-2 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+              <div className="col-span-3 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
                 <input
                   id="cfg-ipv6-enabled"
                   type="checkbox"
@@ -1217,7 +1217,7 @@ export default function System() {
                 value={String(editConfig.sshPort ?? 22)}
                 onChange={(e) => setEditConfig({ ...editConfig, sshPort: Number(e.target.value) })}
               />
-              <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="col-span-3 grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
                   <input
                     id="cfg-ssh-enabled"
@@ -1271,7 +1271,7 @@ export default function System() {
                 value={String(editConfig.webPort ?? 8443)}
                 onChange={(e) => setEditConfig({ ...editConfig, webPort: Number(e.target.value) })}
               />
-              <div className="col-span-2">
+              <div className="col-span-3">
                 <label
                   htmlFor="cfg-management-protocol"
                   className="block text-sm font-medium text-gray-700"
@@ -1300,7 +1300,7 @@ export default function System() {
                 </p>
               </div>
               {editConfig.managementHttpsEnabled && (
-                <div className="col-span-2">
+                <div className="col-span-3">
                   <label
                     htmlFor="cfg-management-tls-domain"
                     className="block text-sm font-medium text-gray-700"
@@ -1343,7 +1343,7 @@ export default function System() {
                   })
                 }
               />
-              <div className="col-span-2 border-t border-gray-200 pt-3">
+              <div className="col-span-3 border-t border-gray-200 pt-3">
                 <p className="text-sm font-semibold text-gray-900">Management Access Controls</p>
                 <p className="text-xs text-gray-500 mt-1">
                   These controls were moved from Firewall Settings to System Settings.
@@ -1351,7 +1351,7 @@ export default function System() {
               </div>
               <FormField
                 id="cfg-management-interface"
-                className="col-span-2"
+                className="col-span-3"
                 label="Management Interface (optional)"
                 as="select"
                 value={firewallSettings.management_interface ?? ''}
@@ -1371,7 +1371,7 @@ export default function System() {
               </FormField>
               <FormField
                 id="cfg-management-sources"
-                className="col-span-2"
+                className="col-span-3"
                 label="Management Allowed Sources (comma-separated CIDRs)"
                 placeholder="e.g. 192.168.1.0/24, 10.0.0.0/8"
                 value={managementAllowedSourcesInput}
@@ -1379,7 +1379,7 @@ export default function System() {
               />
               <FormField
                 id="cfg-management-ports"
-                className="col-span-2"
+                className="col-span-3"
                 label="Management Ports (comma-separated)"
                 placeholder="e.g. 8443, 9443"
                 value={managementPortsInput}
@@ -1389,7 +1389,7 @@ export default function System() {
           )}
           {editScope === 'ssh' && (
             <>
-              <div className="col-span-2 border-t border-gray-200 pt-3">
+              <div className="col-span-3 border-t border-gray-200 pt-3">
                 <p className="text-sm font-semibold text-gray-900">SSH Authentication</p>
                 <p className="text-xs text-gray-500 mt-1">
                   Public keys are written to the root account authorized_keys file.
@@ -1397,7 +1397,7 @@ export default function System() {
               </div>
               <FormField
                 id="cfg-ssh-authorized-keys"
-                className="col-span-2"
+                className="col-span-3"
                 as="textarea"
                 rows={5}
                 label="Authorized SSH Keys (one per line)"
@@ -1413,7 +1413,7 @@ export default function System() {
                   })
                 }
               />
-              <div className="col-span-2">
+              <div className="col-span-3">
                 <p className="text-sm font-medium text-gray-700">SSH Listen Interfaces</p>
                 <p className="mt-1 text-xs text-gray-500">
                   Leave all unchecked to allow SSH on every interface.
