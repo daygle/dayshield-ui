@@ -2182,10 +2182,9 @@ export default function System() {
             {updates.pendingApplianceRebuild && (
               <div className="rounded-md bg-orange-50 border border-orange-200 px-4 py-3 text-sm text-orange-800 space-y-3">
                 <div>
-                  <p className="font-medium">Appliance rebuild required.</p>
+                  <p className="font-medium">System image rebuild needed.</p>
                   <p>
-                    {updates.applianceRebuildReason ??
-                      'Rootfs changes require rebuilding the appliance rootfs and installer ISO artifacts.'}
+                    A new root filesystem image must be built before this update can be applied.
                   </p>
                   <p className="mt-1 text-xs text-orange-700">
                     Build and publish a new rootfs artifact from the build environment using the
