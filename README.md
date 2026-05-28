@@ -47,24 +47,11 @@ npm test
 - This repo is focused on frontend code, build output, and release packaging.
 - UI versioning is independent from core and rootfs components.
 
-## OSTree update UI assumptions
+## Rootfs update UI
 
-The System → Updates screen now supports an OSTree-style rootfs flow in addition to the
-existing runtime component updates. The frontend expects the existing update endpoints
-under `/system/updates/*`, with these optional additions in the payload:
+The System → Updates screen supports image-based rootfs updates via the `/system/rootfs/` endpoints provided by `dayshield-core`:
 
-- `rootfsUpdateMode: "ostree"` (or `settings.rootfsUpdateMode`) to switch the UI into
-  OSTree deployment mode
-- `ostreeStatus` (or `ostree`) with optional `bootedDeployment`, `availableDeployment`,
-  `stagedDeployment`, `rollbackDeployment`, and `transaction` objects
-- optional `settings.ostreeRemote`, `settings.ostreeRef`, and `settings.ostreeRemoteUrl`
-  so the UI can show which remote/ref is being tracked
-
-The UI assumes:
-
-- checking for updates still uses `POST /system/updates/check`
-- staging/applying the next OSTree deployment still uses `POST /system/updates/apply`
-  with `{ component: "rootfs" }`
-- rollback still uses `POST /system/updates/rollback` with `{ component: "rootfs" }`
-- a staged OSTree deployment becomes active after reboot, and `pendingReboot` is used to
-  indicate that reboot requirement to the user
+- `currentVersion`, `availableVersion`, `pendingVersion`, and `previousVersion` drive the version display
+- `rebootRequired` triggers the pending-reboot banner
+- `rollbackAvailable` controls whether the rollback action is shown
+- Checking, staging, applying, and rolling back all use the `/system/rootfs/*` endpoints directly
