@@ -8,6 +8,8 @@ import type {
   UpdatesActionResult,
   UpdateComponent,
   RootfsUpdateMode,
+  RootfsUpdateStatus,
+  RootfsTransactionState,
   SystemSchedules,
   ScheduleJobType,
   DashboardSystemStatus,
@@ -577,6 +579,54 @@ export const validateUpdates = (
   apiClient
     .post<ApiResponse<unknown>>('/system/updates/validate', { component, forcePartialApply })
     .then((r) => ({ ...r.data, data: normalizeUpdatesActionResult(r.data.data) }));
+
+const ROOTFS_TX_STATES: RootfsTransactionState[] = [
+  'idle', 'checking', 'staging', 'applying', 'rolling_back',
+];
+
+function normalizeRootfsUpdateStatus(raw: unknown): RootfsUpdateStatus {
+  const value = asRecord(raw);
+  const txRaw = asString(value.transactionState ?? value.transaction_state);
+  const transactionState: RootfsTransactionState =
+    ROOTFS_TX_STATES.includes(txRaw as RootfsTransactionState)
+      ? (txRaw as RootfsTransactionState)
+      : 'idle';
+  return {
+    supported: Boolean(value.supported),
+    checkedAt: asString(value.checkedAt ?? value.checked_at) ?? new Date().toISOString(),
+    currentVersion: asString(value.currentVersion ?? value.current_version) ?? null,
+    availableVersion: asString(value.availableVersion ?? value.available_version) ?? null,
+    pendingVersion: asString(value.pendingVersion ?? value.pending_version) ?? null,
+    previousVersion: asString(value.previousVersion ?? value.previous_version) ?? null,
+    updateAvailable: Boolean(value.updateAvailable ?? value.update_available),
+    rebootRequired: Boolean(value.rebootRequired ?? value.reboot_required),
+    rollbackAvailable: Boolean(value.rollbackAvailable ?? value.rollback_available),
+    recoveryActive: Boolean(value.recoveryActive ?? value.recovery_active),
+    transactionState,
+    lastError: asString(value.lastError ?? value.last_error) ?? null,
+  };
+}
+
+export const getRootfsStatus = (): Promise<ApiResponse<RootfsUpdateStatus>> =>
+  apiClient.get<ApiResponse<unknown>>('/system/rootfs/status').then((r) => ({
+    ...r.data,
+    data: normalizeRootfsUpdateStatus(r.data.data),
+  }));
+
+export const checkRootfsUpdates = (): Promise<ApiResponse<RootfsUpdateStatus>> =>
+  apiClient.post<ApiResponse<unknown>>('/system/rootfs/check').then((r) => ({
+    ...r.data,
+    data: normalizeRootfsUpdateStatus(r.data.data),
+  }));
+
+export const stageRootfsUpdate = (): Promise<ApiResponse<unknown>> =>
+  apiClient.post<ApiResponse<unknown>>('/system/rootfs/stage').then((r) => r.data);
+
+export const applyRootfsUpdate = (): Promise<ApiResponse<unknown>> =>
+  apiClient.post<ApiResponse<unknown>>('/system/rootfs/apply').then((r) => r.data);
+
+export const rollbackRootfsUpdate = (): Promise<ApiResponse<unknown>> =>
+  apiClient.post<ApiResponse<unknown>>('/system/rootfs/rollback').then((r) => r.data);
 
 export const markApplianceRebuildComplete = (): Promise<ApiResponse<UpdatesStatus>> =>
   apiClient

@@ -13,6 +13,10 @@ import {
   rollbackUpdates,
   validateUpdates,
   markApplianceRebuildComplete,
+  getRootfsStatus,
+  checkRootfsUpdates,
+  applyRootfsUpdate,
+  rollbackRootfsUpdate,
 } from '../../api/system';
 import { getAdminSecurity, updateAdminSecurity } from '../../api/admin';
 import { getFirewallSettings, updateFirewallSettings } from '../../api/firewall';
@@ -27,6 +31,7 @@ import type {
   UpdateLogEntry,
   FirewallSettings,
   NetworkInterface,
+  RootfsUpdateStatus,
 } from '../../types';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
@@ -581,6 +586,7 @@ export default function System() {
   const [rebooting, setRebooting] = useState(false);
 
   const [updates, setUpdates] = useState<UpdatesStatus | null>(null);
+  const [rootfsStatus, setRootfsStatus] = useState<RootfsUpdateStatus | null>(null);
   const [updateSettings, setUpdateSettings] = useState<UpdateSettings | null>(null);
   const [updateSettingsOpen, setUpdateSettingsOpen] = useState(false);
   const [updateActionLoading, setUpdateActionLoading] = useState(false);
@@ -661,12 +667,14 @@ export default function System() {
       getFirewallSettings(),
       getInterfaces(),
       getInterfacesInventory(),
+      getRootfsStatus(),
     ])
-      .then(([st, cfg, upd, updSettings, acme, adminSec, fw, ifacesRes, inventoryRes]) => {
+      .then(([st, cfg, upd, updSettings, acme, adminSec, fw, ifacesRes, inventoryRes, rootfs]) => {
         setStatus(st.data);
         setConfig(cfg.data);
         setEditConfig(configWithNtpDefault(cfg.data));
         setUpdates(upd.data);
+        setRootfsStatus(rootfs.data);
         setUpdateSettings(updSettings.data);
         setAcmeDomains(acme.data.domains ?? []);
         setAdminSecurity(adminSec);
@@ -709,6 +717,9 @@ export default function System() {
         .catch(() => {
           // Keep current deployment status display on transient poll failures.
         });
+      getRootfsStatus()
+        .then((res) => setRootfsStatus(res.data))
+        .catch(() => {});
     };
 
     const timer = window.setInterval(refreshStatus, STATUS_REFRESH_INTERVAL_MS);
@@ -724,6 +735,9 @@ export default function System() {
         .catch(() => {
           // Keep current UI state on transient poll failures.
         });
+      getRootfsStatus()
+        .then((res) => setRootfsStatus(res.data))
+        .catch(() => {});
     };
 
     refreshUpdates();
@@ -804,9 +818,10 @@ export default function System() {
   const handleCheckUpdates = () => {
     setUpdateActionLoading(true);
     setUpdateActionMessage(null);
-    checkForUpdates()
-      .then((res) => {
-        setUpdates(res.data);
+    Promise.all([checkForUpdates(), checkRootfsUpdates()])
+      .then(([updRes, rootfsRes]) => {
+        setUpdates(updRes.data);
+        setRootfsStatus(rootfsRes.data);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false));
@@ -959,7 +974,14 @@ export default function System() {
       )
     : false;
   const rootfsComponent = updates?.components.find((comp) => comp.component === 'rootfs');
-  const rootfsUpdateAvailable = Boolean(rootfsComponent?.updateAvailable);
+  const rootfsUpdateAvailable = Boolean(rootfsStatus?.updateAvailable ?? rootfsComponent?.updateAvailable);
+  const rootfsPendingVersion = rootfsStatus?.pendingVersion ?? null;
+  const rootfsRebootRequired = rootfsStatus?.rebootRequired ?? Boolean(updates?.pendingReboot);
+  const rootfsRollbackAvailable = rootfsStatus?.rollbackAvailable ?? Boolean(rootfsComponent?.rollbackVersion);
+  const rootfsPreviousVersion = rootfsStatus?.previousVersion ?? rootfsComponent?.rollbackVersion ?? null;
+  const rootfsTransactionState = rootfsStatus?.transactionState ?? 'idle';
+  const rootfsRecoveryActive = rootfsStatus?.recoveryActive ?? false;
+  const rootfsInProgress = rootfsTransactionState !== 'idle';
   const updatesSubtitle = 'Keep your device up to date with the latest software and security fixes.';
 
   return (
@@ -1544,7 +1566,7 @@ export default function System() {
             <div>
               <dt className="text-gray-500">System Image</dt>
               <dd className="font-medium text-gray-800">
-                {rootfsComponent?.currentVersion ?? '-'}
+                {rootfsStatus?.currentVersion ?? rootfsComponent?.currentVersion ?? '-'}
               </dd>
             </div>
           </dl>
@@ -1831,14 +1853,43 @@ export default function System() {
                         .then((res) => {
                           setUpdates(res.data.status);
                           setUpdateActionMessage(res.data.message);
+                          return applyRootfsUpdate();
+                        })
+                        .then(() => getRootfsStatus())
+                        .then((r) => setRootfsStatus(r.data))
+                        .catch((err: Error) => setError(err.message))
+                        .finally(() => setUpdateActionLoading(false));
+                    }}
+                    disabled={updateActionLoading || (!rootfsUpdateAvailable && !rootfsPendingVersion)}
+                    title={
+                      rootfsPendingVersion
+                        ? 'Activate the staged system image update for next boot'
+                        : rootfsUpdateAvailable
+                        ? 'Download, stage and activate the available system image update'
+                        : 'No system image update available'
+                    }
+                  >
+                    {rootfsPendingVersion ? 'Activate System Update' : 'Apply System Update'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setUpdateActionLoading(true);
+                      setUpdateActionMessage(null);
+                      rollbackRootfsUpdate()
+                        .then(() => getRootfsStatus())
+                        .then((r) => {
+                          setRootfsStatus(r.data);
+                          setUpdateActionMessage('System image rollback scheduled for next boot.');
                         })
                         .catch((err: Error) => setError(err.message))
                         .finally(() => setUpdateActionLoading(false));
                     }}
-                    disabled={updateActionLoading || !rootfsUpdateAvailable}
-                    title={rootfsUpdateAvailable ? 'Apply the available system image update' : 'No system image update available'}
+                    disabled={updateActionLoading || !rootfsRollbackAvailable}
+                    title={rootfsRollbackAvailable ? `Roll back to v${rootfsPreviousVersion}` : 'No previous version to roll back to'}
                   >
-                    Apply System Update
+                    Rollback System
                   </Button>
                 </div>
               </div>
@@ -1935,17 +1986,27 @@ export default function System() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <h4 className="text-sm font-semibold text-blue-950">System Image</h4>
-                    <p className="mt-1 text-xs text-blue-800">Image-based system updates (RAUC)</p>
+                    <p className="mt-1 text-xs text-blue-800">Image-based rootfs updates</p>
                   </div>
                   <span
                     className={[
                       'inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset',
-                      rootfsUpdateAvailable
+                      rootfsInProgress
+                        ? 'bg-yellow-100 text-yellow-800 ring-yellow-200'
+                        : rootfsRebootRequired
+                        ? 'bg-amber-100 text-amber-800 ring-amber-200'
+                        : rootfsUpdateAvailable
                         ? 'text-blue-900 ring-blue-200'
                         : 'bg-green-100 text-green-700 ring-green-200',
                     ].join(' ')}
                   >
-                    {rootfsUpdateAvailable ? 'Update available' : 'Up to Date'}
+                    {rootfsInProgress
+                      ? rootfsTransactionState.replace('_', ' ')
+                      : rootfsRebootRequired
+                      ? 'Reboot required'
+                      : rootfsUpdateAvailable
+                      ? 'Update available'
+                      : 'Up to date'}
                   </span>
                 </div>
 
@@ -1955,51 +2016,59 @@ export default function System() {
                       Installed
                     </dt>
                     <dd className="mt-1 font-mono text-gray-900">
-                      {rootfsComponent?.currentVersion ?? '-'}
+                      {rootfsStatus?.currentVersion ?? rootfsComponent?.currentVersion ?? '-'}
+                    </dd>
+                  </div>
+                  <div className="rounded-md border border-blue-100 bg-white/80 p-3">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-blue-700">
+                      {rootfsPendingVersion ? 'Pending' : 'Available'}
+                    </dt>
+                    <dd className="mt-1 font-mono text-gray-900">
+                      {rootfsPendingVersion
+                        ?? rootfsStatus?.availableVersion
+                        ?? rootfsComponent?.remoteVersion
+                        ?? '-'}
                     </dd>
                     <p className="mt-1 text-xs text-gray-600">
-                      {rootfsComponent?.currentCommit
-                        ? `Commit ${shortCommit(rootfsComponent.currentCommit)}.`
-                        : 'No additional details available.'}
+                      {rootfsPendingVersion
+                        ? 'Staged — activate to apply on next reboot.'
+                        : rootfsUpdateAvailable
+                        ? 'Ready to download and apply.'
+                        : 'No update available.'}
                     </p>
                   </div>
                   <div className="rounded-md border border-blue-100 bg-white/80 p-3">
                     <dt className="text-xs font-medium uppercase tracking-wide text-blue-700">
-                      Available
+                      Previous
                     </dt>
                     <dd className="mt-1 font-mono text-gray-900">
-                      {rootfsComponent?.remoteVersion ?? (rootfsUpdateAvailable ? componentRemoteDisplay(rootfsComponent ?? { remoteVersion: undefined, remoteCommit: undefined }) : '-')}
+                      {rootfsPreviousVersion ?? '-'}
                     </dd>
                     <p className="mt-1 text-xs text-gray-600">
-                      {rootfsUpdateAvailable ? 'Ready to apply.' : 'No update available.'}
-                    </p>
-                  </div>
-                  <div className="rounded-md border border-blue-100 bg-white/80 p-3">
-                    <dt className="text-xs font-medium uppercase tracking-wide text-blue-700">
-                      Rollback
-                    </dt>
-                    <dd className="mt-1 font-mono text-gray-900">
-                      {rootfsComponent?.rollbackVersion ?? 'Not available'}
-                    </dd>
-                    <p className="mt-1 text-xs text-gray-600">
-                      {rootfsComponent?.rollbackVersion
-                        ? 'Previous version available.'
-                        : 'No previous version to roll back to.'}
+                      {rootfsRollbackAvailable
+                        ? 'Available for rollback.'
+                        : 'No previous version.'}
                     </p>
                   </div>
                 </dl>
 
-                {rootfsComponent?.lastError && (
+                {rootfsRecoveryActive && (
+                  <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    The system automatically recovered from a failed update and reverted to the previous version.
+                  </div>
+                )}
+                {(rootfsStatus?.lastError ?? rootfsComponent?.lastError) && (
                   <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                    {rootfsComponent.lastError}
+                    {rootfsStatus?.lastError ?? rootfsComponent?.lastError}
                   </div>
                 )}
               </div>
             </div>
 
-            {updates.pendingReboot && (
+            {rootfsRebootRequired && (
               <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
-                A reboot is required to apply the staged system update.
+                A reboot is required to apply the staged system image
+                {rootfsPendingVersion ? ` (v${rootfsPendingVersion})` : ''}.
               </div>
             )}
 
