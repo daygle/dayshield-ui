@@ -1873,7 +1873,7 @@ export default function System() {
                   </Button>
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="secondary"
                     onClick={() => {
                       setUpdateActionLoading(true);
                       setUpdateActionMessage(null);
