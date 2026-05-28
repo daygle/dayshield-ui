@@ -282,189 +282,183 @@ export default function SourceNAT() {
   ];
 
   return (
-    <div className="space-y-4">
-      {/* Delete Confirmation */}
-      <Modal
-        open={deleteId !== null}
-        onClose={() => setDeleteId(null)}
-        title="Confirm Deletion"
-      >
-        <div className="space-y-4">
-          <p>Are you sure you want to delete this Source NAT rule?</p>
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => setDeleteId(null)}
-              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
-              disabled={deleteMutation.isPending}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
-              className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-red-700 disabled:opacity-50"
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      <Card>
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Source NAT Rules</h3>
-          <button
-            onClick={openAddModal}
-            className="btn-icon btn-icon-secondary"
-            title="Add NAT rule"
-            aria-label="Add NAT rule"
-            disabled={rulesLoading}
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        </div>
-      </Card>
-
-      <Card>
-        {rulesLoading ? (
-          <div className="py-8 text-center text-gray-500">Loading rules...</div>
-        ) : rules.length === 0 ? (
-          <div className="py-8 text-center text-gray-500">
-            No Source NAT rules configured. Create one to get started.
-          </div>
-        ) : (
-          <Table data={rules} columns={columns} keyField="id" />
-        )}
-      </Card>
-
+    <div className="space-y-6">
       {/* Add/Edit Modal */}
-      <Modal open={ruleModalOpen} onClose={() => setRuleModalOpen(false)} title="Source NAT Rule">
+      <Modal
+        open={ruleModalOpen}
+        title={editingRule ? 'Edit Source NAT' : 'Add Source NAT'}
+        onClose={() => setRuleModalOpen(false)}
+        onConfirm={handleSave}
+        confirmLabel={editingRule ? 'Save Changes' : 'Create Source NAT'}
+        loading={isSaving}
+        size="xl"
+      >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <FormField
-            label="Enabled"
-            error={formErrors.enabled}
+            id="snat-iface"
+            label="WAN Interface"
+            as="select"
+            required
+            value={ruleForm.interface ?? ''}
+            error={formErrors.interface}
+            onChange={(e) => setRuleForm({ ...ruleForm, interface: e.target.value || null })}
           >
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={ruleForm.enabled}
-                onChange={(e) => setRuleForm({ ...ruleForm, enabled: e.target.checked })}
-                className="rounded"
-              />
-              <span>Enable this rule</span>
-            </label>
+            <option value="">Select WAN interface</option>
+            {wanInterfaces.map((iface) => (
+              <option key={iface.name} value={iface.name}>
+                {formatInterfaceDisplayName(iface.description, iface.name)}
+              </option>
+            ))}
           </FormField>
 
-          <FormField label="Interface" error={formErrors.interface}>
-            <select
-              value={ruleForm.interface ?? ''}
-              onChange={(e) => setRuleForm({ ...ruleForm, interface: e.target.value })}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">Select interface...</option>
-              {wanInterfaces.map((iface) => (
-                <option key={iface.name} value={iface.name}>
-                  {formatInterfaceDisplayName(iface.description, iface.name)}
-                </option>
-              ))}
-            </select>
-          </FormField>
-
-          <FormField label="Address Family" error={formErrors.address_family}>
-            <select
-              value={ruleForm.address_family}
-              onChange={(e) =>
+          {ipv6Enabled ? (
+            <FormField
+              id="snat-family"
+              label="Address Family"
+              as="select"
+              value={ruleForm.address_family ?? 'ipv4'}
+              error={formErrors.address_family}
+              onChange={(e) => {
+                const family = e.target.value as NatRule['address_family'];
+                const sourceParts = splitCidrValue(
+                  joinCidrValue(sourceAddressInput, sourcePrefixInput),
+                  family
+                );
+                setSourceAddressInput(sourceParts.address);
+                setSourcePrefixInput(sourceParts.prefix);
                 setRuleForm({
                   ...ruleForm,
-                  address_family: e.target.value as 'ipv4' | 'ipv6',
-                })
-              }
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  address_family: family,
+                  source: joinCidrValue(sourceParts.address, sourceParts.prefix),
+                });
+              }}
             >
               <option value="ipv4">IPv4</option>
               <option value="ipv6">IPv6</option>
-            </select>
-          </FormField>
-
-          <AddressPrefixField
-            id="source-cidr"
-            label="Source Address (CIDR)"
-            addressValue={sourceAddressInput}
-            prefixValue={sourcePrefixInput}
-            addressPlaceholder="e.g., 192.168.1.0"
-            onAddressChange={setSourceAddressInput}
-            onPrefixChange={setSourcePrefixInput}
-            prefixOptions={sourcePrefixOptions}
-          />
-          {formErrors.source && (
-            <p className="text-xs text-red-600">{formErrors.source}</p>
+            </FormField>
+          ) : (
+            <div className="lg:col-span-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Address Family
+              </p>
+              <p className="mt-1 text-sm text-gray-700">IPv4 only</p>
+            </div>
           )}
 
-          <FormField label="Translation Address" error={formErrors.translation}>
-            <input
-              type="text"
-              value={translationAddressInput}
-              onChange={(e) => setTranslationAddressInput(e.target.value)}
-              placeholder="e.g., 203.0.113.5"
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          <div className="flex flex-col gap-1">
+            <AddressPrefixField
+              id="source-cidr"
+              label="Source Address"
+              required
+              addressValue={sourceAddressInput}
+              prefixValue={sourcePrefixInput}
+              addressPlaceholder="e.g. 192.168.1.0"
+              onAddressChange={setSourceAddressInput}
+              onPrefixChange={setSourcePrefixInput}
+              prefixOptions={sourcePrefixOptions}
             />
-          </FormField>
+            {formErrors.source && <p className="text-xs text-red-600">{formErrors.source}</p>}
+          </div>
 
-          <FormField label="Description" className="lg:col-span-3">
-            <input
-              type="text"
-              value={ruleForm.description ?? ''}
-              onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value || null })}
-              placeholder="Optional description"
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </FormField>
+          <FormField
+            id="snat-translation"
+            label="Translation Address"
+            required
+            value={translationAddressInput}
+            error={formErrors.translation}
+            placeholder="e.g. 203.0.113.5"
+            onChange={(e) => setTranslationAddressInput(e.target.value)}
+          />
 
-          <FormField label="Logging" className="lg:col-span-3">
-            <label className="flex items-center gap-2">
+          <FormField
+            id="snat-desc"
+            label="Description"
+            className="lg:col-span-3"
+            placeholder="Optional description"
+            value={ruleForm.description ?? ''}
+            onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value || null })}
+          />
+
+          <div className="lg:col-span-3 space-y-3 pt-1">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
-                checked={ruleForm.log}
-                onChange={(e) => setRuleForm({ ...ruleForm, log: e.target.checked })}
-                className="rounded"
-              />
-              <span>Log matching packets</span>
-            </label>
-          </FormField>
-
-          <FormField label="Auto Firewall Rule" className="lg:col-span-3">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 checked={ruleForm.auto_firewall_rule}
                 onChange={(e) => setRuleForm({ ...ruleForm, auto_firewall_rule: e.target.checked })}
-                className="rounded"
               />
-              <span>Automatically create firewall rule</span>
+              <span className="text-sm font-medium text-gray-700">
+                Automatically create firewall rule
+              </span>
             </label>
-          </FormField>
-
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              onClick={() => setRuleModalOpen(false)}
-              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
-              disabled={isSaving}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
-              disabled={isSaving}
-            >
-              {isSaving ? 'Saving...' : 'Save'}
-            </button>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                checked={ruleForm.log}
+                onChange={(e) => setRuleForm({ ...ruleForm, log: e.target.checked })}
+              />
+              <span className="text-sm font-medium text-gray-700">Log matching packets</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                checked={ruleForm.enabled}
+                onChange={(e) => setRuleForm({ ...ruleForm, enabled: e.target.checked })}
+              />
+              <span className="text-sm font-medium text-gray-700">Enable Rule</span>
+            </label>
           </div>
         </div>
       </Modal>
 
+      {/* Delete Modal */}
+      <Modal
+        open={deleteId !== null}
+        title="Delete Source NAT"
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => deleteId !== null && deleteMutation.mutate(deleteId)}
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        loading={deleteMutation.isPending}
+        size="xl"
+      >
+        <p className="text-sm text-gray-600">
+          Are you sure you want to delete this Source NAT rule? This action cannot be undone.
+        </p>
+      </Modal>
+
+      <Card
+        title="Source NAT Rules"
+        subtitle="Translate outbound source addresses before traffic leaves the WAN"
+        actions={
+          <button
+            onClick={openAddModal}
+            className="btn-icon btn-icon-secondary"
+            title="Add Source NAT rule"
+            aria-label="Add Source NAT rule"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        }
+      >
+        <Table
+          data={rules}
+          columns={columns}
+          keyField="id"
+          loading={rulesLoading}
+          emptyMessage="No Source NAT rules defined."
+        />
+      </Card>
     </div>
   );
 }
