@@ -1849,23 +1849,35 @@ export default function System() {
                     onClick={() => {
                       setUpdateActionLoading(true);
                       setUpdateActionMessage(null);
-                      applyUpdates('rootfs')
-                        .then((res) => {
-                          setUpdates(res.data.status);
-                          setUpdateActionMessage(res.data.message);
-                          return applyRootfsUpdate();
-                        })
-                        .then(() => getRootfsStatus())
-                        .then((r) => setRootfsStatus(r.data))
-                        .catch((err: Error) => setError(err.message))
-                        .finally(() => setUpdateActionLoading(false));
+                      if (rootfsPendingVersion) {
+                        // Squashfs already staged — activate it for next boot
+                        applyRootfsUpdate()
+                          .then(() => getRootfsStatus())
+                          .then((r) => {
+                            setRootfsStatus(r.data);
+                            setUpdateActionMessage('System image activated. Reboot to apply.');
+                          })
+                          .catch((err: Error) => setError(err.message))
+                          .finally(() => setUpdateActionLoading(false));
+                      } else {
+                        // No staged image yet — download and stage it (background, returns 202)
+                        applyUpdates('rootfs')
+                          .then((res) => {
+                            setUpdates(res.data.status);
+                            setUpdateActionMessage(
+                              'System image download started. The Activate button will appear when staging is complete.'
+                            );
+                          })
+                          .catch((err: Error) => setError(err.message))
+                          .finally(() => setUpdateActionLoading(false));
+                      }
                     }}
                     disabled={updateActionLoading || (!rootfsUpdateAvailable && !rootfsPendingVersion)}
                     title={
                       rootfsPendingVersion
-                        ? 'Activate the staged system image update for next boot'
+                        ? 'Activate the staged system image for next boot'
                         : rootfsUpdateAvailable
-                        ? 'Download, stage and activate the available system image update'
+                        ? 'Download and stage the available system image'
                         : 'No system image update available'
                     }
                   >
