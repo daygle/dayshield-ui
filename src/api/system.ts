@@ -6,7 +6,6 @@ import type {
   UpdateSettings,
   UpdatesStatus,
   UpdatesActionResult,
-  OstreeActionResult,
   UpdateComponent,
   RootfsUpdateMode,
   SystemSchedules,
@@ -16,9 +15,6 @@ import type {
   SecurityStatus,
   AcmeStatus,
   ComponentUpdateStatus,
-  OstreeDeploymentSummary,
-  OstreeStatus,
-  OstreeTransactionStatus,
 } from '../types';
 
 interface BackendSystemStatus {
@@ -84,15 +80,7 @@ function asStringArray(value: unknown): string[] | undefined {
 
 function normalizeRootfsUpdateMode(value: unknown): RootfsUpdateMode | undefined {
   const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  if (normalized === 'ostree') {
-    return normalized;
-  }
-  if (normalized === 'ostree_update' || normalized === 'ostree-update' || normalized === 'ostree_deployment') {
-    return 'ostree';
-  }
-  if (normalized === 'classic' || normalized === 'artifact') {
-    return 'ostree';
-  }
+  if (normalized === 'image') return 'image';
   return undefined;
 }
 
@@ -278,10 +266,7 @@ function normalizeUpdateSettings(raw: unknown): UpdateSettings {
     ),
     rootfsUpdateMode: normalizeRootfsUpdateMode(
       value.rootfsUpdateMode ?? value.rootfs_update_mode ?? value.updateMode ?? value.update_mode
-    ) ?? 'ostree',
-    ostreeRemote: asString(value.ostreeRemote ?? value.ostree_remote),
-    ostreeRef: asString(value.ostreeRef ?? value.ostree_ref),
-    ostreeRemoteUrl: asString(value.ostreeRemoteUrl ?? value.ostree_remote_url),
+    ) ?? 'image',
     requireSignedCommits: Boolean(value.requireSignedCommits ?? value.require_signed_commits),
     verifyRootfsMetadata: Boolean(value.verifyRootfsMetadata ?? value.verify_rootfs_metadata),
     trustedSignersFile: asString(value.trustedSignersFile ?? value.trusted_signers_file) ?? '',
@@ -322,160 +307,10 @@ function normalizeComponentUpdateStatus(raw: unknown): ComponentUpdateStatus {
   };
 }
 
-function normalizeOstreeDeployment(raw: unknown): OstreeDeploymentSummary | undefined {
-  if (!raw) return undefined;
-  const value = asRecord(raw);
-  const version = asString(
-    value.version ??
-      value.deploymentVersion ??
-      value.deployment_version ??
-      value.releaseVersion ??
-      value.release_version
-  );
-  const checksum = asString(value.checksum ?? value.commit ?? value.commit_id);
-  const ref = asString(value.ref ?? value.branch);
-  const deploymentIdentifiers = [version, checksum, ref, asString(value.id), asString(value.origin)];
-
-  if (deploymentIdentifiers.every((item) => !item)) {
-    return undefined;
-  }
-
-  return {
-    id: asString(value.id),
-    version,
-    checksum,
-    origin: asString(value.origin ?? value.remote),
-    ref,
-    serial: asNumber(value.serial),
-    booted: asBoolean(value.booted),
-    staged: asBoolean(value.staged),
-    pinned: asBoolean(value.pinned),
-    timestamp: asString(value.timestamp ?? value.deployedAt ?? value.deployed_at),
-  };
-}
-
-function normalizeOstreeTransaction(raw: unknown): OstreeTransactionStatus | undefined {
-  if (!raw) return undefined;
-  const value = asRecord(raw);
-  const state = asString(value.state ?? value.status);
-  const message = asString(value.message ?? value.detail);
-  const progress = asNumber(value.progress ?? value.percent);
-
-  if (!state && !message && progress === undefined) return undefined;
-  return {
-    state,
-    message,
-    progress,
-  };
-}
-
-function normalizeOstreeStatus(raw: unknown): OstreeStatus | undefined {
-  if (!raw) return undefined;
-  const value = asRecord(raw);
-  const supported = asBoolean(value.supported ?? value.isSupported ?? value.is_supported);
-  const bootedDeployment = normalizeOstreeDeployment(
-    value.bootedDeployment ??
-      value.booted_deployment ??
-      value.currentDeployment ??
-      value.current_deployment
-  );
-  const stagedDeployment = normalizeOstreeDeployment(
-    value.stagedDeployment ??
-      value.staged_deployment ??
-      value.pendingDeployment ??
-      value.pending_deployment
-  );
-  const availableDeployment = normalizeOstreeDeployment(
-    value.availableDeployment ??
-      value.available_deployment ??
-      value.availableUpdate ??
-      value.available_update ??
-      value.updateDeployment ??
-      value.update_deployment
-  );
-  const rollbackDeployment = normalizeOstreeDeployment(
-    value.rollbackDeployment ??
-      value.rollback_deployment ??
-      value.previousDeployment ??
-      value.previous_deployment
-  );
-  const transaction = normalizeOstreeTransaction(
-    value.transaction ?? value.transactionState ?? value.transaction_state
-  );
-  const hasDeploymentMetadata = [
-    asString(value.remote),
-    asString(value.ref),
-    supported,
-    asBoolean(value.updateAvailable ?? value.update_available),
-    asString(value.lastError ?? value.last_error),
-  ].some((item) => item !== undefined);
-
-  if (
-    !bootedDeployment &&
-    !stagedDeployment &&
-    !availableDeployment &&
-    !rollbackDeployment &&
-    !transaction &&
-    !hasDeploymentMetadata
-  ) {
-    return undefined;
-  }
-
-  return {
-    supported,
-    updateAvailable: asBoolean(value.updateAvailable ?? value.update_available),
-    rebootRequired: asBoolean(value.rebootRequired ?? value.reboot_required),
-    supportsRollback: asBoolean(value.supportsRollback ?? value.supports_rollback),
-    remote: asString(value.remote),
-    remoteUrl: asString(value.remoteUrl ?? value.remote_url),
-    ref: asString(value.ref),
-    bootedDeployment,
-    stagedDeployment,
-    availableDeployment,
-    rollbackDeployment,
-    transaction,
-    lastCheckedAt: asString(value.lastCheckedAt ?? value.last_checked_at ?? value.checkedAt ?? value.checked_at),
-    lastError: asString(value.lastError ?? value.last_error),
-  };
-}
-
-function mergeOstreeStatus(status: UpdatesStatus, ostreeStatus?: OstreeStatus): UpdatesStatus {
-  if (!ostreeStatus) return status;
-  return {
-    ...status,
-    rootfsUpdateMode: 'ostree',
-    ostreeStatus,
-    pendingReboot:
-      status.pendingReboot ||
-      Boolean(ostreeStatus.rebootRequired) ||
-      Boolean(ostreeStatus.stagedDeployment),
-  };
-}
-
-function normalizeOstreeActionResult(raw: unknown): OstreeActionResult {
-  const value = asRecord(raw);
-  const status = normalizeOstreeStatus(value.status);
-  return {
-    operation: asString(value.operation) ?? 'apply',
-    success: Boolean(value.success),
-    message: asString(value.message) ?? '',
-    details: asStringArray(value.details) ?? [],
-    status:
-      status ??
-      ({
-        updateAvailable: false,
-        rebootRequired: false,
-      } as OstreeStatus),
-  };
-}
-
 function normalizeUpdatesStatus(raw: unknown): UpdatesStatus {
   const value = asRecord(raw);
   const settings = normalizeUpdateSettings(
     value.settings ?? value.updateSettings ?? value.update_settings
-  );
-  const ostreeStatus = normalizeOstreeStatus(
-    value.ostreeStatus ?? value.ostree ?? value.rootfsOstreeStatus
   );
   const componentsRaw = Array.isArray(value.components) ? value.components : [];
   const operationLogsRaw = value.operationLogs ?? value.operation_logs;
@@ -483,9 +318,8 @@ function normalizeUpdatesStatus(raw: unknown): UpdatesStatus {
     normalizeRootfsUpdateMode(
       value.rootfsUpdateMode ??
         value.rootfs_update_mode ??
-        settings.rootfsUpdateMode ??
-        (ostreeStatus ? 'ostree' : undefined)
-    ) ?? 'ostree';
+        settings.rootfsUpdateMode
+    ) ?? 'image';
 
   return {
     settings: {
@@ -493,16 +327,11 @@ function normalizeUpdatesStatus(raw: unknown): UpdatesStatus {
       rootfsUpdateMode: settings.rootfsUpdateMode ?? rootfsUpdateMode,
     },
     lastCheckedAt: asString(
-      value.lastCheckedAt ?? value.last_checked_at ?? ostreeStatus?.lastCheckedAt
+      value.lastCheckedAt ?? value.last_checked_at
     ),
     lastAppliedAt: asString(value.lastAppliedAt ?? value.last_applied_at),
     rootfsUpdateMode,
-    pendingReboot: Boolean(
-      value.pendingReboot ??
-      value.pending_reboot ??
-      ostreeStatus?.rebootRequired ??
-      Boolean(ostreeStatus?.stagedDeployment)
-    ),
+    pendingReboot: Boolean(value.pendingReboot ?? value.pending_reboot),
     pendingApplianceRebuild: Boolean(
       value.pendingApplianceRebuild ?? value.pending_appliance_rebuild
     ),
@@ -512,7 +341,6 @@ function normalizeUpdatesStatus(raw: unknown): UpdatesStatus {
     applianceRebuildMarkedAt: asString(
       value.applianceRebuildMarkedAt ?? value.appliance_rebuild_marked_at
     ),
-    ostreeStatus,
     components: componentsRaw.map(normalizeComponentUpdateStatus),
     availableUpdateCount: asNumber(value.availableUpdateCount ?? value.available_update_count),
     operationLogs: Array.isArray(operationLogsRaw)
@@ -703,15 +531,10 @@ export const controlSystemService = (
     .then((r) => r.data);
 
 export const getUpdatesStatus = (): Promise<ApiResponse<UpdatesStatus>> =>
-  apiClient.get<ApiResponse<unknown>>('/system/updates/status').then(async (r) => {
-    const status = normalizeUpdatesStatus(r.data.data);
-    try {
-      const ostree = await getOstreeStatus();
-      return { ...r.data, data: mergeOstreeStatus(status, ostree.data) };
-    } catch {
-      return { ...r.data, data: status };
-    }
-  });
+  apiClient.get<ApiResponse<unknown>>('/system/updates/status').then((r) => ({
+    ...r.data,
+    data: normalizeUpdatesStatus(r.data.data),
+  }));
 
 export const getUpdateSettings = (): Promise<ApiResponse<UpdateSettings>> =>
   apiClient
@@ -726,40 +549,10 @@ export const updateUpdateSettings = (
     .then((r) => ({ ...r.data, data: normalizeUpdateSettings(r.data.data) }));
 
 export const checkForUpdates = (): Promise<ApiResponse<UpdatesStatus>> =>
-  apiClient.post<ApiResponse<unknown>>('/system/updates/check').then(async (r) => {
-    const status = normalizeUpdatesStatus(r.data.data);
-    try {
-      const ostree = await checkOstreeUpdates();
-      return { ...r.data, data: mergeOstreeStatus(status, ostree.data.status) };
-    } catch {
-      try {
-        const ostree = await getOstreeStatus();
-        return { ...r.data, data: mergeOstreeStatus(status, ostree.data) };
-      } catch {
-        return { ...r.data, data: status };
-      }
-    }
-  });
-
-export const getOstreeStatus = (): Promise<ApiResponse<OstreeStatus>> =>
-  apiClient
-    .get<ApiResponse<unknown>>('/system/ostree/status')
-    .then((r) => ({ ...r.data, data: normalizeOstreeStatus(r.data.data) ?? {} }));
-
-export const checkOstreeUpdates = (): Promise<ApiResponse<OstreeActionResult>> =>
-  apiClient
-    .post<ApiResponse<unknown>>('/system/ostree/check')
-    .then((r) => ({ ...r.data, data: normalizeOstreeActionResult(r.data.data) }));
-
-export const stageOstreeUpdate = (): Promise<ApiResponse<OstreeActionResult>> =>
-  apiClient
-    .post<ApiResponse<unknown>>('/system/ostree/stage')
-    .then((r) => ({ ...r.data, data: normalizeOstreeActionResult(r.data.data) }));
-
-export const applyOstreeUpdate = (): Promise<ApiResponse<OstreeActionResult>> =>
-  apiClient
-    .post<ApiResponse<unknown>>('/system/ostree/apply')
-    .then((r) => ({ ...r.data, data: normalizeOstreeActionResult(r.data.data) }));
+  apiClient.post<ApiResponse<unknown>>('/system/updates/check').then((r) => ({
+    ...r.data,
+    data: normalizeUpdatesStatus(r.data.data),
+  }));
 
 export const applyUpdates = (
   component: UpdateComponent = 'both',
