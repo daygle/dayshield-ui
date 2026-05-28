@@ -808,7 +808,7 @@ export interface SystemSchedules {
 }
 
 export type UpdateComponent = 'core' | 'ui' | 'rootfs' | 'both';
-export type RootfsUpdateMode = 'ostree';
+export type RootfsUpdateMode = 'image';
 
 export type UpdateScheduleFrequency = 'daily' | 'weekly' | 'monthly';
 export type UpdateScheduleWeekday =
@@ -832,9 +832,6 @@ export interface UpdateSettings {
   verifyArtifactSignatures?: boolean;
   encryptUpdateConfigBackups?: boolean;
   rootfsUpdateMode?: RootfsUpdateMode;
-  ostreeRemote?: string;
-  ostreeRef?: string;
-  ostreeRemoteUrl?: string;
   requireSignedCommits: boolean;
   verifyRootfsMetadata: boolean;
   trustedSignersFile: string;
@@ -884,6 +881,42 @@ export interface UpdateLogEntry {
   toVersion?: string;
 }
 
+export type RootfsTransactionState =
+  | 'idle'
+  | 'checking'
+  | 'staging'
+  | 'applying'
+  | 'rolling_back';
+
+export interface RootfsUpdateStatus {
+  supported: boolean;
+  checkedAt: string;       // ISO 8601
+  currentVersion: string | null;
+  availableVersion: string | null;
+  pendingVersion: string | null;
+  previousVersion: string | null;
+  updateAvailable: boolean;
+  rebootRequired: boolean;
+  rollbackAvailable: boolean;
+  recoveryActive: boolean;
+  transactionState: RootfsTransactionState;
+  lastError: string | null;
+}
+
+export interface RootfsActionResult {
+  operation: string;
+  success: boolean;
+  message: string;
+  details: string[];
+  status: RootfsUpdateStatus;
+}
+
+export interface RootfsRebootState {
+  rebootRequired: boolean;
+  pendingVersion: string | null;
+  currentVersion: string | null;
+}
+
 export interface UpdatesStatus {
   settings: UpdateSettings;
   lastCheckedAt?: string;
@@ -893,55 +926,11 @@ export interface UpdatesStatus {
   pendingApplianceRebuild: boolean;
   applianceRebuildReason?: string;
   applianceRebuildMarkedAt?: string;
-  ostreeStatus?: OstreeStatus;
+  rootfsStatus?: RootfsUpdateStatus;
   components: ComponentUpdateStatus[];
   /** Number of components with available updates (read-only, computed server-side) */
   availableUpdateCount?: number;
   operationLogs?: UpdateLogEntry[];
-}
-
-export interface OstreeDeploymentSummary {
-  id?: string;
-  version?: string;
-  checksum?: string;
-  origin?: string;
-  ref?: string;
-  serial?: number;
-  booted?: boolean;
-  staged?: boolean;
-  pinned?: boolean;
-  timestamp?: string;
-}
-
-export interface OstreeTransactionStatus {
-  state?: string;
-  progress?: number;
-  message?: string;
-}
-
-export interface OstreeStatus {
-  supported?: boolean;
-  updateAvailable?: boolean;
-  rebootRequired?: boolean;
-  supportsRollback?: boolean;
-  remote?: string;
-  remoteUrl?: string;
-  ref?: string;
-  bootedDeployment?: OstreeDeploymentSummary;
-  stagedDeployment?: OstreeDeploymentSummary;
-  availableDeployment?: OstreeDeploymentSummary;
-  rollbackDeployment?: OstreeDeploymentSummary;
-  transaction?: OstreeTransactionStatus;
-  lastCheckedAt?: string;
-  lastError?: string;
-}
-
-export interface OstreeActionResult {
-  operation: string;
-  success: boolean;
-  message: string;
-  details: string[];
-  status: OstreeStatus;
 }
 
 export interface UpdatesActionResult {
