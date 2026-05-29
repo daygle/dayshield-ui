@@ -982,6 +982,16 @@ export default function System() {
   const rootfsTransactionState = rootfsStatus?.transactionState ?? 'idle';
   const rootfsRecoveryActive = rootfsStatus?.recoveryActive ?? false;
   const rootfsInProgress = rootfsTransactionState !== 'idle';
+  const systemImageActionRequired = rootfsUpdateAvailable || Boolean(rootfsPendingVersion) || rootfsRebootRequired || rootfsInProgress;
+  const appUpdatesDisabled = updateActionLoading || runtimeUpdateCount === 0 || systemImageActionRequired;
+  const appUpdatesTitle = systemImageActionRequired
+    ? 'Install the pending system image update before installing app updates'
+    : runtimeUpdateCount > 1
+      ? `Install ${runtimeUpdateCount} app updates`
+      : runtimeUpdateCount === 1
+        ? 'Install 1 app update'
+        : 'No app updates available';
+  const appRollbackDisabled = updateActionLoading || !runtimeRollbackAvailable || systemImageActionRequired;
   const updatesSubtitle = 'Keep your device up to date with the latest software and security fixes.';
 
   return (
@@ -1756,7 +1766,7 @@ export default function System() {
 
       {activeSection === 'updates' && updates && (
         <Card
-          title="Software Updates"
+          title="Updates"
           subtitle={updatesSubtitle}
           actions={
             <button
@@ -1790,7 +1800,7 @@ export default function System() {
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                      Available
+                      Updates Found
                     </p>
                     <p className="mt-1 text-lg font-semibold text-gray-900">
                       {runtimeUpdateCount + Number(rootfsUpdateAvailable)}
@@ -1828,80 +1838,7 @@ export default function System() {
               <div className="rounded-md border border-gray-200 bg-white px-4 py-3">
                 <div className="flex h-full flex-wrap items-center gap-2 xl:justify-end">
                   <Button size="sm" onClick={handleCheckUpdates} disabled={updateActionLoading}>
-                    Check Now
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleApplyUpdates}
-                    disabled={updateActionLoading || runtimeUpdateCount === 0}
-                    title={
-                      runtimeUpdateCount > 1
-                        ? `Install ${runtimeUpdateCount} software updates`
-                        : runtimeUpdateCount === 1
-                          ? 'Install 1 software update'
-                          : 'No software updates available'
-                    }
-                  >
-                    Update Software
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setUpdateActionLoading(true);
-                      setUpdateActionMessage(null);
-                      if (rootfsPendingVersion) {
-                        // Squashfs already staged — activate it for next boot
-                        applyRootfsUpdate()
-                          .then(() => getRootfsStatus())
-                          .then((r) => {
-                            setRootfsStatus(r.data);
-                            setUpdateActionMessage('System image activated. Reboot to apply.');
-                          })
-                          .catch((err: Error) => setError(err.message))
-                          .finally(() => setUpdateActionLoading(false));
-                      } else {
-                        // No staged image yet — download and stage it (background, returns 202)
-                        applyUpdates('rootfs')
-                          .then((res) => {
-                            setUpdates(res.data.status);
-                            setUpdateActionMessage(
-                              'System image download started. The Activate button will appear when staging is complete.'
-                            );
-                          })
-                          .catch((err: Error) => setError(err.message))
-                          .finally(() => setUpdateActionLoading(false));
-                      }
-                    }}
-                    disabled={updateActionLoading || (!rootfsUpdateAvailable && !rootfsPendingVersion)}
-                    title={
-                      rootfsPendingVersion
-                        ? 'Activate the staged system image for next boot'
-                        : rootfsUpdateAvailable
-                        ? 'Download and stage the available system image'
-                        : 'No system image update available'
-                    }
-                  >
-                    {rootfsPendingVersion ? 'Activate System Update' : 'Apply System Update'}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      setUpdateActionLoading(true);
-                      setUpdateActionMessage(null);
-                      rollbackRootfsUpdate()
-                        .then(() => getRootfsStatus())
-                        .then((r) => {
-                          setRootfsStatus(r.data);
-                          setUpdateActionMessage('System image rollback scheduled for next boot.');
-                        })
-                        .catch((err: Error) => setError(err.message))
-                        .finally(() => setUpdateActionLoading(false));
-                    }}
-                    disabled={updateActionLoading || !rootfsRollbackAvailable}
-                    title={rootfsRollbackAvailable ? `Roll back to v${rootfsPreviousVersion}` : 'No previous version to roll back to'}
-                  >
-                    Rollback System
+                    Check for Updates
                   </Button>
                 </div>
               </div>
@@ -1918,9 +1855,19 @@ export default function System() {
 
             <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(380px,0.9fr)]">
               <div className="flex h-full flex-col rounded-md border border-gray-200 bg-white p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <h4 className="text-sm font-semibold text-gray-900">Software Components</h4>
-                  <span className="text-xs text-gray-500">Core and Web Interface</span>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-900">App Updates</h4>
+                    <span className="text-xs text-gray-500">Core service and Web UI</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleApplyUpdates}
+                    disabled={appUpdatesDisabled}
+                    title={appUpdatesTitle}
+                  >
+                    Install App Updates
+                  </Button>
                 </div>
                 <div className="mt-4 grid flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
                   {runtimeComponents.map((comp) => (
@@ -1957,7 +1904,7 @@ export default function System() {
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-gray-500">Available</dt>
+                          <dt className="text-gray-500">Latest</dt>
                           <dd className="mt-0.5 font-mono text-gray-900">
                             {componentRemoteDisplay(comp)}
                           </dd>
@@ -1998,28 +1945,89 @@ export default function System() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <h4 className="text-sm font-semibold text-blue-950">System Image</h4>
-                    <p className="mt-1 text-xs text-blue-800">Image-based rootfs updates</p>
+                    <p className="mt-1 text-xs text-blue-800">Operating system image updates</p>
                   </div>
-                  <span
-                    className={[
-                      'inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset',
-                      rootfsInProgress
-                        ? 'bg-yellow-100 text-yellow-800 ring-yellow-200'
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    <span
+                      className={[
+                        'inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset',
+                        rootfsInProgress
+                          ? 'bg-yellow-100 text-yellow-800 ring-yellow-200'
+                          : rootfsRebootRequired
+                          ? 'bg-amber-100 text-amber-800 ring-amber-200'
+                          : rootfsUpdateAvailable
+                          ? 'text-blue-900 ring-blue-200'
+                          : 'bg-green-100 text-green-700 ring-green-200',
+                      ].join(' ')}
+                    >
+                      {rootfsInProgress
+                        ? rootfsTransactionState.replace('_', ' ')
                         : rootfsRebootRequired
-                        ? 'bg-amber-100 text-amber-800 ring-amber-200'
+                        ? 'Reboot required'
                         : rootfsUpdateAvailable
-                        ? 'text-blue-900 ring-blue-200'
-                        : 'bg-green-100 text-green-700 ring-green-200',
-                    ].join(' ')}
-                  >
-                    {rootfsInProgress
-                      ? rootfsTransactionState.replace('_', ' ')
-                      : rootfsRebootRequired
-                      ? 'Reboot required'
-                      : rootfsUpdateAvailable
-                      ? 'Update available'
-                      : 'Up to date'}
-                  </span>
+                        ? 'Update available'
+                        : 'Up to date'}
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setUpdateActionLoading(true);
+                        setUpdateActionMessage(null);
+                        if (rootfsPendingVersion) {
+                          // Squashfs already staged — activate it for next boot
+                          applyRootfsUpdate()
+                            .then(() => getRootfsStatus())
+                            .then((r) => {
+                              setRootfsStatus(r.data);
+                              setUpdateActionMessage('System image activated. Reboot to install it.');
+                            })
+                            .catch((err: Error) => setError(err.message))
+                            .finally(() => setUpdateActionLoading(false));
+                        } else {
+                          // No staged image yet — download and stage it (background, returns 202)
+                          applyUpdates('rootfs')
+                            .then((res) => {
+                              setUpdates(res.data.status);
+                              setUpdateActionMessage(
+                                'System image download started. The Activate Image button will appear when it is ready.'
+                              );
+                            })
+                            .catch((err: Error) => setError(err.message))
+                            .finally(() => setUpdateActionLoading(false));
+                        }
+                      }}
+                      disabled={updateActionLoading || (!rootfsUpdateAvailable && !rootfsPendingVersion)}
+                      title={
+                        rootfsPendingVersion
+                          ? 'Activate the downloaded system image on the next reboot'
+                          : rootfsUpdateAvailable
+                          ? 'Download the available system image so it can be activated on the next reboot'
+                          : 'No system image update available'
+                      }
+                    >
+                      {rootfsPendingVersion ? 'Activate Image' : 'Download Image'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        setUpdateActionLoading(true);
+                        setUpdateActionMessage(null);
+                        rollbackRootfsUpdate()
+                          .then(() => getRootfsStatus())
+                          .then((r) => {
+                            setRootfsStatus(r.data);
+                            setUpdateActionMessage('System image rollback activated. Reboot to install the previous version.');
+                          })
+                          .catch((err: Error) => setError(err.message))
+                          .finally(() => setUpdateActionLoading(false));
+                      }}
+                      disabled={updateActionLoading || !rootfsRollbackAvailable}
+                      title={rootfsRollbackAvailable ? `Roll back to v${rootfsPreviousVersion}` : 'No previous system image version to roll back to'}
+                    >
+                      Roll Back Image
+                    </Button>
+                  </div>
                 </div>
 
                 <dl className="mt-4 grid flex-1 grid-cols-1 gap-3 text-sm md:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
@@ -2033,7 +2041,7 @@ export default function System() {
                   </div>
                   <div className="rounded-md border border-blue-100 bg-white/80 p-3">
                     <dt className="text-xs font-medium uppercase tracking-wide text-blue-700">
-                      {rootfsPendingVersion ? 'Pending' : 'Available'}
+                      {rootfsPendingVersion ? 'Downloaded' : 'Latest'}
                     </dt>
                     <dd className="mt-1 font-mono text-gray-900">
                       {rootfsPendingVersion
@@ -2043,10 +2051,10 @@ export default function System() {
                     </dd>
                     <p className="mt-1 text-xs text-gray-600">
                       {rootfsPendingVersion
-                        ? 'Staged — activate to apply on next reboot.'
+                        ? 'Downloaded. Activate it to install on the next reboot.'
                         : rootfsUpdateAvailable
-                        ? 'Ready to download and apply.'
-                        : 'No update available.'}
+                        ? 'Ready to download.'
+                        : 'No system image update available.'}
                     </p>
                   </div>
                   <div className="rounded-md border border-blue-100 bg-white/80 p-3">
@@ -2058,8 +2066,8 @@ export default function System() {
                     </dd>
                     <p className="mt-1 text-xs text-gray-600">
                       {rootfsRollbackAvailable
-                        ? 'Available for rollback.'
-                        : 'No previous version.'}
+                        ? 'Ready to roll back.'
+                        : 'No rollback version available.'}
                     </p>
                   </div>
                 </dl>
@@ -2079,7 +2087,7 @@ export default function System() {
 
             {rootfsRebootRequired && (
               <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
-                A reboot is required to apply the staged system image
+                A reboot is required to install the activated system image
                 {rootfsPendingVersion ? ` (v${rootfsPendingVersion})` : ''}.
               </div>
             )}
@@ -2213,9 +2221,11 @@ export default function System() {
                     variant="danger"
                     size="sm"
                     onClick={handleRollbackUpdates}
-                    disabled={updateActionLoading || !runtimeRollbackAvailable}
+                    disabled={appRollbackDisabled}
                     title={
-                      runtimeRollbackAvailable
+                      systemImageActionRequired
+                        ? 'Install the pending system image update before rolling back app updates'
+                        : runtimeRollbackAvailable
                         ? 'Revert Core and Web UI to the previous version'
                         : 'No previous version available to roll back to'
                     }
