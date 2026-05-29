@@ -71,6 +71,8 @@ jobs:
           echo "sha256=${ARTIFACT}.sha256" >> "$GITHUB_OUTPUT"
 
       - name: Ensure GitHub Release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           TAG="${{ steps.tag.outputs.value }}"
@@ -83,6 +85,8 @@ jobs:
           fi
 
       - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           TAG="${{ steps.tag.outputs.value }}"
