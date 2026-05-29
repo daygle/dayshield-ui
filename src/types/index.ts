@@ -899,13 +899,22 @@ export interface UpdateOperationProgress {
 
 export type RootfsTransactionState = 'idle' | 'checking' | 'staging' | 'applying' | 'rolling_back';
 
+/** Identifier of one of the two rootfs partitions ("A" or "B"). */
+export type RootfsSlot = 'A' | 'B';
+
 export interface RootfsUpdateStatus {
   supported: boolean;
   checkedAt: string; // ISO 8601
+  /** Slot we're currently booted from. */
+  currentSlot: RootfsSlot;
+  /** Version installed in the current slot. */
   currentVersion: string | null;
+  /** Slot kept on standby — rollback target. */
+  standbySlot: RootfsSlot;
+  /** Version installed in the standby slot. */
+  standbyVersion: string | null;
+  /** Latest version available from the GitHub release registry. */
   availableVersion: string | null;
-  pendingVersion: string | null;
-  previousVersion: string | null;
   updateAvailable: boolean;
   rebootRequired: boolean;
   rollbackAvailable: boolean;
@@ -924,8 +933,8 @@ export interface RootfsActionResult {
 
 export interface RootfsRebootState {
   rebootRequired: boolean;
-  pendingVersion: string | null;
   currentVersion: string | null;
+  standbyVersion: string | null;
 }
 
 export interface UpdatesStatus {

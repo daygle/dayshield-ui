@@ -1053,10 +1053,10 @@ export default function System() {
       setOptimisticUpdateProgress(null);
       return;
     }
-    if (optimisticUpdateProgress?.component === 'rootfs' && rootfsStatus?.pendingVersion) {
+    if (optimisticUpdateProgress?.component === 'rootfs' && rootfsStatus?.rebootRequired) {
       setOptimisticUpdateProgress(null);
     }
-  }, [updates?.progress, optimisticUpdateProgress, rootfsStatus?.pendingVersion]);
+  }, [updates?.progress, optimisticUpdateProgress, rootfsStatus?.rebootRequired]);
 
   if (loading) {
     return (
@@ -1079,12 +1079,19 @@ export default function System() {
   const rootfsUpdateAvailable = Boolean(
     rootfsStatus?.updateAvailable ?? rootfsComponent?.updateAvailable
   );
-  const rootfsPendingVersion = rootfsStatus?.pendingVersion ?? null;
+  // A/B model: standbyVersion is what we'd boot into if we rebooted right now
+  // after rebootRequired is set, OR what we'd roll back to.  "Pending" in
+  // single-rootfs terms is "standby with rebootRequired=true".
+  const rootfsCurrentSlot = rootfsStatus?.currentSlot ?? 'A';
+  const rootfsStandbySlot = rootfsStatus?.standbySlot ?? (rootfsCurrentSlot === 'A' ? 'B' : 'A');
+  const rootfsStandbyVersion = rootfsStatus?.standbyVersion ?? null;
+  const rootfsPendingVersion = rootfsStatus?.rebootRequired
+    ? rootfsStandbyVersion
+    : null;
   const rootfsRebootRequired = rootfsStatus?.rebootRequired ?? Boolean(updates?.pendingReboot);
   const rootfsRollbackAvailable =
     rootfsStatus?.rollbackAvailable ?? Boolean(rootfsComponent?.rollbackVersion);
-  const rootfsPreviousVersion =
-    rootfsStatus?.previousVersion ?? rootfsComponent?.rollbackVersion ?? null;
+  const rootfsPreviousVersion = rootfsStandbyVersion ?? rootfsComponent?.rollbackVersion ?? null;
   const rootfsTransactionState = rootfsStatus?.transactionState ?? 'idle';
   const rootfsRecoveryActive = rootfsStatus?.recoveryActive ?? false;
   const rootfsInProgress = rootfsTransactionState !== 'idle';
@@ -2307,39 +2314,35 @@ export default function System() {
                 <dl className="mt-4 grid flex-1 grid-cols-1 gap-3 text-sm md:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
                   <div className="rounded-md border border-blue-100 bg-white/80 p-3">
                     <dt className="text-xs font-medium uppercase tracking-wide text-blue-700">
-                      Installed
+                      Running &nbsp;(slot {rootfsCurrentSlot})
                     </dt>
                     <dd className="mt-1 font-mono text-gray-900">
                       {rootfsStatus?.currentVersion ?? rootfsComponent?.currentVersion ?? '-'}
                     </dd>
+                    <p className="mt-1 text-xs text-gray-600">Active rootfs.</p>
                   </div>
                   <div className="rounded-md border border-blue-100 bg-white/80 p-3">
                     <dt className="text-xs font-medium uppercase tracking-wide text-blue-700">
-                      {rootfsPendingVersion ? 'Downloaded' : 'Latest'}
+                      Standby &nbsp;(slot {rootfsStandbySlot})
                     </dt>
-                    <dd className="mt-1 font-mono text-gray-900">
-                      {rootfsPendingVersion ??
-                        rootfsStatus?.availableVersion ??
-                        rootfsComponent?.remoteVersion ??
-                        '-'}
-                    </dd>
+                    <dd className="mt-1 font-mono text-gray-900">{rootfsStandbyVersion ?? '-'}</dd>
                     <p className="mt-1 text-xs text-gray-600">
-                      {rootfsPendingVersion
-                        ? 'Downloaded. Activate it to install on the next reboot.'
-                        : rootfsUpdateAvailable
-                          ? 'Ready to download.'
-                          : 'No system image update available.'}
+                      {rootfsRebootRequired
+                        ? 'Update applied — reboot to switch.'
+                        : 'Instant rollback target.'}
                     </p>
                   </div>
                   <div className="rounded-md border border-blue-100 bg-white/80 p-3">
                     <dt className="text-xs font-medium uppercase tracking-wide text-blue-700">
-                      Previous
+                      Available
                     </dt>
-                    <dd className="mt-1 font-mono text-gray-900">{rootfsPreviousVersion ?? '-'}</dd>
+                    <dd className="mt-1 font-mono text-gray-900">
+                      {rootfsStatus?.availableVersion ?? rootfsComponent?.remoteVersion ?? '-'}
+                    </dd>
                     <p className="mt-1 text-xs text-gray-600">
-                      {rootfsRollbackAvailable
-                        ? 'Ready to roll back.'
-                        : 'No rollback version available.'}
+                      {rootfsUpdateAvailable
+                        ? 'New version on GitHub.'
+                        : 'No update available.'}
                     </p>
                   </div>
                 </dl>

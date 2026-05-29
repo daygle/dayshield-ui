@@ -624,13 +624,19 @@ function normalizeRootfsUpdateStatus(raw: unknown): RootfsUpdateStatus {
   )
     ? (txRaw as RootfsTransactionState)
     : 'idle';
+  const currentSlotRaw =
+    (asString(value.currentSlot ?? value.current_slot) ?? 'A').toUpperCase();
+  const standbySlotRaw =
+    (asString(value.standbySlot ?? value.standby_slot) ??
+      (currentSlotRaw === 'A' ? 'B' : 'A')).toUpperCase();
   return {
     supported: Boolean(value.supported),
     checkedAt: asString(value.checkedAt ?? value.checked_at) ?? new Date().toISOString(),
+    currentSlot: (currentSlotRaw === 'B' ? 'B' : 'A'),
     currentVersion: asString(value.currentVersion ?? value.current_version) ?? null,
+    standbySlot: (standbySlotRaw === 'B' ? 'B' : 'A'),
+    standbyVersion: asString(value.standbyVersion ?? value.standby_version) ?? null,
     availableVersion: asString(value.availableVersion ?? value.available_version) ?? null,
-    pendingVersion: asString(value.pendingVersion ?? value.pending_version) ?? null,
-    previousVersion: asString(value.previousVersion ?? value.previous_version) ?? null,
     updateAvailable: Boolean(value.updateAvailable ?? value.update_available),
     rebootRequired: Boolean(value.rebootRequired ?? value.reboot_required),
     rollbackAvailable: Boolean(value.rollbackAvailable ?? value.rollback_available),
