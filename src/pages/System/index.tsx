@@ -1330,7 +1330,7 @@ export default function System() {
       {/* Update Settings Modal */}
       <Modal
         open={updateSettingsOpen}
-        title="Automatic Update Checks"
+        title="Scheduled Updates"
         onClose={() => setUpdateSettingsOpen(false)}
         onConfirm={handleSaveUpdateSettings}
         confirmLabel="Save"
@@ -1339,7 +1339,7 @@ export default function System() {
         {updateSettings && (
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              Configure whether DayShield automatically checks for updates and set a schedule.
+              Choose when DayShield checks for updates and whether scheduled checks install them.
             </p>
             <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
               <p className="font-medium">System image updates enabled</p>
@@ -1447,6 +1447,57 @@ export default function System() {
                     ))}
                   </FormField>
                 )}
+                <div className="space-y-3 rounded border border-gray-200 bg-gray-50 p-3">
+                  <div className="flex items-start gap-2">
+                    <input
+                      id="upd-auto-apply"
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600"
+                      checked={updateSettings.autoApplyUpdates ?? false}
+                      onChange={(e) =>
+                        setUpdateSettings({
+                          ...updateSettings,
+                          autoApplyUpdates: e.target.checked,
+                          autoRebootAfterApply: e.target.checked
+                            ? (updateSettings.autoRebootAfterApply ?? false)
+                            : false,
+                        })
+                      }
+                    />
+                    <div>
+                      <label htmlFor="upd-auto-apply" className="text-sm font-medium text-gray-700">
+                        Install updates automatically after scheduled checks
+                      </label>
+                      <p className="mt-1 text-xs text-gray-500">
+                        System image updates install first. App updates wait until the image has booted.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2">
+                    <input
+                      id="upd-auto-reboot"
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      checked={updateSettings.autoRebootAfterApply ?? false}
+                      disabled={!updateSettings.autoApplyUpdates}
+                      onChange={(e) =>
+                        setUpdateSettings({
+                          ...updateSettings,
+                          autoRebootAfterApply: e.target.checked,
+                        })
+                      }
+                    />
+                    <div>
+                      <label htmlFor="upd-auto-reboot" className="text-sm font-medium text-gray-700">
+                        Reboot automatically when required
+                      </label>
+                      <p className="mt-1 text-xs text-gray-500">
+                        When a system image update is activated, DayShield can reboot to finish it.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

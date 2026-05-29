@@ -826,6 +826,8 @@ export interface UpdateSettings {
   autoCheckTime: string;
   autoCheckWeekday: UpdateScheduleWeekday;
   autoCheckMonthDays: number[];
+  autoApplyUpdates: boolean;
+  autoRebootAfterApply: boolean;
   rebootRequiredAfterApply: boolean;
   deployRuntimeAfterApply: boolean;
   registryUrl?: string;

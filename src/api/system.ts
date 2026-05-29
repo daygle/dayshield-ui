@@ -253,6 +253,10 @@ function normalizeUpdateSettings(raw: unknown): UpdateSettings {
         ? value.auto_check_month_days
         : [1]
     ).filter((item): item is number => typeof item === 'number' && Number.isFinite(item)),
+    autoApplyUpdates: Boolean(value.autoApplyUpdates ?? value.auto_apply_updates ?? false),
+    autoRebootAfterApply: Boolean(
+      value.autoRebootAfterApply ?? value.auto_reboot_after_apply ?? false
+    ),
     rebootRequiredAfterApply: Boolean(
       value.rebootRequiredAfterApply ?? value.reboot_required_after_apply ?? true
     ),
