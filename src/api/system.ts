@@ -17,6 +17,7 @@ import type {
   SecurityStatus,
   AcmeStatus,
   ComponentUpdateStatus,
+  UpdateOperationProgress,
 } from '../types';
 
 interface BackendSystemStatus {
@@ -270,9 +271,10 @@ function normalizeUpdateSettings(raw: unknown): UpdateSettings {
     encryptUpdateConfigBackups: asBoolean(
       value.encryptUpdateConfigBackups ?? value.encrypt_update_config_backups
     ),
-    rootfsUpdateMode: normalizeRootfsUpdateMode(
-      value.rootfsUpdateMode ?? value.rootfs_update_mode ?? value.updateMode ?? value.update_mode
-    ) ?? 'image',
+    rootfsUpdateMode:
+      normalizeRootfsUpdateMode(
+        value.rootfsUpdateMode ?? value.rootfs_update_mode ?? value.updateMode ?? value.update_mode
+      ) ?? 'image',
     requireSignedCommits: Boolean(value.requireSignedCommits ?? value.require_signed_commits),
     verifyRootfsMetadata: Boolean(value.verifyRootfsMetadata ?? value.verify_rootfs_metadata),
     trustedSignersFile: asString(value.trustedSignersFile ?? value.trusted_signers_file) ?? '',
@@ -313,6 +315,29 @@ function normalizeComponentUpdateStatus(raw: unknown): ComponentUpdateStatus {
   };
 }
 
+function normalizeUpdateOperationProgress(raw: unknown): UpdateOperationProgress | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const value = asRecord(raw);
+  const operation = asString(value.operation);
+  if (!operation) return undefined;
+  const percent = asNumber(value.percent ?? value.progressPercent ?? value.progress_percent);
+
+  return {
+    operation,
+    phase: asString(value.phase) ?? 'running',
+    status: asString(value.status) ?? 'running',
+    message: asString(value.message) ?? '',
+    component: asString(value.component),
+    percent:
+      typeof percent === 'number' ? Math.max(0, Math.min(100, Math.round(percent))) : undefined,
+    bytesDownloaded: asNumber(value.bytesDownloaded ?? value.bytes_downloaded),
+    bytesTotal: asNumber(value.bytesTotal ?? value.bytes_total),
+    startedAt: asString(value.startedAt ?? value.started_at) ?? new Date().toISOString(),
+    updatedAt: asString(value.updatedAt ?? value.updated_at) ?? new Date().toISOString(),
+    completedAt: asString(value.completedAt ?? value.completed_at),
+  };
+}
+
 function normalizeUpdatesStatus(raw: unknown): UpdatesStatus {
   const value = asRecord(raw);
   const settings = normalizeUpdateSettings(
@@ -322,9 +347,7 @@ function normalizeUpdatesStatus(raw: unknown): UpdatesStatus {
   const operationLogsRaw = value.operationLogs ?? value.operation_logs;
   const rootfsUpdateMode =
     normalizeRootfsUpdateMode(
-      value.rootfsUpdateMode ??
-        value.rootfs_update_mode ??
-        settings.rootfsUpdateMode
+      value.rootfsUpdateMode ?? value.rootfs_update_mode ?? settings.rootfsUpdateMode
     ) ?? 'image';
 
   return {
@@ -332,9 +355,7 @@ function normalizeUpdatesStatus(raw: unknown): UpdatesStatus {
       ...settings,
       rootfsUpdateMode: settings.rootfsUpdateMode ?? rootfsUpdateMode,
     },
-    lastCheckedAt: asString(
-      value.lastCheckedAt ?? value.last_checked_at
-    ),
+    lastCheckedAt: asString(value.lastCheckedAt ?? value.last_checked_at),
     lastAppliedAt: asString(value.lastAppliedAt ?? value.last_applied_at),
     rootfsUpdateMode,
     pendingReboot: Boolean(value.pendingReboot ?? value.pending_reboot),
@@ -363,6 +384,9 @@ function normalizeUpdatesStatus(raw: unknown): UpdatesStatus {
           };
         })
       : undefined,
+    progress: normalizeUpdateOperationProgress(
+      value.progress ?? value.updateProgress ?? value.update_progress
+    ),
   };
 }
 
@@ -585,16 +609,21 @@ export const validateUpdates = (
     .then((r) => ({ ...r.data, data: normalizeUpdatesActionResult(r.data.data) }));
 
 const ROOTFS_TX_STATES: RootfsTransactionState[] = [
-  'idle', 'checking', 'staging', 'applying', 'rolling_back',
+  'idle',
+  'checking',
+  'staging',
+  'applying',
+  'rolling_back',
 ];
 
 function normalizeRootfsUpdateStatus(raw: unknown): RootfsUpdateStatus {
   const value = asRecord(raw);
   const txRaw = asString(value.transactionState ?? value.transaction_state);
-  const transactionState: RootfsTransactionState =
-    ROOTFS_TX_STATES.includes(txRaw as RootfsTransactionState)
-      ? (txRaw as RootfsTransactionState)
-      : 'idle';
+  const transactionState: RootfsTransactionState = ROOTFS_TX_STATES.includes(
+    txRaw as RootfsTransactionState
+  )
+    ? (txRaw as RootfsTransactionState)
+    : 'idle';
   return {
     supported: Boolean(value.supported),
     checkedAt: asString(value.checkedAt ?? value.checked_at) ?? new Date().toISOString(),

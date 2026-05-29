@@ -883,16 +883,25 @@ export interface UpdateLogEntry {
   toVersion?: string;
 }
 
-export type RootfsTransactionState =
-  | 'idle'
-  | 'checking'
-  | 'staging'
-  | 'applying'
-  | 'rolling_back';
+export interface UpdateOperationProgress {
+  operation: string;
+  phase: string;
+  status: 'running' | 'succeeded' | 'failed' | string;
+  message: string;
+  component?: string;
+  percent?: number;
+  bytesDownloaded?: number;
+  bytesTotal?: number;
+  startedAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+export type RootfsTransactionState = 'idle' | 'checking' | 'staging' | 'applying' | 'rolling_back';
 
 export interface RootfsUpdateStatus {
   supported: boolean;
-  checkedAt: string;       // ISO 8601
+  checkedAt: string; // ISO 8601
   currentVersion: string | null;
   availableVersion: string | null;
   pendingVersion: string | null;
@@ -933,6 +942,7 @@ export interface UpdatesStatus {
   /** Number of components with available updates (read-only, computed server-side) */
   availableUpdateCount?: number;
   operationLogs?: UpdateLogEntry[];
+  progress?: UpdateOperationProgress;
 }
 
 export interface UpdatesActionResult {
