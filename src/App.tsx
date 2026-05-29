@@ -7,6 +7,7 @@ import Interfaces from './pages/Interfaces';
 import Gateways from './pages/Gateways';
 import Firewall from './pages/Firewall';
 import NAT from './pages/NAT';
+import QoS from './pages/QoS';
 import VPN from './pages/VPN';
 import DNS from './pages/DNS';
 import DynamicDNS from './pages/DynamicDNS';
@@ -73,6 +74,11 @@ const router = createBrowserRouter([
         path: 'nat',
         element: <NAT />,
         handle: { title: 'NAT' },
+      },
+      {
+        path: 'qos',
+        element: <QoS />,
+        handle: { title: 'QoS' },
       },
       {
         path: 'vpn',

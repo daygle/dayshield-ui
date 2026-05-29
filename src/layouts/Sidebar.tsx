@@ -110,6 +110,24 @@ const navEntries: NavEntry[] = [
     ),
   },
   {
+    to: '/qos',
+    label: 'QoS',
+    icon: (
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16h16" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a5 5 0 0110 0" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 16l3-5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 20h8" />
+      </svg>
+    ),
+  },
+  {
     to: '/vpn',
     label: 'VPN',
     icon: (

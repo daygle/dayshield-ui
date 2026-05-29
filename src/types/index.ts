@@ -1062,6 +1062,42 @@ export interface NatRule {
   auto_firewall_rule: boolean; // auto-generate companion forward accept for DNAT
 }
 
+// ---------------------------------------------------------------------------
+// QoS / Smart Queue Management
+// ---------------------------------------------------------------------------
+
+export type QosQueueDiscipline = 'cake' | 'fq_codel';
+export type QosDiffservMode = 'besteffort' | 'diffserv3' | 'diffserv4' | 'diffserv8';
+
+export interface QosInterface {
+  name: string;
+  enabled: boolean;
+  bandwidth_kbps?: number | null;
+  qdisc: QosQueueDiscipline;
+  diffserv: QosDiffservMode;
+  nat_aware: boolean;
+  wash: boolean;
+}
+
+export interface QosConfig {
+  enabled: boolean;
+  interfaces: QosInterface[];
+}
+
+export interface QosInterfaceStatus {
+  name: string;
+  configured: boolean;
+  enabled: boolean;
+  qdisc?: string | null;
+  applied: boolean;
+  details: string;
+  lastError?: string | null;
+}
+
+export interface QosActionResponse {
+  message: string;
+}
+
 // ── NTP ───────────────────────────────────────────────────────────────────────
 
 export interface NtpConfig {
