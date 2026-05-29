@@ -644,6 +644,8 @@ export default function System() {
   const [updateSettingsOpen, setUpdateSettingsOpen] = useState(false);
   const [updateActionLoading, setUpdateActionLoading] = useState(false);
   const [updateActionMessage, setUpdateActionMessage] = useState<string | null>(null);
+  const [optimisticUpdateProgress, setOptimisticUpdateProgress] =
+    useState<UpdateOperationProgress | null>(null);
   const [updateSaving, setUpdateSaving] = useState(false);
   const [markingApplianceRebuildComplete, setMarkingApplianceRebuildComplete] = useState(false);
   const [rollbackConfirmOpen, setRollbackConfirmOpen] = useState(false);
@@ -871,6 +873,7 @@ export default function System() {
   const handleCheckUpdates = () => {
     setUpdateActionLoading(true);
     setUpdateActionMessage(null);
+    setOptimisticUpdateProgress(null);
     Promise.all([checkForUpdates(), checkRootfsUpdates()])
       .then(([updRes, rootfsRes]) => {
         setUpdates(updRes.data);
@@ -881,8 +884,18 @@ export default function System() {
   };
 
   const handleApplyUpdates = () => {
+    const now = new Date().toISOString();
     setUpdateActionLoading(true);
     setUpdateActionMessage(null);
+    setOptimisticUpdateProgress({
+      operation: 'apply',
+      phase: 'starting',
+      status: 'running',
+      message: 'Starting app updates',
+      percent: 2,
+      startedAt: now,
+      updatedAt: now,
+    });
     applyUpdates('both')
       .then((res) => {
         setUpdates(res.data.status);
@@ -894,7 +907,10 @@ export default function System() {
         }
         setUpdateActionMessage(res.data.message);
       })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => {
+        setOptimisticUpdateProgress(null);
+        setError(err.message);
+      })
       .finally(() => setUpdateActionLoading(false));
   };
 
@@ -903,21 +919,35 @@ export default function System() {
   };
 
   const handleRollbackConfirm = () => {
+    const now = new Date().toISOString();
     setRollbackConfirmOpen(false);
     setUpdateActionLoading(true);
     setUpdateActionMessage(null);
+    setOptimisticUpdateProgress({
+      operation: 'rollback',
+      phase: 'starting',
+      status: 'running',
+      message: 'Starting rollback',
+      percent: 2,
+      startedAt: now,
+      updatedAt: now,
+    });
     rollbackUpdates('both')
       .then((res) => {
         setUpdates(res.data.status);
         setUpdateActionMessage(res.data.message);
       })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => {
+        setOptimisticUpdateProgress(null);
+        setError(err.message);
+      })
       .finally(() => setUpdateActionLoading(false));
   };
 
   const handleValidateUpdates = () => {
     setUpdateActionLoading(true);
     setUpdateActionMessage(null);
+    setOptimisticUpdateProgress(null);
     validateUpdates('both')
       .then((res) => {
         setUpdates(res.data.status);
@@ -1009,6 +1039,25 @@ export default function System() {
     }
   }, [latestLiveLog?.timestamp, latestLiveLog?.message]);
 
+  useEffect(() => {
+    if (!optimisticUpdateProgress) return;
+    const backendProgress = updates?.progress;
+    const backendUpdatedAt = backendProgress ? Date.parse(backendProgress.updatedAt) : NaN;
+    const optimisticStartedAt = Date.parse(optimisticUpdateProgress.startedAt);
+    if (
+      backendProgress &&
+      Number.isFinite(backendUpdatedAt) &&
+      Number.isFinite(optimisticStartedAt) &&
+      backendUpdatedAt >= optimisticStartedAt
+    ) {
+      setOptimisticUpdateProgress(null);
+      return;
+    }
+    if (optimisticUpdateProgress?.component === 'rootfs' && rootfsStatus?.pendingVersion) {
+      setOptimisticUpdateProgress(null);
+    }
+  }, [updates?.progress, optimisticUpdateProgress, rootfsStatus?.pendingVersion]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-40 text-gray-400">
@@ -1039,8 +1088,11 @@ export default function System() {
   const rootfsTransactionState = rootfsStatus?.transactionState ?? 'idle';
   const rootfsRecoveryActive = rootfsStatus?.recoveryActive ?? false;
   const rootfsInProgress = rootfsTransactionState !== 'idle';
-  const runningUpdateProgress =
+  const backendRunningUpdateProgress =
     updates?.progress?.status === 'running' ? updates.progress : undefined;
+  const runningUpdateProgress =
+    backendRunningUpdateProgress ??
+    (optimisticUpdateProgress?.status === 'running' ? optimisticUpdateProgress : undefined);
   const updateInProgress = Boolean(runningUpdateProgress) || rootfsInProgress;
   const updateProgressView = runningUpdateProgress
     ? {
@@ -2155,9 +2207,19 @@ export default function System() {
                     <Button
                       size="sm"
                       onClick={() => {
+                        const now = new Date().toISOString();
                         setUpdateActionLoading(true);
                         setUpdateActionMessage(null);
                         if (rootfsPendingVersion) {
+                          setOptimisticUpdateProgress({
+                            operation: 'apply',
+                            phase: 'applying',
+                            status: 'running',
+                            message: 'Activating system image',
+                            component: 'rootfs',
+                            startedAt: now,
+                            updatedAt: now,
+                          });
                           // Squashfs already staged — activate it for next boot
                           applyRootfsUpdate()
                             .then(() => getRootfsStatus())
@@ -2167,9 +2229,22 @@ export default function System() {
                                 'System image activated. Reboot to install it.'
                               );
                             })
-                            .catch((err: Error) => setError(err.message))
+                            .catch((err: Error) => {
+                              setOptimisticUpdateProgress(null);
+                              setError(err.message);
+                            })
                             .finally(() => setUpdateActionLoading(false));
                         } else {
+                          setOptimisticUpdateProgress({
+                            operation: 'apply',
+                            phase: 'downloading',
+                            status: 'running',
+                            message: 'System image download started',
+                            component: 'rootfs',
+                            percent: 2,
+                            startedAt: now,
+                            updatedAt: now,
+                          });
                           // No staged image yet — download and stage it (background, returns 202)
                           applyUpdates('rootfs')
                             .then((res) => {
@@ -2178,7 +2253,10 @@ export default function System() {
                                 'System image download started. The Activate Image button will appear when it is ready.'
                               );
                             })
-                            .catch((err: Error) => setError(err.message))
+                            .catch((err: Error) => {
+                              setOptimisticUpdateProgress(null);
+                              setError(err.message);
+                            })
                             .finally(() => setUpdateActionLoading(false));
                         }
                       }}
