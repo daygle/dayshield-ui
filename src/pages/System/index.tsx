@@ -15,7 +15,6 @@ import {
   markApplianceRebuildComplete,
   getRootfsStatus,
   checkRootfsUpdates,
-  applyRootfsUpdate,
   rollbackRootfsUpdate,
 } from '../../api/system';
 import { getAdminSecurity, updateAdminSecurity } from '../../api/admin';
@@ -2217,70 +2216,49 @@ export default function System() {
                         const now = new Date().toISOString();
                         setUpdateActionLoading(true);
                         setUpdateActionMessage(null);
-                        if (rootfsPendingVersion) {
-                          setOptimisticUpdateProgress({
-                            operation: 'apply',
-                            phase: 'applying',
-                            status: 'running',
-                            message: 'Activating system image',
-                            component: 'rootfs',
-                            startedAt: now,
-                            updatedAt: now,
-                          });
-                          // Squashfs already staged — activate it for next boot
-                          applyRootfsUpdate()
-                            .then(() => getRootfsStatus())
-                            .then((r) => {
-                              setRootfsStatus(r.data);
-                              setUpdateActionMessage(
-                                'System image activated. Reboot to install it.'
-                              );
-                            })
-                            .catch((err: Error) => {
-                              setOptimisticUpdateProgress(null);
-                              setError(err.message);
-                            })
-                            .finally(() => setUpdateActionLoading(false));
-                        } else {
-                          setOptimisticUpdateProgress({
-                            operation: 'apply',
-                            phase: 'downloading',
-                            status: 'running',
-                            message: 'System image download started',
-                            component: 'rootfs',
-                            percent: 2,
-                            startedAt: now,
-                            updatedAt: now,
-                          });
-                          // No staged image yet — download and stage it (background, returns 202)
-                          applyUpdates('rootfs')
-                            .then((res) => {
-                              setUpdates(res.data.status);
-                              setUpdateActionMessage(
-                                'System image download started. The Activate Image button will appear when it is ready.'
-                              );
-                            })
-                            .catch((err: Error) => {
-                              setOptimisticUpdateProgress(null);
-                              setError(err.message);
-                            })
-                            .finally(() => setUpdateActionLoading(false));
-                        }
+                        setOptimisticUpdateProgress({
+                          operation: 'apply',
+                          phase: 'downloading',
+                          status: 'running',
+                          message: 'Downloading system image',
+                          component: 'rootfs',
+                          percent: 2,
+                          startedAt: now,
+                          updatedAt: now,
+                        });
+                        // A/B model: the download path also formats the inactive
+                        // slot, extracts the squashfs into it, and arms grubenv.
+                        // No separate "activate" step — when this 202 returns
+                        // and rootfsRebootRequired flips true, the system is
+                        // already prepared.  User just needs to reboot.
+                        applyUpdates('rootfs')
+                          .then((res) => {
+                            setUpdates(res.data.status);
+                            setUpdateActionMessage(
+                              'System image update started. When it completes you will be prompted to reboot.'
+                            );
+                          })
+                          .catch((err: Error) => {
+                            setOptimisticUpdateProgress(null);
+                            setError(err.message);
+                          })
+                          .finally(() => setUpdateActionLoading(false));
                       }}
                       disabled={
                         updateActionLoading ||
                         updateInProgress ||
-                        (!rootfsUpdateAvailable && !rootfsPendingVersion)
+                        !rootfsUpdateAvailable ||
+                        rootfsRebootRequired
                       }
                       title={
-                        rootfsPendingVersion
-                          ? 'Activate the downloaded system image on the next reboot'
+                        rootfsRebootRequired
+                          ? 'A system image update is already prepared — reboot to install it'
                           : rootfsUpdateAvailable
-                            ? 'Download the available system image so it can be activated on the next reboot'
+                            ? 'Download the available system image and prepare it for the next boot'
                             : 'No system image update available'
                       }
                     >
-                      {rootfsPendingVersion ? 'Activate Image' : 'Download Image'}
+                      Update System Image
                     </Button>
                     <Button
                       size="sm"
