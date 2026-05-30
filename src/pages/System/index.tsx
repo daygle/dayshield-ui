@@ -2057,6 +2057,44 @@ export default function System() {
               </div>
             )}
 
+            {updateActionMessage &&
+              (() => {
+                const parsed = parseValidationMessage(updateActionMessage);
+                const containerClasses = updateActionMessageClasses(updateActionMessage);
+                const formattedMessage = normalizeUpdateText(updateActionMessage);
+
+                if (parsed.status === 'error') {
+                  return (
+                    <div className={containerClasses}>
+                      <div className="space-y-2">
+                        <div className="font-medium">Update Failed</div>
+                        <div className="text-sm">
+                          {parsed.error ? normalizeUpdateText(parsed.error) : 'Update failed.'}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (parsed.status === 'failed') {
+                  return (
+                    <div className={containerClasses}>
+                      <div className="font-medium mb-2">Validation Failed</div>
+                      <div className="text-sm">
+                        {parsed.error ? normalizeUpdateText(parsed.error) : 'Validation failed.'}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Remove green validation box: do not render anything for validation passed with notes
+                if (parsed.status === 'passed' && parsed.notes && parsed.notes.length > 0) {
+                  return null;
+                }
+
+                return <div className={containerClasses}>{formattedMessage}</div>;
+              })()}
+
             {updateProgressView && (
               <div className="rounded-md border border-gray-200 bg-white px-4 py-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -2096,7 +2134,7 @@ export default function System() {
               <div className="flex h-full flex-col rounded-md border border-gray-200 bg-white p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-900">App Updates</h4>
+                    <h4 className="text-sm font-semibold text-gray-900">Core/UI Updates</h4>
                     <span className="text-xs text-gray-500">Core service and Web UI</span>
                   </div>
                   <Button
@@ -2105,7 +2143,7 @@ export default function System() {
                     disabled={appUpdatesDisabled}
                     title={appUpdatesTitle}
                   >
-                    Install App Updates
+                    Install Core/UI Updates
                   </Button>
                 </div>
                 <div className="mt-4 grid flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
@@ -2383,44 +2421,6 @@ export default function System() {
                 </div>
               </div>
             )}
-
-            {updateActionMessage &&
-              (() => {
-                const parsed = parseValidationMessage(updateActionMessage);
-                const containerClasses = updateActionMessageClasses(updateActionMessage);
-                const formattedMessage = normalizeUpdateText(updateActionMessage);
-
-                if (parsed.status === 'error') {
-                  return (
-                    <div className={containerClasses}>
-                      <div className="space-y-2">
-                        <div className="font-medium">Update Failed</div>
-                        <div className="text-sm">
-                          {parsed.error ? normalizeUpdateText(parsed.error) : 'Update failed.'}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                if (parsed.status === 'failed') {
-                  return (
-                    <div className={containerClasses}>
-                      <div className="font-medium mb-2">Validation Failed</div>
-                      <div className="text-sm">
-                        {parsed.error ? normalizeUpdateText(parsed.error) : 'Validation failed.'}
-                      </div>
-                    </div>
-                  );
-                }
-
-                // Remove green validation box: do not render anything for validation passed with notes
-                if (parsed.status === 'passed' && parsed.notes && parsed.notes.length > 0) {
-                  return null;
-                }
-
-                return <div className={containerClasses}>{formattedMessage}</div>;
-              })()}
 
             <div className="rounded-md border border-gray-200 bg-gray-50">
               <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2">
