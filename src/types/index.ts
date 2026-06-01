@@ -996,6 +996,11 @@ export interface ConfigRevision {
   size_bytes: number;
 }
 
+export interface ConfigHistorySettings {
+  enabled: boolean;
+  max_revisions: number;
+}
+
 export type BackupScheduleFrequency = 'daily' | 'weekly' | 'monthly';
 
 export interface BackupSchedule {
