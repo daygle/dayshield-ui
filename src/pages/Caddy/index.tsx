@@ -145,8 +145,9 @@ function CaddyPageContent() {
   );
 
   const enabledSiteCount = config.sites.filter((site) => site.enabled).length;
+  const trimmedEmail = config.acmeEmail.trim();
   const emailError =
-    config.enabled && !EMAIL_PATTERN.test(config.acmeEmail.trim())
+    (config.enabled || trimmedEmail) && !EMAIL_PATTERN.test(trimmedEmail)
       ? 'A valid contact email is required for automatic HTTPS.'
       : '';
   const hasSiteErrors = config.sites.some(
@@ -395,7 +396,10 @@ function CaddyPageContent() {
           ) : (
             config.sites.map((site, index) => (
               <div
-                key={`${site.domain}-${index}`}
+                // Index is a stable key here: list mutations replace the whole
+                // sites array via setConfig, and a domain-based key would remount
+                // the row (losing input focus) on every keystroke.
+                key={index}
                 className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 p-4 md:grid-cols-[1fr_1fr_auto]"
                 tabIndex={0}
                 aria-describedby="caddy-site-keyboard-hint"
