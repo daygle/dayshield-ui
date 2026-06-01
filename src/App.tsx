@@ -26,6 +26,7 @@ import ConfigHistory from './pages/ConfigHistory';
 import Notifications from './pages/Notifications';
 import NTP from './pages/NTP';
 import Cloudflared from './pages/Cloudflared';
+import Caddy from './pages/Caddy';
 import Tools from './pages/Tools';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import AdminSecurity from './pages/AdminSecurity';
@@ -174,6 +175,11 @@ const router = createBrowserRouter([
         path: 'cloudflared',
         element: <Cloudflared />,
         handle: { title: 'Cloudflared' },
+      },
+      {
+        path: 'caddy',
+        element: <Caddy />,
+        handle: { title: 'Reverse Proxy' },
       },
       {
         path: 'tools',
