@@ -2048,6 +2048,24 @@ export default function System() {
               </div>
             </div>
 
+            {rootfsRebootRequired && (
+              <div className="flex flex-col gap-3 rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between">
+                <p>
+                  A reboot is required to install the activated system image
+                  {rootfsPendingVersion ? ` (v${rootfsPendingVersion})` : ''}.
+                </p>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => setRebootOpen(true)}
+                  disabled={rebooting}
+                  className="w-fit"
+                >
+                  Reboot Now
+                </Button>
+              </div>
+            )}
+
             {updateNotFoundHint && (
               <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900 space-y-2">
                 <p className="font-medium">No update found.</p>
@@ -2376,24 +2394,6 @@ export default function System() {
                 )}
               </div>
             </div>
-
-            {rootfsRebootRequired && (
-              <div className="flex flex-col gap-3 rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between">
-                <p>
-                  A reboot is required to install the activated system image
-                  {rootfsPendingVersion ? ` (v${rootfsPendingVersion})` : ''}.
-                </p>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={() => setRebootOpen(true)}
-                  disabled={rebooting}
-                  className="w-fit"
-                >
-                  Reboot Now
-                </Button>
-              </div>
-            )}
 
             {updates.pendingApplianceRebuild && (
               <div className="rounded-md bg-orange-50 border border-orange-200 px-4 py-3 text-sm text-orange-800 space-y-3">
