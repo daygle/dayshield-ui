@@ -1235,6 +1235,42 @@ export interface CloudflaredActionResponse {
   message: string;
 }
 
+// ── Caddy reverse proxy ───────────────────────────────────────────────────────
+
+export interface CaddySite {
+  domain: string;
+  upstream: string;
+  enabled: boolean;
+}
+
+export interface CaddyConfig {
+  enabled: boolean;
+  acmeEmail: string;
+  logLevel: string;
+  sites: CaddySite[];
+}
+
+export interface CaddyStatus {
+  configured: boolean;
+  enabled: boolean;
+  running: boolean;
+  unitEnabled: boolean;
+  binaryPresent: boolean;
+  activeState: string;
+  subState: string;
+  version?: string;
+  siteCount: number;
+  lastError?: string | null;
+}
+
+export interface CaddyLogsResponse {
+  lines: string[];
+}
+
+export interface CaddyActionResponse {
+  message: string;
+}
+
 // ── Captive Portal ──────────────────────────────────────────────────────────
 
 export type CaptivePortalAuthMode = 'click_through' | 'voucher';

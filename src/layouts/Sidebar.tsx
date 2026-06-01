@@ -260,6 +260,22 @@ const navEntries: NavEntry[] = [
     ),
   },
   {
+    to: '/caddy',
+    label: 'Reverse Proxy',
+    icon: (
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h11l-3-3M20 17H9l3 3" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7h4M4 17h4" />
+      </svg>
+    ),
+  },
+  {
     to: '/tools',
     label: 'Tools',
     icon: (
