@@ -44,7 +44,13 @@ type IconProps = { className?: string };
 
 function SaveIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 4h11l3 3v13H5V4z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M8 4v6h8V4M8 20v-6h8v6" />
     </svg>
@@ -53,7 +59,13 @@ function SaveIcon({ className = 'h-4 w-4' }: IconProps) {
 
 function RefreshIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d="M20 12a8 8 0 10-2.34 5.66" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M20 12V8m0 4h-4" />
     </svg>
@@ -62,7 +74,13 @@ function RefreshIcon({ className = 'h-4 w-4' }: IconProps) {
 
 function PlusIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
     </svg>
   );
@@ -70,7 +88,13 @@ function PlusIcon({ className = 'h-4 w-4' }: IconProps) {
 
 function ApplyIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h12" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M13 6l6 6-6 6" />
     </svg>
@@ -180,6 +204,18 @@ function validateConfig(config: QosConfig): string[] {
   return errors;
 }
 
+function configStatusBadge(enabled: boolean) {
+  return enabled ? (
+    <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+      Enabled
+    </span>
+  ) : (
+    <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+      Disabled
+    </span>
+  );
+}
+
 function statusBadge(status: QosInterfaceStatus) {
   if (!status.enabled) {
     return (
@@ -265,6 +301,10 @@ export default function QosPage() {
     }));
   };
 
+  const toggleEnabled = () => {
+    setConfig((current) => ({ ...current, enabled: !current.enabled }));
+  };
+
   const handleSave = () => {
     const payload = cleanConfig(config);
     const errors = validateConfig(payload);
@@ -308,56 +348,77 @@ export default function QosPage() {
       </datalist>
 
       <Card
-        title="QoS"
-        subtitle="Smart Queue Management"
+        title="QoS Overview"
+        subtitle="Smart Queue Management for selected network interfaces."
         actions={
-          <>
-            <Button type="button" variant="secondary" onClick={loadAll} disabled={busy}>
-              <RefreshIcon />
+          <div className="flex flex-wrap items-center gap-2">
+            {configStatusBadge(config.enabled)}
+            <Button
+              type="button"
+              variant={config.enabled ? 'danger' : 'secondary'}
+              size="sm"
+              onClick={toggleEnabled}
+              disabled={busy}
+            >
+              {config.enabled ? 'Disable' : 'Enable'}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={loadAll}
+              loading={loading}
+              disabled={busy}
+            >
+              {!loading && <RefreshIcon />}
               Refresh
             </Button>
-            <Button type="button" variant="secondary" onClick={handleApply} loading={applying} disabled={busy}>
-              <ApplyIcon />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={handleApply}
+              loading={applying}
+              disabled={busy}
+            >
+              {!applying && <ApplyIcon />}
               Re-apply
             </Button>
-            <Button type="button" onClick={handleSave} loading={saving} disabled={busy}>
-              <SaveIcon />
+            <Button type="button" size="sm" onClick={handleSave} loading={saving} disabled={busy}>
+              {!saving && <SaveIcon />}
               Save
             </Button>
-          </>
+          </div>
         }
       >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <label className="inline-flex items-center gap-3 text-sm font-medium text-gray-800">
-            <input
-              type="checkbox"
-              checked={config.enabled}
-              onChange={(ev) => setConfig((current) => ({ ...current, enabled: ev.target.checked }))}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            Enable QoS
-          </label>
-          <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500">Policies</p>
-              <p className="font-semibold text-gray-900">{config.interfaces.length}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500">Active</p>
-              <p className="font-semibold text-gray-900">
-                {config.enabled ? config.interfaces.filter((iface) => iface.enabled).length : 0}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500">Applied</p>
-              <p className="font-semibold text-gray-900">{status.filter((item) => item.applied).length}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500">Queue</p>
-              <p className="font-semibold text-gray-900">
-                {config.interfaces.some((iface) => iface.qdisc === 'cake') ? 'CAKE' : 'fq_codel'}
-              </p>
-            </div>
+        <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500">Policies</p>
+            <p className="font-semibold text-gray-900">{config.interfaces.length}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500">Active</p>
+            <p className="font-semibold text-gray-900">
+              {config.enabled ? config.interfaces.filter((iface) => iface.enabled).length : 0}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500">Applied</p>
+            <p className="font-semibold text-gray-900">
+              {status.filter((item) => item.applied).length}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500">Queue</p>
+            <p className="font-semibold text-gray-900">
+              {config.interfaces.some((iface) => iface.qdisc === 'cake') ? 'CAKE' : 'fq_codel'}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500">Service</p>
+            <p className={`font-semibold ${config.enabled ? 'text-green-600' : 'text-gray-500'}`}>
+              {config.enabled ? 'Enabled' : 'Disabled'}
+            </p>
           </div>
         </div>
       </Card>
@@ -365,7 +426,13 @@ export default function QosPage() {
       <Card
         title="Interface Policies"
         actions={
-          <Button type="button" variant="secondary" onClick={addInterface} disabled={busy}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={addInterface}
+            disabled={busy}
+          >
             <PlusIcon />
             Add Interface
           </Button>
@@ -376,10 +443,14 @@ export default function QosPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="w-24 px-3 py-3 text-left font-semibold text-gray-600">Enabled</th>
-                <th className="min-w-44 px-3 py-3 text-left font-semibold text-gray-600">Interface</th>
+                <th className="min-w-44 px-3 py-3 text-left font-semibold text-gray-600">
+                  Interface
+                </th>
                 <th className="min-w-32 px-3 py-3 text-left font-semibold text-gray-600">Mbit/s</th>
                 <th className="min-w-32 px-3 py-3 text-left font-semibold text-gray-600">Queue</th>
-                <th className="min-w-36 px-3 py-3 text-left font-semibold text-gray-600">Diffserv</th>
+                <th className="min-w-36 px-3 py-3 text-left font-semibold text-gray-600">
+                  Diffserv
+                </th>
                 <th className="w-24 px-3 py-3 text-left font-semibold text-gray-600">NAT</th>
                 <th className="w-24 px-3 py-3 text-left font-semibold text-gray-600">Wash</th>
                 <th className="w-16 px-3 py-3 text-right font-semibold text-gray-600">Remove</th>
@@ -421,7 +492,9 @@ export default function QosPage() {
                           placeholder="wan0"
                         />
                         {iface.name && optionLabelByName.has(iface.name) && (
-                          <p className="mt-1 text-xs text-gray-500">{optionLabelByName.get(iface.name)}</p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {optionLabelByName.get(iface.name)}
+                          </p>
                         )}
                       </td>
                       <td className="px-3 py-3 align-top">
@@ -476,7 +549,9 @@ export default function QosPage() {
                           type="checkbox"
                           checked={iface.nat_aware}
                           disabled={!cake}
-                          onChange={(ev) => updateInterface(index, { nat_aware: ev.target.checked })}
+                          onChange={(ev) =>
+                            updateInterface(index, { nat_aware: ev.target.checked })
+                          }
                           className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40"
                           aria-label={`Enable CAKE NAT awareness for ${iface.name || `interface ${index + 1}`}`}
                         />

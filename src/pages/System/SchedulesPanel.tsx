@@ -33,6 +33,8 @@ const DEFAULT_INTERVALS: Record<ScheduleJobType, number> = {
   suricata_rulesets_update: 360,
 };
 
+const SCHEDULES_REFRESH_INTERVAL_MS = 30 * 1000; // 30 seconds
+
 function normalizeSchedules(input: SystemSchedules | null | undefined): SystemSchedules {
   const jobsByType = new Map<ScheduleJobType, SystemScheduleJob>();
 
@@ -81,8 +83,6 @@ export default function SchedulesPanel({ onError }: SchedulesPanelProps) {
   const [runningJob, setRunningJob] = useState<ScheduleJobType | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const SCHEDULES_REFRESH_INTERVAL_MS = 30 * 1000; // 30 seconds
-
   const load = useCallback(() => {
     setLoading(true);
     getSystemSchedules()
@@ -112,7 +112,9 @@ export default function SchedulesPanel({ onError }: SchedulesPanelProps) {
 
   const sortedJobs = useMemo(() => {
     const order = new Map(JOB_ORDER.map((job, index) => [job, index]));
-    return [...schedules.jobs].sort((a, b) => (order.get(a.job) ?? 999) - (order.get(b.job) ?? 999));
+    return [...schedules.jobs].sort(
+      (a, b) => (order.get(a.job) ?? 999) - (order.get(b.job) ?? 999)
+    );
   }, [schedules.jobs]);
 
   const updateJob = (job: ScheduleJobType, patch: Partial<SystemScheduleJob>) => {
@@ -214,10 +216,7 @@ export default function SchedulesPanel({ onError }: SchedulesPanelProps) {
                     disabled={busy}
                     onChange={(e) =>
                       updateJob(job.job, {
-                        intervalMinutes: Math.max(
-                          1,
-                          Math.min(10080, Number(e.target.value) || 1)
-                        ),
+                        intervalMinutes: Math.max(1, Math.min(10080, Number(e.target.value) || 1)),
                       })
                     }
                   />
@@ -225,7 +224,9 @@ export default function SchedulesPanel({ onError }: SchedulesPanelProps) {
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-                    <div className="text-[11px] uppercase tracking-wide text-gray-500">Last Run</div>
+                    <div className="text-[11px] uppercase tracking-wide text-gray-500">
+                      Last Run
+                    </div>
                     <div className="mt-1 text-sm font-medium text-gray-800">
                       {formatDate(job.lastRunAt)}
                     </div>
@@ -235,7 +236,11 @@ export default function SchedulesPanel({ onError }: SchedulesPanelProps) {
                     <div
                       className={`mt-1 text-sm font-medium ${job.lastSuccess === false ? 'text-red-700' : 'text-gray-800'}`}
                     >
-                      {job.lastSuccess == null ? 'Not yet run' : job.lastSuccess ? 'Success' : 'Failed'}
+                      {job.lastSuccess == null
+                        ? 'Not yet run'
+                        : job.lastSuccess
+                          ? 'Success'
+                          : 'Failed'}
                     </div>
                   </div>
                   <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
