@@ -22,6 +22,7 @@ import ACME from './pages/ACME';
 import System from './pages/System';
 import Logs from './pages/Logs';
 import Backup from './pages/Backup';
+import ConfigHistory from './pages/ConfigHistory';
 import Notifications from './pages/Notifications';
 import NTP from './pages/NTP';
 import Cloudflared from './pages/Cloudflared';
@@ -153,6 +154,11 @@ const router = createBrowserRouter([
         path: 'backup',
         element: <Backup />,
         handle: { title: 'Backup' },
+      },
+      {
+        path: 'config-history',
+        element: <ConfigHistory />,
+        handle: { title: 'Config History' },
       },
       {
         path: 'notifications',

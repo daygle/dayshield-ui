@@ -986,6 +986,16 @@ export interface RestoreBackupRequest {
   passphrase?: string; // required for encrypted backups
 }
 
+// ── Configuration history (revisions) ──────────────────────────────────────────
+
+export interface ConfigRevision {
+  id: string;
+  saved_at: number; // Unix timestamp (seconds)
+  schema_version: number;
+  description?: string;
+  size_bytes: number;
+}
+
 export type BackupScheduleFrequency = 'daily' | 'weekly' | 'monthly';
 
 export interface BackupSchedule {

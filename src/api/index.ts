@@ -19,5 +19,6 @@ export * from './ai';
 export * from './acme';
 export * from './system';
 export * from './backup';
+export * from './config';
 export * from './notifications';
 export * from './logs';
