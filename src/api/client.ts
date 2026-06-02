@@ -11,11 +11,20 @@ function formatApiErrorMessage(rawData: unknown, fallback: string): string {
   const responseData =
     rawData !== null && typeof rawData === 'object' ? (rawData as Record<string, unknown>) : undefined;
 
+  // Detect HTML documents (e.g. the SPA index.html served by the API's
+  // static-file fallback when an endpoint is unreachable). These should never
+  // be surfaced verbatim in the UI.
+  const rawString =
+    typeof rawData === 'string' ? rawData.replace(/^\uFEFF/, '').trim() : undefined;
+  const looksLikeHtml = rawString !== undefined && /^<(?:!doctype|!--|html|\?xml)/i.test(rawString);
+
   const primary =
     (responseData?.error as string | undefined) ??
     (responseData?.message as string | undefined) ??
-    (typeof rawData === 'string' && rawData.trim().length > 0 ? rawData.trim() : undefined) ??
-    fallback;
+    (rawString && rawString.length > 0 && !looksLikeHtml ? rawString : undefined) ??
+    (looksLikeHtml
+      ? 'The server returned an unexpected response (an HTML page instead of data). The requested service may be unavailable — try again in a moment.'
+      : fallback);
 
   const detailCandidates = [
     responseData?.detail,
