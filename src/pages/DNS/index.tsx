@@ -191,15 +191,28 @@ export default function DNS() {
 
   const loadAll = () => {
     setLoading(true);
-    Promise.all([getDnsConfig(), getAcmeConfig(), getDnsOverrides(), getDnsStatus()])
-      .then(([cfg, acmeCfg, overrides, status]) => {
-        setConfig(cfg.data);
-        setDnsStatus(status.data);
-        setAcmeDomains(acmeCfg.data.domains ?? []);
-        setHostOverrides(overrides.data.host_overrides as HostRow[]);
-        setDomainOverrides(overrides.data.domain_overrides as DomainRow[]);
+    setError(null);
+    // Load each resource independently so that a failure in an auxiliary
+    // endpoint (status, ACME, overrides) does not blank out the whole page and
+    // hide the resolver configuration that loaded successfully.
+    Promise.allSettled([getDnsConfig(), getAcmeConfig(), getDnsOverrides(), getDnsStatus()])
+      .then(([cfgResult, acmeResult, overridesResult, statusResult]) => {
+        if (cfgResult.status === 'fulfilled') {
+          setConfig(cfgResult.value.data);
+        } else {
+          // The resolver configuration is the only critical resource; surface
+          // its failure so the user knows the page could not load.
+          setError(cfgResult.reason?.message ?? 'Failed to load DNS configuration.');
+        }
+        setDnsStatus(statusResult.status === 'fulfilled' ? statusResult.value.data : null);
+        if (acmeResult.status === 'fulfilled') {
+          setAcmeDomains(acmeResult.value.data.domains ?? []);
+        }
+        if (overridesResult.status === 'fulfilled') {
+          setHostOverrides(overridesResult.value.data.host_overrides as HostRow[]);
+          setDomainOverrides(overridesResult.value.data.domain_overrides as DomainRow[]);
+        }
       })
-      .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   };
 
