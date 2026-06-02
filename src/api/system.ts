@@ -7,7 +7,6 @@ import type {
   UpdatesStatus,
   UpdatesActionResult,
   UpdateComponent,
-  RootfsUpdateMode,
   RootfsUpdateStatus,
   RootfsTransactionState,
   SystemSchedules,
@@ -79,12 +78,6 @@ function asStringArray(value: unknown): string[] | undefined {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string')
     : undefined;
-}
-
-function normalizeRootfsUpdateMode(value: unknown): RootfsUpdateMode | undefined {
-  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  if (normalized === 'image') return 'image';
-  return undefined;
 }
 
 function normalizeSystemStatus(raw: unknown): SystemStatus {
@@ -271,25 +264,10 @@ function normalizeUpdateSettings(raw: unknown): UpdateSettings {
     encryptUpdateConfigBackups: asBoolean(
       value.encryptUpdateConfigBackups ?? value.encrypt_update_config_backups
     ),
-    rootfsUpdateMode:
-      normalizeRootfsUpdateMode(
-        value.rootfsUpdateMode ?? value.rootfs_update_mode ?? value.updateMode ?? value.update_mode
-      ) ?? 'image',
-    requireSignedCommits: Boolean(value.requireSignedCommits ?? value.require_signed_commits),
-    verifyRootfsMetadata: Boolean(value.verifyRootfsMetadata ?? value.verify_rootfs_metadata),
     trustedSignersFile: asString(value.trustedSignersFile ?? value.trusted_signers_file) ?? '',
-    bootstrapMissingRootfsRepo: Boolean(
-      value.bootstrapMissingRootfsRepo ?? value.bootstrap_missing_rootfs_repo
-    ),
-    coreRepoPath: asString(value.coreRepoPath ?? value.core_repo_path) ?? '',
-    uiRepoPath: asString(value.uiRepoPath ?? value.ui_repo_path) ?? '',
-    rootfsRepoPath: asString(value.rootfsRepoPath ?? value.rootfs_repo_path) ?? '',
     coreRepoUrl: asString(value.coreRepoUrl ?? value.core_repo_url) ?? '',
     uiRepoUrl: asString(value.uiRepoUrl ?? value.ui_repo_url) ?? '',
     rootfsRepoUrl: asString(value.rootfsRepoUrl ?? value.rootfs_repo_url) ?? '',
-    coreBranch: asString(value.coreBranch ?? value.core_branch) ?? 'main',
-    uiBranch: asString(value.uiBranch ?? value.ui_branch) ?? 'main',
-    rootfsBranch: asString(value.rootfsBranch ?? value.rootfs_branch) ?? 'main',
   };
 }
 
@@ -297,19 +275,10 @@ function normalizeComponentUpdateStatus(raw: unknown): ComponentUpdateStatus {
   const value = asRecord(raw);
   return {
     component: asString(value.component) ?? 'core',
-    repoPath: asString(value.repoPath ?? value.repo_path) ?? '',
-    branch: asString(value.branch) ?? 'main',
-    validRepo: Boolean(value.validRepo ?? value.valid_repo),
-    dirtyWorktree: Boolean(value.dirtyWorktree ?? value.dirty_worktree),
-    currentCommit: asString(value.currentCommit ?? value.current_commit),
-    remoteCommit: asString(value.remoteCommit ?? value.remote_commit),
     currentVersion: asString(value.currentVersion ?? value.current_version),
     remoteVersion: asString(value.remoteVersion ?? value.remote_version),
-    registryVersion: asString(value.registryVersion ?? value.registry_version),
     updateAvailable: Boolean(value.updateAvailable ?? value.update_available),
-    rollbackCommit: asString(value.rollbackCommit ?? value.rollback_commit),
     rollbackVersion: asString(value.rollbackVersion ?? value.rollback_version),
-    lastAppliedCommit: asString(value.lastAppliedCommit ?? value.last_applied_commit),
     lastAppliedVersion: asString(value.lastAppliedVersion ?? value.last_applied_version),
     lastError: asString(value.lastError ?? value.last_error),
   };
@@ -345,19 +314,11 @@ function normalizeUpdatesStatus(raw: unknown): UpdatesStatus {
   );
   const componentsRaw = Array.isArray(value.components) ? value.components : [];
   const operationLogsRaw = value.operationLogs ?? value.operation_logs;
-  const rootfsUpdateMode =
-    normalizeRootfsUpdateMode(
-      value.rootfsUpdateMode ?? value.rootfs_update_mode ?? settings.rootfsUpdateMode
-    ) ?? 'image';
 
   return {
-    settings: {
-      ...settings,
-      rootfsUpdateMode: settings.rootfsUpdateMode ?? rootfsUpdateMode,
-    },
+    settings,
     lastCheckedAt: asString(value.lastCheckedAt ?? value.last_checked_at),
     lastAppliedAt: asString(value.lastAppliedAt ?? value.last_applied_at),
-    rootfsUpdateMode,
     pendingReboot: Boolean(value.pendingReboot ?? value.pending_reboot),
     pendingApplianceRebuild: Boolean(
       value.pendingApplianceRebuild ?? value.pending_appliance_rebuild

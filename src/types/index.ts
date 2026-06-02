@@ -879,7 +879,6 @@ export interface SystemSchedules {
 }
 
 export type UpdateComponent = 'core' | 'ui' | 'rootfs' | 'both';
-export type RootfsUpdateMode = 'image';
 
 export type UpdateScheduleFrequency = 'daily' | 'weekly' | 'monthly';
 export type UpdateScheduleWeekday =
@@ -904,42 +903,18 @@ export interface UpdateSettings {
   registryUrl?: string;
   verifyArtifactSignatures?: boolean;
   encryptUpdateConfigBackups?: boolean;
-  rootfsUpdateMode?: RootfsUpdateMode;
-  requireSignedCommits: boolean;
-  verifyRootfsMetadata: boolean;
   trustedSignersFile: string;
-  bootstrapMissingRootfsRepo: boolean;
-  coreRepoPath: string;
-  uiRepoPath: string;
-  rootfsRepoPath: string;
   coreRepoUrl: string;
   uiRepoUrl: string;
   rootfsRepoUrl: string;
-  coreBranch: string;
-  uiBranch: string;
-  rootfsBranch: string;
 }
 
 export interface ComponentUpdateStatus {
   component: 'core' | 'ui' | 'rootfs' | string;
-  repoPath: string;
-  branch: string;
-  validRepo: boolean;
-  dirtyWorktree: boolean;
-  currentCommit?: string;
-  remoteCommit?: string;
   currentVersion?: string;
   remoteVersion?: string;
-  /**
-   * Version recorded for this component in the registry manifest.
-   * Each component may carry an independent version/tag rather than
-   * matching the release tag of other components.
-   */
-  registryVersion?: string;
   updateAvailable: boolean;
-  rollbackCommit?: string;
   rollbackVersion?: string;
-  lastAppliedCommit?: string;
   lastAppliedVersion?: string;
   lastError?: string;
 }
@@ -1012,7 +987,6 @@ export interface UpdatesStatus {
   settings: UpdateSettings;
   lastCheckedAt?: string;
   lastAppliedAt?: string;
-  rootfsUpdateMode?: RootfsUpdateMode;
   pendingReboot: boolean;
   pendingApplianceRebuild: boolean;
   applianceRebuildReason?: string;

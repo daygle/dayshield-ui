@@ -132,27 +132,16 @@ function parseCommaSeparatedNumbers(value: string): number[] {
     .filter((n) => Number.isInteger(n) && n > 0 && n <= 65535);
 }
 
-function shortCommit(value?: string): string {
-  return value ? value.slice(0, 8) : '-';
+function componentCurrentDisplay(comp: { currentVersion?: string }): string {
+  return comp.currentVersion ?? 'Unknown';
 }
 
-function componentCurrentDisplay(comp: {
-  currentVersion?: string;
-  currentCommit?: string;
-}): string {
-  return comp.currentVersion ?? (comp.currentCommit ? shortCommit(comp.currentCommit) : 'Unknown');
+function componentRemoteDisplay(comp: { remoteVersion?: string }): string {
+  return comp.remoteVersion ?? 'Unknown';
 }
 
-function componentRemoteDisplay(comp: { remoteVersion?: string; remoteCommit?: string }): string {
-  return comp.remoteVersion ?? (comp.remoteCommit ? shortCommit(comp.remoteCommit) : 'Unknown');
-}
-
-function hasResolvedRemoteVersion(comp: {
-  remoteVersion?: string;
-  remoteCommit?: string;
-  lastError?: string;
-}): boolean {
-  return Boolean(comp.remoteVersion || comp.remoteCommit);
+function hasResolvedRemoteVersion(comp: { remoteVersion?: string; lastError?: string }): boolean {
+  return Boolean(comp.remoteVersion);
 }
 
 function formatUpdateComponentName(component: string): string {
@@ -482,14 +471,12 @@ function normalizeRegistryUrl(input?: string): string {
 }
 
 function inferUpdateStatusLabel(comp: {
-  validRepo: boolean;
   updateAvailable: boolean;
   remoteVersion?: string;
-  remoteCommit?: string;
   lastError?: string;
 }): string {
   const err = (comp.lastError ?? '').toLowerCase();
-  if (comp.validRepo) {
+  if (!err) {
     if (comp.updateAvailable) return 'Update Available';
     if (hasResolvedRemoteVersion(comp)) return 'Up to Date';
     return 'Status Unknown';
@@ -1071,7 +1058,7 @@ export default function System() {
   const runtimeRollbackAvailable = updates
     ? updates.components.some(
         (comp) =>
-          comp.component !== 'rootfs' && Boolean(comp.rollbackVersion || comp.rollbackCommit)
+          comp.component !== 'rootfs' && Boolean(comp.rollbackVersion)
       )
     : false;
   const rootfsComponent = updates?.components.find((comp) => comp.component === 'rootfs');
@@ -2173,13 +2160,13 @@ export default function System() {
                       {(() => {
                         const statusLabel = inferUpdateStatusLabel(comp);
                         const hasRemoteVersion = hasResolvedRemoteVersion(comp);
-                        const statusClass = comp.validRepo
-                          ? !hasRemoteVersion && !comp.updateAvailable
+                        const statusClass = comp.lastError
+                          ? 'bg-red-100 text-red-700'
+                          : !hasRemoteVersion && !comp.updateAvailable
                             ? 'bg-gray-100 text-gray-600'
                             : comp.updateAvailable
                               ? 'bg-amber-100 text-amber-700'
-                              : 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700';
+                              : 'bg-green-100 text-green-700';
 
                         return (
                           <div className="flex items-center justify-between gap-3">
