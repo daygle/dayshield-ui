@@ -7,7 +7,6 @@ import type {
   UpdatesStatus,
   UpdatesActionResult,
   UpdateComponent,
-  RootfsUpdateMode,
   RootfsUpdateStatus,
   RootfsTransactionState,
   SystemSchedules,
@@ -79,12 +78,6 @@ function asStringArray(value: unknown): string[] | undefined {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string')
     : undefined;
-}
-
-function normalizeRootfsUpdateMode(value: unknown): RootfsUpdateMode | undefined {
-  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  if (normalized === 'image') return 'image';
-  return undefined;
 }
 
 function normalizeSystemStatus(raw: unknown): SystemStatus {
@@ -271,10 +264,6 @@ function normalizeUpdateSettings(raw: unknown): UpdateSettings {
     encryptUpdateConfigBackups: asBoolean(
       value.encryptUpdateConfigBackups ?? value.encrypt_update_config_backups
     ),
-    rootfsUpdateMode:
-      normalizeRootfsUpdateMode(
-        value.rootfsUpdateMode ?? value.rootfs_update_mode ?? value.updateMode ?? value.update_mode
-      ) ?? 'image',
     requireSignedCommits: Boolean(value.requireSignedCommits ?? value.require_signed_commits),
     verifyRootfsMetadata: Boolean(value.verifyRootfsMetadata ?? value.verify_rootfs_metadata),
     trustedSignersFile: asString(value.trustedSignersFile ?? value.trusted_signers_file) ?? '',
@@ -345,19 +334,11 @@ function normalizeUpdatesStatus(raw: unknown): UpdatesStatus {
   );
   const componentsRaw = Array.isArray(value.components) ? value.components : [];
   const operationLogsRaw = value.operationLogs ?? value.operation_logs;
-  const rootfsUpdateMode =
-    normalizeRootfsUpdateMode(
-      value.rootfsUpdateMode ?? value.rootfs_update_mode ?? settings.rootfsUpdateMode
-    ) ?? 'image';
 
   return {
-    settings: {
-      ...settings,
-      rootfsUpdateMode: settings.rootfsUpdateMode ?? rootfsUpdateMode,
-    },
+    settings,
     lastCheckedAt: asString(value.lastCheckedAt ?? value.last_checked_at),
     lastAppliedAt: asString(value.lastAppliedAt ?? value.last_applied_at),
-    rootfsUpdateMode,
     pendingReboot: Boolean(value.pendingReboot ?? value.pending_reboot),
     pendingApplianceRebuild: Boolean(
       value.pendingApplianceRebuild ?? value.pending_appliance_rebuild

@@ -879,7 +879,6 @@ export interface SystemSchedules {
 }
 
 export type UpdateComponent = 'core' | 'ui' | 'rootfs' | 'both';
-export type RootfsUpdateMode = 'image';
 
 export type UpdateScheduleFrequency = 'daily' | 'weekly' | 'monthly';
 export type UpdateScheduleWeekday =
@@ -904,7 +903,6 @@ export interface UpdateSettings {
   registryUrl?: string;
   verifyArtifactSignatures?: boolean;
   encryptUpdateConfigBackups?: boolean;
-  rootfsUpdateMode?: RootfsUpdateMode;
   requireSignedCommits: boolean;
   verifyRootfsMetadata: boolean;
   trustedSignersFile: string;
@@ -1012,7 +1010,6 @@ export interface UpdatesStatus {
   settings: UpdateSettings;
   lastCheckedAt?: string;
   lastAppliedAt?: string;
-  rootfsUpdateMode?: RootfsUpdateMode;
   pendingReboot: boolean;
   pendingApplianceRebuild: boolean;
   applianceRebuildReason?: string;
