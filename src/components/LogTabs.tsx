@@ -1,26 +1,9 @@
 import type { LogSource } from '../types/logs';
+import { LOG_SOURCES } from '../utils/logMeta';
 
 const TABS: { value: LogSource | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'suricata', label: 'Suricata' },
-  { value: 'ui', label: 'UI' },
-  { value: 'ai', label: 'AI Threat Engine' },
-  { value: 'firewall', label: 'Firewall' },
-  { value: 'interfaces', label: 'Interfaces' },
-  { value: 'gateways', label: 'Gateways' },
-  { value: 'dns', label: 'DNS' },
-  { value: 'ntp', label: 'NTP' },
-  { value: 'crowdsec', label: 'CrowdSec' },
-  { value: 'pppoe', label: 'PPPoE' },
-  { value: 'backup_restore', label: 'Backup/Restore' },
-  { value: 'updates', label: 'Updates' },
-  { value: 'honeypot', label: 'Honeypot' },
-  { value: 'captive_portal', label: 'Captive Portal' },
-  { value: 'system', label: 'System' },
-  { value: 'dhcp', label: 'DHCP' },
-  { value: 'vpn', label: 'VPN' },
-  { value: 'cloudflared', label: 'Cloudflared' },
-  { value: 'acme', label: 'ACME' },
+  ...LOG_SOURCES.map((s) => ({ value: s.value, label: s.label })),
 ];
 
 interface LogTabsProps {

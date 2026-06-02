@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LiveLogsFilter, LogEntry, LogSource } from '../types/logs';
+import { LOG_SOURCE_VALUES } from '../utils/logMeta';
 import LogLine from './LogLine';
 import LogFilters from './LogFilters';
 import LogSearch from './LogSearch';
@@ -29,28 +30,10 @@ const STATUS_LABEL: Record<string, { label: string; dot: string }> = {
 };
 
 function buildCounts(logs: LogEntry[]): Record<LogSource | 'all', number> {
-  const counts: Record<LogSource | 'all', number> = {
-    all: logs.length,
-    ui: 0,
-    suricata: 0,
-    ai: 0,
-    firewall: 0,
-    interfaces: 0,
-    gateways: 0,
-    dns: 0,
-    ntp: 0,
-    crowdsec: 0,
-    pppoe: 0,
-    backup_restore: 0,
-    updates: 0,
-    honeypot: 0,
-    captive_portal: 0,
-    system: 0,
-    dhcp: 0,
-    vpn: 0,
-    cloudflared: 0,
-    acme: 0,
-  };
+  const counts = { all: logs.length } as Record<LogSource | 'all', number>;
+  for (const source of LOG_SOURCE_VALUES) {
+    counts[source] = 0;
+  }
   for (const log of logs) {
     counts[log.source] = (counts[log.source] ?? 0) + 1;
   }

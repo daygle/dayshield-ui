@@ -1,246 +1,46 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getAuthToken } from '../api/client';
 import { searchLogs } from '../api/logs';
-import type {
-  LiveLogsDebugInfo,
-  LiveLogsFilter,
-  LogEntry,
-  LogLevel,
-  LogSource,
-  WsStatus,
-} from '../types/logs';
+import type { LiveLogsFilter, LogEntry, LogLevel, LogSource, WsStatus } from '../types/logs';
 
 const MAX_BUFFER = 2000;
 
-function explicitLevelFromSystemMessage(message: string): LogLevel | null {
-  const match = message
-    .trim()
-    .toUpperCase()
-    .match(/^(?:<\d+>)?\s*(CRITICAL|PANIC|ERROR|ERR|WARNING|WARN|INFO|DEBUG|TRACE)\b/);
-  if (!match) return null;
-
-  switch (match[1]) {
-    case 'CRITICAL':
-    case 'PANIC':
-      return 'critical';
-    case 'ERROR':
-    case 'ERR':
-      return 'error';
-    case 'WARNING':
-    case 'WARN':
-      return 'warning';
-    case 'DEBUG':
-    case 'TRACE':
-      return 'debug';
-    default:
-      return 'info';
-  }
-}
-
-function levelFromJournalPriority(priority: unknown): LogLevel | null {
-  const value =
-    typeof priority === 'number'
-      ? priority
-      : typeof priority === 'string'
-        ? Number.parseInt(priority, 10)
-        : Number.NaN;
-
-  if (!Number.isFinite(value)) return null;
-  if (value <= 2) return 'critical';
-  if (value === 3) return 'error';
-  if (value === 4) return 'warning';
-  if (value >= 7) return 'debug';
-  return 'info';
-}
-
-function levelFromSystemMessage(message: string, priority?: unknown): LogLevel {
-  const explicit = explicitLevelFromSystemMessage(message);
-  if (explicit) return explicit;
-
-  const journalLevel = levelFromJournalPriority(priority);
-  if (journalLevel) return journalLevel;
-
-  const upper = message.toUpperCase();
-  if (/\b(CRITICAL|PANIC)\b/.test(upper)) return 'critical';
-  if (/\b(ERROR|ERR|FAILED|FAILURE)\b/.test(upper)) return 'error';
-  if (/\b(WARN|WARNING)\b/.test(upper)) return 'warning';
-  if (/\b(DEBUG|TRACE)\b/.test(upper)) return 'debug';
-  return 'info';
-}
-
-function sourceFromSystemEvent(unit: string, message: string): LogSource {
-  const hay = `${unit} ${message}`.toLowerCase();
-  if (hay.includes('suricata')) return 'suricata';
-  if (
-    hay.includes('ai threat engine') ||
-    hay.includes('ai engine') ||
-    hay.includes('ai-threat') ||
-    hay.includes('ai threat')
-  )
-    return 'ai';
-  if (hay.includes('nft') || hay.includes('firewall')) return 'firewall';
-  if (
-    hay.includes('pppoe') ||
-    hay.includes('pppd') ||
-    hay.includes('rp-pppoe') ||
-    hay.includes(' lcp') ||
-    hay.includes(' ipcp') ||
-    hay.includes(' pap') ||
-    hay.includes(' chap') ||
-    hay.includes('padi') ||
-    hay.includes('pado') ||
-    hay.includes('padr') ||
-    hay.includes('pads')
-  )
-    return 'pppoe';
-  if (hay.includes('crowdsec')) return 'crowdsec';
-  if (
-    hay.includes('ntp') ||
-    hay.includes('chrony') ||
-    hay.includes('chronyd') ||
-    hay.includes('timesyncd') ||
-    hay.includes('systemd-timesyncd')
-  )
-    return 'ntp';
-  if (
-    hay.includes('unbound') ||
-    hay.includes('resolver') ||
-    hay.includes('dns ') ||
-    hay.includes('dns:') ||
-    hay.includes('named')
-  )
-    return 'dns';
-  if (
-    hay.includes('gateway') ||
-    hay.includes('default route') ||
-    hay.includes('ip route') ||
-    hay.includes('route update')
-  )
-    return 'gateways';
-  if (
-    hay.includes('interface') ||
-    hay.includes('link up') ||
-    hay.includes('link down') ||
-    hay.includes('networkd') ||
-    hay.includes('netplan')
-  )
-    return 'interfaces';
-  if (hay.includes('honeypot')) return 'honeypot';
-  if (hay.includes('captive-portal') || hay.includes('captive_portal') || hay.includes('captiveportal'))
-    return 'captive_portal';
-  if (hay.includes('backup') || hay.includes('restore') || hay.includes('snapshot'))
-    return 'backup_restore';
-  if (
-    hay.includes('update') ||
-    hay.includes('updater') ||
-    hay.includes('upgrade') ||
-    hay.includes('rollback')
-  )
-    return 'updates';
-  if (hay.includes('kea') || hay.includes('dhcp') || hay.includes('dnsmasq')) return 'dhcp';
-  if (hay.includes('wireguard') || hay.includes('wg-') || hay.includes('vpn')) return 'vpn';
-  if (hay.includes('cloudflared')) return 'cloudflared';
-  if (hay.includes('acme') || hay.includes('cert') || hay.includes('letsencrypt')) return 'acme';
-  return 'system';
-}
-
+/**
+ * Normalise a raw event from the log stream (live WebSocket or historical
+ * search) into a {@link LogEntry}.
+ *
+ * The backend already classifies every event and emits a flat record carrying
+ * string `source`, `level` and `message` fields (see
+ * `LogEvent::to_client_payload` in dayshield-core). The UI trusts that
+ * classification rather than re-deriving it, so this function only validates
+ * the shape and fills in defaults.
+ */
 function normalizeWsEvent(raw: unknown, seq: number): LogEntry | null {
   if (!raw || typeof raw !== 'object') return null;
   const event = raw as Record<string, unknown>;
 
-  // Backward-compatible: already in LogEntry shape.
   if (
-    typeof event.source === 'string' &&
-    typeof event.level === 'string' &&
-    typeof event.message === 'string'
+    typeof event.source !== 'string' ||
+    typeof event.level !== 'string' ||
+    typeof event.message !== 'string'
   ) {
-    const timestamp =
-      typeof event.timestamp === 'string' && event.timestamp
-        ? event.timestamp
-        : new Date().toISOString();
-    const id = typeof event.id === 'string' && event.id ? event.id : `${timestamp}-${seq}`;
-    return {
-      id,
-      timestamp,
-      source: event.source as LogSource,
-      level: event.level as LogLevel,
-      message: event.message,
-      raw: JSON.stringify(event),
-      meta: event.meta as Record<string, unknown> | undefined,
-    };
+    return null;
   }
 
-  const kind = typeof event.type === 'string' ? event.type : '';
-
-  if (kind === 'suricata_alert') {
-    const timestamp =
-      typeof event.timestamp === 'string' && event.timestamp
-        ? event.timestamp
-        : new Date().toISOString();
-    const severity = Number(event.severity ?? 3);
-    const level: LogLevel = severity <= 1 ? 'error' : severity === 2 ? 'warning' : 'info';
-    const src = String(event.src_ip ?? '');
-    const dst = String(event.dest_ip ?? '');
-    const proto = String(event.proto ?? '').toUpperCase();
-    const sig = String(event.signature ?? 'Suricata alert');
-    const flow = [src, dst].every(Boolean) ? ` (${src} -> ${dst}${proto ? ` ${proto}` : ''})` : '';
-    return {
-      id: `${timestamp}-suricata-${seq}`,
-      timestamp,
-      source: 'suricata',
-      level,
-      message: `${sig}${flow}`,
-      raw: JSON.stringify(event),
-      meta: event,
-    };
-  }
-
-  if (kind === 'firewall_event') {
-    const timestamp =
-      typeof event.timestamp === 'string' && event.timestamp
-        ? event.timestamp
-        : new Date().toISOString();
-    const action = String(event.action ?? 'EVENT');
-    const actionUpper = action.toUpperCase();
-    const src = String(event.src_ip ?? '');
-    const dst = String(event.dest_ip ?? '');
-    const sport = String(event.sport ?? '');
-    const dport = String(event.dport ?? '');
-    const iface = String(event.iface ?? '');
-    const endpoint = [src, sport].filter(Boolean).join(':');
-    const target = [dst, dport].filter(Boolean).join(':');
-    const where = iface ? ` on ${iface}` : '';
-    return {
-      id: `${timestamp}-firewall-${seq}`,
-      timestamp,
-      source: 'firewall',
-      level: actionUpper.includes('DROP') || actionUpper.includes('BLOCK') ? 'warning' : 'info',
-      message: `${action}${where}${endpoint || target ? ` ${endpoint} -> ${target}` : ''}`,
-      raw: JSON.stringify(event),
-      meta: event,
-    };
-  }
-
-  if (kind === 'system_event') {
-    const timestamp =
-      typeof event.timestamp === 'string' && event.timestamp
-        ? event.timestamp
-        : new Date().toISOString();
-    const unit = String(event.unit ?? 'system');
-    const message = String(event.message ?? '').trim();
-    const safeMessage = message || '(empty system log message)';
-    return {
-      id: `${timestamp}-system-${seq}`,
-      timestamp,
-      source: sourceFromSystemEvent(unit, safeMessage),
-      level: levelFromSystemMessage(safeMessage, event.priority),
-      message: safeMessage,
-      raw: JSON.stringify(event),
-      meta: event,
-    };
-  }
-
-  return null;
+  const timestamp =
+    typeof event.timestamp === 'string' && event.timestamp
+      ? event.timestamp
+      : new Date().toISOString();
+  const id = typeof event.id === 'string' && event.id ? event.id : `${timestamp}-${seq}`;
+  return {
+    id,
+    timestamp,
+    source: event.source as LogSource,
+    level: event.level as LogLevel,
+    message: event.message,
+    raw: JSON.stringify(event),
+    meta: event.meta as Record<string, unknown> | undefined,
+  };
 }
 
 function buildWsUrl(): string {
@@ -271,12 +71,6 @@ export function useLiveLogs(options?: { autoConnect?: boolean }) {
   });
   const [paused, setPaused] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
-  const [debugInfo, setDebugInfo] = useState<LiveLogsDebugInfo>({
-    wsUrl: '',
-    lastCloseCode: null,
-    lastCloseReason: '',
-    lastErrorAt: null,
-  });
 
   const wsRef = useRef<WebSocket | null>(null);
   const pausedRef = useRef(paused);
@@ -294,9 +88,7 @@ export function useLiveLogs(options?: { autoConnect?: boolean }) {
     if (wsRef.current && wsRef.current.readyState < WebSocket.CLOSING) return;
 
     setStatus('connecting');
-    const wsUrl = buildWsUrl();
-    setDebugInfo((prev) => ({ ...prev, wsUrl }));
-    const ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(buildWsUrl());
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -330,17 +122,11 @@ export function useLiveLogs(options?: { autoConnect?: boolean }) {
     ws.onerror = () => {
       if (unmountedRef.current) return;
       setStatus('error');
-      setDebugInfo((prev) => ({ ...prev, lastErrorAt: new Date().toISOString() }));
     };
 
-    ws.onclose = (event: CloseEvent) => {
+    ws.onclose = () => {
       if (unmountedRef.current) return;
       setStatus('disconnected');
-      setDebugInfo((prev) => ({
-        ...prev,
-        lastCloseCode: event.code,
-        lastCloseReason: event.reason || '',
-      }));
       // fixed 3-second delay before reconnect
       reconnectTimerRef.current = setTimeout(connect, 3000);
     };
@@ -403,6 +189,5 @@ export function useLiveLogs(options?: { autoConnect?: boolean }) {
     clearLogs,
     reconnect: connect,
     loadHistoricalRange,
-    debugInfo,
   };
 }
