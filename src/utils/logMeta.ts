@@ -17,8 +17,14 @@ export interface LogSourceMeta {
   badge: string;
 }
 
-/** Canonical, display-ordered list of every log source. */
-export const LOG_SOURCES: LogSourceMeta[] = [
+/**
+ * Canonical, display-ordered list of every log source.
+ *
+ * `as const satisfies` preserves the literal `value` types (so the
+ * exhaustiveness guard below actually works) while still checking each entry
+ * against {@link LogSourceMeta}.
+ */
+export const LOG_SOURCES = [
   { value: 'suricata', label: 'Suricata', badge: 'bg-purple-900/60 text-purple-300' },
   { value: 'ui', label: 'UI', badge: 'bg-slate-800/60 text-slate-300' },
   { value: 'ai', label: 'AI Threat Engine', badge: 'bg-cyan-900/60 text-cyan-300' },
@@ -38,7 +44,7 @@ export const LOG_SOURCES: LogSourceMeta[] = [
   { value: 'vpn', label: 'VPN', badge: 'bg-indigo-900/60 text-indigo-300' },
   { value: 'cloudflared', label: 'Cloudflared', badge: 'bg-pink-900/60 text-pink-300' },
   { value: 'acme', label: 'ACME', badge: 'bg-amber-900/60 text-amber-300' },
-];
+] as const satisfies readonly LogSourceMeta[];
 
 // Compile-time guard: every `LogSource` must appear in `LOG_SOURCES`. If a new
 // source is added to the type but not here, this line fails to type-check.
@@ -47,6 +53,13 @@ const _ensureAllSourcesRegistered: MissingSources extends never ? true : never =
 void _ensureAllSourcesRegistered;
 
 export const LOG_SOURCE_VALUES: LogSource[] = LOG_SOURCES.map((s) => s.value);
+
+const LOG_SOURCE_SET = new Set<string>(LOG_SOURCE_VALUES);
+
+/** Type guard: is `value` a known {@link LogSource}? */
+export function isLogSource(value: string): value is LogSource {
+  return LOG_SOURCE_SET.has(value);
+}
 
 export const LOG_SOURCE_LABELS = Object.fromEntries(
   LOG_SOURCES.map((s) => [s.value, s.label])
@@ -67,7 +80,7 @@ export interface LogLevelMeta {
 }
 
 /** Canonical, severity-ordered list of every log level. */
-export const LOG_LEVELS: LogLevelMeta[] = [
+export const LOG_LEVELS = [
   { value: 'debug', label: 'Debug', text: 'text-slate-400', badge: 'bg-slate-700 text-slate-400' },
   { value: 'info', label: 'Info', text: 'text-slate-200', badge: 'bg-slate-700 text-slate-300' },
   {
@@ -83,9 +96,16 @@ export const LOG_LEVELS: LogLevelMeta[] = [
     text: 'text-red-300 font-bold',
     badge: 'bg-red-700 text-red-100',
   },
-];
+] as const satisfies readonly LogLevelMeta[];
 
 export const LOG_LEVEL_VALUES: LogLevel[] = LOG_LEVELS.map((l) => l.value);
+
+const LOG_LEVEL_SET = new Set<string>(LOG_LEVEL_VALUES);
+
+/** Type guard: is `value` a known {@link LogLevel}? */
+export function isLogLevel(value: string): value is LogLevel {
+  return LOG_LEVEL_SET.has(value);
+}
 
 export const LOG_LEVEL_TEXT = Object.fromEntries(
   LOG_LEVELS.map((l) => [l.value, l.text])

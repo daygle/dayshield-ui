@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getAuthToken } from '../api/client';
 import { searchLogs } from '../api/logs';
-import type { LiveLogsFilter, LogEntry, LogLevel, LogSource, WsStatus } from '../types/logs';
+import type { LiveLogsFilter, LogEntry, WsStatus } from '../types/logs';
+import { isLogLevel, isLogSource } from '../utils/logMeta';
 
 const MAX_BUFFER = 2000;
 
@@ -13,7 +14,9 @@ const MAX_BUFFER = 2000;
  * string `source`, `level` and `message` fields (see
  * `LogEvent::to_client_payload` in dayshield-core). The UI trusts that
  * classification rather than re-deriving it, so this function only validates
- * the shape and fills in defaults.
+ * the shape and fills in defaults. Unknown taxonomy values are mapped onto the
+ * neutral `system`/`info` buckets so the line still renders if the backend
+ * ever introduces a source or level the UI doesn't know about yet.
  */
 function normalizeWsEvent(raw: unknown, seq: number): LogEntry | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -35,8 +38,8 @@ function normalizeWsEvent(raw: unknown, seq: number): LogEntry | null {
   return {
     id,
     timestamp,
-    source: event.source as LogSource,
-    level: event.level as LogLevel,
+    source: isLogSource(event.source) ? event.source : 'system',
+    level: isLogLevel(event.level) ? event.level : 'info',
     message: event.message,
     raw: JSON.stringify(event),
     meta: event.meta as Record<string, unknown> | undefined,
