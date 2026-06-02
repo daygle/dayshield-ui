@@ -252,13 +252,9 @@ export const getInterfacesInventory = (): Promise<ApiResponse<InterfacesInventor
   }));
 
 // Core upserts by name via POST - use this for both create and update.
-export const createInterface = (
-  iface: Omit<NetworkInterface, 'name'> & { name: string }
-): Promise<ApiResponse<NetworkInterface>> =>
+export const createInterface = (iface: NetworkInterface): Promise<ApiResponse<NetworkInterface>> =>
   apiClient
-    .post<
-      ApiResponse<NetworkInterface>
-    >('/interfaces', toInterfaceUpsertPayload(iface as NetworkInterface))
+    .post<ApiResponse<NetworkInterface>>('/interfaces', toInterfaceUpsertPayload(iface))
     .then((r) => r.data);
 
 export const updateInterface = (iface: NetworkInterface): Promise<ApiResponse<NetworkInterface>> =>
