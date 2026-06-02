@@ -125,6 +125,22 @@ const validationTone = (status?: DnsStatusResponse | null) => {
   return 'muted';
 };
 
+const formatStatusLabel = (value?: string | null) => {
+  if (!value) return 'Unknown';
+  const normalized = value.trim();
+  if (!normalized) return 'Unknown';
+
+  return normalized
+    .replace(/[_-]+/g, ' ')
+    .split(/\s+/)
+    .map((word) => {
+      if (word.length === 0) return word;
+      if (word.toLowerCase() === 'ok') return 'OK';
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -1569,7 +1585,9 @@ export default function DNS() {
                     )}`}
                     title={dnsStatus?.dnssec.message}
                   >
-                    {dnsStatus?.dnssec.health ?? (config.dnssec ? 'Unknown' : 'Disabled')}
+                    {formatStatusLabel(
+                      dnsStatus?.dnssec.health ?? (config.dnssec ? 'Unknown' : 'Disabled')
+                    )}
                   </dd>
                 </div>
                 <div>
@@ -1623,7 +1641,7 @@ export default function DNS() {
                     )}`}
                     title={dnsStatus?.unbound.message}
                   >
-                    {dnsStatus?.unbound.active_state ?? 'Unknown'}
+                    {formatStatusLabel(dnsStatus?.unbound.active_state)}
                   </dd>
                 </div>
                 <div>
@@ -1634,7 +1652,7 @@ export default function DNS() {
                     className={`mt-1 font-semibold ${statusToneClass(validationTone(dnsStatus))}`}
                     title={dnsStatus?.config_validation.message}
                   >
-                    {dnsStatus?.config_validation.status ?? 'Unknown'}
+                    {formatStatusLabel(dnsStatus?.config_validation.status)}
                   </dd>
                 </div>
                 <div>
