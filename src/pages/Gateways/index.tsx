@@ -57,9 +57,9 @@ export default function Gateways() {
   const [saving, setSaving] = useState(false);
   const [deleteName, setDeleteName] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  // Removed unused interfaces state
   const interfaceInventory = useInterfaceInventory();
   const [editingActiveIp, setEditingActiveIp] = useState<string | undefined>();
+  const [editingIsAuto, setEditingIsAuto] = useState(false);
 
   const interfaceLabel = (name: string) => {
     const iface = interfaceInventory.find((i) => i.name === name);
@@ -77,11 +77,8 @@ export default function Gateways() {
     setLoading(true);
     getGateways()
       .then((res) => {
-        setRows(
-          (res.data as unknown as { gateways: GatewayRow[]; default_interface?: string })
-            .gateways ?? []
-        );
-        setDefaultIface((res.data as unknown as { default_interface?: string }).default_interface);
+        setRows((res.data?.gateways as GatewayRow[]) ?? []);
+        setDefaultIface(res.data?.default_interface);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
@@ -92,13 +89,16 @@ export default function Gateways() {
   const openAdd = () => {
     setForm(defaultForm);
     setIsEditing(false);
+    setEditingIsAuto(false);
     setEditingActiveIp(undefined);
     setModalOpen(true);
   };
 
   const openEdit = (row: GatewayRow) => {
+    // Keep the persisted name (including any `_AUTO` suffix) so the upsert
+    // targets the existing entry rather than creating a duplicate.
     setForm({
-      name: formatGatewayName(row.name),
+      name: row.name,
       description: row.description,
       interface: row.interface,
       gateway_ip: row.gateway_ip,
@@ -107,13 +107,23 @@ export default function Gateways() {
       enabled: row.enabled,
     });
     setIsEditing(true);
+    setEditingIsAuto(String(row.name).endsWith('_AUTO'));
+    setEditingActiveIp(row.active_ip);
     setModalOpen(true);
   };
 
   const handleSave = () => {
+    // Gateways are keyed by name. New gateways derive their name from the
+    // selected interface; edits preserve the existing name.
+    const resolvedName = (form.name || form.interface).trim();
+    if (!resolvedName) {
+      addToast('Select an interface for the gateway.', 'error');
+      return;
+    }
     setSaving(true);
     const payload: Gateway = {
       ...form,
+      name: resolvedName,
       gateway_ip: form.gateway_ip || undefined,
       monitor_ip: form.monitor_ip || undefined,
       description: form.description || undefined,
@@ -252,7 +262,7 @@ export default function Gateways() {
                 interfaceInventory.find((i) => i.name === form.interface) || {
                   name: form.interface,
                 },
-                String(form.name).endsWith('_AUTO')
+                editingIsAuto
               )
             : 'Add Gateway'
         }
@@ -269,15 +279,14 @@ export default function Gateways() {
         }
       >
         <div className="space-y-4">
-          <FormField label="Name" required>
+          <FormField label="Name">
             <input
               className="input"
-              placeholder="e.g. WAN_GW"
               value={formatGatewayDisplayName(
                 interfaceInventory.find((i) => i.name === form.interface) || {
                   name: form.interface,
                 },
-                String(form.name).endsWith('_AUTO')
+                editingIsAuto
               )}
               disabled
             />
@@ -313,10 +322,10 @@ export default function Gateways() {
               placeholder="e.g. 203.0.113.1"
               value={form.gateway_ip ?? ''}
               onChange={(e) => setForm((f) => ({ ...f, gateway_ip: e.target.value }))}
-              disabled={isEditing && String(form.name).endsWith('_AUTO')}
+              disabled={isEditing && editingIsAuto}
             />
           </FormField>
-          {isEditing && String(form.name).endsWith('_AUTO') && (
+          {isEditing && editingIsAuto && (
             <FormField
               label="Active Gateway IP"
               hint="Current default-route gateway learned from the running kernel."
