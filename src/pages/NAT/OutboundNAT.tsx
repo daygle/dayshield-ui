@@ -118,7 +118,7 @@ export default function OutboundNAT() {
     return iface ? formatInterfaceDisplayName(iface.description, iface.name) : interfaceName;
   };
 
-  // â”€â”€ Mode mutation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Mode mutation ──────────────────────────────────────────────────────────
   const configMutation = useMutation({
     mutationFn: updateNatConfig,
     onSuccess: () => {
@@ -128,7 +128,7 @@ export default function OutboundNAT() {
     onError: (err: Error) => addToast(err.message, 'error'),
   });
 
-  // â”€â”€ Rule form state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Rule form state ─────────────────────────────────────────────────────────
   const [ruleModalOpen, setRuleModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<NatRule | null>(null);
   const [ruleForm, setRuleForm] = useState<Omit<NatRule, 'id'>>(defaultRuleForm());
@@ -182,7 +182,7 @@ export default function OutboundNAT() {
     return Object.keys(errors).length === 0;
   };
 
-  // â”€â”€ Mutations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Mutations ───────────────────────────────────────────────────────────────
   const createMutation = useMutation({
     mutationFn: createNatRule,
     onSuccess: () => {
@@ -509,7 +509,7 @@ export default function OutboundNAT() {
         subtitle="Controls how outbound address translation is applied"
       >
         {configLoading ? (
-          <p className="text-sm text-gray-400">Loadingâ€¦</p>
+          <p className="text-sm text-gray-400">Loading…</p>
         ) : (
           <div className="flex flex-col sm:flex-row gap-3">
             {modes.map((m) => {
