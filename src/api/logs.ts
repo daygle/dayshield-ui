@@ -1,4 +1,3 @@
-import type { AxiosResponse } from 'axios';
 import apiClient from './client';
 import type { ApiResponse } from '../types';
 
@@ -18,7 +17,7 @@ export interface UiLogRequest {
  */
 export async function ingestUiLog(payload: UiLogRequest): Promise<void> {
   try {
-    await apiClient.post('/logs/ui', payload) as AxiosResponse<unknown>;
+    await apiClient.post('/logs/ui', payload);
   } catch {
     // Intentionally ignore errors when reporting logs so we don't cause
     // additional user-visible failures.
@@ -28,7 +27,7 @@ export async function ingestUiLog(payload: UiLogRequest): Promise<void> {
 export type HistoricalLogQuery = {
   from: string;
   to: string;
-  source?: 'all' | 'system' | 'firewall' | 'suricata' | 'ui' | 'all';
+  source?: 'all' | 'system' | 'firewall' | 'suricata' | 'ui' | 'updates';
   q?: string;
   limit?: number;
 };

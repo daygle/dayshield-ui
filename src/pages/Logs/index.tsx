@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import LogViewer from '../../components/LogViewer';
 import { useLiveLogs } from '../../hooks/useLiveLogs';
 import type { LogLevel, LogSource } from '../../types/logs';
+import { LOG_LEVEL_VALUES, LOG_SOURCE_VALUES } from '../../utils/logMeta';
 
 type LogsTab = 'logs' | 'live';
 
@@ -14,37 +15,9 @@ const tabs: { id: LogsTab; label: string }[] = [
   { id: 'live', label: 'Live Logs' },
 ];
 
-const VALID_SOURCES = new Set<LogSource | 'all'>([
-  'all',
-  'suricata',
-  'firewall',
-  'system',
-  'dhcp',
-  'vpn',
-  'cloudflared',
-  'acme',
-  'ai',
-  'interfaces',
-  'gateways',
-  'dns',
-  'ntp',
-  'crowdsec',
-  'ui',
-  'pppoe',
-  'backup_restore',
-  'updates',
-  'honeypot',
-  'captive_portal',
-]);
+const VALID_SOURCES = new Set<LogSource | 'all'>(['all', ...LOG_SOURCE_VALUES]);
 
-const VALID_LEVELS = new Set<LogLevel | 'all'>([
-  'all',
-  'debug',
-  'info',
-  'warning',
-  'error',
-  'critical',
-]);
+const VALID_LEVELS = new Set<LogLevel | 'all'>(['all', ...LOG_LEVEL_VALUES]);
 
 function defaultFromDateTime(): string {
   const now = new Date();

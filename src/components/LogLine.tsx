@@ -1,64 +1,10 @@
-import type { LogEntry, LogLevel, LogSource } from '../types/logs';
-
-const SOURCE_LABEL: Record<LogSource, string> = {
-  suricata: 'Suricata',
-  ui: 'UI',
-  ai: 'AI Threat Engine',
-  firewall: 'Firewall',
-  interfaces: 'Interfaces',
-  gateways: 'Gateways',
-  dns: 'DNS',
-  ntp: 'NTP',
-  crowdsec: 'CrowdSec',
-  pppoe: 'PPPoE',
-  backup_restore: 'Backup/Restore',
-  updates: 'Updates',
-  honeypot: 'Honeypot',
-  captive_portal: 'Captive Portal',
-  system: 'System',
-  dhcp: 'DHCP',
-  vpn: 'VPN',
-  cloudflared: 'Cloudflared',
-  acme: 'ACME',
-};
-
-const LEVEL_STYLES: Record<LogLevel, string> = {
-  debug: 'text-slate-400',
-  info: 'text-slate-200',
-  warning: 'text-yellow-400',
-  error: 'text-red-400',
-  critical: 'text-red-300 font-bold',
-};
-
-const SOURCE_BADGE: Record<LogSource, string> = {
-  suricata: 'bg-purple-900/60 text-purple-300',
-  ui: 'bg-slate-800/60 text-slate-300',
-  ai: 'bg-cyan-900/60 text-cyan-300',
-  firewall: 'bg-blue-900/60 text-blue-300',
-  interfaces: 'bg-emerald-900/60 text-emerald-300',
-  gateways: 'bg-violet-900/60 text-violet-300',
-  dns: 'bg-lime-900/60 text-lime-300',
-  ntp: 'bg-sky-900/60 text-sky-300',
-  crowdsec: 'bg-orange-900/60 text-orange-300',
-  pppoe: 'bg-fuchsia-900/60 text-fuchsia-300',
-  backup_restore: 'bg-rose-900/60 text-rose-300',
-  updates: 'bg-teal-900/60 text-teal-300',
-  honeypot: 'bg-red-900/60 text-red-300',
-  captive_portal: 'bg-yellow-900/60 text-yellow-300',
-  system: 'bg-slate-700/70 text-slate-300',
-  dhcp: 'bg-green-900/60 text-green-300',
-  vpn: 'bg-indigo-900/60 text-indigo-300',
-  cloudflared: 'bg-pink-900/60 text-pink-300',
-  acme: 'bg-amber-900/60 text-amber-300',
-};
-
-const LEVEL_BADGE: Record<LogLevel, string> = {
-  debug: 'bg-slate-700 text-slate-400',
-  info: 'bg-slate-700 text-slate-300',
-  warning: 'bg-yellow-900/60 text-yellow-300',
-  error: 'bg-red-900/60 text-red-300',
-  critical: 'bg-red-700 text-red-100',
-};
+import type { LogEntry } from '../types/logs';
+import {
+  LOG_LEVEL_BADGES,
+  LOG_LEVEL_TEXT,
+  LOG_SOURCE_BADGES,
+  LOG_SOURCE_LABELS,
+} from '../utils/logMeta';
 
 interface LogLineProps {
   entry: LogEntry;
@@ -90,7 +36,7 @@ export default function LogLine({ entry, highlight = '' }: LogLineProps) {
 
   return (
     <div
-      className={`flex items-start gap-2 px-3 py-0.5 text-xs font-mono hover:bg-white/5 leading-5 ${LEVEL_STYLES[entry.level]}`}
+      className={`flex items-start gap-2 px-3 py-0.5 text-xs font-mono hover:bg-white/5 leading-5 ${LOG_LEVEL_TEXT[entry.level]}`}
     >
       {/* Timestamp */}
       <span className="shrink-0 text-slate-500 w-28">
@@ -99,17 +45,17 @@ export default function LogLine({ entry, highlight = '' }: LogLineProps) {
 
       {/* Source badge */}
       <span
-        className={`shrink-0 inline-block px-1.5 rounded text-[10px] font-semibold uppercase leading-4 mt-0.5 ${SOURCE_BADGE[entry.source]}`}
+        className={`shrink-0 inline-block px-1.5 rounded text-[10px] font-semibold uppercase leading-4 mt-0.5 ${LOG_SOURCE_BADGES[entry.source]}`}
       >
-        {SOURCE_LABEL[entry.source]}
-      </span>{' '}
+        {LOG_SOURCE_LABELS[entry.source]}
+      </span>
 
       {/* Level badge */}
       <span
-        className={`shrink-0 inline-block px-1.5 rounded text-[10px] font-semibold uppercase leading-4 mt-0.5 w-14 text-center ${LEVEL_BADGE[entry.level]}`}
+        className={`shrink-0 inline-block px-1.5 rounded text-[10px] font-semibold uppercase leading-4 mt-0.5 w-14 text-center ${LOG_LEVEL_BADGES[entry.level]}`}
       >
         {entry.level}
-      </span>{' '}
+      </span>
 
       {/* Message */}
       <span className="break-all">{highlightText(entry.message, highlight)}</span>
