@@ -9,8 +9,12 @@ function normalize<T>(payload: unknown): ApiResponse<T> {
   return { success: true, data: payload as T };
 }
 
-// Core firewall API: GET /firewall/rules (list), POST /firewall/rules (append).
-// Individual rule GET/PUT/DELETE by id are not implemented in the core.
+// Core firewall API:
+//   GET    /firewall/rules        list rules
+//   POST   /firewall/rules        create a rule (id assigned by the core)
+//   PUT    /firewall/rules/{id}   replace a rule in place
+//   DELETE /firewall/rules/{id}   remove a rule
+// Rule ids are server-assigned UUID strings.
 
 export const getFirewallRules = (): Promise<ApiResponse<FirewallRule[]>> =>
   apiClient
@@ -32,9 +36,9 @@ export const updateFirewallRule = (
     .put<ApiResponse<FirewallRule>>(`/firewall/rules/${encodeURIComponent(id)}`, rule)
     .then((r) => normalize<FirewallRule>(r.data));
 
-export const deleteFirewallRule = (id: number | string): Promise<ApiResponse<void>> =>
+export const deleteFirewallRule = (id: string): Promise<ApiResponse<void>> =>
   apiClient
-    .delete<ApiResponse<void>>(`/firewall/rules/${encodeURIComponent(String(id))}`)
+    .delete<ApiResponse<void>>(`/firewall/rules/${encodeURIComponent(id)}`)
     .then((r) => normalize<void>(r.data));
 
 export const getFirewallSettings = (): Promise<ApiResponse<FirewallSettings>> =>

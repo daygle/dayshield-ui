@@ -170,6 +170,7 @@ export interface FirewallSettings {
   management_interface: string | null;
   management_allowed_sources: string[];
   management_ports: number[];
+  management_tls_acme_domain?: string | null; // ACME domain for the management TLS cert
   log_position?: LogPosition; // Optional for backward compatibility
 }
 

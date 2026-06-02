@@ -66,6 +66,14 @@ const defaultRuleForm: Partial<FirewallRule> = {
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+const EMPTY_SCHEDULE: FirewallSchedule = {
+  days: [],
+  time_start: null,
+  time_end: null,
+  date_start: null,
+  date_end: null,
+};
+
 function formatBytes(b: number): string {
   if (b < 1024) return `${b} B`;
   if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
@@ -1967,13 +1975,7 @@ export default function Firewall() {
                                     setRuleForm({
                                       ...ruleForm,
                                       schedule: {
-                                        ...(ruleForm.schedule ?? {
-                                          days: [],
-                                          time_start: null,
-                                          time_end: null,
-                                          date_start: null,
-                                          date_end: null,
-                                        }),
+                                        ...(ruleForm.schedule ?? EMPTY_SCHEDULE),
                                         days,
                                       },
                                     });
@@ -1994,13 +1996,7 @@ export default function Firewall() {
                               setRuleForm({
                                 ...ruleForm,
                                 schedule: {
-                                  ...(ruleForm.schedule ?? {
-                                    days: [],
-                                    time_start: null,
-                                    time_end: null,
-                                    date_start: null,
-                                    date_end: null,
-                                  }),
+                                  ...(ruleForm.schedule ?? EMPTY_SCHEDULE),
                                   time_start: e.target.value || null,
                                 },
                               })
@@ -2015,13 +2011,7 @@ export default function Firewall() {
                               setRuleForm({
                                 ...ruleForm,
                                 schedule: {
-                                  ...(ruleForm.schedule ?? {
-                                    days: [],
-                                    time_start: null,
-                                    time_end: null,
-                                    date_start: null,
-                                    date_end: null,
-                                  }),
+                                  ...(ruleForm.schedule ?? EMPTY_SCHEDULE),
                                   time_end: e.target.value || null,
                                 },
                               })
@@ -2036,13 +2026,7 @@ export default function Firewall() {
                               setRuleForm({
                                 ...ruleForm,
                                 schedule: {
-                                  ...(ruleForm.schedule ?? {
-                                    days: [],
-                                    time_start: null,
-                                    time_end: null,
-                                    date_start: null,
-                                    date_end: null,
-                                  }),
+                                  ...(ruleForm.schedule ?? EMPTY_SCHEDULE),
                                   date_start: e.target.value || null,
                                 },
                               })
@@ -2057,13 +2041,7 @@ export default function Firewall() {
                               setRuleForm({
                                 ...ruleForm,
                                 schedule: {
-                                  ...(ruleForm.schedule ?? {
-                                    days: [],
-                                    time_start: null,
-                                    time_end: null,
-                                    date_start: null,
-                                    date_end: null,
-                                  }),
+                                  ...(ruleForm.schedule ?? EMPTY_SCHEDULE),
                                   date_end: e.target.value || null,
                                 },
                               })
