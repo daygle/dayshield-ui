@@ -118,7 +118,7 @@ const statusToneClass = (tone: 'good' | 'warn' | 'muted') => {
   return 'text-gray-500';
 };
 
-const validationTone = (status?: DnsStatusResponse) => {
+const validationTone = (status?: DnsStatusResponse | null) => {
   if (!status) return 'muted';
   if (status.config_validation.valid === true) return 'good';
   if (status.config_validation.valid === false) return 'warn';
