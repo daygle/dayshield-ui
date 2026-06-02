@@ -247,6 +247,9 @@ const DHCPv6_LEASE_STATES: ReadonlySet<Dhcp6Lease['state']> = new Set([
 function normalizeDhcp6LeaseState(raw: unknown): Dhcp6Lease['state'] {
   const value = typeof raw === 'string' ? raw.toLowerCase() : '';
   if (DHCPv6_LEASE_STATES.has(value as Dhcp6Lease['state'])) return value as Dhcp6Lease['state'];
+  if (value) {
+    console.warn(`Unknown DHCPv6 lease state "${value}" returned by API; defaulting to "active".`);
+  }
   return 'active';
 }
 
