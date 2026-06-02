@@ -67,6 +67,14 @@ export const submitAiFeedback = (
     })
     .then((r) => normalizeResponse<ThreatEvent>(r.data));
 
+/**
+ * Request payload for applying or rejecting an AI suggestion.
+ *
+ * `apply` is the frontend-facing field name; it is sent to the backend as
+ * `approve` (see the POST body mapping in `applyAiSuggestion` below).
+ * This asymmetry is intentional — the frontend uses the more intuitive
+ * name while the backend uses the domain term from the AI policy engine.
+ */
 export interface ApplyAiSuggestionRequest {
   suggestion_id: string;
   apply: boolean;
@@ -86,6 +94,7 @@ export const applyAiSuggestion = (
   apiClient
     .post<ApiResponse<ApplySuggestionResponse>>('/api/ai/apply', {
       suggestion_id: payload.suggestion_id,
+      // Backend field is `approve`; frontend field is `apply` — intentional naming asymmetry.
       approve: payload.apply,
     })
     .then((r) => normalizeResponse<ApplySuggestionResponse>(r.data));
@@ -98,26 +107,40 @@ export const saveAiIntents = (intents: Intent[]): Promise<ApiResponse<Intent[]>>
     .post<ApiResponse<Intent[]>>('/api/ai/intents', { intents })
     .then((r) => normalizeResponse<Intent[]>(r.data));
 
+/**
+ * Fetch the current AI automation mode for the given interface (or the
+ * global mode when no interface is specified).
+ *
+ * The backend returns the raw `AutomationMode` string directly — not a
+ * wrapped `{ mode }` object.
+ */
 export const getAiAutomationMode = (
   iface?: string
-): Promise<ApiResponse<AutomationMode | { mode: AutomationMode }>> =>
+): Promise<ApiResponse<AutomationMode>> =>
   apiClient
-    .get<ApiResponse<AutomationMode | { mode: AutomationMode }>>('/api/ai/mode', {
+    .get<ApiResponse<AutomationMode>>('/api/ai/mode', {
       params: iface ? { iface } : undefined,
     })
-    .then((r) => normalizeResponse<AutomationMode | { mode: AutomationMode }>(r.data));
+    .then((r) => normalizeResponse<AutomationMode>(r.data));
 
+/**
+ * Set the AI automation mode for the given interface (or globally when no
+ * interface is specified).
+ *
+ * The backend returns the updated `AutomationMode` string directly — not a
+ * wrapped `{ mode }` object.
+ */
 export const setAiAutomationMode = (
   mode: AutomationMode,
   iface?: string
-): Promise<ApiResponse<AutomationMode | { mode: AutomationMode }>> =>
+): Promise<ApiResponse<AutomationMode>> =>
   apiClient
-    .post<ApiResponse<AutomationMode | { mode: AutomationMode }>>(
+    .post<ApiResponse<AutomationMode>>(
       '/api/ai/mode',
       { mode },
       { params: iface ? { iface } : undefined }
     )
-    .then((r) => normalizeResponse<AutomationMode | { mode: AutomationMode }>(r.data));
+    .then((r) => normalizeResponse<AutomationMode>(r.data));
 
 export const getAiAutomationSettings = (): Promise<ApiResponse<AIAutomationSettings>> =>
   apiClient
