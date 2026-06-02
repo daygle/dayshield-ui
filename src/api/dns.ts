@@ -5,6 +5,7 @@ import type {
   DnsConfig,
   DnsHostOverride,
   DnsDomainOverride,
+  DnsStatusResponse,
 } from '../types';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -14,6 +15,9 @@ export const getDnsConfig = (): Promise<ApiResponse<DnsConfig>> =>
 
 export const updateDnsConfig = (config: Partial<DnsConfig>): Promise<ApiResponse<DnsConfig>> =>
   apiClient.post<ApiResponse<DnsConfig>>('/dns/config', config).then((r) => r.data);
+
+export const getDnsStatus = (): Promise<ApiResponse<DnsStatusResponse>> =>
+  apiClient.get<ApiResponse<DnsStatusResponse>>('/dns/status').then((r) => r.data);
 
 // ── Overrides ────────────────────────────────────────────────────────────────
 

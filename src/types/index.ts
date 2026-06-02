@@ -189,18 +189,39 @@ export interface Alias {
 // ── DNS ───────────────────────────────────────────────────────────────────────
 // Fields use snake_case to match Unbound/backend serialization directly.
 
+export type DnsResolverMode = 'recursive' | 'forwarded';
+export type DnsClientAclPreset = 'private_ranges' | 'localhost_only' | 'allow_all' | 'custom';
+
+export interface DnsCacheConfig {
+  min_ttl_seconds: number;
+  max_ttl_seconds: number;
+  prefetch: boolean;
+  serve_expired: boolean;
+  serve_expired_ttl_seconds: number;
+}
+
 export interface DnsConfig {
   enabled: boolean;
   /** Interface names or IP addresses Unbound binds to (e.g. ["eth1", "127.0.0.1"]). */
   listen_addresses: string[];
   /** UDP/TCP port Unbound listens on. Default 53. */
   port: number;
-  /** Upstream forwarder IPs. Empty = full recursion mode. */
+  /** Resolver mode used for queries outside local overrides. */
+  resolver_mode?: DnsResolverMode;
+  /** Upstream forwarder IPs used when resolver_mode is forwarded. */
   forwarders: string[];
   dnssec: boolean;
+  /** DNS client ACL preset. */
+  client_acl_preset?: DnsClientAclPreset;
+  /** Custom CIDRs used when client_acl_preset is custom. */
+  client_acl_custom_cidrs?: string[];
+  /** Advanced Unbound cache controls. */
+  cache?: DnsCacheConfig;
   /** When true (default), the system automatically manages firewall rules to
    *  allow DNS traffic on the configured port from LAN clients. */
   manage_firewall?: boolean;
+  /** Domain forwarding overrides included by /dns/config for UI summary use. */
+  domain_forwarding?: DnsDomainOverride[];
   /** Optional DNS-over-TLS listener. */
   dot_enabled?: boolean;
   /** DNS-over-TLS listen port. Defaults to 853. */
@@ -249,6 +270,55 @@ export interface DnsHostOverride {
 export interface DnsDomainOverride {
   domain: string; // e.g. "internal.corp"
   forward_to: string; // IP of the upstream DNS to forward to
+}
+
+export interface DnsStatusResponse {
+  enabled: boolean;
+  resolver_mode: DnsResolverMode;
+  forwarders: string[];
+  domain_forwarding: DnsDomainOverride[];
+  dnssec: DnssecStatus;
+  client_acl_preset: DnsClientAclPreset;
+  client_acl_custom_cidrs: string[];
+  cache: DnsCacheConfig;
+  plain_dns_firewall_managed: boolean;
+  dot: DotExposureStatus;
+  unbound: UnboundServiceStatus;
+  config_validation: UnboundConfigValidationStatus;
+}
+
+export interface DnssecStatus {
+  enabled: boolean;
+  root_anchor_path: string;
+  root_anchor_present: boolean;
+  root_anchor_readable: boolean;
+  root_anchor_size_bytes: number | null;
+  health: string;
+  message: string;
+}
+
+export interface DotExposureStatus {
+  enabled: boolean;
+  port: number;
+  exposure: string;
+  firewall_rule_expected: boolean;
+  firewall_scope: string;
+}
+
+export interface UnboundServiceStatus {
+  systemctl_available: boolean;
+  active: boolean | null;
+  enabled: boolean | null;
+  active_state: string | null;
+  enabled_state: string | null;
+  message: string;
+}
+
+export interface UnboundConfigValidationStatus {
+  checkconf_available: boolean;
+  valid: boolean | null;
+  status: string;
+  message: string;
 }
 
 // ── DHCP ─────────────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import {
   createInterfaceDnsBlocklist,
   getDnsConfig,
+  getDnsStatus,
   updateDnsConfig,
   getDnsOverrides,
   getInterfaceDnsBlocklists,
@@ -20,6 +21,7 @@ import type {
   DnsConfig,
   DnsHostOverride,
   DnsDomainOverride,
+  DnsStatusResponse,
   KernelInterface,
   NetworkInterface,
 } from '../../types';
@@ -65,12 +67,24 @@ const BLOCKLIST_PRESETS: Array<{ name: string; url: string }> = [
   { name: 'EasyPrivacy', url: 'https://easylist.to/easylist/easyprivacy.txt' },
 ];
 
+const defaultCacheConfig = () => ({
+  min_ttl_seconds: 3600,
+  max_ttl_seconds: 86400,
+  prefetch: true,
+  serve_expired: false,
+  serve_expired_ttl_seconds: 86400,
+});
+
 const defaultConfigForm = (): Partial<DnsConfig> => ({
   enabled: true,
   listen_addresses: [],
   port: 53,
+  resolver_mode: 'recursive',
   forwarders: [],
   dnssec: false,
+  client_acl_preset: 'private_ranges',
+  client_acl_custom_cidrs: [],
+  cache: defaultCacheConfig(),
   manage_firewall: true,
   dot_enabled: false,
   dot_port: 853,
@@ -80,6 +94,36 @@ const defaultConfigForm = (): Partial<DnsConfig> => ({
   dot_acme_domain: '',
   local_records: [],
 });
+
+const resolverModeLabel = (mode?: DnsConfig['resolver_mode']) =>
+  mode === 'forwarded' ? 'Forwarded' : 'Recursive';
+
+const aclPresetLabel = (preset?: DnsConfig['client_acl_preset']) => {
+  switch (preset) {
+    case 'allow_all':
+      return 'Allow All';
+    case 'localhost_only':
+      return 'Localhost Only';
+    case 'custom':
+      return 'Custom CIDRs';
+    case 'private_ranges':
+    default:
+      return 'Private Ranges';
+  }
+};
+
+const statusToneClass = (tone: 'good' | 'warn' | 'muted') => {
+  if (tone === 'good') return 'text-green-600';
+  if (tone === 'warn') return 'text-amber-600';
+  return 'text-gray-500';
+};
+
+const validationTone = (status?: DnsStatusResponse) => {
+  if (!status) return 'muted';
+  if (status.config_validation.valid === true) return 'good';
+  if (status.config_validation.valid === false) return 'warn';
+  return 'muted';
+};
 
 function isHttpUrl(value: string): boolean {
   if (!/^https?:\/\//i.test(value)) return false;
@@ -100,6 +144,7 @@ export default function DNS() {
   const { addToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [config, setConfig] = useState<DnsConfig | null>(null);
+  const [dnsStatus, setDnsStatus] = useState<DnsStatusResponse | null>(null);
   const [hostOverrides, setHostOverrides] = useState<HostRow[]>([]);
   const [domainOverrides, setDomainOverrides] = useState<DomainRow[]>([]);
   const [blocklists, setBlocklists] = useState<BlocklistRow[]>([]);
@@ -112,6 +157,7 @@ export default function DNS() {
   const [configForm, setConfigForm] = useState<Partial<DnsConfig>>(defaultConfigForm());
   const [listenInput, setListenInput] = useState('');
   const [forwardersInput, setForwardersInput] = useState('');
+  const [customAclInput, setCustomAclInput] = useState('');
   const [configSaving, setConfigSaving] = useState(false);
   const [dnsInterfaces, setDnsInterfaces] = useState<KernelInterface[]>([]);
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
@@ -145,15 +191,22 @@ export default function DNS() {
 
   const loadAll = () => {
     setLoading(true);
-    Promise.all([getDnsConfig(), getAcmeConfig(), getDnsOverrides()])
-      .then(([cfg, acmeCfg, overrides]) => {
+    Promise.all([getDnsConfig(), getAcmeConfig(), getDnsOverrides(), getDnsStatus()])
+      .then(([cfg, acmeCfg, overrides, status]) => {
         setConfig(cfg.data);
+        setDnsStatus(status.data);
         setAcmeDomains(acmeCfg.data.domains ?? []);
         setHostOverrides(overrides.data.host_overrides as HostRow[]);
         setDomainOverrides(overrides.data.domain_overrides as DomainRow[]);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
+  };
+
+  const refreshDnsStatus = () => {
+    getDnsStatus()
+      .then((status) => setDnsStatus(status.data))
+      .catch(() => setDnsStatus(null));
   };
 
   const loadInterfaces = () => {
@@ -309,6 +362,11 @@ export default function DNS() {
     if (config) {
       setConfigForm({
         ...config,
+        resolver_mode:
+          config.resolver_mode ?? ((config.forwarders ?? []).length > 0 ? 'forwarded' : 'recursive'),
+        client_acl_preset: config.client_acl_preset ?? 'private_ranges',
+        client_acl_custom_cidrs: config.client_acl_custom_cidrs ?? [],
+        cache: { ...defaultCacheConfig(), ...(config.cache ?? {}) },
         dot_enabled: config.dot_enabled ?? false,
         dot_port: config.dot_port ?? 853,
         dot_lan_only: config.dot_lan_only ?? true,
@@ -318,10 +376,12 @@ export default function DNS() {
       });
       setListenInput((config.listen_addresses ?? []).join(', '));
       setForwardersInput((config.forwarders ?? []).join(', '));
+      setCustomAclInput((config.client_acl_custom_cidrs ?? []).join(', '));
     } else {
       setConfigForm(defaultConfigForm());
       setListenInput('');
       setForwardersInput('');
+      setCustomAclInput('');
     }
     getInterfacesInventory()
       .then((res) => {
@@ -338,13 +398,24 @@ export default function DNS() {
     if (config) {
       setConfigForm({
         ...config,
+        resolver_mode:
+          config.resolver_mode ?? ((config.forwarders ?? []).length > 0 ? 'forwarded' : 'recursive'),
+        client_acl_preset: config.client_acl_preset ?? 'private_ranges',
+        client_acl_custom_cidrs: config.client_acl_custom_cidrs ?? [],
+        cache: { ...defaultCacheConfig(), ...(config.cache ?? {}) },
         dot_enabled: config.dot_enabled ?? false,
         dot_port: config.dot_port ?? 853,
         dot_lan_only: config.dot_lan_only ?? true,
         dot_acme_domain: config.dot_acme_domain ?? '',
       });
+      setListenInput((config.listen_addresses ?? []).join(', '));
+      setForwardersInput((config.forwarders ?? []).join(', '));
+      setCustomAclInput((config.client_acl_custom_cidrs ?? []).join(', '));
     } else {
       setConfigForm(defaultConfigForm());
+      setListenInput('');
+      setForwardersInput('');
+      setCustomAclInput('');
     }
     setDotModalOpen(true);
   };
@@ -362,12 +433,32 @@ export default function DNS() {
       return;
     }
 
+    const forwarders = parseList(forwardersInput);
+    const customAclCidrs = parseList(customAclInput);
+    const resolverMode =
+      configForm.resolver_mode ?? (forwarders.length > 0 ? 'forwarded' : 'recursive');
+    const aclPreset = configForm.client_acl_preset ?? 'private_ranges';
+    const cache = { ...defaultCacheConfig(), ...(configForm.cache ?? {}) };
+
+    if (resolverMode === 'forwarded' && forwarders.length === 0) {
+      setError('Forwarded resolver mode requires at least one upstream forwarder.');
+      return;
+    }
+    if (aclPreset === 'custom' && customAclCidrs.length === 0) {
+      setError('Custom client ACL requires at least one CIDR.');
+      return;
+    }
+
     const payload: Partial<DnsConfig> = {
       enabled: configForm.enabled ?? true,
       listen_addresses: parseList(listenInput),
       port: configForm.port ?? 53,
-      forwarders: parseList(forwardersInput),
+      resolver_mode: resolverMode,
+      forwarders,
       dnssec: configForm.dnssec ?? false,
+      client_acl_preset: aclPreset,
+      client_acl_custom_cidrs: customAclCidrs,
+      cache,
       manage_firewall: configForm.manage_firewall ?? true,
       dot_enabled: configForm.dot_enabled ?? false,
       dot_port: configForm.dot_port ?? 853,
@@ -381,6 +472,7 @@ export default function DNS() {
     updateDnsConfig(payload)
       .then((r) => {
         setConfig(r.data);
+        refreshDnsStatus();
         setConfigModalOpen(false);
         addToast('DNS settings saved.', 'success');
       })
@@ -402,6 +494,7 @@ export default function DNS() {
           setEditingHostName(null);
           setHostForm({ hostname: '', address: '' });
           setHostOverrides(r.data.host_overrides as HostRow[]);
+          refreshDnsStatus();
           addToast(editingHostName ? 'Host override updated.' : 'Host override added.', 'success');
         })
         .catch((err: Error) => setError(err.message))
@@ -432,6 +525,7 @@ export default function DNS() {
       .then((r) => {
         setHostDeleteName(null);
         setHostOverrides(r.data.host_overrides as HostRow[]);
+        refreshDnsStatus();
         addToast('Host override deleted.', 'success');
       })
       .catch((err: Error) => setError(err.message))
@@ -452,6 +546,7 @@ export default function DNS() {
           setEditingDomainName(null);
           setDomainForm({ domain: '', forward_to: '' });
           setDomainOverrides(r.data.domain_overrides as DomainRow[]);
+          refreshDnsStatus();
           addToast(editingDomainName ? 'Domain override updated.' : 'Domain override added.', 'success');
         })
         .catch((err: Error) => setError(err.message))
@@ -482,6 +577,7 @@ export default function DNS() {
       .then((r) => {
         setDomainDeleteName(null);
         setDomainOverrides(r.data.domain_overrides as DomainRow[]);
+        refreshDnsStatus();
         addToast('Domain override deleted.', 'success');
       })
       .catch((err: Error) => setError(err.message))
@@ -764,7 +860,23 @@ export default function DNS() {
                 </span>
               </label>
 
-              <div className="md:col-span-2">
+              <FormField
+                id="dns-mode"
+                label="Resolver Mode"
+                as="select"
+                value={configForm.resolver_mode ?? 'recursive'}
+                onChange={(e) =>
+                  setConfigForm((f) => ({
+                    ...f,
+                    resolver_mode: e.target.value as DnsConfig['resolver_mode'],
+                  }))
+                }
+              >
+                <option value="recursive">Recursive</option>
+                <option value="forwarded">Forwarded</option>
+              </FormField>
+
+              <div>
                 <FormField
                   id="dns-port"
                   label="Listen Port"
@@ -845,11 +957,141 @@ export default function DNS() {
               onChange={(e) => setForwardersInput(e.target.value)}
             />
             <p className="text-xs text-gray-500">
-              Enter multiple addresses as comma-separated values. When{' '}
-              <strong>upstream forwarders</strong> are set, Unbound operates in forwarder mode;
-              otherwise it performs full recursive resolution. Use <strong>Host Overrides</strong>{' '}
-              and <strong>Domain Overrides</strong> for local entries and per-domain forwarding.
+              Enter multiple addresses as comma-separated values. Forwarded mode requires at least
+              one upstream resolver. Use <strong>Host Overrides</strong> and{' '}
+              <strong>Domain Overrides</strong> for local entries and per-domain forwarding.
             </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField
+              id="dns-acl-preset"
+              label="Client ACL"
+              as="select"
+              value={configForm.client_acl_preset ?? 'private_ranges'}
+              onChange={(e) =>
+                setConfigForm((f) => ({
+                  ...f,
+                  client_acl_preset: e.target.value as DnsConfig['client_acl_preset'],
+                }))
+              }
+            >
+              <option value="private_ranges">Private Ranges</option>
+              <option value="localhost_only">Localhost Only</option>
+              <option value="allow_all">Allow All</option>
+              <option value="custom">Custom CIDRs</option>
+            </FormField>
+
+            <FormField
+              id="dns-acl-cidrs"
+              label="Custom CIDRs"
+              placeholder="e.g. 192.168.50.0/24, fd00:1234::/64"
+              disabled={(configForm.client_acl_preset ?? 'private_ranges') !== 'custom'}
+              value={customAclInput}
+              onChange={(e) => setCustomAclInput(e.target.value)}
+            />
+          </div>
+
+          <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <FormField
+                id="dns-cache-min"
+                label="Min TTL"
+                type="number"
+                min={0}
+                value={String(
+                  configForm.cache?.min_ttl_seconds ?? defaultCacheConfig().min_ttl_seconds
+                )}
+                onChange={(e) =>
+                  setConfigForm((f) => ({
+                    ...f,
+                    cache: {
+                      ...defaultCacheConfig(),
+                      ...(f.cache ?? {}),
+                      min_ttl_seconds: parseInt(e.target.value, 10) || 0,
+                    },
+                  }))
+                }
+              />
+              <FormField
+                id="dns-cache-max"
+                label="Max TTL"
+                type="number"
+                min={0}
+                value={String(
+                  configForm.cache?.max_ttl_seconds ?? defaultCacheConfig().max_ttl_seconds
+                )}
+                onChange={(e) =>
+                  setConfigForm((f) => ({
+                    ...f,
+                    cache: {
+                      ...defaultCacheConfig(),
+                      ...(f.cache ?? {}),
+                      max_ttl_seconds: parseInt(e.target.value, 10) || 0,
+                    },
+                  }))
+                }
+              />
+              <FormField
+                id="dns-serve-expired-ttl"
+                label="Expired TTL"
+                type="number"
+                min={1}
+                disabled={!configForm.cache?.serve_expired}
+                value={String(
+                  configForm.cache?.serve_expired_ttl_seconds ??
+                    defaultCacheConfig().serve_expired_ttl_seconds
+                )}
+                onChange={(e) =>
+                  setConfigForm((f) => ({
+                    ...f,
+                    cache: {
+                      ...defaultCacheConfig(),
+                      ...(f.cache ?? {}),
+                      serve_expired_ttl_seconds: parseInt(e.target.value, 10) || 1,
+                    },
+                  }))
+                }
+              />
+            </div>
+            <div className="mt-4 flex flex-wrap gap-5">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked={configForm.cache?.prefetch ?? true}
+                  onChange={(e) =>
+                    setConfigForm((f) => ({
+                      ...f,
+                      cache: {
+                        ...defaultCacheConfig(),
+                        ...(f.cache ?? {}),
+                        prefetch: e.target.checked,
+                      },
+                    }))
+                  }
+                />
+                <span className="text-sm font-medium text-gray-700">Prefetch</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked={configForm.cache?.serve_expired ?? false}
+                  onChange={(e) =>
+                    setConfigForm((f) => ({
+                      ...f,
+                      cache: {
+                        ...defaultCacheConfig(),
+                        ...(f.cache ?? {}),
+                        serve_expired: e.target.checked,
+                      },
+                    }))
+                  }
+                />
+                <span className="text-sm font-medium text-gray-700">Serve Expired</span>
+              </label>
+            </div>
           </div>
         </div>
       </Modal>
@@ -1209,7 +1451,7 @@ export default function DNS() {
             {loading ? (
               <p className="text-sm text-gray-400">Loading…</p>
             ) : config ? (
-              <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+              <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm">
                 <div>
                   <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
                     Status
@@ -1225,7 +1467,7 @@ export default function DNS() {
                     Mode
                   </dt>
                   <dd className="mt-1 font-medium text-gray-800">
-                    {config.forwarders?.length ? 'Forwarder' : 'Full Recursion'}
+                    {resolverModeLabel(config.resolver_mode)}
                   </dd>
                 </div>
                 <div>
@@ -1259,7 +1501,7 @@ export default function DNS() {
                     Upstream Forwarders
                   </dt>
                   <dd className="mt-1 font-medium text-gray-800 font-mono">
-                    {config.forwarders?.length ? config.forwarders.join(', ') : '- (Recursive)'}
+                    {config.forwarders?.length ? config.forwarders.join(', ') : '-'}
                   </dd>
                 </div>
                 <div>
@@ -1270,6 +1512,96 @@ export default function DNS() {
                     className={`mt-1 font-semibold ${config.dnssec ? 'text-green-600' : 'text-gray-400'}`}
                   >
                     {config.dnssec ? 'Enabled' : 'Disabled'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Root Anchor
+                  </dt>
+                  <dd
+                    className={`mt-1 font-semibold ${statusToneClass(
+                      dnsStatus?.dnssec.health === 'ok'
+                        ? 'good'
+                        : dnsStatus?.dnssec.health === 'disabled'
+                          ? 'muted'
+                          : 'warn'
+                    )}`}
+                    title={dnsStatus?.dnssec.message}
+                  >
+                    {dnsStatus?.dnssec.health ?? (config.dnssec ? 'Unknown' : 'Disabled')}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Client ACL
+                  </dt>
+                  <dd className="mt-1 font-medium text-gray-800">
+                    {aclPresetLabel(config.client_acl_preset)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Custom CIDRs
+                  </dt>
+                  <dd className="mt-1 font-medium text-gray-800 font-mono">
+                    {config.client_acl_custom_cidrs?.length
+                      ? config.client_acl_custom_cidrs.join(', ')
+                      : '-'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Cache
+                  </dt>
+                  <dd className="mt-1 font-medium text-gray-800">
+                    {config.cache
+                      ? `${config.cache.min_ttl_seconds}-${config.cache.max_ttl_seconds}s`
+                      : 'Default'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Prefetch / Expired
+                  </dt>
+                  <dd className="mt-1 font-medium text-gray-800">
+                    {config.cache?.prefetch ? 'Prefetch' : 'No Prefetch'} /{' '}
+                    {config.cache?.serve_expired ? 'Serve' : 'Off'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Unbound
+                  </dt>
+                  <dd
+                    className={`mt-1 font-semibold ${statusToneClass(
+                      dnsStatus?.unbound.active === true
+                        ? 'good'
+                        : dnsStatus?.unbound.active === false
+                          ? 'warn'
+                          : 'muted'
+                    )}`}
+                    title={dnsStatus?.unbound.message}
+                  >
+                    {dnsStatus?.unbound.active_state ?? 'Unknown'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Config Check
+                  </dt>
+                  <dd
+                    className={`mt-1 font-semibold ${statusToneClass(validationTone(dnsStatus))}`}
+                    title={dnsStatus?.config_validation.message}
+                  >
+                    {dnsStatus?.config_validation.status ?? 'Unknown'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                    Domain Forwards
+                  </dt>
+                  <dd className="mt-1 font-medium text-gray-800">
+                    {dnsStatus?.domain_forwarding.length ?? domainOverrides.length}
                   </dd>
                 </div>
               </dl>
@@ -1319,7 +1651,7 @@ export default function DNS() {
           {loading ? (
             <p className="text-sm text-gray-400">Loading…</p>
           ) : config ? (
-            <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm">
+            <dl className="grid grid-cols-2 md:grid-cols-5 gap-x-6 gap-y-4 text-sm">
               <div>
                 <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
                   Status
@@ -1343,7 +1675,26 @@ export default function DNS() {
                   Access
                 </dt>
                 <dd className="mt-1 font-medium text-gray-800">
-                  {config.dot_lan_only === false ? 'LAN + external clients' : 'LAN clients only'}
+                  {dnsStatus?.dot.exposure === 'public'
+                    ? 'Public'
+                    : config.dot_lan_only === false
+                      ? 'Public'
+                      : config.dot_enabled
+                        ? 'LAN'
+                        : 'Disabled'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 text-xs font-medium uppercase tracking-wide">
+                  Firewall
+                </dt>
+                <dd
+                  className={`mt-1 font-semibold ${statusToneClass(
+                    dnsStatus?.dot.firewall_rule_expected ? 'good' : 'muted'
+                  )}`}
+                  title={dnsStatus?.dot.firewall_scope}
+                >
+                  {dnsStatus?.dot.firewall_rule_expected ? 'Managed' : 'None'}
                 </dd>
               </div>
               <div>
