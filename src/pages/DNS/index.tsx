@@ -125,6 +125,10 @@ const validationTone = (status?: DnsStatusResponse | null) => {
   return 'muted';
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 function isHttpUrl(value: string): boolean {
   if (!/^https?:\/\//i.test(value)) return false;
   try {
@@ -197,22 +201,46 @@ export default function DNS() {
     // hide the resolver configuration that loaded successfully.
     Promise.allSettled([getDnsConfig(), getAcmeConfig(), getDnsOverrides(), getDnsStatus()])
       .then(([cfgResult, acmeResult, overridesResult, statusResult]) => {
-        if (cfgResult.status === 'fulfilled') {
-          setConfig(cfgResult.value.data);
+        // A rejected promise is not the only failure mode: a 200 response that
+        // carries the SPA fallback HTML is wrapped as { data: "<html…>" }. Guard
+        // every payload's shape so a malformed body cannot be stored and crash
+        // later render paths (e.g. config.enabled / dnsStatus.config_validation).
+        if (cfgResult.status === 'fulfilled' && isRecord(cfgResult.value?.data)) {
+          setConfig(cfgResult.value.data as DnsConfig);
         } else {
           // The resolver configuration is the only critical resource; surface
           // its failure so the user knows the page could not load.
-          setError(cfgResult.reason?.message ?? 'Failed to load DNS configuration.');
+          setConfig(null);
+          setError(
+            cfgResult.status === 'rejected'
+              ? (cfgResult.reason?.message ?? 'Failed to load DNS configuration.')
+              : 'Received an unexpected response while loading DNS configuration.'
+          );
         }
-        setDnsStatus(statusResult.status === 'fulfilled' ? statusResult.value.data : null);
-        if (acmeResult.status === 'fulfilled') {
-          setAcmeDomains(acmeResult.value.data.domains ?? []);
+
+        setDnsStatus(
+          statusResult.status === 'fulfilled' && isRecord(statusResult.value?.data)
+            ? (statusResult.value.data as DnsStatusResponse)
+            : null
+        );
+
+        if (acmeResult.status === 'fulfilled' && isRecord(acmeResult.value?.data)) {
+          const domains = (acmeResult.value.data as { domains?: unknown }).domains;
+          setAcmeDomains(Array.isArray(domains) ? (domains as string[]) : []);
         }
-        if (overridesResult.status === 'fulfilled') {
-          setHostOverrides(overridesResult.value.data.host_overrides as HostRow[]);
-          setDomainOverrides(overridesResult.value.data.domain_overrides as DomainRow[]);
+
+        if (overridesResult.status === 'fulfilled' && isRecord(overridesResult.value?.data)) {
+          const data = overridesResult.value.data as {
+            host_overrides?: unknown;
+            domain_overrides?: unknown;
+          };
+          setHostOverrides(Array.isArray(data.host_overrides) ? (data.host_overrides as HostRow[]) : []);
+          setDomainOverrides(
+            Array.isArray(data.domain_overrides) ? (data.domain_overrides as DomainRow[]) : []
+          );
         }
       })
+      .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   };
 

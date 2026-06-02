@@ -15,7 +15,7 @@ function formatApiErrorMessage(rawData: unknown, fallback: string): string {
   // static-file fallback when an endpoint is unreachable). These should never
   // be surfaced verbatim in the UI.
   const rawString =
-    typeof rawData === 'string' ? rawData.replace(/^﻿/, '').trim() : undefined;
+    typeof rawData === 'string' ? rawData.replace(/^\uFEFF/, '').trim() : undefined;
   const looksLikeHtml = rawString !== undefined && /^<(?:!doctype|!--|html|\?xml)/i.test(rawString);
 
   const primary =
