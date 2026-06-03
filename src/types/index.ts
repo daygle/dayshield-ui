@@ -6,7 +6,7 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-// ── Network interfaces ────────────────────────────────────────────────────────
+// ── Network interfaces ────────────────────────────────────────────────
 
 export type Ipv6Mode = 'static' | 'dhcp6' | 'slaac' | 'track_interface';
 export type Ipv6RaMode = 'router_only' | 'unmanaged' | 'managed' | 'assisted' | 'stateless';
@@ -74,7 +74,7 @@ export interface InterfacesInventory {
   unusedKernelNames: string[];
 }
 
-// ── Gateways ──────────────────────────────────────────────────────────────────────
+// ── Gateways ────────────────────────────────────────────────────────────────────────
 
 export type GatewayState = 'online' | 'offline' | 'unknown';
 
@@ -98,7 +98,7 @@ export interface ListGatewaysResponse {
   default_interface?: string;
 }
 
-// ── Firewall rules ────────────────────────────────────────────────────────────
+// ── Firewall rules ────────────────────────────────────────────
 
 export type FirewallAction = 'accept' | 'drop' | 'reject' | 'jump' | 'log';
 export type FirewallProtocol = 'tcp' | 'udp' | 'icmp' | 'icmpv6' | 'any';
@@ -174,7 +174,7 @@ export interface FirewallSettings {
   log_position?: LogPosition; // Optional for backward compatibility
 }
 
-// ── Aliases ───────────────────────────────────────────────────────────────────
+// ── Aliases ───────────────────────────────────────────────────
 
 export type AliasType = 'host' | 'network' | 'port' | 'urltable';
 
@@ -187,7 +187,7 @@ export interface Alias {
   enabled: boolean;
 }
 
-// ── DNS ───────────────────────────────────────────────────────────────────────
+// ── DNS ────────────────────────────────────────────────────────
 // Fields use snake_case to match Unbound/backend serialization directly.
 
 export type DnsResolverMode = 'recursive' | 'forwarded';
@@ -322,7 +322,7 @@ export interface UnboundConfigValidationStatus {
   message: string;
 }
 
-// ── DHCP ─────────────────────────────────────────────────────────────────────
+// ── DHCP ────────────────────────────────────────────────────────────────
 
 export interface DhcpConfig {
   enabled: boolean;
@@ -409,7 +409,7 @@ export interface Dhcp6Lease {
   state: 'active' | 'expired' | 'declined' | 'reclaimed';
 }
 
-// ── WireGuard ─────────────────────────────────────────────────────────────────
+// ── WireGuard ─────────────────────────────────────────────────────────────
 
 export interface WgServer {
   interface: string;
@@ -438,7 +438,7 @@ export interface WgPeer {
   transferTx?: number; // bytes
 }
 
-// ── Suricata ──────────────────────────────────────────────────────────────────
+// ── Suricata ─────────────────────────────────────────────────────────────
 
 export type SuricataMode = 'ids' | 'ips';
 
@@ -487,7 +487,7 @@ export interface SuricataAlert {
   action: 'alert' | 'drop';
 }
 
-// ── CrowdSec ──────────────────────────────────────────────────────────────────
+// ── CrowdSec ─────────────────────────────────────────────────────────────
 
 export interface CrowdSecStatus {
   enabled: boolean;
@@ -581,7 +581,7 @@ export interface HoneypotRecommendation {
   expectedSignals: string[];
 }
 
-// ── AI Threat Engine ──────────────────────────────────────────────────────────
+// ── AI Threat Engine ────────────────────────────────────────────────────────
 
 export interface ThreatEvent {
   id: string;
@@ -739,7 +739,7 @@ export interface AIAutomationSettings {
   protectManagementInterface: boolean;
 }
 
-// ── ACME / Certificates ───────────────────────────────────────────────────────
+// ── ACME / Certificates ───────────────────────────────────────────────
 
 export type AcmeCertificateStatus = 'valid' | 'pending' | 'expired' | 'error';
 
@@ -829,7 +829,7 @@ export interface AcmeStatus {
   next_renewal?: string; // ISO timestamp
 }
 
-// ── System ────────────────────────────────────────────────────────────────────
+// ── System ────────────────────────────────────────────────────────────────
 
 export interface SystemStatus {
   hostname: string;
@@ -878,7 +878,16 @@ export interface SystemSchedules {
   jobs: SystemScheduleJob[];
 }
 
-export type UpdateComponent = 'core' | 'ui' | 'rootfs' | 'both';
+/**
+ * Which components to include in an update / check / rollback request.
+ *
+ * - `'core'`    — dayshield-core binary only
+ * - `'ui'`      — management UI static assets only
+ * - `'rootfs'`  — full OS rootfs image (staged; requires reboot to activate)
+ * - `'all'`     — all three components (canonical form after rename from 'both')
+ * - `'both'`    — legacy alias for 'all'; accepted by the backend but prefer 'all'
+ */
+export type UpdateComponent = 'core' | 'ui' | 'rootfs' | 'all' | 'both';
 
 export type UpdateScheduleFrequency = 'daily' | 'weekly' | 'monthly';
 export type UpdateScheduleWeekday =
@@ -1007,7 +1016,7 @@ export interface UpdatesActionResult {
   status: UpdatesStatus;
 }
 
-// ── Backup / Restore ─────────────────────────────────────────────────────────
+// ── Backup / Restore ─────────────────────────────────────────────────────
 
 export interface BackupEntry {
   filename: string;
@@ -1031,7 +1040,7 @@ export interface RestoreBackupRequest {
   passphrase?: string; // required for encrypted backups
 }
 
-// ── Configuration history (revisions) ──────────────────────────────────────────
+// ── Configuration history (revisions) ──────────────────────────────────────────────
 
 export interface ConfigRevision {
   id: string;
@@ -1103,7 +1112,7 @@ export interface NotifyTestResult {
   message: string;
 }
 
-// ── NAT ───────────────────────────────────────────────────────────────────────
+// ── NAT ─────────────────────────────────────────────────────────────────
 
 export type NatOutboundMode = 'automatic' | 'hybrid' | 'manual';
 export type NatProtocol = 'tcp' | 'udp' | 'tcp_udp' | 'any';
@@ -1177,7 +1186,7 @@ export interface QosActionResponse {
   message: string;
 }
 
-// ── NTP ───────────────────────────────────────────────────────────────────────
+// ── NTP ─────────────────────────────────────────────────────────────────
 
 export interface NtpConfig {
   enabled: boolean;
@@ -1194,7 +1203,7 @@ export interface NtpStatus {
   stratum: number;
 }
 
-// ── Dynamic DNS ─────────────────────────────────────────────────────────────
+// ── Dynamic DNS ────────────────────────────────────────────────────────
 
 export type DynamicDnsProvider =
   | 'duck_dns'
@@ -1242,7 +1251,7 @@ export interface DynamicDnsStatus {
   entries: DynamicDnsStatusEntry[];
 }
 
-// ── Cloudflared ─────────────────────────────────────────────────────────────
+// ── Cloudflared ─────────────────────────────────────────────────────────
 
 export interface CloudflaredIngressRule {
   hostname: string;
@@ -1280,7 +1289,7 @@ export interface CloudflaredActionResponse {
   message: string;
 }
 
-// ── Caddy reverse proxy ───────────────────────────────────────────────────────
+// ── Caddy reverse proxy ───────────────────────────────────────────────────
 
 export interface CaddySite {
   domain: string;
@@ -1316,7 +1325,7 @@ export interface CaddyActionResponse {
   message: string;
 }
 
-// ── Captive Portal ──────────────────────────────────────────────────────────
+// ── Captive Portal ────────────────────────────────────────────────────────
 
 export type CaptivePortalAuthMode = 'click_through' | 'voucher';
 
@@ -1385,7 +1394,7 @@ export interface CreateCaptivePortalSessionRequest {
   ttlSeconds?: number;
 }
 
-// ── Auth ─────────────────────────────────────────────────────────────────────
+// ── Auth ─────────────────────────────────────────────────────────────────
 
 export interface AuthUser {
   username: string;
@@ -1407,7 +1416,7 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
-// ── Metrics ───────────────────────────────────────────────────────────────────
+// ── Metrics ────────────────────────────────────────────────────────────────
 
 export interface LanIfaceMetrics {
   name: string;
@@ -1459,7 +1468,7 @@ export interface MetricsHistory {
   seconds: number;
 }
 
-// ── Admin security settings ───────────────────────────────────────────────────
+// ── Admin security settings ───────────────────────────────────────────────
 
 export interface AdminSecuritySettings {
   session_timeout_minutes: number;

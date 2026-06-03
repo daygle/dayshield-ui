@@ -181,9 +181,7 @@ function AIFirewallAutomationContent({
     setModeLoading(true);
     try {
       const res = await getAiAutomationMode(selectedInterface ?? undefined);
-      const payload = res.data;
-      const rawMode = typeof payload === 'string' ? payload : payload.mode;
-      setMode(normalizeAutomationMode(rawMode));
+      setMode(normalizeAutomationMode(res.data));
     } catch (err) {
       addToast(err instanceof Error ? err.message : 'Failed to load automation mode', 'error');
     } finally {
@@ -325,9 +323,7 @@ function AIFirewallAutomationContent({
     setModeSaving(true);
     try {
       const res = await setAiAutomationMode(nextMode, selectedInterface ?? undefined);
-      const payload = res.data;
-      const rawMode = typeof payload === 'string' ? payload : payload.mode;
-      setMode(normalizeAutomationMode(rawMode));
+      setMode(normalizeAutomationMode(res.data));
       addToast('Automation mode updated', 'success');
     } catch (err) {
       addToast(err instanceof Error ? err.message : 'Failed to update automation mode', 'error');
