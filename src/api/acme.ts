@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { ApiResponse, AcmeAccount, AcmeCertificate, AcmeCertStatus } from '../types';
+import type { ApiResponse, AcmeAccount, AcmeCertStatus } from '../types';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 // Core ACME API: GET/POST /acme/config, POST /acme/issue, GET /acme/status
@@ -27,28 +27,6 @@ export const getAcmeCertStatus = (): Promise<ApiResponse<AcmeCertStatus>> =>
 export const deleteAcmeCertificate = (): Promise<ApiResponse<void>> =>
   apiClient.delete<ApiResponse<void>>('/acme/cert').then((r: { data: ApiResponse<void> }) => r.data);
 
-// Legacy / compatibility wrappers for older UI pages
-export const getAcmeAccount = getAcmeConfig;
-export const updateAcmeAccount = updateAcmeConfig;
-export const getAcmeCertificates = (): Promise<ApiResponse<AcmeCertificate[]>> =>
-  getAcmeCertStatus().then((r) => {
-    if (!r.data || !r.data.domain || !r.data.cert_exists) {
-      return { ...r, data: [] };
-    }
-
-    const certificate: AcmeCertificate = {
-      id: 0,
-      domain: r.data.domain,
-      sans: [],
-      status: r.data.needs_renewal ? 'pending' : 'valid',
-      issuer: 'ACME',
-      notBefore: '',
-      notAfter: '',
-      autoRenew: true,
-    };
-
-    return { ...r, data: [certificate] };
-  });
 export const issueAcmeCertificate = (payload: {
   domain: string;
   sans: string[];

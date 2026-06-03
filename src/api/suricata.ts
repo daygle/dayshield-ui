@@ -27,14 +27,6 @@ interface ManagedAvailableRulesetApi {
   installed: boolean;
 }
 
-interface LegacySuricataRulesetApi {
-  id: string | number;
-  name: string;
-  source: string;
-  enabled: boolean;
-  lastUpdated?: string | null;
-}
-
 const normalizeManagedInstalledRuleset = (
   ruleset: ManagedInstalledRulesetApi
 ): SuricataRuleset => ({
@@ -51,17 +43,6 @@ const normalizeManagedInstalledRuleset = (
   status: ruleset.status ?? null,
   error: ruleset.lastError ?? null,
   lastChecked: ruleset.lastChecked ?? null,
-  lastUpdated: ruleset.lastUpdated ?? undefined,
-});
-
-const normalizeLegacyRuleset = (ruleset: LegacySuricataRulesetApi): SuricataRuleset => ({
-  id: ruleset.id,
-  name: ruleset.name,
-  source: ruleset.source,
-  enabled: ruleset.enabled,
-  installed: true,
-  status: 'installed',
-  updateAvailable: false,
   lastUpdated: ruleset.lastUpdated ?? undefined,
 });
 
@@ -106,39 +87,29 @@ export const getSuricataRulesets = async (
   interfaceName?: string
 ): Promise<ApiResponse<SuricataRuleset[]>> => {
   const params = interfaceName ? { iface: interfaceName } : undefined;
-  try {
-    const [availableRes, installedRes] = await Promise.all([
-      apiClient.get<ApiResponse<ManagedAvailableRulesetApi[]>>('/rulesets/available'),
-      apiClient.get<ApiResponse<ManagedInstalledRulesetApi[]>>('/rulesets', { params }),
-    ]);
+  const [availableRes, installedRes] = await Promise.all([
+    apiClient.get<ApiResponse<ManagedAvailableRulesetApi[]>>('/rulesets/available'),
+    apiClient.get<ApiResponse<ManagedInstalledRulesetApi[]>>('/rulesets', { params }),
+  ]);
 
-    const installedRulesets = installedRes.data.data ?? [];
-    const installedById = new Map(installedRulesets.map((ruleset) => [ruleset.id, ruleset]));
+  const installedRulesets = installedRes.data.data ?? [];
+  const installedById = new Map(installedRulesets.map((ruleset) => [ruleset.id, ruleset]));
 
-    const merged: SuricataRuleset[] = (availableRes.data.data ?? []).map((ruleset) =>
-      normalizeManagedAvailableRuleset(ruleset, installedById)
-    );
+  const merged: SuricataRuleset[] = (availableRes.data.data ?? []).map((ruleset) =>
+    normalizeManagedAvailableRuleset(ruleset, installedById)
+  );
 
-    // Include installed rulesets that are no longer in curated sources.
-    for (const installed of installedRulesets) {
-      if (!merged.some((row) => String(row.id) === installed.id)) {
-        merged.push(normalizeManagedInstalledRuleset(installed));
-      }
+  // Include installed rulesets that are no longer in curated sources.
+  for (const installed of installedRulesets) {
+    if (!merged.some((row) => String(row.id) === installed.id)) {
+      merged.push(normalizeManagedInstalledRuleset(installed));
     }
-
-    return {
-      success: true,
-      data: merged,
-    };
-  } catch {
-    // Backward compatibility for cores that only expose /suricata/rulesets.
-    const legacy =
-      await apiClient.get<ApiResponse<LegacySuricataRulesetApi[]>>('/suricata/rulesets');
-    return {
-      ...legacy.data,
-      data: (legacy.data.data ?? []).map(normalizeLegacyRuleset),
-    };
   }
+
+  return {
+    success: true,
+    data: merged,
+  };
 };
 
 /** Create a new Suricata ruleset from URL or local path. */
