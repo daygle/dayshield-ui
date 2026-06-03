@@ -886,8 +886,6 @@ export interface SystemSchedules {
  * - `'rootfs'`  — full OS rootfs image (staged; requires reboot to activate)
  * - `'all'`     — all three components (canonical form after rename from 'both')
  * - `'both'`    — legacy alias for 'all'; accepted by the backend but prefer 'all'
- *
- * @deprecated Use `'all'` instead of `'both'` for new code.
  */
 export type UpdateComponent = 'core' | 'ui' | 'rootfs' | 'all' | 'both';
 
