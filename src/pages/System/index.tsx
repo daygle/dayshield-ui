@@ -541,63 +541,6 @@ function detectUpdateNotFoundHint(components: UpdatesStatus['components']): stri
  * Or: "validation failed: error message"
  * Or: "update preflight failed" / "update action failed"
  */
-function parseValidationMessage(message: string): {
-  status: 'passed' | 'failed' | 'error';
-  noteCount?: number;
-  notes?: Array<{ component: string; message: string }>;
-  error?: string;
-} {
-  const normalized = message.toLowerCase();
-
-  // Handle preflight/general update failures
-  if (normalized.includes('preflight failed') || normalized.includes('update action failed')) {
-    return {
-      status: 'error',
-      error: message,
-    };
-  }
-
-  if (normalized.includes('validation failed')) {
-    const errorMatch = message.match(/validation failed:\s*(.+)/i);
-    return {
-      status: 'failed',
-      error: errorMatch ? errorMatch[1] : 'Validation failed',
-    };
-  }
-
-  if (normalized.includes('validation passed')) {
-    const countMatch = message.match(/validation passed with (\d+) note\(s\)/i);
-    let noteCount = countMatch ? parseInt(countMatch[1], 10) : 0;
-
-    const notePart = message.split(': ', 2)[1] || '';
-    const notes: Array<{ component: string; message: string }> = [];
-
-    // Split by pipe and parse each note
-    const items = notePart.split(' | ').filter(Boolean);
-    for (const item of items) {
-      const match = item.match(/^([^:]+):\s*(.+)$/);
-      if (match) {
-        notes.push({
-          component: match[1].trim(),
-          message: normalizeUpdateText(match[2].trim()),
-        });
-      }
-    }
-
-    if (!countMatch && notes.length > 0) {
-      noteCount = notes.length;
-    }
-
-    return {
-      status: 'passed',
-      noteCount,
-      notes,
-    };
-  }
-
-  return { status: 'passed' };
-}
-
 export default function System() {
   const { dateFormat, timeFormat, setDateFormat, setTimeFormat, formatDateTime } =
     useDisplayPreferences();
@@ -630,6 +573,13 @@ export default function System() {
   const [updateSettingsOpen, setUpdateSettingsOpen] = useState(false);
   const [updateActionLoading, setUpdateActionLoading] = useState(false);
   const [updateActionMessage, setUpdateActionMessage] = useState<string | null>(null);
+  // Structured validation outcome consumed straight from the typed action
+  // result (success flag + per-component detail lines) so the UI never has to
+  // regex-parse human-readable backend wording.
+  const [validationResult, setValidationResult] = useState<{
+    success: boolean;
+    details: string[];
+  } | null>(null);
   const [optimisticUpdateProgress, setOptimisticUpdateProgress] =
     useState<UpdateOperationProgress | null>(null);
   const [updateSaving, setUpdateSaving] = useState(false);
@@ -859,6 +809,7 @@ export default function System() {
   const handleCheckUpdates = () => {
     setUpdateActionLoading(true);
     setUpdateActionMessage(null);
+    setValidationResult(null);
     setOptimisticUpdateProgress(null);
     Promise.all([checkForUpdates(), checkRootfsUpdates()])
       .then(([updRes, rootfsRes]) => {
@@ -873,6 +824,7 @@ export default function System() {
     const now = new Date().toISOString();
     setUpdateActionLoading(true);
     setUpdateActionMessage(null);
+    setValidationResult(null);
     setOptimisticUpdateProgress({
       operation: 'apply',
       phase: 'starting',
@@ -882,7 +834,7 @@ export default function System() {
       startedAt: now,
       updatedAt: now,
     });
-    applyUpdates('both')
+    applyUpdates('all')
       .then((res) => {
         setUpdates(res.data.status);
         if (
@@ -909,6 +861,7 @@ export default function System() {
     setRollbackConfirmOpen(false);
     setUpdateActionLoading(true);
     setUpdateActionMessage(null);
+    setValidationResult(null);
     setOptimisticUpdateProgress({
       operation: 'rollback',
       phase: 'starting',
@@ -918,7 +871,7 @@ export default function System() {
       startedAt: now,
       updatedAt: now,
     });
-    rollbackUpdates('both')
+    rollbackUpdates('all')
       .then((res) => {
         setUpdates(res.data.status);
         setUpdateActionMessage(res.data.message);
@@ -933,15 +886,15 @@ export default function System() {
   const handleValidateUpdates = () => {
     setUpdateActionLoading(true);
     setUpdateActionMessage(null);
+    setValidationResult(null);
     setOptimisticUpdateProgress(null);
-    validateUpdates('both')
+    validateUpdates('all')
       .then((res) => {
         setUpdates(res.data.status);
-        if (res.data.success) {
-          setUpdateActionMessage(null);
-          return;
-        }
-        setUpdateActionMessage(`${res.data.message}: ${res.data.details.join(' | ')}`);
+        // Consume the typed result directly — success flag drives pass/fail and
+        // the detail lines render verbatim, so reworded backend copy can't break
+        // this.
+        setValidationResult({ success: res.data.success, details: res.data.details });
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setUpdateActionLoading(false));
@@ -2062,43 +2015,26 @@ export default function System() {
               </div>
             )}
 
-            {updateActionMessage &&
-              (() => {
-                const parsed = parseValidationMessage(updateActionMessage);
-                const containerClasses = updateActionMessageClasses(updateActionMessage);
-                const formattedMessage = normalizeUpdateText(updateActionMessage);
+            {validationResult && !validationResult.success && (
+              <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                <div className="font-medium mb-2">Validation Failed</div>
+                {validationResult.details.length > 0 ? (
+                  <ul className="list-disc space-y-1 pl-5">
+                    {validationResult.details.map((detail, index) => (
+                      <li key={index}>{normalizeUpdateText(detail)}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-sm">Validation failed.</div>
+                )}
+              </div>
+            )}
 
-                if (parsed.status === 'error') {
-                  return (
-                    <div className={containerClasses}>
-                      <div className="space-y-2">
-                        <div className="font-medium">Update Failed</div>
-                        <div className="text-sm">
-                          {parsed.error ? normalizeUpdateText(parsed.error) : 'Update failed.'}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                if (parsed.status === 'failed') {
-                  return (
-                    <div className={containerClasses}>
-                      <div className="font-medium mb-2">Validation Failed</div>
-                      <div className="text-sm">
-                        {parsed.error ? normalizeUpdateText(parsed.error) : 'Validation failed.'}
-                      </div>
-                    </div>
-                  );
-                }
-
-                // Remove green validation box: do not render anything for validation passed with notes
-                if (parsed.status === 'passed' && parsed.notes && parsed.notes.length > 0) {
-                  return null;
-                }
-
-                return <div className={containerClasses}>{formattedMessage}</div>;
-              })()}
+            {updateActionMessage && (
+              <div className={updateActionMessageClasses(updateActionMessage)}>
+                {normalizeUpdateText(updateActionMessage)}
+              </div>
+            )}
 
             {updateProgressView && (
               <div className="rounded-md border border-gray-200 bg-white px-4 py-3">

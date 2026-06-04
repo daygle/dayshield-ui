@@ -546,7 +546,7 @@ export const checkForUpdates = (): Promise<ApiResponse<UpdatesStatus>> =>
   }));
 
 export const applyUpdates = (
-  component: UpdateComponent = 'both',
+  component: UpdateComponent = 'all',
   forcePartialApply: boolean = false
 ): Promise<ApiResponse<UpdatesActionResult>> =>
   apiClient
@@ -554,7 +554,7 @@ export const applyUpdates = (
     .then((r) => ({ ...r.data, data: normalizeUpdatesActionResult(r.data.data) }));
 
 export const rollbackUpdates = (
-  component: UpdateComponent = 'both',
+  component: UpdateComponent = 'all',
   forcePartialApply: boolean = false
 ): Promise<ApiResponse<UpdatesActionResult>> =>
   apiClient
@@ -562,7 +562,7 @@ export const rollbackUpdates = (
     .then((r) => ({ ...r.data, data: normalizeUpdatesActionResult(r.data.data) }));
 
 export const validateUpdates = (
-  component: UpdateComponent = 'both',
+  component: UpdateComponent = 'all',
   forcePartialApply: boolean = false
 ): Promise<ApiResponse<UpdatesActionResult>> =>
   apiClient
@@ -618,12 +618,6 @@ export const checkRootfsUpdates = (): Promise<ApiResponse<RootfsUpdateStatus>> =
     ...r.data,
     data: normalizeRootfsUpdateStatus(r.data.data),
   }));
-
-export const stageRootfsUpdate = (): Promise<ApiResponse<unknown>> =>
-  apiClient.post<ApiResponse<unknown>>('/system/rootfs/stage').then((r) => r.data);
-
-export const applyRootfsUpdate = (): Promise<ApiResponse<unknown>> =>
-  apiClient.post<ApiResponse<unknown>>('/system/rootfs/apply').then((r) => r.data);
 
 export const rollbackRootfsUpdate = (): Promise<ApiResponse<unknown>> =>
   apiClient.post<ApiResponse<unknown>>('/system/rootfs/rollback').then((r) => r.data);

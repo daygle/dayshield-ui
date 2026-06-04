@@ -884,10 +884,9 @@ export interface SystemSchedules {
  * - `'core'`    — dayshield-core binary only
  * - `'ui'`      — management UI static assets only
  * - `'rootfs'`  — full OS rootfs image (staged; requires reboot to activate)
- * - `'all'`     — all three components (canonical form after rename from 'both')
- * - `'both'`    — legacy alias for 'all'; accepted by the backend but prefer 'all'
+ * - `'all'`     — all three components
  */
-export type UpdateComponent = 'core' | 'ui' | 'rootfs' | 'all' | 'both';
+export type UpdateComponent = 'core' | 'ui' | 'rootfs' | 'all';
 
 export type UpdateScheduleFrequency = 'daily' | 'weekly' | 'monthly';
 export type UpdateScheduleWeekday =
