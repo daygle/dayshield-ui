@@ -379,7 +379,7 @@ export default function CaptivePortalPage() {
     const normalized: CaptivePortalConfig = {
       ...config,
       listenAddress: config.listenAddress.trim(),
-      listenPort: Math.max(1, Math.min(65535, Number(config.listenPort) || 8180)),
+      listenPort: Math.max(1, Math.min(65535, Number(config.listenPort) || DEFAULT_CONFIG.listenPort)),
       sessionTtlSeconds: Math.max(60, Number(config.sessionTtlSeconds) || 60),
       idleTimeoutSeconds: Math.max(0, Number(config.idleTimeoutSeconds) || 0),
       portalTitle: config.portalTitle.trim(),
