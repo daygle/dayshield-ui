@@ -882,7 +882,7 @@ export default function System() {
       startedAt: now,
       updatedAt: now,
     });
-    applyUpdates('both')
+    applyUpdates('all')
       .then((res) => {
         setUpdates(res.data.status);
         if (
@@ -918,7 +918,7 @@ export default function System() {
       startedAt: now,
       updatedAt: now,
     });
-    rollbackUpdates('both')
+    rollbackUpdates('all')
       .then((res) => {
         setUpdates(res.data.status);
         setUpdateActionMessage(res.data.message);
@@ -934,7 +934,7 @@ export default function System() {
     setUpdateActionLoading(true);
     setUpdateActionMessage(null);
     setOptimisticUpdateProgress(null);
-    validateUpdates('both')
+    validateUpdates('all')
       .then((res) => {
         setUpdates(res.data.status);
         if (res.data.success) {
