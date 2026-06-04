@@ -28,7 +28,7 @@ const DEFAULT_CONFIG: CaptivePortalConfig = {
   interfaces: [],
   authMode: 'click_through',
   listenAddress: '0.0.0.0',
-  listenPort: 8080,
+  listenPort: 8180,
   redirectHttp: true,
   sessionTtlSeconds: 86400,
   idleTimeoutSeconds: 0,
@@ -379,7 +379,7 @@ export default function CaptivePortalPage() {
     const normalized: CaptivePortalConfig = {
       ...config,
       listenAddress: config.listenAddress.trim(),
-      listenPort: Math.max(1, Math.min(65535, Number(config.listenPort) || 8080)),
+      listenPort: Math.max(1, Math.min(65535, Number(config.listenPort) || DEFAULT_CONFIG.listenPort)),
       sessionTtlSeconds: Math.max(60, Number(config.sessionTtlSeconds) || 60),
       idleTimeoutSeconds: Math.max(0, Number(config.idleTimeoutSeconds) || 0),
       portalTitle: config.portalTitle.trim(),
