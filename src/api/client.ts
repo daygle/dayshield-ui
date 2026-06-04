@@ -40,15 +40,9 @@ function formatApiErrorMessage(rawData: unknown, fallback: string): string {
   const combined = detailSuffix ? `${primary}: ${detailSuffix}` : primary;
 
   const lower = combined.toLowerCase();
-  const mentionsLegacyLeasePath = combined.includes('/run/dayshield/kea');
-  const mentionsCurrentLeasePath = combined.includes('/var/lib/kea');
 
-  if ((mentionsLegacyLeasePath || mentionsCurrentLeasePath) && lower.includes('read-only file system')) {
+  if (combined.includes('/var/lib/kea') && lower.includes('read-only file system')) {
     return `${combined}. The backend lease database path is read-only; ensure /var/lib/kea is writable by Kea.`;
-  }
-
-  if (mentionsLegacyLeasePath && lower.includes('invalid path specified')) {
-    return `${combined}. This Kea build only supports lease files under /var/lib/kea.`;
   }
 
   return combined;
