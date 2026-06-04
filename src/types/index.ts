@@ -212,6 +212,11 @@ export interface DnsConfig {
   /** Upstream forwarder IPs used when resolver_mode is forwarded. */
   forwarders: string[];
   dnssec: boolean;
+  harden_dnssec_stripped?: boolean;
+  harden_below_nxdomain?: boolean;
+  qname_minimisation?: boolean;
+  minimal_responses?: boolean;
+  aggressive_nsec?: boolean;
   /** DNS client ACL preset. */
   client_acl_preset?: DnsClientAclPreset;
   /** Custom CIDRs used when client_acl_preset is custom. */

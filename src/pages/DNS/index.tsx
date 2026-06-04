@@ -82,6 +82,11 @@ const defaultConfigForm = (): Partial<DnsConfig> => ({
   resolver_mode: 'recursive',
   forwarders: [],
   dnssec: false,
+  harden_dnssec_stripped: true,
+  harden_below_nxdomain: true,
+  qname_minimisation: true,
+  minimal_responses: true,
+  aggressive_nsec: false,
   client_acl_preset: 'private_ranges',
   client_acl_custom_cidrs: [],
   cache: defaultCacheConfig(),
@@ -430,6 +435,11 @@ export default function DNS() {
         dot_certificate: config.dot_certificate ?? '',
         dot_private_key: config.dot_private_key ?? '',
         dot_acme_domain: config.dot_acme_domain ?? '',
+        harden_dnssec_stripped: config.harden_dnssec_stripped ?? true,
+        harden_below_nxdomain: config.harden_below_nxdomain ?? true,
+        qname_minimisation: config.qname_minimisation ?? true,
+        minimal_responses: config.minimal_responses ?? true,
+        aggressive_nsec: config.aggressive_nsec ?? false,
       });
       setListenInput((config.listen_addresses ?? []).join(', '));
       setForwardersInput((config.forwarders ?? []).join(', '));
@@ -464,6 +474,11 @@ export default function DNS() {
         dot_port: config.dot_port ?? 853,
         dot_lan_only: config.dot_lan_only ?? true,
         dot_acme_domain: config.dot_acme_domain ?? '',
+        harden_dnssec_stripped: config.harden_dnssec_stripped ?? true,
+        harden_below_nxdomain: config.harden_below_nxdomain ?? true,
+        qname_minimisation: config.qname_minimisation ?? true,
+        minimal_responses: config.minimal_responses ?? true,
+        aggressive_nsec: config.aggressive_nsec ?? false,
       });
       setListenInput((config.listen_addresses ?? []).join(', '));
       setForwardersInput((config.forwarders ?? []).join(', '));
@@ -513,6 +528,11 @@ export default function DNS() {
       resolver_mode: resolverMode,
       forwarders,
       dnssec: configForm.dnssec ?? false,
+      harden_dnssec_stripped: configForm.harden_dnssec_stripped ?? true,
+      harden_below_nxdomain: configForm.harden_below_nxdomain ?? true,
+      qname_minimisation: configForm.qname_minimisation ?? true,
+      minimal_responses: configForm.minimal_responses ?? true,
+      aggressive_nsec: configForm.aggressive_nsec ?? false,
       client_acl_preset: aclPreset,
       client_acl_custom_cidrs: customAclCidrs,
       cache,
@@ -1147,6 +1167,123 @@ export default function DNS() {
                   }
                 />
                 <span className="text-sm font-medium text-gray-700">Serve Expired</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Privacy & hardening</p>
+              <p className="text-xs text-gray-500">
+                These settings improve DNS privacy and validation. Some may interfere with
+                older or misconfigured sites.
+              </p>
+            </div>
+            <div className="mt-4 grid gap-3">
+              <label className="flex flex-col gap-2 rounded-md border border-gray-200 bg-white p-3">
+                <span className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={configForm.qname_minimisation ?? true}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({
+                        ...f,
+                        qname_minimisation: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Strict QNAME minimisation
+                  </span>
+                </span>
+                <span className="text-xs text-gray-500">
+                  Minimise query names sent to upstream servers for greater privacy.
+                </span>
+              </label>
+              <label className="flex flex-col gap-2 rounded-md border border-gray-200 bg-white p-3">
+                <span className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={configForm.minimal_responses ?? true}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({
+                        ...f,
+                        minimal_responses: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Minimal responses
+                  </span>
+                </span>
+                <span className="text-xs text-gray-500">
+                  Return the smallest valid DNS reply and reduce unnecessary data.
+                </span>
+              </label>
+              <label className="flex flex-col gap-2 rounded-md border border-gray-200 bg-white p-3">
+                <span className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={configForm.harden_below_nxdomain ?? true}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({
+                        ...f,
+                        harden_below_nxdomain: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Harden below NXDOMAIN
+                  </span>
+                </span>
+                <span className="text-xs text-gray-500">
+                  Improve negative response handling for DNSSEC-capable domains.
+                </span>
+              </label>
+              <label className="flex flex-col gap-2 rounded-md border border-gray-200 bg-white p-3">
+                <span className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={configForm.aggressive_nsec ?? false}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({
+                        ...f,
+                        aggressive_nsec: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Aggressive NSEC
+                  </span>
+                </span>
+                <span className="text-xs text-gray-500">
+                  Enable aggressive NSEC behaviour when validating DNSSEC responses.
+                </span>
+              </label>
+              <label className="flex flex-col gap-2 rounded-md border border-gray-200 bg-white p-3">
+                <span className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={configForm.harden_dnssec_stripped ?? true}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({
+                        ...f,
+                        harden_dnssec_stripped: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Harden DNSSEC data
+                  </span>
+                </span>
+                <span className="text-xs text-gray-500">
+                  Improve handling of forged or stripped DNSSEC responses.
+                </span>
               </label>
             </div>
           </div>
