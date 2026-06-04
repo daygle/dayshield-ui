@@ -87,8 +87,6 @@ const TIME_FORMAT_OPTIONS: Array<{ value: TimeFormatPreference; label: string }>
   { value: '12h', label: '12-hour (HH:MM:SS AM/PM)' },
 ];
 
-const DEFAULT_NTP_SERVERS = ['127.0.0.1'];
-
 type SystemSection = 'overview' | 'management' | 'ssh' | 'updates' | 'schedules' | 'reboot';
 type EditScope = 'system' | 'management' | 'ssh';
 
@@ -155,15 +153,6 @@ function formatUpdateComponentName(component: string): string {
     default:
       return component.charAt(0).toUpperCase() + component.slice(1);
   }
-}
-
-function ntpServersWithDefault(servers?: string[] | null): string[] {
-  const cleaned = (servers ?? []).map((server) => server.trim()).filter(Boolean);
-  return cleaned.length > 0 ? cleaned : DEFAULT_NTP_SERVERS;
-}
-
-function configWithNtpDefault(config: SystemConfig): SystemConfig {
-  return { ...config, ntpServers: ntpServersWithDefault(config.ntpServers) };
 }
 
 function formatUpdateOperationName(operation: string): string {
@@ -639,7 +628,7 @@ export default function System() {
 
   const openEditModal = (scope: EditScope = 'system') => {
     if (config) {
-      setEditConfig(configWithNtpDefault(config));
+      setEditConfig(config);
     }
     setEditAdminSecurity(adminSecurity);
     setEditScope(scope);
@@ -663,7 +652,7 @@ export default function System() {
       .then(([st, cfg, upd, updSettings, acme, adminSec, fw, ifacesRes, inventoryRes, rootfs]) => {
         setStatus(st.data);
         setConfig(cfg.data);
-        setEditConfig(configWithNtpDefault(cfg.data));
+        setEditConfig(cfg.data);
         setUpdates(upd.data);
         setRootfsStatus(rootfs.data);
         setUpdateSettings(updSettings.data);
@@ -755,7 +744,6 @@ export default function System() {
 
     const systemPayload: Partial<SystemConfig> = {
       ...editConfig,
-      ntpServers: ntpServersWithDefault(editConfig.ntpServers),
     };
 
     const firewallPayload: FirewallSettings = {
@@ -779,7 +767,7 @@ export default function System() {
     Promise.all([systemRequest, firewallRequest, adminRequest])
       .then(([systemRes, firewallRes]) => {
         setConfig(systemRes.data);
-        setEditConfig(configWithNtpDefault(systemRes.data));
+        setEditConfig(systemRes.data);
         setAdminSecurity(editAdminSecurity);
         const mergedFirewallSettings = { ...DEFAULT_FIREWALL_SETTINGS, ...firewallRes.data };
         setFirewallSettings(mergedFirewallSettings);
@@ -1121,39 +1109,6 @@ export default function System() {
                   </option>
                 )}
               </FormField>
-              <FormField
-                id="cfg-ntp"
-                label="NTP Servers (comma-separated)"
-                className="col-span-3"
-                placeholder="127.0.0.1"
-                hint="Use the appliance itself as the NTP source by pointing to 127.0.0.1."
-                value={(editConfig.ntpServers ?? DEFAULT_NTP_SERVERS).join(', ')}
-                onChange={(e) =>
-                  setEditConfig({
-                    ...editConfig,
-                    ntpServers: e.target.value
-                      .split(',')
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  })
-                }
-              />
-              <FormField
-                id="cfg-dns"
-                label="DNS Servers (comma-separated)"
-                className="col-span-3"
-                placeholder="8.8.8.8, 8.8.4.4"
-                value={(editConfig.dnsServers ?? []).join(', ')}
-                onChange={(e) =>
-                  setEditConfig({
-                    ...editConfig,
-                    dnsServers: e.target.value
-                      .split(',')
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  })
-                }
-              />
               <div className="col-span-3 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
                 <input
                   id="cfg-ipv6-enabled"
@@ -1694,16 +1649,6 @@ export default function System() {
             <div>
               <dt className="text-gray-500">Timezone</dt>
               <dd className="font-medium text-gray-800">{config.timezone}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">NTP Servers</dt>
-              <dd className="font-medium text-gray-800">
-                {ntpServersWithDefault(config.ntpServers).join(', ')}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">DNS Servers</dt>
-              <dd className="font-medium text-gray-800">{config.dnsServers.join(', ') || '-'}</dd>
             </div>
             <div>
               <dt className="text-gray-500">IPv6</dt>
