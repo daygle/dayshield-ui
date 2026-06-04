@@ -171,7 +171,7 @@ export interface FirewallSettings {
   management_allowed_sources: string[];
   management_ports: number[];
   management_tls_acme_domain?: string | null; // ACME domain for the management TLS cert
-  log_position?: LogPosition; // Optional for backward compatibility
+  log_position: LogPosition;
 }
 
 // ── Aliases ───────────────────────────────────────────────────
@@ -1024,8 +1024,8 @@ export interface BackupEntry {
   createdAt: string; // ISO timestamp (always provided)
   sha256?: string; // (may be undefined if still processing)
   encrypted: boolean;
-  type?: string; // 'Manual' | 'Scheduled' | 'Update' (proper case, optional for legacy)
-  version?: string; // Application version string (optional for legacy)
+  type: string; // 'Manual' | 'Scheduled' | 'Update' (proper case)
+  version: string; // Application version string
 }
 
 export interface CreateBackupRequest {

@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '../../context/ToastContext';
 import {
-  getAcmeAccount,
-  updateAcmeAccount,
-  getAcmeCertificates,
+  getAcmeConfig,
+  updateAcmeConfig,
   getAcmeCertStatus,
   issueAcmeCertificate,
   issueAcmeCertificates,
@@ -71,13 +70,27 @@ export default function ACME() {
 
   const loadAll = () => {
     setLoading(true);
-    Promise.all([getAcmeAccount(), getAcmeCertificates(), getAcmeCertStatus()])
-      .then(([acc, c, statusRes]) => {
+    Promise.all([getAcmeConfig(), getAcmeCertStatus()])
+      .then(([acc, statusRes]) => {
         setAccount(acc.data);
         setAccountForm(acc.data);
         setAccountDomains((acc.data.domains ?? []).join(', '));
-        setCerts(Array.isArray(c.data) ? (c.data as CertRow[]) : []);
         setStatus(statusRes.data);
+        if (statusRes.data?.domain && statusRes.data.cert_exists) {
+          const certificate: CertRow = {
+            id: 0,
+            domain: statusRes.data.domain,
+            sans: [],
+            status: statusRes.data.needs_renewal ? 'pending' : 'valid',
+            issuer: 'ACME',
+            notBefore: '',
+            notAfter: '',
+            autoRenew: true,
+          };
+          setCerts([certificate]);
+        } else {
+          setCerts([]);
+        }
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
@@ -87,7 +100,7 @@ export default function ACME() {
 
   const handleSaveAccount = () => {
     setAccountSaving(true);
-    updateAcmeAccount({
+    updateAcmeConfig({
       ...accountForm,
       domains: accountDomains
         .split(',')
