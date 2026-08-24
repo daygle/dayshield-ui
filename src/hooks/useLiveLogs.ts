@@ -80,6 +80,7 @@ export function useLiveLogs(options?: { autoConnect?: boolean }) {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unmountedRef = useRef(false);
   const sequenceRef = useRef(0);
+  const reconnectAttemptRef = useRef(0);
 
   // keep paused ref in sync so the WS message handler always sees latest value
   useEffect(() => {
@@ -90,6 +91,10 @@ export function useLiveLogs(options?: { autoConnect?: boolean }) {
     if (unmountedRef.current) return;
     if (wsRef.current && wsRef.current.readyState < WebSocket.CLOSING) return;
 
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
     setStatus('connecting');
     const ws = new WebSocket(buildWsUrl());
     wsRef.current = ws;
@@ -100,10 +105,7 @@ export function useLiveLogs(options?: { autoConnect?: boolean }) {
         return;
       }
       setStatus('connected');
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
-      }
+      reconnectAttemptRef.current = 0;
     };
 
     ws.onmessage = (event: MessageEvent) => {
@@ -130,8 +132,10 @@ export function useLiveLogs(options?: { autoConnect?: boolean }) {
     ws.onclose = () => {
       if (unmountedRef.current) return;
       setStatus('disconnected');
-      // fixed 3-second delay before reconnect
-      reconnectTimerRef.current = setTimeout(connect, 3000);
+      // Back off briefly during outages, but cap the delay for recovery.
+      const delay = Math.min(3000 * 2 ** reconnectAttemptRef.current, 30000);
+      reconnectAttemptRef.current += 1;
+      reconnectTimerRef.current = setTimeout(connect, delay);
     };
   }, []);
 
@@ -142,8 +146,12 @@ export function useLiveLogs(options?: { autoConnect?: boolean }) {
     }
     return () => {
       unmountedRef.current = true;
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
       wsRef.current?.close();
+      wsRef.current = null;
     };
   }, [autoConnect, connect]);
 
@@ -153,13 +161,12 @@ export function useLiveLogs(options?: { autoConnect?: boolean }) {
     const res = await searchLogs({ from, to, limit: MAX_BUFFER });
     const raw = Array.isArray(res.data) ? res.data : [];
     const normalized: LogEntry[] = [];
-    let localSeq = 0;
-    for (const item of raw) {
-      localSeq += 1;
-      const entry = normalizeWsEvent(item, localSeq);
+    for (const [index, item] of raw.entries()) {
+      const entry = normalizeWsEvent(item, sequenceRef.current + index + 1);
       if (entry) normalized.push(entry);
     }
 
+    sequenceRef.current += raw.length;
     setLogs(normalized);
     setPaused(true);
     setAutoScroll(true);

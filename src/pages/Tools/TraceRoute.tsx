@@ -17,17 +17,11 @@ export default function TraceRoute() {
       return;
     }
 
-    setTracing(true);
+    const safeMaxHops = Math.max(1, Math.min(64, Math.trunc(maxHops) || 30));
+    setMaxHops(safeMaxHops);
+    setTracing(false);
     setResult(null);
-
-    setTimeout(() => {
-      setTracing(false);
-      setResult(
-        `Trace route requested for ${target} with max ${maxHops} hops. ` +
-          'Backend integration is required to show actual hop results.'
-      );
-      addToast('Trace route queued.', 'success');
-    }, 700);
+    addToast('Trace route is not available because no backend tool endpoint is configured.', 'error');
   };
 
   return (

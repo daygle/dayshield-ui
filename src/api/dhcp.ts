@@ -266,11 +266,22 @@ function normalizeDhcp6Lease(raw: unknown): Dhcp6Lease | null {
   };
 }
 
+function normalizeDhcp6Leases(raw: unknown): Dhcp6Lease[] {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const entries = Array.isArray(raw)
+    ? raw
+    : Array.isArray(value.data)
+      ? value.data
+      : Array.isArray(value.leases)
+        ? value.leases
+        : Array.isArray(value.items)
+          ? value.items
+          : [];
+  return entries.map(normalizeDhcp6Lease).filter((l): l is Dhcp6Lease => l !== null);
+}
+
 export const getDhcp6Leases = (): Promise<ApiResponse<Dhcp6Lease[]>> =>
-  apiClient.get<ApiResponse<unknown>>('/dhcp6/leases').then((r) => {
-    const raw = r.data.data;
-    const leases = Array.isArray(raw)
-      ? raw.map(normalizeDhcp6Lease).filter((l): l is Dhcp6Lease => l !== null)
-      : [];
-    return { ...r.data, data: leases };
-  });
+  apiClient.get<ApiResponse<unknown>>('/dhcp6/leases').then((r) => ({
+    ...r.data,
+    data: normalizeDhcp6Leases(r.data.data ?? r.data),
+  }));

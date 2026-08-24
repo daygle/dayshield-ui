@@ -4,9 +4,8 @@ import Button from '../../components/Button';
 import Card from '../../components/Card';
 import FormField from '../../components/FormField';
 
-function isValidMacAddress(value: string) {
-  const cleaned = value.replace(/[^0-9a-f]/gi, '');
-  return cleaned.length === 12;
+function isValidMacAddress(value: string): boolean {
+  return /^(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}$/i.test(value.trim());
 }
 
 export default function WakeOnLan() {
@@ -23,11 +22,15 @@ export default function WakeOnLan() {
       return;
     }
 
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      addToast('Wake-on-LAN packet queued successfully.', 'success');
-    }, 600);
+    const normalizedBroadcast = broadcastIp.trim();
+    const parsedPort = Math.trunc(port);
+    if (!normalizedBroadcast || parsedPort < 1 || parsedPort > 65535) {
+      addToast('Enter a broadcast address and a port between 1 and 65535.', 'error');
+      return;
+    }
+
+    setIsSubmitting(false);
+    addToast('Wake-on-LAN is not available because no backend tool endpoint is configured.', 'error');
   };
 
   return (

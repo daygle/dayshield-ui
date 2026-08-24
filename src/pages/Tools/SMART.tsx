@@ -17,17 +17,9 @@ export default function SMART() {
       return;
     }
 
-    setIsChecking(true);
+    setIsChecking(false);
     setResult(null);
-
-    setTimeout(() => {
-      setIsChecking(false);
-      setResult(
-        `SMART check requested for ${devicePath} (${scanType === 'health' ? 'health status' : 'attribute details'}). ` +
-          'Backend integration is required to show live SMART values.'
-      );
-      addToast('SMART check queued.', 'success');
-    }, 700);
+    addToast('SMART checks are not available because no backend tool endpoint is configured.', 'error');
   };
 
   return (

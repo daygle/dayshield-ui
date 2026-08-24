@@ -92,10 +92,17 @@ export const getSuricataRulesets = async (
     apiClient.get<ApiResponse<ManagedInstalledRulesetApi[]>>('/rulesets', { params }),
   ]);
 
-  const installedRulesets = installedRes.data.data ?? [];
-  const installedById = new Map(installedRulesets.map((ruleset) => [ruleset.id, ruleset]));
+  const installedRulesets: ManagedInstalledRulesetApi[] = Array.isArray(installedRes.data.data)
+    ? installedRes.data.data
+    : [];
+  const availableRulesets: ManagedAvailableRulesetApi[] = Array.isArray(availableRes.data.data)
+    ? availableRes.data.data
+    : [];
+  const installedById = new Map<string, ManagedInstalledRulesetApi>(
+    installedRulesets.map((ruleset) => [ruleset.id, ruleset])
+  );
 
-  const merged: SuricataRuleset[] = (availableRes.data.data ?? []).map((ruleset) =>
+  const merged: SuricataRuleset[] = availableRulesets.map((ruleset) =>
     normalizeManagedAvailableRuleset(ruleset, installedById)
   );
 

@@ -42,6 +42,7 @@ function normalizeNotifyConfig(raw: unknown): NotifyConfig {
   // Newer UI/native shape
   if (
     typeof value.enabled === 'boolean' &&
+    value.smtp !== null &&
     typeof value.smtp === 'object' &&
     Array.isArray(value.recipients)
   ) {
@@ -53,7 +54,9 @@ function normalizeNotifyConfig(raw: unknown): NotifyConfig {
         host: smtp.host ?? '',
         port: typeof smtp.port === 'number' ? smtp.port : 587,
         username: smtp.username ?? '',
-        password: smtp.password ?? '',
+        // APIs commonly omit secrets when they are already configured.
+      // Keep the empty value so callers never mistake a masked value for a usable password.
+      password: typeof smtp.password === 'string' ? smtp.password : '',
         tls: smtp.tls !== false,
         fromAddress: smtp.fromAddress ?? '',
         fromName: smtp.fromName ?? 'DayShield Alerts',
@@ -75,7 +78,8 @@ function normalizeNotifyConfig(raw: unknown): NotifyConfig {
       host: cfg.smtp_server ?? '',
       port: typeof cfg.smtp_port === 'number' ? cfg.smtp_port : 587,
       username: cfg.smtp_username ?? '',
-      password: cfg.smtp_password ?? '',
+      // Do not invent or persist a password when the backend redacts it.
+      password: typeof cfg.smtp_password === 'string' ? cfg.smtp_password : '',
       tls: true,
       fromAddress: cfg.from_address ?? '',
       fromName: 'DayShield Alerts',

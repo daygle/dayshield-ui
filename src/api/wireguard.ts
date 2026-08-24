@@ -127,6 +127,9 @@ export const getWgPeers = (): Promise<ApiResponse<WgPeer[]>> =>
     error: r.error,
   }));
 
+// Peer mutations are intentionally unsupported by the current backend contract.
+// Keep these explicit so callers cannot mistake a local optimistic update for a
+// persisted change.
 export const createWgPeer = (_peer: Omit<WgPeer, 'id'>): Promise<ApiResponse<WgPeer>> =>
   Promise.reject(
     new Error(

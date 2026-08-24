@@ -12,7 +12,7 @@ import type {
  * Backend returns size_bytes and created_at, frontend expects size and createdAt.
  */
 export function normalizeBackupEntry(raw: Record<string, unknown>): BackupEntry {
-  const filename = (raw.filename as string) ?? '';
+  const filename = typeof raw.filename === 'string' ? raw.filename : '';
 
   const parseEncrypted = (): boolean => {
     const candidates = [
@@ -39,11 +39,15 @@ export function normalizeBackupEntry(raw: Record<string, unknown>): BackupEntry 
 
   // Parse created_at from backend response or filename
   let createdAt = '';
-  if (raw.created_at) {
-    // If backend provides created_at as Unix timestamp (number), convert to ISO
+  if (raw.created_at !== undefined && raw.created_at !== null) {
+    // If backend provides created_at as Unix timestamp (number), convert to ISO.
     const timestamp =
-      typeof raw.created_at === 'number' ? raw.created_at : parseInt(raw.created_at as string, 10);
-    if (!Number.isNaN(timestamp)) {
+      typeof raw.created_at === 'number'
+        ? raw.created_at
+        : typeof raw.created_at === 'string'
+          ? Number(raw.created_at)
+          : Number.NaN;
+    if (Number.isFinite(timestamp)) {
       createdAt = new Date(timestamp * 1000).toISOString();
     }
   }
@@ -67,9 +71,14 @@ export function normalizeBackupEntry(raw: Record<string, unknown>): BackupEntry 
   }
   return {
     filename,
-    size: (raw.size_bytes as number) ?? (raw.size as number),
+    size:
+      typeof raw.size_bytes === 'number'
+        ? raw.size_bytes
+        : typeof raw.size === 'number'
+          ? raw.size
+          : 0,
     createdAt: createdAt || new Date().toISOString(),
-    sha256: (raw.sha256 as string) ?? '',
+    sha256: typeof raw.sha256 === 'string' ? raw.sha256 : '',
     encrypted: parseEncrypted(),
     type,
     version: ((raw.version as string) ?? '').trim(),

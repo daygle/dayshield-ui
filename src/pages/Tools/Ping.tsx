@@ -18,17 +18,14 @@ export default function Ping() {
       return;
     }
 
+    const safeCount = Math.max(1, Math.min(20, Math.trunc(count) || 4));
+    const safePacketSize = Math.max(16, Math.min(1024, Math.trunc(packetSize) || 56));
+    setCount(safeCount);
+    setPacketSize(safePacketSize);
     setPinging(true);
     setResult(null);
-
-    setTimeout(() => {
-      setPinging(false);
-      setResult(
-        `Ping requested for ${target} with ${count} packets of ${packetSize} bytes. ` +
-          'Backend integration is required to show actual RTT values.'
-      );
-      addToast('Ping queued.', 'success');
-    }, 700);
+    addToast('Ping is not available because no backend tool endpoint is configured.', 'error');
+    setPinging(false);
   };
 
   return (

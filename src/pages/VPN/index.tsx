@@ -190,15 +190,29 @@ export default function VPN() {
   };
 
   const handleAddPeer = () => {
+    if (!server) {
+      addToast('Create a VPN interface before adding peers.', 'error');
+      return;
+    }
+    if (!peerForm.name.trim() || !peerForm.publicKey.trim()) {
+      addToast('Peer name and public key are required.', 'error');
+      return;
+    }
+    const allowedIPs = peerForm.allowedIPs
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (allowedIPs.length === 0) {
+      addToast('At least one allowed IP is required.', 'error');
+      return;
+    }
+
     setPeerSaving(true);
     createWgPeer({
       name: peerForm.name,
       publicKey: peerForm.publicKey,
       presharedKey: peerForm.presharedKey || undefined,
-      allowedIPs: peerForm.allowedIPs
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean),
+      allowedIPs,
       endpoint: peerForm.endpoint || undefined,
       persistentKeepalive: peerForm.persistentKeepalive,
       enabled: peerForm.enabled,
